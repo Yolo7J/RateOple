@@ -1,0 +1,12 @@
+D:\RateOple\backend\RateOple.Constants\bin\Debug\net9.0\RateOple.Constants.deps.json
+D:\RateOple\backend\RateOple.Constants\bin\Debug\net9.0\RateOple.Constants.dll
+D:\RateOple\backend\RateOple.Constants\bin\Debug\net9.0\RateOple.Constants.pdb
+D:\RateOple\backend\RateOple.Constants\obj\Debug\net9.0\RateOple.Constants.GeneratedMSBuildEditorConfig.editorconfig
+D:\RateOple\backend\RateOple.Constants\obj\Debug\net9.0\RateOple.Constants.AssemblyInfoInputs.cache
+D:\RateOple\backend\RateOple.Constants\obj\Debug\net9.0\RateOple.Constants.AssemblyInfo.cs
+D:\RateOple\backend\RateOple.Constants\obj\Debug\net9.0\RateOple.Constants.csproj.CoreCompileInputs.cache
+D:\RateOple\backend\RateOple.Constants\obj\Debug\net9.0\RateOple.Constants.sourcelink.json
+D:\RateOple\backend\RateOple.Constants\obj\Debug\net9.0\RateOple.Constants.dll
+D:\RateOple\backend\RateOple.Constants\obj\Debug\net9.0\refint\RateOple.Constants.dll
+D:\RateOple\backend\RateOple.Constants\obj\Debug\net9.0\RateOple.Constants.pdb
+D:\RateOple\backend\RateOple.Constants\obj\Debug\net9.0\ref\RateOple.Constants.dll
