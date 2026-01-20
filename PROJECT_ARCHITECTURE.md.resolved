@@ -1,0 +1,110 @@
+# RateOple Project Architecture
+
+## Executive Summary
+RateOple is a web application built using a **Clean Architecture** approach on the backend (.NET 9) and a modern **Single Page Application (SPA)** framework on the frontend (Vite + React).
+
+The project is currently in the initial scaffolding phase:
+- **Backend**: Set up with Core, Infrastructure, and API layers. Identity (Auth) is configured in the DbContext.
+- **Frontend**: Standard Vite + React template initialized.
+
+---
+
+## 1. High-Level System Design
+
+The system follows a standard Client-Server architecture.
+
+```mermaid
+graph TD
+    User[Clients] -->|HTTPS/JSON| Frontend[Frontend (Vite + React)]
+    Frontend -->|API Calls| Backend[Backend API (.NET 9)]
+    
+    subgraph "Backend System (Clean Architecture)"
+        Backend -->|Controllers/Endpoints| API[RateOple.API]
+        API -->|References| Core[RateOple.Core]
+        API -->|References| Infra[RateOple.Infrastructure]
+        Infra -->|References| Core
+        
+        Infra -->|EF Core Identity| Db[(Database)]
+    end
+```
+
+---
+
+## 2. Frontend Architecture (React + Vite)
+
+### Technology Stack
+- **Framework**: React 19 (Hooks-based functional components)
+- **Build Tool**: Vite (Fast HMR and bundling)
+- **Routing**: React Router DOM v7
+- **HTTP Client**: Axios
+- **Linting**: ESLint + standard React hooks plugins
+
+### Directory Structure
+```
+d:/RateOple/frontend/
+├── src/
+│   ├── assets/        # Static assets (images, global svgs)
+│   ├── App.jsx        # Root Component (Main layout/router setup)
+│   ├── main.jsx       # Entry Point (React DOM render)
+│   ├── index.css      # Global styles
+│   └── App.css        # Component-level styles
+├── vite.config.js     # Vite configuration
+└── package.json       # Dependencies and scripts
+```
+
+### Key Components
+- **[main.jsx](file:///d:/RateOple/frontend/src/main.jsx)**: Bootstraps the React application.
+- **[App.jsx](file:///d:/RateOple/frontend/src/App.jsx)**: Currently hosts the demo counter application. Future home for `<RouterProvider>` or main layout shell.
+
+---
+
+## 3. Backend Architecture (.NET Clean Architecture)
+
+### Technology Stack
+- **Framework**: .NET 9 (ASP.NET Core Web API)
+- **ORM**: Entity Framework Core (SQL Server)
+- **Identity**: ASP.NET Core Identity (User management)
+- **API Specification**: OpenAPI (Swagger)
+
+### Solution Structure
+The solution is divided into three projects following Clean Architecture principles:
+
+#### 1. `RateOple.Core` (Domain Layer)
+*Contains enterprise logic and types. Has NO dependencies on other projects.*
+- **Contracts**: Interfaces for services (Repository patterns, etc.).
+- **Models**: Domain entities (e.g., `User`, `Review`, `Product` - *To be implemented*).
+- **Services**: Pure domain logic services.
+
+#### 2. `RateOple.Infrastructure` (Infrastructure Layer)
+*Implements interfaces defined in Core. Depends on Core.*
+- **Data/ApplicationDbContext**: Inherits from `IdentityDbContext<IdentityUser>`. Manages database connections and Entity Framework configurations.
+- **Migrations**: Database schema version control.
+
+#### 3. `RateOple` (Presentation/API Layer)
+*The entry point. Depends on Core and Infrastructure.*
+- **Program.cs**: Dependency Injection (DI) setup, Middleware configuration (CORS, Swagger, Auth), and Minimal API map definitions.
+- **Controllers/Endpoints**: Handles HTTP requests (currently shows WeatherForecast demo).
+
+### Data Access Diagram
+```mermaid
+classDiagram
+    direction BT
+    class ApplicationDbContext {
+        +IdentityUser Users
+        +IdentityRole Roles
+        +void OnModelCreating()
+    }
+    class IdentityDbContext {
+    }
+    
+    ApplicationDbContext --|> IdentityDbContext : Inherits
+    note for ApplicationDbContext "Located in Infrastructure.Data"
+```
+
+---
+
+## 4. Database Schema (Current State)
+
+Currently, the database utilizes the standard ASP.NET Core Identity schema (Users, Roles, Claims, Tokens) via `IdentityDbContext`. Custom business entities in `RateOple.Core.Models` are yet to be defined.
+
+*A detailed ER diagram will be generated once business entities are added to the Core project.*
