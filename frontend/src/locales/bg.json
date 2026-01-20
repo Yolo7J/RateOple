@@ -1,33 +1,80 @@
 {
-    "header": {
-        "logo": "RateOple",
-        "navigation": {
-            "menu": "Меню",
-            "home": "Начало",
-            "media": "Медия",
-            "books": "Книги",
-            "movies": "Филми",
-            "tvShows": "Сериали",
-            "about": "За нас"
-        },
-        "search": {
-            "placeholder": "Търсене..."
-        },
-        "theme": {
-            "toggle": "Превключи тема",
-            "light": "Светъл режим",
-            "dark": "Тъмен режим"
-        },
-        "language": {
-            "toggle": "Смени език",
-            "english": "Английски",
-            "bulgarian": "Български"
-        },
-        "auth": {
-            "login": "Вход",
-            "register": "Регистрация",
-            "logout": "Изход",
-            "account": "Профил"
-        }
+  "header": {
+    "logo": "RateOple",
+    "navigation": {
+      "menu": "Меню",
+      "home": "Начало",
+      "media": "Медия",
+      "books": "Книги",
+      "movies": "Филми",
+      "tvShows": "Сериали",
+      "about": "За нас"
+    },
+    "search": {
+      "placeholder": "Търсене..."
+    },
+    "theme": {
+      "toggle": "Превключи тема",
+      "light": "Светъл режим",
+      "dark": "Тъмен режим"
+    },
+    "language": {
+      "toggle": "Смени език",
+      "english": "Английски",
+      "bulgarian": "Български"
+    },
+    "auth": {
+      "login": "Вход",
+      "register": "Регистрация",
+      "logout": "Изход",
+      "account": "Профил"
     }
+  },
+
+  "footer": {
+    "about": {
+      "title": "За нас",
+      "description": "RateOple е вашата платформа за оценяване и ревюта на книги, филми и сериали."
+    },
+    "quickLinks": {
+      "title": "Бързи връзки",
+      "home": "Начало",
+      "media": "Медия",
+      "about": "За нас"
+    },
+    "contact": {
+      "title": "Контакт",
+      "email": "Имейл",
+      "phone": "Телефон"
+    },
+    "socials": {
+      "facebook": "Фейсбук",
+      "twitter": "Туитър",
+      "instagram": "Инстаграм"
+    },
+    "copyright": "© 2024 RateOple. Всички права запазени.",
+    "mobile": {
+      "privacy": "Поверителност",
+      "terms": "Условия"
+    }
+  },
+
+  "home": {
+    "title": "Добре дошли в RateOple",
+    "subtitle": "Вашата платформа за оценяване и ревюта на медийно съдържание",
+    "features": {
+      "books": {
+        "title": "📚 Книги",
+        "description": "Открийте и оценявайте любимите си книги"
+      },
+      "movies": {
+        "title": "🎬 Филми",
+        "description": "Споделете мнението си за най-новите филми"
+      },
+      "tvShows": {
+        "title": "📺 Сериали",
+        "description": "Правете ревюта на любимите си сериали"
+      }
+    }
+  }
 }

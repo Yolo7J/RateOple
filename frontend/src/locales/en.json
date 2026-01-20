@@ -1,33 +1,82 @@
 {
-    "header": {
-        "logo": "RateOple",
-        "navigation": {
-            "menu": "Menu",
-            "home": "Home",
-            "media": "Media",
-            "books": "Books",
-            "movies": "Movies",
-            "tvShows": "TV Shows",
-            "about": "About"
-        },
-        "search": {
-            "placeholder": "Search..."
-        },
-        "theme": {
-            "toggle": "Toggle theme",
-            "light": "Light mode",
-            "dark": "Dark mode"
-        },
-        "language": {
-            "toggle": "Change language",
-            "english": "English",
-            "bulgarian": "Bulgarian"
-        },
-        "auth": {
-            "login": "Login",
-            "register": "Register",
-            "logout": "Logout",
-            "account": "Account"
-        }
+  "header": {
+    "logo": "RateOple",
+    "navigation": {
+      "menu": "Menu",
+      "home": "Home",
+      "media": "Media",
+      "books": "Books",
+      "movies": "Movies",
+      "tvShows": "TV Shows",
+      "about": "About"
+    },
+    "search": {
+      "placeholder": "Search..."
+    },
+    "theme": {
+      "toggle": "Toggle theme",
+      "light": "Light mode",
+      "dark": "Dark mode"
+    },
+    "language": {
+      "toggle": "Change language",
+      "english": "English",
+      "bulgarian": "Bulgarian"
+    },
+    "auth": {
+      "login": "Login",
+      "register": "Register",
+      "logout": "Logout",
+      "account": "Account"
     }
+  },
+  
+  "footer": {
+    "about": {
+      "title": "About",
+      "description": "RateOple is your platform for rating and reviewing books, movies, and TV shows."
+    },
+    "quickLinks": {
+      "title": "Quick Links",
+      "home": "Home",
+      "media": "Media",
+      "about": "About"
+    },
+    "contact": {
+      "title": "Contact",
+      "email": "Email",
+      "phone": "Phone"
+    },
+    "socials": {
+      "facebook": "Facebook",
+      "twitter": "Twitter",
+      "instagram": "Instagram"
+    },
+    "copyright": "© 2024 RateOple. All rights reserved.",
+    "mobile": {
+      "privacy": "Privacy",
+      "terms": "Terms"
+    }
+  },
+
+
+
+  "home": {
+    "title": "Welcome to RateOple",
+    "subtitle": "Your platform for rating and reviewing media content",
+    "features": {
+      "books": {
+        "title": "📚 Books",
+        "description": "Discover and rate your favorite books"
+      },
+      "movies": {
+        "title": "🎬 Movies",
+        "description": "Share your thoughts on the latest films"
+      },
+      "tvShows": {
+        "title": "📺 TV Shows",
+        "description": "Review your favorite series"
+      }
+    }
+  }
 }
