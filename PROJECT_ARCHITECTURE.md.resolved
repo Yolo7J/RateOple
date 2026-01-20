@@ -43,13 +43,95 @@ graph TD
 ```
 d:/RateOple/frontend/
 ├── src/
-│   ├── assets/        # Static assets (images, global svgs)
-│   ├── App.jsx        # Root Component (Main layout/router setup)
-│   ├── main.jsx       # Entry Point (React DOM render)
-│   ├── index.css      # Global styles
-│   └── App.css        # Component-level styles
-├── vite.config.js     # Vite configuration
-└── package.json       # Dependencies and scripts
+│   ├── common/
+│   ├── components/
+│   │   ├── layout/
+│   │   │   ├── Header/
+│   │   │   │   ├── Header.jsx
+│   │   │   │   └── Header.css
+│   │   │   ├── Footer/
+│   │   │   │   ├── Footer.jsx
+│   │   │   │   └── Footer.css
+│   │   │   ├── Sidebar/
+│   │   │   │   ├── Sidebar.jsx
+│   │   │   │   └── Sidebar.css
+│   │   │   └── Layout/
+│   │   │       ├── Layout.jsx
+│   │   │       └── Layout.css
+│   │   ├── ui/
+│   │   │   ├── Button/
+│   │   │   │   ├── Button.jsx
+│   │   │   │   └── Button.css
+│   │   │   ├── Card/
+│   │   │   │   ├── Card.jsx
+│   │   │   │   └── Card.css
+│   │   │   ├── SearchBar/
+│   │   │   │   ├── SearchBar.jsx
+│   │   │   │   └── SearchBar.css
+│   │   │   ├── ThemeToggle/
+│   │   │   │   ├── ThemeToggle.jsx
+│   │   │   │   └── ThemeToggle.css
+│   │   │   └── LanguageToggle/
+│   │   │       ├── LanguageToggle.jsx
+│   │   │       └── LanguageToggle.css
+│   │   └── media/
+│   │       ├── MediaCard/
+│   │       │   ├── MediaCard.jsx
+│   │       │   └── MediaCard.css
+│   │       ├── MediaGrid/
+│   │       │   ├── MediaGrid.jsx
+│   │       │   └── MediaGrid.css
+│   │       └── MediaFilters/
+│   │           ├── MediaFilters.jsx
+│   │           └── MediaFilters.css
+│   ├── hooks/
+│   │   ├── useTheme.js
+│   │   └── useLanguage.js
+│   └── common/
+├── pages/
+│   ├── Auth/
+│   │   ├── Login/
+│   │   │   ├── Login.jsx
+│   │   │   └── Login.css
+│   │   └── Register/
+│   │       ├── Register.jsx
+│   │       └── Register.css
+│   ├── Media/
+│   │   ├── MediaPage/
+│   │   │   ├── MediaPage.jsx
+│   │   │   └── MediaPage.css
+│   │   ├── BooksPage/
+│   │   │   ├── BooksPage.jsx
+│   │   │   └── BooksPage.css
+│   │   ├── MoviesPage/
+│   │   │   ├── MoviesPage.jsx
+│   │   │   └── MoviesPage.css
+│   │   └── TVShowsPage/
+│   │       ├── TVShowsPage.jsx
+│   │       └── TVShowsPage.css
+│   ├── About/
+│   │   ├── AboutPage/
+│   │   │   ├── AboutPage.jsx
+│   │   │   └── AboutPage.css
+│   └── Home/
+│       ├── HomePage/
+│       │   ├── HomePage.jsx
+│       │   └── HomePage.css
+├── context/
+│   ├── ThemeContext.jsx
+│   └── LanguageContext.jsx
+├── services/
+│   ├── api.js
+│   └── auth.js
+├── utils/
+│   ├── constants.js
+│   └── helpers.js
+├── locales/
+│   ├── en.json
+│   └── bg.json
+├── App.jsx
+├── main.jsx
+└── index.css
 ```
 
 ### Key Components
