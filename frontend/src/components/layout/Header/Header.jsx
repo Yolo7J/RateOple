@@ -1,0 +1,124 @@
+import { useState } from 'react';
+import { useLanguage } from '../../../hooks/useLanguage';
+import NavigationDropdown from './NavigationDropdown';
+import SearchBar from '../../ui/SearchBar/SearchBar';
+import ThemeToggle from '../../ui/ThemeToggle/ThemeToggle';
+import LanguageToggle from '../../ui/LanguageToggle/LanguageToggle';
+import './Header.css';
+
+const Header = () => {
+    // Mock authentication state - TODO: Replace with actual auth context
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const { t } = useLanguage();
+
+    const handleAuthAction = (action) => {
+        // TODO: Implement actual authentication logic
+        console.log('Auth action:', action);
+        if (action === 'logout') {
+            setIsAuthenticated(false);
+        } else if (action === 'login') {
+            // This would typically navigate to login page
+            setIsAuthenticated(true);
+        }
+    };
+
+    return (
+        <header className="header">
+            <div className="header-container">
+                {/* Logo */}
+                <div className="header-logo">
+                    <svg
+                        className="logo-icon"
+                        width="32"
+                        height="32"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                    >
+                        <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                        <path d="M2 17l10 5 10-5" />
+                        <path d="M2 12l10 5 10-5" />
+                    </svg>
+                    <span className="logo-text">{t('header.logo')}</span>
+                </div>
+
+                {/* Desktop Navigation */}
+                <nav className="header-nav">
+                    <NavigationDropdown />
+                    <SearchBar />
+                </nav>
+
+                {/* Actions */}
+                <div className="header-actions">
+                    <ThemeToggle />
+                    <LanguageToggle />
+
+                    {/* Auth Buttons */}
+                    <div className="auth-buttons">
+                        {isAuthenticated ? (
+                            <>
+                                <button
+                                    className="auth-button account-button"
+                                    onClick={() => handleAuthAction('account')}
+                                >
+                                    <svg
+                                        width="18"
+                                        height="18"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                    >
+                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                        <circle cx="12" cy="7" r="4" />
+                                    </svg>
+                                    <span className="button-text">{t('header.auth.account')}</span>
+                                </button>
+                                <button
+                                    className="auth-button logout-button"
+                                    onClick={() => handleAuthAction('logout')}
+                                >
+                                    {t('header.auth.logout')}
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <button
+                                    className="auth-button login-button"
+                                    onClick={() => handleAuthAction('login')}
+                                >
+                                    {t('header.auth.login')}
+                                </button>
+                                <button
+                                    className="auth-button register-button"
+                                    onClick={() => handleAuthAction('register')}
+                                >
+                                    {t('header.auth.register')}
+                                </button>
+                            </>
+                        )}
+                    </div>
+                </div>
+
+                {/* Mobile Menu Toggle */}
+                <button className="mobile-menu-toggle" aria-label="Toggle mobile menu">
+                    <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                    >
+                        <line x1="3" y1="12" x2="21" y2="12" />
+                        <line x1="3" y1="6" x2="21" y2="6" />
+                        <line x1="3" y1="18" x2="21" y2="18" />
+                    </svg>
+                </button>
+            </div>
+        </header>
+    );
+};
+
+export default Header;
