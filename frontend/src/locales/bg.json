@@ -1,0 +1,33 @@
+{
+    "header": {
+        "logo": "RateOple",
+        "navigation": {
+            "menu": "Меню",
+            "home": "Начало",
+            "media": "Медия",
+            "books": "Книги",
+            "movies": "Филми",
+            "tvShows": "Сериали",
+            "about": "За нас"
+        },
+        "search": {
+            "placeholder": "Търсене..."
+        },
+        "theme": {
+            "toggle": "Превключи тема",
+            "light": "Светъл режим",
+            "dark": "Тъмен режим"
+        },
+        "language": {
+            "toggle": "Смени език",
+            "english": "Английски",
+            "bulgarian": "Български"
+        },
+        "auth": {
+            "login": "Вход",
+            "register": "Регистрация",
+            "logout": "Изход",
+            "account": "Профил"
+        }
+    }
+}

@@ -1,0 +1,33 @@
+{
+    "header": {
+        "logo": "RateOple",
+        "navigation": {
+            "menu": "Menu",
+            "home": "Home",
+            "media": "Media",
+            "books": "Books",
+            "movies": "Movies",
+            "tvShows": "TV Shows",
+            "about": "About"
+        },
+        "search": {
+            "placeholder": "Search..."
+        },
+        "theme": {
+            "toggle": "Toggle theme",
+            "light": "Light mode",
+            "dark": "Dark mode"
+        },
+        "language": {
+            "toggle": "Change language",
+            "english": "English",
+            "bulgarian": "Bulgarian"
+        },
+        "auth": {
+            "login": "Login",
+            "register": "Register",
+            "logout": "Logout",
+            "account": "Account"
+        }
+    }
+}
