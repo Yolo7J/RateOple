@@ -1,3 +1,5 @@
+// Header.jsx
+
 import { useState } from 'react';
 import { useLanguage } from '../../../hooks/useLanguage';
 import NavigationDropdown from './NavigationDropdown';
@@ -7,6 +9,8 @@ import LanguageToggle from '../../ui/LanguageToggle/LanguageToggle';
 import './Header.css';
 
 const Header = () => {
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
     // Mock authentication state - TODO: Replace with actual auth context
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const { t } = useLanguage();
@@ -25,6 +29,30 @@ const Header = () => {
     return (
         <header className="header">
             <div className="header-container">
+                {isMobileMenuOpen && (
+  <div className="mobile-menu">
+    <NavigationDropdown />
+    <SearchBar />
+
+    <div className="mobile-auth">
+      {!isAuthenticated ? (
+        <>
+          <button onClick={() => handleAuthAction('login')}>
+            {t('header.auth.login')}
+          </button>
+          <button onClick={() => handleAuthAction('register')}>
+            {t('header.auth.register')}
+          </button>
+        </>
+      ) : (
+        <button onClick={() => handleAuthAction('logout')}>
+          {t('header.auth.logout')}
+        </button>
+      )}
+    </div>
+  </div>
+)}
+
                 {/* Logo */}
                 <div className="header-logo">
                     <svg
@@ -102,7 +130,12 @@ const Header = () => {
                 </div>
 
                 {/* Mobile Menu Toggle */}
-                <button className="mobile-menu-toggle" aria-label="Toggle mobile menu">
+                <button
+  className="mobile-menu-toggle"
+  aria-label="Toggle mobile menu"
+  onClick={() => setIsMobileMenuOpen(prev => !prev)}
+>
+
                     <svg
                         width="24"
                         height="24"

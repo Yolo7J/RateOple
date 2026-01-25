@@ -1,3 +1,4 @@
+/* Header.css */
 .header {
     position: sticky;
     top: 0;
@@ -163,30 +164,66 @@
         gap: 0.75rem;
     }
 
-    /* Hide some elements on mobile */
-    .auth-buttons .button-text {
-        display: none;
-    }
+    .mobile-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--header-border);
+  box-shadow: 0 8px 24px var(--shadow-color);
+  padding: 1rem;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
 
-    .auth-button {
-        padding: 0.6rem;
-    }
+.mobile-auth {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.mobile-auth button {
+  flex: 1;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--button-border);
+  background: var(--button-bg);
+}
+
 }
 
 @media (max-width: 640px) {
 
-    .header-nav,
-    .auth-buttons {
-        display: none;
-    }
+    .mobile-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--header-border);
+  box-shadow: 0 8px 24px var(--shadow-color);
+  padding: 1rem;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
 
-    .mobile-menu-toggle {
-        display: block;
-    }
+.mobile-auth {
+  display: flex;
+  gap: 0.75rem;
+}
 
-    .header-actions {
-        gap: 0.5rem;
-    }
+.mobile-auth button {
+  flex: 1;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--button-border);
+  background: var(--button-bg);
+}
+
 }
 
 /* Animations */
