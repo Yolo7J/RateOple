@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Identity;
 using RateOple.Infrastructure.Data.Models;
 using RateOple.Infrastructure.Data.Seeding;
-
+using RateOple.Constants.Constants;
+using RateOple.Core.Contarcts;
+using RateOple.Core.Services.Implementations;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -39,7 +41,7 @@ app.MapGet("/weatherforecast", () =>
 })
 .WithName("GetWeatherForecast");
 
-using (var scope = app.Services.CreateScope())
+using (var scope = app.Services.CreateScope()) // Roles
 {
     var services = scope.ServiceProvider;
 
@@ -49,6 +51,34 @@ using (var scope = app.Services.CreateScope())
     await RoleSeeder.SeedAsync(roleManager);
     await SuperAdminSeeder.SeedAsync(userManager);
 }
+
+builder.Services.AddAuthorization(options => // Authorization Policy
+{
+    options.AddPolicy(PolicyConstants.RequireAdmin, policy =>
+        policy.RequireRole(
+            RoleConstants.Admin,
+            RoleConstants.SuperAdmin));
+
+    options.AddPolicy(PolicyConstants.RequireModerator, policy =>
+        policy.RequireRole(
+            RoleConstants.Moderator,
+            RoleConstants.Admin,
+            RoleConstants.SuperAdmin));
+
+    options.AddPolicy(PolicyConstants.CanModerateContent, policy =>
+        policy.RequireRole(
+            RoleConstants.Moderator,
+            RoleConstants.Admin,
+            RoleConstants.SuperAdmin));
+
+    options.AddPolicy(PolicyConstants.CanManageGroups, policy =>
+        policy.RequireRole(
+            RoleConstants.Admin,
+            RoleConstants.SuperAdmin));
+});
+
+builder.Services.AddScoped<IFollowService, FollowService>(); // Followers
+
 
 app.Run();
 
