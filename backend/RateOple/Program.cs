@@ -3,7 +3,7 @@ using RateOple.Infrastructure.Data.Models;
 using RateOple.Infrastructure.Data.Seeding;
 using RateOple.Constants.Constants;
 using RateOple.Core.Contarcts;
-using RateOple.Core.Services.Implementations;
+using RateOple.Core.Services;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -78,6 +78,8 @@ builder.Services.AddAuthorization(options => // Authorization Policy
 });
 
 builder.Services.AddScoped<IFollowService, FollowService>(); // Followers
+builder.Services.AddScoped<IVisibilityService, VisibilityService>(); // Visibility
+
 
 
 app.Run();

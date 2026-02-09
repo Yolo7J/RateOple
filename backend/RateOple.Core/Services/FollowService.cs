@@ -1,10 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using RateOple.Core.Contarcts;
-using RateOple.Core.Services;
 using RateOple.Infrastructure.Data;
 using RateOple.Infrastructure.Data.Models;
 
-namespace RateOple.Core.Services.Implementations
+namespace RateOple.Core.Services
 {
     public class FollowService : IFollowService
     {
@@ -23,7 +22,8 @@ namespace RateOple.Core.Services.Implementations
             var exists = await _context.Follows
                 .AnyAsync(f => f.FollowerId == followerId && f.FollowingId == followingId);
 
-            if (exists){return;}
+            if (exists)
+            return;
 
             var follow = new Follow
             {
