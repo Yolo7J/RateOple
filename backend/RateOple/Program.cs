@@ -1,3 +1,9 @@
+using Microsoft.AspNetCore.Identity;
+using RateOple.Infrastructure.Data.Models;
+using RateOple.Infrastructure.Data.Seeding;
+
+
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -32,6 +38,17 @@ app.MapGet("/weatherforecast", () =>
     return forecast;
 })
 .WithName("GetWeatherForecast");
+
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+
+    var roleManager = services.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+    var userManager = services.GetRequiredService<UserManager<User>>();
+
+    await RoleSeeder.SeedAsync(roleManager);
+    await SuperAdminSeeder.SeedAsync(userManager);
+}
 
 app.Run();
 
