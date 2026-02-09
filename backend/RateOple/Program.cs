@@ -4,6 +4,7 @@ using RateOple.Infrastructure.Data.Seeding;
 using RateOple.Constants.Constants;
 using RateOple.Core.Contarcts;
 using RateOple.Core.Services;
+using RateOple.Core.Contracts;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -79,8 +80,7 @@ builder.Services.AddAuthorization(options => // Authorization Policy
 
 builder.Services.AddScoped<IFollowService, FollowService>(); // Followers
 builder.Services.AddScoped<IVisibilityService, VisibilityService>(); // Visibility
-
-
+builder.Services.AddScoped<IMediaService, MediaService>(); // Media
 
 app.Run();
 
