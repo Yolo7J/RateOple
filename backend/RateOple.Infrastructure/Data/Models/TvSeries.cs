@@ -6,5 +6,7 @@ public class TvSeries
 
     public int? SeasonsCount { get; set; }
 
+    // Navigation Properties
     public Media Media { get; set; } = null!;
+    public ICollection<Season> Seasons { get; set; } = new List<Season>();
 }

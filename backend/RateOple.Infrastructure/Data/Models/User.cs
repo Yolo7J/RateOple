@@ -24,5 +24,16 @@ namespace RateOple.Infrastructure.Data.Models
 
         [Required]
         public LanguageType PreferredLanguage { get; set; } = UserConstants.DefaultLanguage;
+
+        // Navigation Properties
+        public ICollection<Rating> Ratings { get; set; } = new List<Rating>();
+        public ICollection<Review> Reviews { get; set; } = new List<Review>();
+        public ICollection<Collection> Collections { get; set; } = new List<Collection>();
+        public ICollection<Follow> Following { get; set; } = new List<Follow>();
+        public ICollection<Follow> Followers { get; set; } = new List<Follow>();
+        public ICollection<GroupMembership> GroupMemberships { get; set; } = new List<GroupMembership>();
+        public ICollection<Group> OwnedGroups { get; set; } = new List<Group>();
+        public ICollection<GroupPost> GroupPosts { get; set; } = new List<GroupPost>();
+        public ICollection<Comment> Comments { get; set; } = new List<Comment>();
     }
 }
