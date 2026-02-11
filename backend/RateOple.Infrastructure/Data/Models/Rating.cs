@@ -1,0 +1,24 @@
+using System.ComponentModel.DataAnnotations;
+
+namespace RateOple.Infrastructure.Data.Models;
+
+public class Rating
+{
+    public Guid Id { get; set; }
+
+    [Required]
+    [Range(1, 10)]
+    public int Value { get; set; }
+
+    [Required]
+    public Guid UserId { get; set; }
+
+    [Required]
+    public Guid MediaId { get; set; }
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    // Navigation Properties
+    public User User { get; set; } = null!;
+    public Media Media { get; set; } = null!;
+}

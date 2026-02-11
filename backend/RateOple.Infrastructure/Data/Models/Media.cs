@@ -14,8 +14,13 @@ public class Media
     public DateTime? ReleaseDate { get; set; }
     public DateTime CreatedAt { get; set; }
 
-    // Navigation
+    // Navigation Properties
     public Movie? Movie { get; set; }
     public Book? Book { get; set; }
     public TvSeries? TvSeries { get; set; }
+    
+    public ICollection<Rating> Ratings { get; set; } = new List<Rating>();
+    public ICollection<Review> Reviews { get; set; } = new List<Review>();
+    public ICollection<CollectionItem> CollectionItems { get; set; } = new List<CollectionItem>();
+    public ICollection<GroupMedia> GroupLinks { get; set; } = new List<GroupMedia>();
 }
