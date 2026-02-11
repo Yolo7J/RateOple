@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using RateOple.Core.Contarcts;
+using RateOple.Core.Contracts;
 using RateOple.Infrastructure.Data;
 using RateOple.Infrastructure.Data.Models;
 

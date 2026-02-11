@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using RateOple.Constants.Constants;
 using RateOple.Constants.Enums;
-using RateOple.Core.Contarcts;
+using RateOple.Core.Contracts;
 using RateOple.Infrastructure.Data;
 using RateOple.Infrastructure.Data.Models;
 

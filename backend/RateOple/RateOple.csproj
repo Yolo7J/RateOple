@@ -10,11 +10,14 @@
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.*" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.*" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.9" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.*" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="9.*" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\RateOple.Core\RateOple.Core.csproj" />
+    <ProjectReference Include="..\RateOple.Infrastructure\RateOple.Infrastructure.csproj" />
+    <ProjectReference Include="..\RateOple.Constants\RateOple.Constants.csproj" />
   </ItemGroup>
 
 </Project>

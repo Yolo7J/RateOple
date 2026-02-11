@@ -1,8 +1,8 @@
-namespace RateOple.Constants.Enums
+namespace RateOple.Constants.Enums;
+
+public enum CollectionVisibility
 {
-    public enum CollectionVisibility
-    {
-        Public = 0,
-        Private = 1
-    }
+    Public = 1,
+    Followers = 2,
+    Private = 3
 }
