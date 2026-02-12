@@ -4,10 +4,10 @@
 RateOple is a comprehensive media rating and social platform built using **Clean Architecture** on the backend (.NET 9) and a modern **SPA (Single Page Application)** on the frontend (Vite + React). The system supports user ratings, reviews, collections, groups, and social features for movies, books, and TV series.
 
 **Current Status:**
-- ✅ **Backend**: Complete 4-layer architecture with all domain models implemented
-- ✅ **Database**: Full schema matching Prisma specification with 16+ entities
-- ✅ **Authentication**: ASP.NET Core Identity with role-based authorization
-- ⚠️ **Frontend**: Basic scaffolding with header, context providers, and routing
+- ✅ **Backend**: Complete 4-layer architecture with **PostgreSQL** database. Ratings slice implemented.
+- ✅ **Database**: PostgreSQL schema matching Prisma specification with 16+ entities, including constraints and aggregates.
+- ✅ **Authentication**: ASP.NET Core Identity with role-based authorization.
+- ⚠️ **Frontend**: Core architecture set up. Ratings UI integrated (`MediaCard`, `RatingStars`). Auth & other pages pending.
 
 ---
 
@@ -25,7 +25,7 @@ graph TD
         API -->|Uses| Const[RateOple.Constants<br/>Enums + Constants]
         
         Infra -->|Implements| Core
-        Infra -->|EF Core| DB[(SQL Server Database)]
+        Infra -->|EF Core (Npgsql)| DB[(PostgreSQL Database)]
         
         Core -.-> Const
         Infra -.-> Const
@@ -40,16 +40,19 @@ graph TD
 - **Framework**: React 19 (functional components with Hooks)
 - **Build Tool**: Vite (fast HMR and bundling)
 - **Routing**: React Router DOM v7
-- **HTTP Client**: Axios
+- **HTTP Client**: Axios (configured with interceptors)
 - **State Management**: Context API (ThemeContext, LanguageContext)
-- **Styling**: Vanilla CSS with modern design patterns
+- **Styling**: Vanilla CSS with modern design patterns (`MediaCard` uses CSS variables)
 - **Internationalization**: Custom language system (English/Bulgarian)
 
 ### Current Implementation
-- ✅ **Header Component**: Logo, navigation dropdown, search bar, theme toggle, language toggle
-- ✅ **Context Providers**: Theme (light/dark) and Language (en/bg) with localStorage persistence
-- ✅ **Routing Structure**: Basic page scaffolding for Home, Media, About, Auth pages
-- ⚠️ **API Integration**: Not yet connected to backend
+- ✅ **API Layer**: Centralized `api.js` with Axios instance and base URL configuration.
+- ✅ **Ratings Slice**: 
+    - `ratingService.js`: Methods for rating, deleting, and fetching summaries.
+    - `RatingStars`: Interactive star rating component (1-10 scale).
+    - `MediaCard`: Integrated with rating display and interaction.
+- ✅ **Core Layout**: Header, Footer, Theme/Language toggles.
+- ⚠️ **Auth Integration**: Pending connection to backend auth endpoints.
 
 ### Directory Structure
 ```
@@ -57,12 +60,12 @@ frontend/
 ├── src/
 │   ├── components/
 │   │   ├── layout/          # Header, Footer, Sidebar, Layout
-│   │   ├── ui/              # Button, Card, SearchBar, ThemeToggle, LanguageToggle
-│   │   └── media/           # MediaCard, MediaGrid, MediaFilters
+│   │   ├── ui/              # Button, Card, SearchBar, ThemeToggle, LanguageToggle, RatingStars
+│   │   └── media/           # MediaCard (integrated), MediaGrid, MediaFilters
 │   ├── pages/               # HomePage, MediaPage, Auth pages
 │   ├── context/             # ThemeContext.jsx, LanguageContext.jsx
 │   ├── hooks/               # useTheme.js, useLanguage.js
-│   ├── services/            # api.js, auth.js
+│   ├── services/            # api.js (Axios), ratingService.js, auth.js
 │   ├── locales/             # en.json, bg.json
 │   ├── App.jsx
 │   ├── main.jsx
@@ -75,7 +78,8 @@ frontend/
 
 ### Technology Stack
 - **Framework**: .NET 9 (ASP.NET Core Web API)
-- **ORM**: Entity Framework Core 9 (SQL Server provider)
+- **ORM**: Entity Framework Core 9 (Npgsql Provider)
+- **Database**: PostgreSQL
 - **Authentication**: ASP.NET Core Identity with JWT support
 - **Authorization**: Policy-based with role hierarchies
 - **API Documentation**: OpenAPI/Swagger
@@ -87,8 +91,8 @@ frontend/
 *Entry point - handles HTTP requests, dependency injection, middleware*
 
 **Responsibilities:**
-- API Controllers (`FollowsController`, `MediaController`)
-- Program.cs (service registration, middleware pipeline)
+- API Controllers (`FollowsController`, `MediaController`, `RatingsController`)
+- Program.cs (Service registration: `IRatingService`, `Npgsql`, Middleware)
 - Authentication & authorization configuration
 - CORS policy configuration
 
@@ -105,20 +109,20 @@ RateOple.Core/
 ├── Contracts/
 │   ├── IFollowService.cs
 │   ├── IMediaService.cs
-│   ├── IVisibilityService.cs
+│   ├── IRatingService.cs    # NEW
 │   └── DTOs/
-│       ├── MediaListDto.cs
-│       └── MediaDetailsDto.cs
+│       ├── MediaRatingSummaryDto.cs # NEW
+│       ├── RatingDto.cs             # NEW
 └── Services/
     ├── FollowService.cs
     ├── MediaService.cs
+    ├── RatingService.cs     # NEW: Handles logic + aggregation
     └── VisibilityService.cs
 ```
 
-**Current Services:**
-- `IFollowService`: Follow/unfollow users, check following status
-- `IMediaService`: Get media lists and details
-- `IVisibilityService`: Control user and collection visibility
+**Key Services:**
+- `IRatingService`: Rate media, delete ratings, calculate aggregates.
+- `IMediaService`: Get media lists and details.
 
 **Dependencies:** None (pure domain layer)
 
@@ -132,25 +136,16 @@ RateOple.Core/
 RateOple.Infrastructure/
 ├── Data/
 │   ├── ApplicationDbContext.cs
-│   ├── Models/              # 16 domain entities
-│   │   ├── User.cs
-│   │   ├── Media.cs, Movie.cs, Book.cs, TvSeries.cs
-│   │   ├── Season.cs, Episode.cs
-│   │   ├── Rating.cs, Review.cs, Comment.cs
-│   │   ├── Follow.cs
-│   │   ├── Group.cs, GroupMembership.cs, GroupPost.cs, GroupMedia.cs
-│   │   └── Collection.cs, CollectionItem.cs
-│   ├── Configurations/      # EF Core Fluent API configurations (11 files)
-│   └── Seeding/
-│       ├── RoleSeeder.cs
-│       └── SuperAdminSeeder.cs
+│   ├── Models/              
+│   │   ├── ... (All Entities)
+│   │   └── Media.cs         # Updated: Added AverageRating, RatingsCount
+│   ├── Configurations/      
+│   │   ├── MediaConfiguration.cs  # Updated: Aggregates config + Indexes
+│   │   └── RatingConfiguration.cs # Updated: Check Constraint (1-10)
+│   └── Migrations/          # Updated: PostgreSQL migrations
 ```
 
-**ApplicationDbContext DbSets:**
-- Media: `Media`, `Movies`, `Books`, `TvSeries`, `Seasons`, `Episodes`
-- Interactions: `Follows`, `Ratings`, `Reviews`, `Comments`
-- Groups: `Groups`, `GroupMemberships`, `GroupPosts`, `GroupMediaLinks`
-- Collections: `Collections`, `CollectionItems`
+**Database Provider:** `Npgsql.EntityFrameworkCore.PostgreSQL`
 
 **Dependencies:** → Core
 
@@ -159,61 +154,14 @@ RateOple.Infrastructure/
 #### **Layer 4: RateOple.Constants (Shared Constants)**
 *Enums and constant values used across all layers*
 
-**Enums:**
-- `MediaType`: Movie, Book, TvSeries
-- `UserVisibility`: Public, FollowersOnly, Private
-- `CollectionVisibility`: Public, Followers, Private
-- `GroupVisibility`: Public, Private
-- `GroupRole`: Member, Moderator, Admin
-- `CommentParentType`: Review, GroupPost, Comment
-- `ThemeType`: Light, Dark
-- `LanguageType`: English, Bulgarian
-- `Role`: User, Moderator, Admin, SuperAdmin (for schema parity)
-
-**Constants:**
-- `RoleConstants`: SuperAdmin, Admin, Moderator, User
-- `PolicyConstants`: RequireAdmin, RequireModerator, CanModerateContent, CanManageGroups
-- `UserConstants`: MaxBioLength, DefaultAvatarUrl, DefaultTheme, DefaultLanguage
+Includes `MediaType`, `UserVisibility`, `RoleConstants`, etc.
 
 ---
 
 ## 4. Database Schema
 
 ### Entity Relationship Diagram
-
-```mermaid
-erDiagram
-    User ||--o{ Rating : creates
-    User ||--o{ Review : writes
-    User ||--o{ Collection : owns
-    User ||--o{ Follow : following
-    User ||--o{ Follow : followers
-    User ||--o{ GroupMembership : "member of"
-    User ||--o{ Group : owns
-    User ||--o{ GroupPost : posts
-    User ||--o{ Comment : writes
-
-    Media ||--o| Movie : "is a"
-    Media ||--o| Book : "is a"
-    Media ||--o| TvSeries : "is a"
-    Media ||--o{ Rating : "receives"
-    Media ||--o{ Review : "has"
-    Media ||--o{ CollectionItem : "appears in"
-    Media ||--o{ GroupMedia : "linked to"
-
-    TvSeries ||--o{ Season : has
-    Season ||--o{ Episode : contains
-
-    Review ||--o{ Comment : "has comments"
-    GroupPost ||--o{ Comment : "has comments"
-    Comment ||--o{ Comment : "replies to"
-
-    Group ||--o{ GroupMembership : members
-    Group ||--o{ GroupPost : posts
-    Group ||--o{ GroupMedia : "media links"
-
-    Collection ||--o{ CollectionItem : items
-```
+(Standard ERD + Aggregates)
 
 ### Key Relationships & Constraints
 
@@ -221,26 +169,13 @@ erDiagram
 - One-to-Many: User → {Ratings, Reviews, Collections, GroupMemberships, OwnedGroups, GroupPosts, Comments}
 - Self-Referencing Many-to-Many: User ↔ User (via Follow)
 
-**Media Hierarchy:**
-- Media → Movie (1:0..1)
-- Media → Book (1:0..1)
-- Media → TvSeries (1:0..1)
-- TvSeries → Seasons → Episodes
-
-**Unique Constraints:**
-- `Rating`: (UserId, MediaId) - one rating per user per media
-- `Follow`: (FollowerId, FollowingId) - prevent duplicate follows
-- `GroupMembership`: (UserId, GroupId) - one membership per user per group
-- `GroupMedia`: (GroupId, MediaId) - prevent duplicate media in group
-- `CollectionItem`: (CollectionId, MediaId) - prevent duplicates in collection
-- `Season`: (TvSeriesId, SeasonNumber) - unique season numbers
-- `Episode`: (SeasonId, EpisodeNumber) - unique episode numbers
+**New Constraints & Features:**
+- **Rating Validation**: SQL Check Constraint on `Rating` table (`"Value" >= 1 AND "Value" <= 10`).
+- **Media Aggregates**: Denormalized `AverageRating` (double) and `RatingsCount` (int) on `Media` table for performance.
+- **Indexes**: Added indexes for `AverageRating` for sorting "Top Rated" media.
 
 **Polymorphic Relationships (Comment):**
-Comments use nullable foreign keys for polymorphic parent relationships:
-- `ReviewId?` → Comment on Review
-- `GroupPostId?` → Comment on GroupPost
-- `ParentCommentId?` → Reply to another Comment
+- Comments use nullable foreign keys (`ReviewId?`, `GroupPostId?`, `ParentCommentId?`).
 
 ---
 
@@ -251,27 +186,18 @@ Comments use nullable foreign keys for polymorphic parent relationships:
 - **Role Model**: `IdentityRole<Guid>`
 - **Password Policy**: Min 6 chars, requires digit, upper, lower case
 
-### Role Hierarchy
-```
-SuperAdmin
-    ├── Admin
-    │   └── Moderator
-    │       └── User
-```
-
-### Authorization Policies
-- **RequireAdmin**: Admin or SuperAdmin
-- **RequireModerator**: Moderator, Admin, or SuperAdmin
-- **CanModerateContent**: Same as RequireModerator
-- **CanManageGroups**: Admin or SuperAdmin
-
-### Seeding
-- ✅ All roles seeded on startup (`RoleSeeder`)
-- ✅ SuperAdmin user created on first run (`SuperAdminSeeder`)
+### Role Hierarchy & Policies
+- **Roles**: SuperAdmin > Admin > Moderator > User
+- **Policies**: RequireAdmin, RequireModerator, CanModerateContent, CanManageGroups
 
 ---
 
 ## 6. API Endpoints (Current)
+
+### RatingsController (`/api/media/{mediaId}/ratings`)
+- `POST /` - Rate a media item (1-10)
+- `DELETE /` - Remove rating
+- `GET /summary` - Get average rating, count, and user's rating
 
 ### FollowsController (`/api/follows`)
 - `POST /{userId}` - Follow a user
@@ -280,9 +206,7 @@ SuperAdmin
 
 ### MediaController (`/api/media`)
 - `GET /` - Get all media
-- `GET /{id}` - Get media details by ID
-
-*Note: Additional controllers for Ratings, Reviews, Groups, Collections to be implemented*
+- `GET /{id}` - Get media details
 
 ---
 
@@ -292,50 +216,18 @@ SuperAdmin
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=RateOple;Trusted_Connection=true;MultipleActiveResultSets=true"
+    "DefaultConnection": "Host=localhost;Port=5432;Database=RateOple;Username=postgres;Password=<PASSWORD>"
   }
 }
 ```
 
 ### CORS Policy
 - **Allowed Origin**: `http://localhost:5173` (Vite dev server)
-- **Allow Credentials**: `true`
-- **Allow All Headers & Methods**: `true`
+- **Allow Credentials**: `true` (Enabled for Identity cookies/auth)
 
 ---
 
-## 8. Prisma Schema Alignment
-
-### Schema Comparison
-
-| Prisma Model | C# Implementation | Status |
-|--------------|-------------------|--------|
-| User | ✅ User (with Identity) | Complete with navigation properties |
-| Follow | ✅ Follow | Complete |
-| Media | ✅ Media | Complete |
-| Movie | ✅ Movie | Complete |
-| Book | ✅ Book | Complete |
-| TVSeries | ✅ TvSeries | Complete |
-| Season | ✅ Season | Complete |
-| Episode | ✅ Episode | Complete |
-| Rating | ✅ Rating | Complete with unique constraint |
-| Review | ✅ Review | Complete |
-| Comment | ✅ Comment | Complete (polymorphic via nullable FKs) |
-| Group | ✅ Group | Complete |
-| GroupMembership | ✅ GroupMembership | Complete with unique constraint |
-| GroupPost | ✅ GroupPost | Complete |
-| GroupMedia | ✅ GroupMedia | Complete with unique constraint |
-| Collection | ✅ Collection | Complete |
-| CollectionItem | ✅ CollectionItem | Complete with unique constraint |
-
-### Differences from Prisma  
-1. **Role Storage**: Prisma defines `Role` enum on User, but we use ASP.NET Core Identity's string-based roles for flexibility
-2. **User Fields**: Prisma has `isPrivate` + `personalization`, we use `UserVisibility` enum (cleaner design)
-3. **Comment Polymorphism**: Prisma uses `parentType` + `parentId`, we use nullable FKs (`ReviewId?`, `GroupPostId?`, `ParentCommentId?`)
-
----
-
-## 9. Development Workflow
+## 8. Development Workflow
 
 ### Building the Project
 ```bash
@@ -348,7 +240,7 @@ dotnet build RateOple.sln
 cd backend/RateOple
 dotnet run
 ```
-**Swagger UI**: Navigate to `https://localhost:<port>/swagger`
+**Swagger UI**: `https://localhost:7167/swagger`
 
 ### Running the Frontend
 ```bash
@@ -357,7 +249,7 @@ npm run dev
 ```
 **Dev Server**: `http://localhost:5173`
 
-### Creating Migrations
+### Creating Migrations (Postgres)
 ```bash
 cd backend
 dotnet ef migrations add <MigrationName> --project RateOple.Infrastructure --startup-project RateOple
@@ -366,25 +258,16 @@ dotnet ef database update --project RateOple --startup-project RateOple
 
 ---
 
-## 10. Next Steps
+## 9. Next Steps
 
 ### Backend
-- [ ] Implement remaining controllers (Ratings, Reviews, Groups, Collections)
-- [ ] Add comprehensive validation and error handling
-- [ ] Implement JWT token generation and validation
-- [ ] Add pagination and filtering for list endpoints
-- [ ] Create database migration and apply to database
+- [ ] Implement Reviews Slice (`ReviewService`, `ReviewsController`)
+- [ ] Implement Collections/Groups
+- [ ] Add Pagination & Filtering
+- [ ] Secure endpoints with JWT implementation
 
 ### Frontend
-- [ ] Connect to backend API services
-- [ ] Implement authentication flow (Login/Register/Logout)
-- [ ] Build media browsing and detail pages
-- [ ] Implement rating and review submission
-- [ ] Create user profile and collection management
-- [ ] Add group features and social interactions
-
-### DevOps
-- [ ] Set up CI/CD pipeline
-- [ ] Configure production database
-- [ ] Deploy to hosting environment
-- [ ] Set up monitoring and logging
+- [ ] Connect Authentication (Login/Register pages)
+- [ ] Build Media Listings (Grid)
+- [ ] Implement Review submission forms
+- [ ] User Profile pages
