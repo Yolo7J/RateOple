@@ -9,6 +9,8 @@ public class RatingConfiguration : IEntityTypeConfiguration<Rating>
     public void Configure(EntityTypeBuilder<Rating> builder)
     {
         builder.HasKey(r => r.Id);
+        
+        builder.ToTable(t => t.HasCheckConstraint("CK_Rating_Value_Range", "\"Value\" >= 1 AND \"Value\" <= 10"));
 
         builder.Property(r => r.Value)
             .IsRequired();

@@ -18,7 +18,7 @@ public class MediaConfiguration : IEntityTypeConfiguration<Media>
                .IsRequired();
 
         builder.Property(x => x.CreatedAt)
-               .HasDefaultValueSql("GETUTCDATE()");
+               .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
         builder.HasOne(x => x.Movie)
                .WithOne(x => x.Media)
@@ -34,5 +34,13 @@ public class MediaConfiguration : IEntityTypeConfiguration<Media>
 
         builder.HasIndex(x => x.Type);
         builder.HasIndex(x => x.Title);
+        
+        builder.Property(x => x.AverageRating)
+               .HasDefaultValue(0);
+               
+        builder.Property(x => x.RatingsCount)
+               .HasDefaultValue(0);
+
+        builder.HasIndex(x => x.AverageRating);
     }
 }
