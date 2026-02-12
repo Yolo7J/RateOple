@@ -15,7 +15,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Database Context
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Identity
 builder.Services.AddIdentity<User, IdentityRole<Guid>>(options =>
@@ -59,6 +59,7 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddScoped<IFollowService, FollowService>();
 builder.Services.AddScoped<IVisibilityService, VisibilityService>();
 builder.Services.AddScoped<IMediaService, MediaService>();
+builder.Services.AddScoped<IRatingService, RatingService>();
 
 // Controllers & API
 builder.Services.AddControllers();
