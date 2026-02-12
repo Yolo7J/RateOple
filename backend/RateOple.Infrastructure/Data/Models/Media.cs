@@ -14,6 +14,9 @@ public class Media
     public DateTime? ReleaseDate { get; set; }
     public DateTime CreatedAt { get; set; }
 
+    public double AverageRating { get; set; }
+    public int RatingsCount { get; set; }
+
     // Navigation Properties
     public Movie? Movie { get; set; }
     public Book? Book { get; set; }
