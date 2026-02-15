@@ -210,9 +210,7 @@ namespace RateOple.Infrastructure.Migrations
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     FollowerId = table.Column<Guid>(type: "uuid", nullable: false),
                     FollowingId = table.Column<Guid>(type: "uuid", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UserId = table.Column<Guid>(type: "uuid", nullable: true),
-                    UserId1 = table.Column<Guid>(type: "uuid", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -229,16 +227,6 @@ namespace RateOple.Infrastructure.Migrations
                         principalTable: "AspNetUsers",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_Follows_AspNetUsers_UserId",
-                        column: x => x.UserId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id");
-                    table.ForeignKey(
-                        name: "FK_Follows_AspNetUsers_UserId1",
-                        column: x => x.UserId1,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -654,16 +642,6 @@ namespace RateOple.Infrastructure.Migrations
                 name: "IX_Follows_FollowingId",
                 table: "Follows",
                 column: "FollowingId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Follows_UserId",
-                table: "Follows",
-                column: "UserId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Follows_UserId1",
-                table: "Follows",
-                column: "UserId1");
 
             migrationBuilder.CreateIndex(
                 name: "IX_GroupMediaLinks_GroupId_MediaId",

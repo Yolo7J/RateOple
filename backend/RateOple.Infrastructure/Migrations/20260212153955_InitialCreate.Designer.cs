@@ -12,7 +12,7 @@ using RateOple.Infrastructure.Data;
 namespace RateOple.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260212092907_InitialCreate")]
+    [Migration("20260212153955_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -313,19 +313,9 @@ namespace RateOple.Infrastructure.Migrations
                     b.Property<Guid>("FollowingId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("UserId1")
-                        .HasColumnType("uuid");
-
                     b.HasKey("Id");
 
                     b.HasIndex("FollowingId");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("UserId1");
 
                     b.HasIndex("FollowerId", "FollowingId")
                         .IsUnique();
@@ -829,24 +819,16 @@ namespace RateOple.Infrastructure.Migrations
             modelBuilder.Entity("RateOple.Infrastructure.Data.Models.Follow", b =>
                 {
                     b.HasOne("RateOple.Infrastructure.Data.Models.User", "Follower")
-                        .WithMany()
+                        .WithMany("Following")
                         .HasForeignKey("FollowerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("RateOple.Infrastructure.Data.Models.User", "Following")
-                        .WithMany()
+                        .WithMany("Followers")
                         .HasForeignKey("FollowingId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.HasOne("RateOple.Infrastructure.Data.Models.User", null)
-                        .WithMany("Followers")
-                        .HasForeignKey("UserId");
-
-                    b.HasOne("RateOple.Infrastructure.Data.Models.User", null)
-                        .WithMany("Following")
-                        .HasForeignKey("UserId1");
 
                     b.Navigation("Follower");
 
