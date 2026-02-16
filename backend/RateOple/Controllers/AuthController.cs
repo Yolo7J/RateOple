@@ -52,12 +52,10 @@ namespace RateOple.Controllers
         public async Task<IActionResult> Login(LoginDto dto)
         {
             var user = await _userManager.FindByNameAsync(dto.Username);
-            if (user == null)
-                return Unauthorized();
-        
-            if (!await _userManager.CheckPasswordAsync(user, dto.Password))
-                return Unauthorized();
-        
+            if (user == null || !await _userManager.CheckPasswordAsync(user, dto.Password))
+            {
+                return Unauthorized("Incorrect Email or Password");
+            }
             var roles = await _userManager.GetRolesAsync(user);
         
             var accessToken = _jwtService.GenerateAccessToken(user, roles);
