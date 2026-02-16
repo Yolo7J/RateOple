@@ -25,8 +25,10 @@ namespace RateOple.Controllers
             _userManager = userManager;
             _jwtService = jwtService;
             _db = db;
-            }
+        }
+
         [HttpPost("register")]
+        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> Register(RegisterDto dto)
         {
             var user = new User
@@ -44,7 +46,9 @@ namespace RateOple.Controllers
         
             return Ok();
         }
+
         [HttpPost("login")]
+        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> Login(LoginDto dto)
         {
             var user = await _userManager.FindByNameAsync(dto.Username);
@@ -93,8 +97,8 @@ namespace RateOple.Controllers
                 Expires = DateTime.UtcNow.AddDays(7)
             });
         }
-        
         [HttpPost("refresh")]
+        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> Refresh()
         {
             var refreshToken = Request.Cookies["refreshToken"];
@@ -132,8 +136,9 @@ namespace RateOple.Controllers
         
             return Ok();
         }
-        
+
         [HttpPost("logout")]
+        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> Logout()
         {
             var refreshToken = Request.Cookies["refreshToken"];
