@@ -6,6 +6,11 @@ using RateOple.Infrastructure.Data.Seeding;
 using RateOple.Constants.Constants;
 using RateOple.Core.Contracts;
 using RateOple.Core.Services;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using RateOple.Infrastructure.Middleware;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -54,6 +59,36 @@ builder.Services.AddAuthorization(options =>
             RoleConstants.Admin,
             RoleConstants.SuperAdmin));
 });
+
+// Auth + JWT
+builder.Services.AddAuthentication("Bearer")
+    .AddJwtBearer("Bearer", options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
+        };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                context.Token = context.Request.Cookies["accessToken"];
+                return Task.CompletedTask;
+            }
+        };
+    });
+
+builder.Services.AddAntiforgery();
+
+
 
 // Application Services
 builder.Services.AddScoped<IFollowService, FollowService>();
@@ -116,6 +151,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseSecurityHeaders();
+
+
+app.UseHttpsRedirection();
 
 app.UseCors("AllowFrontend");
 
@@ -132,21 +171,21 @@ var summaries = new[]
 
 app.MapGet("/weatherforecast", () =>
 {
-    var forecast = Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
+    // var forecast = Enumerable.Range(1, 5).Select(index =>
+    //     new WeatherForecast
+    //     (
+    //         DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
+    //         Random.Shared.Next(-20, 55),
+    //         summaries[Random.Shared.Next(summaries.Length)]
+    //     ))
+    //     .ToArray();
+    // return forecast;
 })
 .WithName("GetWeatherForecast");
 
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
+// record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
+// {
+//     public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+// }

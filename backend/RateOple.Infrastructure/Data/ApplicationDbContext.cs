@@ -31,6 +31,10 @@ namespace RateOple.Infrastructure.Data
         public DbSet<Collection> Collections { get; set; }
         public DbSet<CollectionItem> CollectionItems { get; set; }
 
+        // JWT
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
+
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
