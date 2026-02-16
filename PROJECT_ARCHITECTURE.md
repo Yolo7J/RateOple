@@ -113,6 +113,8 @@ RateOple.Core/
 │   └── DTOs/
 │       ├── MediaRatingSummaryDto.cs # NEW
 │       ├── RatingDto.cs             # NEW
+        ├── MediaListDto.cs          # NEW
+        ├── MediaDetailsDto.cs       # NEW
 └── Services/
     ├── FollowService.cs
     ├── MediaService.cs
