@@ -1,7 +1,7 @@
 # RateOple Project Architecture
 
 ## Executive Summary
-RateOple is a comprehensive media rating and social platform built using **Clean Architecture** on the backend (.NET 9) and a modern **SPA (Single Page Application)** on the frontend (Vite + React). The system supports user ratings, reviews, collections, groups, and social features for movies, books, and TV series.
+RateOple is a comprehensive media rating and social platform built using **Clean Architecture** on the backend (.NET 9) and a modern **SPA (Single Page Application)** on the frontend (Vite + React 19). The system supports user ratings, reviews, collections, groups, and social features for movies, books, and TV series.
 
 **Current Status:**
 - ✅ **Backend**: Complete 4-layer architecture with **PostgreSQL** database. Ratings slice implemented.
@@ -37,16 +37,17 @@ graph TD
 ## 2. Frontend Architecture (React + Vite)
 
 ### Technology Stack
-- **Framework**: React 19 (functional components with Hooks)
-- **Build Tool**: Vite (fast HMR and bundling)
-- **Routing**: React Router DOM v7
-- **HTTP Client**: Axios (configured with interceptors)
+- **Framework**: React 19.2.0 (functional components with Hooks)
+- **Build Tool**: Vite 7.2.4 (fast HMR and bundling)
+- **Routing**: React Router DOM 7.9.6 (configured via `AppRouter` and `routes.jsx`)
+- **HTTP Client**: Axios 1.13.2 (configured with interceptors)
 - **State Management**: Context API (ThemeContext, LanguageContext)
 - **Styling**: Vanilla CSS with modern design patterns (`MediaCard` uses CSS variables)
 - **Internationalization**: Custom language system (English/Bulgarian)
 
 ### Current Implementation
 - ✅ **API Layer**: Centralized `api.js` with Axios instance and base URL configuration.
+- ✅ **Bindings**: `AppRouter.jsx` and `routes.jsx` for centralized routing.
 - ✅ **Ratings Slice**: 
     - `ratingService.js`: Methods for rating, deleting, and fetching summaries.
     - `RatingStars`: Interactive star rating component (1-10 scale).
@@ -58,11 +59,12 @@ graph TD
 ```
 frontend/
 ├── src/
+│   ├── app/                 # AppRouter.jsx, routes.jsx
 │   ├── components/
 │   │   ├── layout/          # Header, Footer, Sidebar, Layout
 │   │   ├── ui/              # Button, Card, SearchBar, ThemeToggle, LanguageToggle, RatingStars
 │   │   └── media/           # MediaCard (integrated), MediaGrid, MediaFilters
-│   ├── pages/               # HomePage, MediaPage, Auth pages
+│   ├── pages/               # Home (Currently implemented)
 │   ├── context/             # ThemeContext.jsx, LanguageContext.jsx
 │   ├── hooks/               # useTheme.js, useLanguage.js
 │   ├── services/            # api.js (Axios), ratingService.js, auth.js
@@ -107,24 +109,26 @@ frontend/
 ```
 RateOple.Core/
 ├── Contracts/
+│   ├── DTOs/
+│   │   ├── MediaDetailsDto.cs       # Detailed media info
+│   │   ├── MediaListDto.cs          # List view media info
+│   │   ├── MediaRatingSummaryDto.cs # Rating aggregates
+│   │   └── RatingDto.cs             # Individual ratings
 │   ├── IFollowService.cs
 │   ├── IMediaService.cs
-│   ├── IRatingService.cs    # NEW
-│   └── DTOs/
-│       ├── MediaRatingSummaryDto.cs # NEW
-│       ├── RatingDto.cs             # NEW
-        ├── MediaListDto.cs          # NEW
-        ├── MediaDetailsDto.cs       # NEW
+│   ├── IRatingService.cs
+│   └── IVisibilityService.cs
 └── Services/
     ├── FollowService.cs
     ├── MediaService.cs
-    ├── RatingService.cs     # NEW: Handles logic + aggregation
+    ├── RatingService.cs     # Handles logic + aggregation
     └── VisibilityService.cs
 ```
 
 **Key Services:**
 - `IRatingService`: Rate media, delete ratings, calculate aggregates.
 - `IMediaService`: Get media lists and details.
+- `IFollowService`: User follow logic.
 
 **Dependencies:** None (pure domain layer)
 
@@ -139,12 +143,18 @@ RateOple.Infrastructure/
 ├── Data/
 │   ├── ApplicationDbContext.cs
 │   ├── Models/              
-│   │   ├── ... (All Entities)
-│   │   └── Media.cs         # Updated: Added AverageRating, RatingsCount
+│   │   ├── Media.cs (Base), Movie.cs, Book.cs, TvSeries.cs, Episode.cs, Season.cs
+│   │   ├── User.cs, Follow.cs
+│   │   ├── Rating.cs, Review.cs, Comment.cs
+│   │   ├── Collection.cs, CollectionItem.cs
+│   │   ├── Group.cs, GroupMembership.cs, GroupPost.cs, GroupMedia.cs
 │   ├── Configurations/      
-│   │   ├── MediaConfiguration.cs  # Updated: Aggregates config + Indexes
-│   │   └── RatingConfiguration.cs # Updated: Check Constraint (1-10)
-│   └── Migrations/          # Updated: PostgreSQL migrations
+│   │   ├── MediaConfiguration.cs  # Aggregates config + Indexes
+│   │   ├── RatingConfiguration.cs # Check Constraint (1-10)
+│   │   ├── UserConfiguration.cs   # Unique Username Constraint
+│   │   └── RefreshTokenConfiguration.cs # PK + FK mapping
+│   │   └── ... (Configs for all entities)
+│   └── Migrations/          # PostgreSQL migrations
 ```
 
 **Database Provider:** `Npgsql.EntityFrameworkCore.PostgreSQL`
@@ -172,9 +182,11 @@ Includes `MediaType`, `UserVisibility`, `RoleConstants`, etc.
 - Self-Referencing Many-to-Many: User ↔ User (via Follow)
 
 **New Constraints & Features:**
+- **Unique Users**: `NormalizedUserName` is strictly unique at the database level.
 - **Rating Validation**: SQL Check Constraint on `Rating` table (`"Value" >= 1 AND "Value" <= 10`).
 - **Media Aggregates**: Denormalized `AverageRating` (double) and `RatingsCount` (int) on `Media` table for performance.
 - **Indexes**: Added indexes for `AverageRating` for sorting "Top Rated" media.
+- **Refresh Tokens**: Dedicated `RefreshTokens` table for JWT session management with cascade delete on User removal.
 
 **Polymorphic Relationships (Comment):**
 - Comments use nullable foreign keys (`ReviewId?`, `GroupPostId?`, `ParentCommentId?`).
@@ -255,7 +267,7 @@ npm run dev
 ```bash
 cd backend
 dotnet ef migrations add <MigrationName> --project RateOple.Infrastructure --startup-project RateOple
-dotnet ef database update --project RateOple --startup-project RateOple
+dotnet ef database update --project RateOple.Infrastructure --startup-project RateOple
 ```
 
 ---

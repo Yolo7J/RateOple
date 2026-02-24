@@ -9,6 +9,13 @@ public static class IdentityExtensions
     public static IServiceCollection AddIdentityConfiguration(this IServiceCollection services)
     {
         services.AddIdentity<User, IdentityRole<Guid>>(options =>
+{
+    options.User.RequireUniqueEmail = true; 
+})
+.AddEntityFrameworkStores<ApplicationDbContext>()
+.AddDefaultTokenProviders();
+
+        services.AddIdentity<User, IdentityRole<Guid>>(options =>
         {
             options.Password.RequireDigit = true;
             options.Password.RequireLowercase = true;
