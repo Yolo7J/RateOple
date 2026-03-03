@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using RateOple.Infrastructure.Data;
 using RateOple.Infrastructure.Data.Models;
 using RateOple.Infrastructure.Data.Seeding;
 
@@ -10,12 +11,16 @@ public static class SeedingExtensions
     {
         using var scope = app.Services.CreateScope();
         var services = scope.ServiceProvider;
+
         try
         {
             var roleManager = services.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
             var userManager = services.GetRequiredService<UserManager<User>>();
+            var db = services.GetRequiredService<ApplicationDbContext>();
+
             await RoleSeeder.SeedAsync(roleManager);
             await SuperAdminSeeder.SeedAsync(userManager);
+            await GenreSeeder.SeedAsync(db);
         }
         catch (Exception ex)
         {

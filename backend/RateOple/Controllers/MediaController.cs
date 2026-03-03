@@ -15,8 +15,8 @@ public class MediaController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll()
-        => Ok(await _mediaService.GetAllAsync());
+    // public async Task<IActionResult> GetAll()
+    //    => Ok(await _mediaService.GetAllAsync());
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
