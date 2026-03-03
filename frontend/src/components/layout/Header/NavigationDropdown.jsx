@@ -1,5 +1,5 @@
-// NavigationDropdown.jsx
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../../../hooks/useLanguage';
 import './NavigationDropdown.css';
 
@@ -8,25 +8,26 @@ const NavigationDropdown = () => {
     const [isMediaOpen, setIsMediaOpen] = useState(false);
     const dropdownRef = useRef(null);
     const { t } = useLanguage();
+    const navigate = useNavigate();
 
     const navigationItems = [
         {
             label: t('header.navigation.home'),
-            path: '/'
+            path: '/',
         },
         {
             label: t('header.navigation.media'),
             path: '/media',
             subItems: [
-                { label: t('header.navigation.books'), path: '/media/books' },
-                { label: t('header.navigation.movies'), path: '/media/movies' },
-                { label: t('header.navigation.tvShows'), path: '/media/tv-shows' }
-            ]
+                { label: t('header.navigation.movies'), path: '/media?types=Movie' },
+                { label: t('header.navigation.books'),  path: '/media?types=Book' },
+                { label: t('header.navigation.tvShows'), path: '/media?types=TvSeries' },
+            ],
         },
         {
             label: t('header.navigation.about'),
-            path: '/about'
-        }
+            path: '/about',
+        },
     ];
 
     // Close dropdown when clicking outside
@@ -42,35 +43,29 @@ const NavigationDropdown = () => {
             document.addEventListener('mousedown', handleClickOutside);
         }
 
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
+        return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [isOpen]);
 
     const handleNavigation = (path) => {
-        // TODO: Implement navigation with React Router
-        console.log('Navigating to:', path);
+        navigate(path);
         setIsOpen(false);
         setIsMediaOpen(false);
     };
 
     const toggleMediaSubmenu = (e) => {
         e.stopPropagation();
-        setIsMediaOpen(!isMediaOpen);
+        setIsMediaOpen(prev => !prev);
     };
 
     return (
         <div className="navigation-dropdown" ref={dropdownRef}>
             <button
                 className="nav-dropdown-button"
-                onClick={() => setIsOpen(!isOpen)}
+                onClick={() => setIsOpen(prev => !prev)}
                 aria-label={t('header.navigation.menu')}
                 aria-expanded={isOpen}
             >
-                <svg
-                    className="menu-icon"
-                    viewBox="0 0 24 24"
-                >
+                <svg className="menu-icon" viewBox="0 0 24 24">
                     <line x1="3" y1="12" x2="21" y2="12" />
                     <line x1="3" y1="6" x2="21" y2="6" />
                     <line x1="3" y1="18" x2="21" y2="18" />
@@ -84,7 +79,11 @@ const NavigationDropdown = () => {
                         <div key={index} className="nav-item-wrapper">
                             <button
                                 className="nav-item"
-                                onClick={(e) => item.subItems ? toggleMediaSubmenu(e) : handleNavigation(item.path)}
+                                onClick={(e) =>
+                                    item.subItems
+                                        ? toggleMediaSubmenu(e)
+                                        : handleNavigation(item.path)
+                                }
                             >
                                 <span>{item.label}</span>
                                 {item.subItems && (

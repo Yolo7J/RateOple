@@ -107,8 +107,8 @@ public class MediaService : IMediaService
             Description = dto.Description,
             CoverUrl = dto.CoverUrl,
             ReleaseDate = dto.ReleaseYear.HasValue
-                ? new DateTime(dto.ReleaseYear.Value, 1, 1)
-                : null,
+            ? new DateTime(dto.ReleaseYear.Value, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+            : null,
             CreatedAt = DateTime.UtcNow,
         };
 
@@ -137,7 +137,7 @@ public class MediaService : IMediaService
             Description = dto.Description,
             CoverUrl = dto.CoverUrl,
             ReleaseDate = dto.ReleaseYear.HasValue
-                ? new DateTime(dto.ReleaseYear.Value, 1, 1)
+                ? new DateTime(dto.ReleaseYear.Value, 1, 1, 0, 0, 0, DateTimeKind.Utc)
                 : null,
             CreatedAt = DateTime.UtcNow,
         };
@@ -168,7 +168,7 @@ public class MediaService : IMediaService
             Description = dto.Description,
             CoverUrl = dto.CoverUrl,
             ReleaseDate = dto.ReleaseYear.HasValue
-                ? new DateTime(dto.ReleaseYear.Value, 1, 1)
+                ? new DateTime(dto.ReleaseYear.Value, 1, 1, 0, 0, 0, DateTimeKind.Utc)
                 : null,
             CreatedAt = DateTime.UtcNow,
         };
