@@ -1,0 +1,209 @@
+.media-detail-page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 16px 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+}
+
+.media-detail-back {
+    align-self: flex-start;
+    background: none;
+    border: 1px solid var(--border, #333);
+    border-radius: 6px;
+    color: var(--text-muted, #888);
+    padding: 6px 14px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: color 0.15s, border-color 0.15s;
+}
+.media-detail-back:hover { color: var(--text, #fff); border-color: var(--text, #fff); }
+
+.media-detail-loading,
+.media-detail-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 40vh;
+    gap: 16px;
+    color: var(--text-muted, #888);
+}
+
+/* Hero */
+.media-detail-hero {
+    display: flex;
+    gap: 32px;
+    align-items: flex-start;
+}
+
+.media-detail-cover {
+    flex-shrink: 0;
+    width: 220px;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+.media-detail-cover img {
+    width: 100%;
+    display: block;
+}
+
+.media-detail-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.media-detail-type-badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent, #6c63ff);
+    background: rgba(108, 99, 255, 0.15);
+    padding: 3px 10px;
+    border-radius: 20px;
+    align-self: flex-start;
+}
+
+.media-detail-title {
+    font-size: 2rem;
+    font-weight: 800;
+    margin: 0;
+    line-height: 1.2;
+}
+
+.media-detail-meta {
+    display: flex;
+    gap: 16px;
+    font-size: 0.9rem;
+    color: var(--text-muted, #888);
+}
+
+.media-detail-rating {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.rating-star { color: #f5c518; font-size: 1.4rem; }
+.rating-value { font-size: 1.8rem; font-weight: 800; }
+.rating-count { color: var(--text-muted, #888); font-size: 0.9rem; }
+
+.media-detail-genres {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.genre-tag {
+    padding: 4px 12px;
+    border: 1px solid var(--border, #333);
+    border-radius: 20px;
+    font-size: 0.8rem;
+    color: var(--text-muted, #888);
+}
+
+.media-detail-field {
+    display: flex;
+    gap: 10px;
+    font-size: 0.9rem;
+}
+
+.field-label {
+    font-weight: 600;
+    color: var(--text-muted, #888);
+    min-width: 70px;
+}
+
+.media-detail-description {
+    font-size: 0.95rem;
+    line-height: 1.7;
+    color: var(--text-secondary, #bbb);
+    margin: 4px 0 0;
+    max-width: 680px;
+}
+
+/* Seasons */
+.media-seasons { display: flex; flex-direction: column; gap: 8px; }
+
+.seasons-heading {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin: 0 0 8px;
+}
+
+.season-block {
+    border: 1px solid var(--border, #333);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.season-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    background: var(--card-bg, #1e1e2e);
+    border: none;
+    color: var(--text, #fff);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s;
+}
+
+.season-toggle:hover { background: var(--card-hover, #2a2a3e); }
+
+.season-episode-count {
+    margin-left: auto;
+    font-weight: 400;
+    font-size: 0.85rem;
+    color: var(--text-muted, #888);
+}
+
+.season-chevron { font-size: 0.7rem; color: var(--text-muted, #888); }
+
+.episodes-list { display: flex; flex-direction: column; }
+
+.episode-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 18px;
+    border-top: 1px solid var(--border, #333);
+    font-size: 0.875rem;
+    transition: background 0.12s;
+}
+
+.episode-row:hover { background: var(--card-bg, #1e1e2e); }
+
+.ep-number {
+    min-width: 32px;
+    font-weight: 600;
+    color: var(--text-muted, #888);
+    font-size: 0.8rem;
+}
+
+.ep-title { flex: 1; }
+
+.ep-duration {
+    color: var(--text-muted, #888);
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .media-detail-hero { flex-direction: column; }
+    .media-detail-cover { width: 160px; align-self: center; }
+    .media-detail-title { font-size: 1.5rem; }
+    .rating-value { font-size: 1.4rem; }
+}
