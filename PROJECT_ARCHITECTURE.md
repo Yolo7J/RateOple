@@ -34,44 +34,29 @@ graph TD
 
 ---
 
-## 2. Frontend Architecture (React + Vite)
+## 2. Frontend Architecture
 
-### Technology Stack
-- **Framework**: React 19.2.0 (functional components with Hooks)
-- **Build Tool**: Vite 7.2.4 (fast HMR and bundling)
-- **Routing**: React Router DOM 7.9.6 (configured via `AppRouter` and `routes.jsx`)
-- **HTTP Client**: Axios 1.13.2 (configured with interceptors)
-- **State Management**: Context API (ThemeContext, LanguageContext)
-- **Styling**: Vanilla CSS with modern design patterns (`MediaCard` uses CSS variables)
-- **Internationalization**: Custom language system (English/Bulgarian)
-
-### Current Implementation
-- ✅ **API Layer**: Centralized `api.js` with Axios instance and base URL configuration.
-- ✅ **Bindings**: `AppRouter.jsx` and `routes.jsx` for centralized routing.
-- ✅ **Ratings Slice**: 
-    - `ratingService.js`: Methods for rating, deleting, and fetching summaries.
-    - `RatingStars`: Interactive star rating component (1-10 scale).
-    - `MediaCard`: Integrated with rating display and interaction.
-- ✅ **Core Layout**: Header, Footer, Theme/Language toggles.
-- ⚠️ **Auth Integration**: Pending connection to backend auth endpoints.
+### Tech Stack
+- React 19.2.0, Vite 7.2.4, React Router DOM 7.9.6
+- Axios 1.13.2 — `withCredentials: true`, base URL `http://localhost:5113/api`
+- Context API: ThemeContext, LanguageContext, **AuthContext**
 
 ### Directory Structure
 ```
-frontend/
-├── src/
-│   ├── app/                 # AppRouter.jsx, routes.jsx
-│   ├── components/
-│   │   ├── layout/          # Header, Footer, Sidebar, Layout
-│   │   ├── ui/              # Button, Card, SearchBar, ThemeToggle, LanguageToggle, RatingStars
-│   │   └── media/           # MediaCard (integrated), MediaGrid, MediaFilters
-│   ├── pages/               # Home (Currently implemented)
-│   ├── context/             # ThemeContext.jsx, LanguageContext.jsx
-│   ├── hooks/               # useTheme.js, useLanguage.js
-│   ├── services/            # api.js (Axios), ratingService.js, auth.js
-│   ├── locales/             # en.json, bg.json
-│   ├── App.jsx
-│   ├── main.jsx
-│   └── index.css
+frontend/src/
+├── app/               # AppRouter.jsx, routes.jsx
+├── components/
+│   ├── auth/          # AuthCard, LoginForm, RegisterForm
+│   ├── layout/        # Header, Footer, Sidebar, Layout
+│   ├── ui/            # Button, Card, RatingStars, ThemeToggle, LanguageToggle
+│   └── media/         # MediaCard, MediaGrid, MediaFilters
+├── pages/             # Home, LoginPage, RegisterPage
+├── context/           # ThemeContext, LanguageContext, AuthContext
+├── hooks/             # useTheme, useLanguage
+├── services/          # api.js, authService.js, ratingService.js
+├── locales/           # en.json, bg.json
+├── App.jsx
+└── main.jsx           # ThemeProvider > LanguageProvider > BrowserRouter > AuthProvider
 ```
 
 ---
@@ -95,6 +80,15 @@ frontend/
 **Responsibilities:**
 - API Controllers (`FollowsController`, `MediaController`, `RatingsController`)
 - Program.cs (Service registration: `IRatingService`, `Npgsql`, Middleware)
+##### Extension Methods (Program.cs)
+- `AddDatabase` — Npgsql + EF Core
+- `AddIdentityConfiguration` — ASP.NET Identity
+- `AddJwtAuthentication` — JWT Bearer
+- `AddCsrfProtection` — Antiforgery, `CookieSecurePolicy.SameAsRequest`
+- `AddApplicationServices` — FollowService, VisibilityService, MediaService, RatingService, **JwtService**
+- `AddCorsConfiguration` — `http://localhost:5173` with credentials
+- `ConfigureMiddleware` — UseRouting → SecurityHeaders → CORS → Authentication → Antiforgery (respects `[IgnoreAntiforgeryToken]`) → Authorization → MapControllers
+#####
 - Authentication & authorization configuration
 - CORS policy configuration
 
@@ -107,22 +101,29 @@ frontend/
 
 **Structure:**
 ```
+
 RateOple.Core/
 ├── Contracts/
 │   ├── DTOs/
+        ├── Auth 
+        |        Core DTOs
+        |        - `LoginDto`: `{ Email, Password }`
+        |        - `RegisterDto`: `{ Username, Email, Password }`
 │   │   ├── MediaDetailsDto.cs       # Detailed media info
-│   │   ├── MediaListDto.cs          # List view media info
-│   │   ├── MediaRatingSummaryDto.cs # Rating aggregates
+│   │   ├── MediaListDto.cs          # List view media info 
+│   │   ├── MediaRatingSummaryDto.cs # Rating aggregates 
 │   │   └── RatingDto.cs             # Individual ratings
 │   ├── IFollowService.cs
 │   ├── IMediaService.cs
 │   ├── IRatingService.cs
 │   └── IVisibilityService.cs
+    └── IJwtService.cs
 └── Services/
     ├── FollowService.cs
     ├── MediaService.cs
     ├── RatingService.cs     # Handles logic + aggregation
     └── VisibilityService.cs
+    └── JwtService.cs - generates access + refresh tokens
 ```
 
 **Key Services:**
@@ -154,7 +155,12 @@ RateOple.Infrastructure/
 │   │   ├── UserConfiguration.cs   # Unique Username Constraint
 │   │   └── RefreshTokenConfiguration.cs # PK + FK mapping
 │   │   └── ... (Configs for all entities)
-│   └── Migrations/          # PostgreSQL migrations
+├── Migrations/          # PostgreSQL migrations
+├── Middleware
+    ├── SecurityHeadersMiddleware.cs
+    ├── SecurityHeadersExtension.cs
+├── Security
+    ├── TokenHasher.cs
 ```
 
 **Database Provider:** `Npgsql.EntityFrameworkCore.PostgreSQL`
@@ -204,25 +210,36 @@ Includes `MediaType`, `UserVisibility`, `RoleConstants`, etc.
 - **Roles**: SuperAdmin > Admin > Moderator > User
 - **Policies**: RequireAdmin, RequireModerator, CanModerateContent, CanManageGroups
 
----
+### 5.1 Auth Flow
+1. **Register** `POST /api/auth/register` → creates user, assigns "User" role
+2. **Login** `POST /api/auth/login` → finds by email → issues `accessToken` (15min) + `refreshToken` (7d) as HttpOnly cookies → returns `{ id, userName, roles }`
+3. **Refresh** `POST /api/auth/refresh` → validates hash → rotates both tokens
+4. **Logout** `POST /api/auth/logout` → revokes token → clears cookies
 
-## 6. API Endpoints (Current)
-
-### RatingsController (`/api/media/{mediaId}/ratings`)
-- `POST /` - Rate a media item (1-10)
-- `DELETE /` - Remove rating
-- `GET /summary` - Get average rating, count, and user's rating
-
-### FollowsController (`/api/follows`)
-- `POST /{userId}` - Follow a user
-- `DELETE /{userId}` - Unfollow a user
-- `GET /{userId}/status` - Check if following a user
-
-### MediaController (`/api/media`)
-- `GET /` - Get all media
-- `GET /{id}` - Get media details
+**Cookie policy:** HttpOnly, SameSite=Strict, Secure=false in dev / true in prod.
 
 ---
+
+
+## 6. API Endpoints
+
+| Controller | Method | Route | Description |
+|---|---|---|---|
+| Auth | POST | `/api/auth/register` | Create account |
+| Auth | POST | `/api/auth/login` | Login → cookies |
+| Auth | POST | `/api/auth/refresh` | Rotate tokens |
+| Auth | POST | `/api/auth/logout` | Revoke + clear |
+| Ratings | POST | `/api/media/{id}/ratings` | Rate (1–10) |
+| Ratings | DELETE | `/api/media/{id}/ratings` | Remove rating |
+| Ratings | GET | `/api/media/{id}/ratings/summary` | Aggregate |
+| Follows | POST | `/api/follows/{userId}` | Follow user |
+| Follows | DELETE | `/api/follows/{userId}` | Unfollow |
+| Follows | GET | `/api/follows/{userId}/status` | Check status |
+| Media | GET | `/api/media` | List all |
+| Media | GET | `/api/media/{id}` | Details |
+
+---
+
 
 ## 7. Configuration
 
@@ -230,8 +247,14 @@ Includes `MediaType`, `UserVisibility`, `RoleConstants`, etc.
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Port=5432;Database=RateOple;Username=postgres;Password=<PASSWORD>"
-  }
+    "DefaultConnection": "Host=localhost;Port=5432;Database=RateOple;Username=postgres;Password="
+  },
+  "Jwt": {
+    "Key": "",
+    "Issuer": "RateOple",
+    "Audience": "RateOple"
+  },
+  "AllowedHosts": "*"
 }
 ```
 
@@ -274,14 +297,88 @@ dotnet ef database update --project RateOple.Infrastructure --startup-project Ra
 
 ## 9. Next Steps
 
-### Backend
-- [ ] Implement Reviews Slice (`ReviewService`, `ReviewsController`)
-- [ ] Implement Collections/Groups
-- [ ] Add Pagination & Filtering
-- [ ] Secure endpoints with JWT implementation
+# RateOple — Feature Roadmap
 
-### Frontend
-- [ ] Connect Authentication (Login/Register pages)
-- [ ] Build Media Listings (Grid)
-- [ ] Implement Review submission forms
-- [ ] User Profile pages
+Priority levels: 🔴 Crucial | 🟡 Important | 🟢 Second grade
+
+---
+
+## ✅ Done
+
+- [x] Backend Clean Architecture (4 layers)
+- [x] PostgreSQL schema (16+ entities)
+- [x] JWT auth via HttpOnly cookies (register, login, logout, refresh)
+- [x] Frontend AuthContext + forms connected to backend
+- [x] Ratings UI (RatingStars, MediaCard)
+
+---
+
+## 🔴 Crucial — Do Next
+
+### 1. Logout button in Header
+The `AuthContext` already has `logout()`. The Header needs a logout button visible when `user` is not null.
+- Frontend only: update `Header.jsx` to read `useAuth()` and show Logout button when logged in.
+
+### 2. Media Management (Add & View)
+Users need to browse media. Admins add it. This is the core of the product.
+
+**Backend:**
+- `MediaController` — extend `POST /api/media` (admin only, `[Authorize(Policy = "RequireAdmin")]`)
+- DTOs: `CreateMovieDto`, `CreateBookDto`, `CreateTvSeriesDto`
+- Service methods: `AddMedia`, `GetAllMedia` (with filters/pagination), `GetMediaById`
+
+**Frontend:**
+- `MediaListPage` — grid of all media with filters (type, genre, rating)
+- `MediaDetailPage` — single media with rating, reviews
+- Admin-only: `AddMediaForm` — select type (Movie/Book/TvSeries), fill fields, submit
+
+---
+
+## 🟡 Important
+
+### 3. Admin Panel
+Only admins can add media in the finished product.
+- Frontend: `/admin` route, protected by role check (`user.roles.includes("Admin")`)
+- Includes: Add Media form, user management (list users, change roles)
+- Backend: admin-only endpoints already covered by `RequireAdmin` policy
+
+### 4. Follow System
+Already modeled in DB (`Follow` table) and `FollowsController` exists.
+- Frontend: Follow/Unfollow button on user profiles
+- `UserProfilePage` — shows user's ratings, reviews, collections
+- Feed: activity from followed users
+
+### 5. Collections ("My Christmas Watch")
+Users group any media into named collections.
+- Already modeled: `Collection`, `CollectionItem`
+- Backend: `CollectionsController` (CRUD)
+- Frontend: `CollectionPage`, "Add to Collection" button on `MediaDetailPage`
+
+---
+
+## 🟢 Second Grade (after above is stable)
+
+### 6. Account Settings in Header
+- Dropdown from avatar/username when logged in
+- Links to: Profile, Settings, Logout
+- `AccountSettingsPage`: change username, email, password, avatar, theme preference
+
+### 7. Groups
+Users with shared interests join or create groups.
+- Already modeled: `Group`, `GroupMembership`, `GroupPost`, `GroupMedia`
+- Backend: `GroupsController` (create, join, post, add media)
+- Frontend: `GroupsPage`, `GroupDetailPage`
+
+---
+
+## Open Questions / Suggestions
+
+1. **Media images** — where do cover images come from? Options: admin uploads a URL, integrate a public API (TMDB for movies, Open Library for books), or file upload to S3/local storage. Recommend TMDB + Open Library to avoid manual data entry.
+
+2. **Pagination** — `GET /api/media` will grow large fast. Add cursor or page-based pagination before the media list is built.
+
+3. **Route guards** — currently a logged-in user can still visit `/login` and `/register`. Add a simple guard: if `user` exists, redirect away from auth pages.
+
+4. **Token refresh on 401** — the Axios response interceptor currently just logs a warning on 401. It should automatically call `POST /api/auth/refresh` and retry the original request before logging the user out.
+
+5. **Review system** — not yet planned in detail. Needed alongside media pages: `ReviewsController`, `ReviewService`, review form on `MediaDetailPage`.
