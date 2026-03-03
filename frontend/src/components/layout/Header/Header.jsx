@@ -6,25 +6,43 @@ import NavigationDropdown from './NavigationDropdown';
 import SearchBar from '../../ui/SearchBar/SearchBar';
 import ThemeToggle from '../../ui/ThemeToggle/ThemeToggle';
 import LanguageToggle from '../../ui/LanguageToggle/LanguageToggle';
+import { useNavigate } from 'react-router-dom';
+
 import './Header.css';
 
 const Header = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     // Mock authentication state - TODO: Replace with actual auth context
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    // TEMP mock auth state
+const isAuthenticated = false; 
+// TODO: Replace with AuthContext later
+
     const { t } = useLanguage();
 
-    const handleAuthAction = (action) => {
-        // TODO: Implement actual authentication logic
-        console.log('Auth action:', action);
-        if (action === 'logout') {
-            setIsAuthenticated(false);
-        } else if (action === 'login') {
-            // This would typically navigate to login page
-            setIsAuthenticated(true);
-        }
-    };
+    const navigate = useNavigate();
+
+const handleAuthAction = (action) => {
+    switch (action) {
+        case 'login':
+            navigate('/login');
+            break;
+        case 'register':
+            navigate('/register');
+            break;
+        case 'account':
+            navigate('/account'); // future
+            break;
+        case 'logout':
+            console.log('TODO: implement logout');
+            break;
+        default:
+            break;
+    }
+
+    setIsMobileMenuOpen(false);
+};
+
 
     return (
         <header className="header">
@@ -54,7 +72,12 @@ const Header = () => {
 )}
 
                 {/* Logo */}
-                <div className="header-logo">
+                <div 
+  className="header-logo"
+  onClick={() => navigate('/')}
+  style={{ cursor: 'pointer' }}
+>
+
                     <svg
                         className="logo-icon"
                         width="32"

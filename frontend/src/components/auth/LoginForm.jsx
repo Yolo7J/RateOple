@@ -1,0 +1,63 @@
+import { useState } from "react";
+import { authMockService } from "../../services/authMockService";
+import { Link } from "react-router-dom";
+import { useLanguage } from "../../hooks/useLanguage";
+
+const LoginForm = () => {
+  const { t } = useLanguage();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    try {
+      // TODO: Replace with real API call
+      const user = await authMockService.login(email, password);
+
+      console.log("Logged in:", user);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="auth-form">
+      <input
+        type="email"
+        placeholder={t("auth.email")}
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        required
+      />
+
+      <input
+        type="password"
+        placeholder={t("auth.password")}
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        required
+      />
+
+      {error && <p className="auth-error">{error}</p>}
+
+      <button type="submit" className="auth-primary-btn">
+        {t("auth.login")}
+      </button>
+
+      <div className="auth-divider">{t("auth.or")}</div>
+
+      <button type="button" className="auth-secondary-btn">
+        {t("auth.google")}
+      </button>
+
+      <p className="auth-switch">
+        {t("auth.noAccount")} <Link to="/register">{t("auth.register")}</Link>
+      </p>
+    </form>
+  );
+};
+
+export default LoginForm;

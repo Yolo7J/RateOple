@@ -78,5 +78,21 @@
         "description": "Review your favorite series"
       }
     }
+  },
+
+  
+  "auth": {
+    "login": "Login",
+    "register": "Register",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "username": "Username",
+    "google": "Continue with Google",
+    "noAccount": "Don't have an account?",
+    "haveAccount": "Already have an account?",
+    "or": "or"
   }
+
+
 }
