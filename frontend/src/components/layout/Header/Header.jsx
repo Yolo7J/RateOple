@@ -1,83 +1,81 @@
-// Header.jsx
-
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../../../hooks/useLanguage';
+import { useAuth } from '../../../context/AuthContext';
 import NavigationDropdown from './NavigationDropdown';
 import SearchBar from '../../ui/SearchBar/SearchBar';
 import ThemeToggle from '../../ui/ThemeToggle/ThemeToggle';
 import LanguageToggle from '../../ui/LanguageToggle/LanguageToggle';
-import { useNavigate } from 'react-router-dom';
 
 import './Header.css';
 
 const Header = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-    // Mock authentication state - TODO: Replace with actual auth context
-    // TEMP mock auth state
-const isAuthenticated = false; 
-// TODO: Replace with AuthContext later
-
     const { t } = useLanguage();
-
+    const { user, logout } = useAuth();
     const navigate = useNavigate();
 
-const handleAuthAction = (action) => {
-    switch (action) {
-        case 'login':
-            navigate('/login');
-            break;
-        case 'register':
-            navigate('/register');
-            break;
-        case 'account':
-            navigate('/account'); // future
-            break;
-        case 'logout':
-            console.log('TODO: implement logout');
-            break;
-        default:
-            break;
-    }
+    const handleAuthAction = async (action) => {
+        switch (action) {
+            case 'login':
+                navigate('/login');
+                break;
+            case 'register':
+                navigate('/register');
+                break;
+            case 'account':
+                navigate('/account');
+                break;
+            case 'logout':
+                await logout();
+                navigate('/');
+                break;
+            default:
+                break;
+        }
 
-    setIsMobileMenuOpen(false);
-};
-
+        setIsMobileMenuOpen(false);
+    };
 
     return (
         <header className="header">
             <div className="header-container">
                 {isMobileMenuOpen && (
-  <div className="mobile-menu">
-    <NavigationDropdown />
-    <SearchBar />
+                    <div className="mobile-menu">
+                        <NavigationDropdown />
+                        <SearchBar />
 
-    <div className="mobile-auth">
-      {!isAuthenticated ? (
-        <>
-          <button onClick={() => handleAuthAction('login')}>
-            {t('header.auth.login')}
-          </button>
-          <button onClick={() => handleAuthAction('register')}>
-            {t('header.auth.register')}
-          </button>
-        </>
-      ) : (
-        <button onClick={() => handleAuthAction('logout')}>
-          {t('header.auth.logout')}
-        </button>
-      )}
-    </div>
-  </div>
-)}
+                        <div className="mobile-auth">
+                            {user ? (
+                                <>
+                                    <span className="mobile-greeting">
+                                        {t('header.auth.hello', { username: user.username })}
+                                    </span>
+                                    <button onClick={() => handleAuthAction('logout')}>
+                                        {t('header.auth.logout')}
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <button onClick={() => handleAuthAction('login')}>
+                                        {t('header.auth.login')}
+                                    </button>
+                                    <button onClick={() => handleAuthAction('register')}>
+                                        {t('header.auth.register')}
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {/* Logo */}
-                <div 
-  className="header-logo"
-  onClick={() => navigate('/')}
-  style={{ cursor: 'pointer' }}
->
-
+                <div
+                    className="header-logo"
+                    onClick={() => navigate('/')}
+                    style={{ cursor: 'pointer' }}
+                >
                     <svg
                         className="logo-icon"
                         width="32"
@@ -107,25 +105,11 @@ const handleAuthAction = (action) => {
 
                     {/* Auth Buttons */}
                     <div className="auth-buttons">
-                        {isAuthenticated ? (
+                        {user ? (
                             <>
-                                <button
-                                    className="auth-button account-button"
-                                    onClick={() => handleAuthAction('account')}
-                                >
-                                    <svg
-                                        width="18"
-                                        height="18"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                    >
-                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                                        <circle cx="12" cy="7" r="4" />
-                                    </svg>
-                                    <span className="button-text">{t('header.auth.account')}</span>
-                                </button>
+                                <span className="auth-greeting">
+                                    {t('header.auth.hello', { username: user.username })}
+                                </span>
                                 <button
                                     className="auth-button logout-button"
                                     onClick={() => handleAuthAction('logout')}
@@ -154,11 +138,10 @@ const handleAuthAction = (action) => {
 
                 {/* Mobile Menu Toggle */}
                 <button
-  className="mobile-menu-toggle"
-  aria-label="Toggle mobile menu"
-  onClick={() => setIsMobileMenuOpen(prev => !prev)}
->
-
+                    className="mobile-menu-toggle"
+                    aria-label="Toggle mobile menu"
+                    onClick={() => setIsMobileMenuOpen(prev => !prev)}
+                >
                     <svg
                         width="24"
                         height="24"

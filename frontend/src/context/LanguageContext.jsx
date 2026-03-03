@@ -11,15 +11,12 @@ const translations = {
 
 export const LanguageProvider = ({ children }) => {
     const [language, setLanguage] = useState(() => {
-        // Check localStorage for saved language preference
         const savedLanguage = localStorage.getItem('language');
-        return savedLanguage || 'en'; // Default to English
+        return savedLanguage || 'en';
     });
 
     useEffect(() => {
-        // Save language preference to localStorage
         localStorage.setItem('language', language);
-        // Set document language attribute for accessibility
         document.documentElement.setAttribute('lang', language);
     }, [language]);
 
@@ -29,8 +26,10 @@ export const LanguageProvider = ({ children }) => {
         }
     };
 
-    // Translation function with fallback
-    const t = (key) => {
+    // Translation function with dot-notation lookup and optional variable interpolation
+    // Usage: t('header.auth.hello', { username: 'John' })
+    // Replaces {{username}} in the translation string with the provided value
+    const t = (key, vars) => {
         const keys = key.split('.');
         let value = translations[language];
 
@@ -38,7 +37,16 @@ export const LanguageProvider = ({ children }) => {
             value = value?.[k];
         }
 
-        return value || key; // Return key if translation not found
+        if (!value) return key;
+
+        if (vars) {
+            return Object.entries(vars).reduce(
+                (str, [k, v]) => str.replace(new RegExp(`{{${k}}}`, 'g'), v),
+                value
+            );
+        }
+
+        return value;
     };
 
     return (

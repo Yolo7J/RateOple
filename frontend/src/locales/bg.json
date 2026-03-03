@@ -27,7 +27,8 @@
       "login": "Вход",
       "register": "Регистрация",
       "logout": "Изход",
-      "account": "Профил"
+      "account": "Профил",
+      "hello": "Hello, {{username}}"
     }
   },
 
