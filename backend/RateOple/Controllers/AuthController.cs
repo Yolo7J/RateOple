@@ -51,7 +51,7 @@ namespace RateOple.Controllers
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> Login(LoginDto dto)
         {
-            var user = await _userManager.FindByNameAsync(dto.Username);
+            var user = await _userManager.FindByEmailAsync(dto.Email);
             if (user == null || !await _userManager.CheckPasswordAsync(user, dto.Password))
             {
                 return Unauthorized("Incorrect Email or Password");
@@ -79,18 +79,21 @@ namespace RateOple.Controllers
         
         private void SetAuthCookies(string accessToken, string refreshToken)
         {
+            var isProd = !HttpContext.RequestServices
+                .GetRequiredService<IWebHostEnvironment>().IsDevelopment();
+
             Response.Cookies.Append("accessToken", accessToken, new CookieOptions
             {
                 HttpOnly = true,
-                Secure = true,
+                Secure = isProd,
                 SameSite = SameSiteMode.Strict,
                 Expires = DateTime.UtcNow.AddMinutes(15)
             });
-        
+
             Response.Cookies.Append("refreshToken", refreshToken, new CookieOptions
             {
                 HttpOnly = true,
-                Secure = true,
+                Secure = isProd,
                 SameSite = SameSiteMode.Strict,
                 Expires = DateTime.UtcNow.AddDays(7)
             });

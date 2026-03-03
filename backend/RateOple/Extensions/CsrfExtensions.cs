@@ -9,7 +9,7 @@ public static class CsrfExtensions
             options.HeaderName = "X-CSRF-TOKEN";
             options.Cookie.Name = "X-CSRF-COOKIE";
             options.Cookie.HttpOnly = false;
-            options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+            options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
             options.Cookie.SameSite = SameSiteMode.Strict;
         });
 

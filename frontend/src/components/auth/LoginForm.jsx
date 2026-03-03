@@ -1,10 +1,13 @@
 import { useState } from "react";
-import { authMockService } from "../../services/authMockService";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useLanguage } from "../../hooks/useLanguage";
+import { useAuth } from "../../context/AuthContext";
 
 const LoginForm = () => {
   const { t } = useLanguage();
+  const { login } = useAuth();
+  const navigate = useNavigate();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -12,14 +15,11 @@ const LoginForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-
     try {
-      // TODO: Replace with real API call
-      const user = await authMockService.login(email, password);
-
-      console.log("Logged in:", user);
+      await login(email, password);
+      navigate("/");
     } catch (err) {
-      setError(err.message);
+      setError(err.response?.data || "Invalid credentials");
     }
   };
 
@@ -32,7 +32,6 @@ const LoginForm = () => {
         onChange={(e) => setEmail(e.target.value)}
         required
       />
-
       <input
         type="password"
         placeholder={t("auth.password")}
@@ -40,19 +39,14 @@ const LoginForm = () => {
         onChange={(e) => setPassword(e.target.value)}
         required
       />
-
       {error && <p className="auth-error">{error}</p>}
-
       <button type="submit" className="auth-primary-btn">
         {t("auth.login")}
       </button>
-
       <div className="auth-divider">{t("auth.or")}</div>
-
       <button type="button" className="auth-secondary-btn">
         {t("auth.google")}
       </button>
-
       <p className="auth-switch">
         {t("auth.noAccount")} <Link to="/register">{t("auth.register")}</Link>
       </p>

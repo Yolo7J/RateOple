@@ -1,7 +1,8 @@
-namespace RateOple.Core.Contracts.DTOs.Auth;
-
-public class LoginDto
+namespace RateOple.Core.Contracts.DTOs.Auth
 {
-    public string Username { get; set; } = null!;
-    public string Password { get; set; } = null!;
+    public class LoginDto
+    {
+        public string Email { get; set; } = null!;
+        public string Password { get; set; } = null!;
+    }
 }
