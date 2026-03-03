@@ -1,12 +1,11 @@
 namespace RateOple.Infrastructure.Data.Models;
 
-public class Movie
+public class MediaGenre
 {
     public Guid MediaId { get; set; }
-    public int? Duration { get; set; }       // minutes
-    public string? Director { get; set; }
-    public int? TmdbId { get; set; }
+    public int GenreId { get; set; }
 
     // Navigation
     public Media Media { get; set; } = null!;
+    public Genre Genre { get; set; } = null!;
 }
