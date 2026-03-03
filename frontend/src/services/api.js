@@ -1,11 +1,12 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: 'http://localhost:5113/api', // HTTPS profile from launchSettings
+    baseURL: 'http://localhost:5113/api',
     headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',   // ← add this
     },
-    withCredentials: true // For Identity cookies if needed
+    withCredentials: true
 });
 
 // Request interceptor for auth token (if using JWT in future)

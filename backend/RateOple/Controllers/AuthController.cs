@@ -6,6 +6,7 @@ using RateOple.Core.Contracts.DTOs.Auth;
 using RateOple.Infrastructure.Data;
 using RateOple.Infrastructure.Data.Models;
 using RateOple.Infrastructure.Security;
+using Microsoft.AspNetCore.Authorization;
 
 namespace RateOple.Controllers
 {
@@ -45,6 +46,18 @@ namespace RateOple.Controllers
             await _userManager.AddToRoleAsync(user, "User");
         
             return Ok();
+        }
+
+        [HttpGet("me")]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> Me()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+                return Unauthorized();
+        
+            var roles = await _userManager.GetRolesAsync(user);
+            return Ok(new { user.Id, user.UserName, roles });
         }
 
         [HttpPost("login")]
@@ -135,7 +148,7 @@ namespace RateOple.Controllers
         
             SetAuthCookies(newAccess, newRefresh);
         
-            return Ok();
+            return Ok(new { stored.User.Id, stored.User.UserName, roles });
         }
 
         [HttpPost("logout")]
