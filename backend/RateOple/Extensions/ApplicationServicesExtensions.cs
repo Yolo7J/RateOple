@@ -1,6 +1,7 @@
 using RateOple.Core.Contracts;
 using RateOple.Core.Services;
 using RateOple.Infrastructure.Security;
+using RateOple.Infrastructure.Services;
 
 namespace RateOple.Extensions;
 
@@ -13,6 +14,7 @@ public static class ApplicationServicesExtensions
         services.AddScoped<IMediaService, MediaService>();
         services.AddScoped<IRatingService, RatingService>();
         services.AddScoped<IJwtService, JwtService>();
+        services.AddHttpClient<ITmdbService, TmdbService>();   // HttpClient injected automatically
         return services;
     }
 }
