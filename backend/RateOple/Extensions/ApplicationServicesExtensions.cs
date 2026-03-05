@@ -11,6 +11,7 @@ public static class ApplicationServicesExtensions
     {
         services.AddScoped<IFollowService, FollowService>();
         services.AddScoped<IVisibilityService, VisibilityService>();
+        services.AddScoped<ITvSeriesService, TvSeriesService>();
         services.AddScoped<IMediaService, MediaService>();
         services.AddScoped<IRatingService, RatingService>();
         services.AddScoped<IJwtService, JwtService>();
