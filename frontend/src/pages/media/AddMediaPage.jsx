@@ -15,18 +15,19 @@ const AddMediaPage = () => {
     const [mediaType, setMediaType] = useState(null);   // 'Movie' | 'Book' | 'TvSeries'
     const [genres, setGenres] = useState([]);
 
-    // TMDB search state
-    const [tmdbQuery, setTmdbQuery] = useState('');
-    const [tmdbResults, setTmdbResults] = useState([]);
-    const [tmdbLoading, setTmdbLoading] = useState(false);
-    const [tmdbError, setTmdbError] = useState(null);
+    // Search state — shared for TMDB and OL
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState([]);
+    const [searchLoading, setSearchLoading] = useState(false);
+    const [searchError, setSearchError] = useState(null);
     const searchTimeout = useRef(null);
 
-    // Form state — pre-populated from TMDB or filled manually
+    // Form state — pre-populated from TMDB / OL or filled manually
     const [form, setForm] = useState({
         title: '', description: '', coverUrl: '', releaseYear: '',
-        director: '', duration: '',   // movie
-        author: '', pages: '', isbn: '', // book
+        director: '', duration: '',         // movie
+        author: '', pages: '', isbn: '',    // book
+        subjects: '',                       // book (display only)
         tmdbId: null, olId: null,
         genreIds: [],
     });
@@ -37,70 +38,125 @@ const AddMediaPage = () => {
         mediaService.getGenres().then(setGenres).catch(() => setGenres([]));
     }, []);
 
-    // Debounced TMDB search
+    // ── Debounced search — TMDB for Movie/TvSeries, OL for Book ──────────────
     useEffect(() => {
-        if (step !== STEPS.SEARCH || !tmdbQuery.trim() || mediaType === 'Book') return;
+        if (step !== STEPS.SEARCH || !searchQuery.trim()) {
+            setSearchResults([]);
+            setSearchError(null);
+            return;
+        }
+
         clearTimeout(searchTimeout.current);
-        setTmdbLoading(true);
-        setTmdbError(null);
+        setSearchLoading(true);
+        setSearchError(null);
+
         searchTimeout.current = setTimeout(async () => {
             try {
-                const type = mediaType === 'TvSeries' ? 'tv' : 'movie';
-                const r = await tmdbService.search(tmdbQuery, type);
-                setTmdbResults(r.data);
+                if (mediaType === 'Book') {
+                    const results = await mediaService.searchBooks(searchQuery);
+                    // Normalise OL results to the same shape used in the results list
+                    setSearchResults(results.map(r => ({
+                        id:          r.olId,
+                        title:       r.title,
+                        subtitle:    r.authorName ?? '',
+                        coverUrl:    r.coverUrl ?? null,
+                        year:        r.firstPublishYear ?? null,
+                        _raw:        r,   // keep original for details fetch
+                    })));
+                } else {
+                    const type = mediaType === 'TvSeries' ? 'tv' : 'movie';
+                    const r = await tmdbService.search(searchQuery, type);
+                    setSearchResults((r.data ?? []).map(r => ({
+                        id:       r.tmdbId,
+                        title:    r.title,
+                        subtitle: r.releaseYear ? String(r.releaseYear) : '',
+                        coverUrl: r.coverUrl ?? null,
+                        year:     r.releaseYear ?? null,
+                        _raw:     r,
+                    })));
+                }
             } catch {
-                setTmdbError('TMDB search failed.');
+                setSearchError('Search failed. Please try again.');
+                setSearchResults([]);
             } finally {
-                setTmdbLoading(false);
+                setSearchLoading(false);
             }
         }, 400);
+
         return () => clearTimeout(searchTimeout.current);
-    }, [tmdbQuery, step, mediaType]);
+    }, [searchQuery, step, mediaType]);
 
     const handleSelectType = (type) => {
         setMediaType(type);
+        setSearchQuery('');
+        setSearchResults([]);
         setStep(STEPS.SEARCH);
     };
 
-    const handleSelectTmdb = async (result) => {
-        // Fetch full details to get director, duration, genres etc.
+    // ── Result selected — fetch full details then go to form ─────────────────
+    const handleSelectResult = async (result) => {
         try {
-            const type = mediaType === 'TvSeries' ? 'tv' : 'movie';
-            const r = await tmdbService.getDetails(result.tmdbId, type);
-            const details = r.data;
+            if (mediaType === 'Book') {
+                const details = await mediaService.getBookDetails(result._raw.olId);
+                setForm({
+                    title:       details.title        ?? '',
+                    description: details.description  ?? '',
+                    coverUrl:    details.coverUrl     ?? '',
+                    releaseYear: details.firstPublishYear ? String(details.firstPublishYear) : '',
+                    author:      details.author       ?? '',
+                    pages:       details.pages        ? String(details.pages) : '',
+                    isbn:        details.isbn         ?? '',
+                    subjects:    (details.subjects ?? []).slice(0, 5).join(', '),
+                    director: '', duration: '',
+                    tmdbId: null,
+                    olId:   details.olId ?? result._raw.olId,
+                    genreIds: [],
+                });
+            } else {
+                const type = mediaType === 'TvSeries' ? 'tv' : 'movie';
+                const r = await tmdbService.getDetails(result._raw.tmdbId, type);
+                const details = r.data;
 
-            // Map TMDB genre names to our genre IDs
-            const matchedGenreIds = genres
-                .filter(g => details.genres?.includes(g.name))
-                .map(g => g.id);
+                const matchedGenreIds = genres
+                    .filter(g => details.genres?.includes(g.name))
+                    .map(g => g.id);
 
-            setForm({
-                title: details.title ?? '',
-                description: details.description ?? '',
-                coverUrl: details.coverUrl ?? '',
-                releaseYear: details.releaseYear?.toString() ?? '',
-                director: details.director ?? '',
-                duration: details.duration?.toString() ?? '',
-                author: '', pages: '', isbn: '',
-                tmdbId: details.tmdbId,
-                olId: null,
-                genreIds: matchedGenreIds,
-            });
+                setForm({
+                    title:       details.title       ?? '',
+                    description: details.description ?? '',
+                    coverUrl:    details.coverUrl    ?? '',
+                    releaseYear: details.releaseYear  ? String(details.releaseYear) : '',
+                    director:    details.director    ?? '',
+                    duration:    details.duration    ? String(details.duration) : '',
+                    author: '', pages: '', isbn: '', subjects: '',
+                    tmdbId: details.tmdbId,
+                    olId:   null,
+                    genreIds: matchedGenreIds,
+                });
+            }
         } catch {
-            // Fallback to search result data if details call fails
+            // Fallback — pre-fill what we have from search result
             setForm(prev => ({
                 ...prev,
-                title: result.title ?? '',
-                description: result.description ?? '',
+                title:    result.title ?? '',
                 coverUrl: result.coverUrl ?? '',
-                releaseYear: result.releaseYear?.toString() ?? '',
-                tmdbId: result.tmdbId,
+                releaseYear: result.year ? String(result.year) : '',
+                ...(mediaType === 'Book'
+                    ? { author: result._raw.authorName ?? '', olId: result._raw.olId }
+                    : { tmdbId: result._raw.tmdbId }),
             }));
         }
         setStep(STEPS.FILL_FORM);
     };
 
     const handleSkipSearch = () => {
+        setForm({
+            title: '', description: '', coverUrl: '', releaseYear: '',
+            director: '', duration: '',
+            author: '', pages: '', isbn: '', subjects: '',
+            tmdbId: null, olId: null,
+            genreIds: [],
+        });
         setStep(STEPS.FILL_FORM);
     };
 
@@ -117,16 +173,15 @@ const AddMediaPage = () => {
         e.preventDefault();
         setSaving(true);
         setSaveError(null);
-
         try {
             addItem(mediaType, {
                 ...form,
                 releaseYear: form.releaseYear ? parseInt(form.releaseYear) : null,
-                duration: form.duration ? parseInt(form.duration) : null,
-                pages: form.pages ? parseInt(form.pages) : null,
+                duration:    form.duration    ? parseInt(form.duration)    : null,
+                pages:       form.pages       ? parseInt(form.pages)       : null,
             });
             navigate('/cart');
-        } catch (err) {
+        } catch {
             setSaveError('Failed to add to cart.');
         } finally {
             setSaving(false);
@@ -141,8 +196,8 @@ const AddMediaPage = () => {
                 <p className="add-media-sub">What type of media are you adding?</p>
                 <div className="type-select-grid">
                     {[
-                        { type: 'Movie', icon: '🎬', label: 'Movie' },
-                        { type: 'Book', icon: '📚', label: 'Book' },
+                        { type: 'Movie',    icon: '🎬', label: 'Movie'     },
+                        { type: 'Book',     icon: '📚', label: 'Book'      },
                         { type: 'TvSeries', icon: '📺', label: 'TV Series' },
                     ].map(({ type, icon, label }) => (
                         <button
@@ -159,9 +214,15 @@ const AddMediaPage = () => {
         );
     }
 
-    // ── Step 1: Search TMDB / skip ────────────────────────────────────────────
+    // ── Step 1: Search ────────────────────────────────────────────────────────
     if (step === STEPS.SEARCH) {
         const isBook = mediaType === 'Book';
+        const placeholder = isBook
+            ? 'Search by title, author, ISBN…'
+            : mediaType === 'TvSeries'
+                ? 'Search TV series…'
+                : 'Search movies…';
+
         return (
             <div className="add-media-page">
                 <button className="add-back-btn" onClick={() => setStep(STEPS.SELECT_TYPE)}>← Back</button>
@@ -169,56 +230,51 @@ const AddMediaPage = () => {
                     {isBook ? 'Search Open Library' : 'Search TMDB'}
                 </h1>
                 <p className="add-media-sub">
-                    {isBook
-                        ? 'Open Library search coming soon — fill in details manually for now.'
-                        : 'Find the title to auto-fill details, or skip to fill manually.'}
+                    Find the title to auto-fill details, or skip to fill manually.
                 </p>
 
-                {!isBook && (
-                    <>
-                        <input
-                            className="tmdb-search-input"
-                            type="text"
-                            placeholder={`Search ${mediaType === 'TvSeries' ? 'TV series' : 'movies'}…`}
-                            value={tmdbQuery}
-                            onChange={e => setTmdbQuery(e.target.value)}
-                            autoFocus
-                        />
-                        {tmdbLoading && <p className="tmdb-status">Searching…</p>}
-                        {tmdbError && <p className="tmdb-status tmdb-error">{tmdbError}</p>}
+                <input
+                    className="tmdb-search-input"
+                    type="text"
+                    placeholder={placeholder}
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    autoFocus
+                />
 
-                        <div className="tmdb-results">
-                            {tmdbResults.map(r => (
-                                <button
-                                    key={r.tmdbId}
-                                    className="tmdb-result-card"
-                                    onClick={() => handleSelectTmdb(r)}
-                                >
-                                    {r.coverUrl
-                                        ? <img src={r.coverUrl} alt={r.title} />
-                                        : <div className="tmdb-no-cover">?</div>
-                                    }
-                                    <div className="tmdb-result-info">
-                                        <span className="tmdb-result-title">{r.title}</span>
-                                        {r.releaseYear && (
-                                            <span className="tmdb-result-year">{r.releaseYear}</span>
-                                        )}
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-                    </>
-                )}
+                {searchLoading && <p className="tmdb-status">Searching…</p>}
+                {searchError  && <p className="tmdb-status tmdb-error">{searchError}</p>}
+
+                <div className="tmdb-results">
+                    {searchResults.map(r => (
+                        <button
+                            key={r.id}
+                            className="tmdb-result-card"
+                            onClick={() => handleSelectResult(r)}
+                        >
+                            {r.coverUrl
+                                ? <img src={r.coverUrl} alt={r.title} />
+                                : <div className="tmdb-no-cover">?</div>
+                            }
+                            <div className="tmdb-result-info">
+                                <span className="tmdb-result-title">{r.title}</span>
+                                {r.subtitle && (
+                                    <span className="tmdb-result-year">{r.subtitle}</span>
+                                )}
+                            </div>
+                        </button>
+                    ))}
+                </div>
 
                 <button className="add-skip-btn" onClick={handleSkipSearch}>
-                    {isBook ? 'Fill in manually →' : 'Skip and fill manually →'}
+                    Skip and fill manually →
                 </button>
             </div>
         );
     }
 
     // ── Step 2: Fill form ─────────────────────────────────────────────────────
-    const f = (field) => form[field];
+    const f   = (field) => form[field];
     const set = (field) => (e) => setForm(prev => ({ ...prev, [field]: e.target.value }));
 
     return (
@@ -233,8 +289,11 @@ const AddMediaPage = () => {
                     {/* Cover preview */}
                     {f('coverUrl') && (
                         <div className="cover-preview">
-                            <img src={f('coverUrl')} alt="Cover preview"
-                                onError={e => { e.target.style.display = 'none'; }} />
+                            <img
+                                src={f('coverUrl')}
+                                alt="Cover preview"
+                                onError={e => { e.target.style.display = 'none'; }}
+                            />
                         </div>
                     )}
                     <div className="form-fields">
@@ -284,6 +343,13 @@ const AddMediaPage = () => {
                                     ISBN
                                     <input className="form-input" value={f('isbn')} onChange={set('isbn')} />
                                 </label>
+                                {f('subjects') && (
+                                    <label className="form-label">
+                                        Subjects
+                                        <input className="form-input" value={f('subjects')} onChange={set('subjects')}
+                                            placeholder="From Open Library" />
+                                    </label>
+                                )}
                             </>
                         )}
                     </div>
@@ -318,7 +384,7 @@ const AddMediaPage = () => {
 
                 <div className="form-actions">
                     <button type="submit" className="save-btn" disabled={saving}>
-                        {saving ? 'Saving…' : 'Save'}
+                        {saving ? 'Saving…' : 'Add to Cart'}
                     </button>
                     <button type="button" className="cancel-btn" onClick={() => navigate('/media')}>
                         Cancel

@@ -5,6 +5,7 @@ import './MediaDetailPage.css';
 
 const MediaDetailPage = () => {
     const { id } = useParams();
+    console.log("mediaId:", id);
     const navigate = useNavigate();
 
     const [media, setMedia] = useState(null);
@@ -13,12 +14,13 @@ const MediaDetailPage = () => {
     const [expandedSeasons, setExpandedSeasons] = useState({});
 
     useEffect(() => {
-        setLoading(true);
-        mediaService.getById(id)
-            .then(r => setMedia(r.data))
-            .catch(() => setError('Media not found.'))
-            .finally(() => setLoading(false));
-    }, [id]);
+    setLoading(true);
+    mediaService.getMediaById(id)
+        .then(setMedia)
+        .catch(() => setError('Media not found.'))
+        .finally(() => setLoading(false));
+
+}, [id]);
 
     const toggleSeason = (seasonId) =>
         setExpandedSeasons(prev => ({ ...prev, [seasonId]: !prev[seasonId] }));
