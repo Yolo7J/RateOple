@@ -14,10 +14,18 @@ public interface IMediaService
     Task<MediaDetailDto> CreateBookAsync(CreateBookDto dto);
     Task<MediaDetailDto> CreateTvSeriesAsync(CreateTvSeriesDto dto);
 
-    // ── Bulk create (cart) ────────────────────────────────────────────────────
+    // ── Update ────────────────────────────────────────────────────────────────
+    Task<MediaDetailDto> UpdateMovieAsync(Guid id, UpdateMovieDto dto);
+    Task<MediaDetailDto> UpdateBookAsync(Guid id, UpdateBookDto dto);
+    Task<MediaDetailDto> UpdateTvSeriesAsync(Guid id, UpdateTvSeriesDto dto);
+
+    // ── Soft delete ───────────────────────────────────────────────────────────
+    Task SoftDeleteAsync(Guid id);
+
+    // ── Bulk create ───────────────────────────────────────────────────────────
     Task<BulkCreateResultDto> BulkCreateAsync(BulkCreateDto dto);
 
-    // ── Third-party search proxies ────────────────────────────────────────────
+    // ── Open Library proxy ────────────────────────────────────────────────────
     Task<List<OlSearchResultDto>> SearchBooksAsync(string query);
     Task<OlDetailsDto?> GetBookDetailsAsync(string olId);
 }

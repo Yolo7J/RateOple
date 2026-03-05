@@ -10,12 +10,17 @@ namespace RateOple.Controllers;
 public class MediaController : ControllerBase
 {
     private readonly IMediaService _mediaService;
+    private readonly ITvSeriesService _tvSeriesService;
     private readonly ITmdbService _tmdb;
 
-    public MediaController(IMediaService mediaService, ITmdbService tmdb)
+    public MediaController(
+        IMediaService mediaService,
+        ITvSeriesService tvSeriesService,
+        ITmdbService tmdb)
     {
-        _mediaService = mediaService;
-        _tmdb = tmdb;
+        _mediaService     = mediaService;
+        _tvSeriesService  = tvSeriesService;
+        _tmdb             = tmdb;
     }
 
     // ── Read ──────────────────────────────────────────────────────────────────
@@ -46,7 +51,7 @@ public class MediaController : ControllerBase
 
     // ── TMDB proxies ──────────────────────────────────────────────────────────
 
-    // GET /api/media/tmdb/search?q=batman&type=movie   (type = "movie" | "tv")
+    // GET /api/media/tmdb/search?q=batman&type=movie
     [HttpGet("tmdb/search")]
     [Authorize]
     public async Task<IActionResult> TmdbSearch([FromQuery] string q, [FromQuery] string type = "movie")
@@ -65,7 +70,7 @@ public class MediaController : ControllerBase
         return result == null ? NotFound() : Ok(result);
     }
 
-    // GET /api/media/tmdb/series/{tmdbId}  — full series + all seasons + episodes
+    // GET /api/media/tmdb/series/{tmdbId}
     [HttpGet("tmdb/series/{tmdbId:int}")]
     [Authorize]
     public async Task<IActionResult> TmdbSeriesDetails(int tmdbId)
@@ -128,7 +133,7 @@ public class MediaController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
 
-    // ── Bulk create (cart) ────────────────────────────────────────────────────
+    // ── Bulk create ───────────────────────────────────────────────────────────
 
     // POST /api/media/bulk
     [HttpPost("bulk")]
@@ -137,12 +142,175 @@ public class MediaController : ControllerBase
     public async Task<IActionResult> BulkCreate([FromBody] BulkCreateDto dto)
     {
         var result = await _mediaService.BulkCreateAsync(dto);
-
-        // 207 Multi-Status: some may have succeeded, some failed
         var status = result.Errors.Count == 0 ? 200
                    : result.Created.Count == 0 ? 400
                    : 207;
-
         return StatusCode(status, result);
+    }
+
+    // ── Update ────────────────────────────────────────────────────────────────
+
+    // PUT /api/media/{id}/movie
+    [HttpPut("{id:guid}/movie")]
+    [Authorize]
+    [IgnoreAntiforgeryToken]
+    public async Task<IActionResult> UpdateMovie(Guid id, [FromBody] UpdateMovieDto dto)
+    {
+        try
+        {
+            var result = await _mediaService.UpdateMovieAsync(id, dto);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException) { return NotFound(); }
+        catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
+    }
+
+    // PUT /api/media/{id}/book
+    [HttpPut("{id:guid}/book")]
+    [Authorize]
+    [IgnoreAntiforgeryToken]
+    public async Task<IActionResult> UpdateBook(Guid id, [FromBody] UpdateBookDto dto)
+    {
+        try
+        {
+            var result = await _mediaService.UpdateBookAsync(id, dto);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException) { return NotFound(); }
+        catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
+    }
+
+    // PUT /api/media/{id}/tvseries
+    [HttpPut("{id:guid}/tvseries")]
+    [Authorize]
+    [IgnoreAntiforgeryToken]
+    public async Task<IActionResult> UpdateTvSeries(Guid id, [FromBody] UpdateTvSeriesDto dto)
+    {
+        try
+        {
+            var result = await _mediaService.UpdateTvSeriesAsync(id, dto);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException) { return NotFound(); }
+        catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
+    }
+
+    // ── Soft delete ───────────────────────────────────────────────────────────
+
+    // DELETE /api/media/{id}
+    [HttpDelete("{id:guid}")]
+    [Authorize]
+    [IgnoreAntiforgeryToken]
+    public async Task<IActionResult> SoftDelete(Guid id)
+    {
+        try
+        {
+            await _mediaService.SoftDeleteAsync(id);
+            return NoContent();
+        }
+        catch (KeyNotFoundException) { return NotFound(); }
+    }
+
+    // ── Seasons (nested under media for intuitive routing) ────────────────────
+
+    // GET /api/media/{id}/seasons
+    [HttpGet("{id:guid}/seasons")]
+    public async Task<IActionResult> GetSeasons(Guid id)
+    {
+        try
+        {
+            var result = await _tvSeriesService.GetSeasonsAsync(id);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException) { return NotFound(); }
+    }
+
+    // POST /api/media/{id}/seasons
+    [HttpPost("{id:guid}/seasons")]
+    [Authorize]
+    [IgnoreAntiforgeryToken]
+    public async Task<IActionResult> AddSeason(Guid id, [FromBody] UpsertSeasonDto dto)
+    {
+        try
+        {
+            var result = await _tvSeriesService.AddSeasonAsync(id, dto);
+            return CreatedAtAction(nameof(GetSeasons), new { id }, result);
+        }
+        catch (KeyNotFoundException) { return NotFound(); }
+        catch (InvalidOperationException ex) { return Conflict(ex.Message); }
+    }
+
+    // PUT /api/media/{id}/seasons/{seasonNumber}
+    [HttpPut("{id:guid}/seasons/{seasonNumber:int}")]
+    [Authorize]
+    [IgnoreAntiforgeryToken]
+    public async Task<IActionResult> UpdateSeason(Guid id, int seasonNumber, [FromBody] UpsertSeasonDto dto)
+    {
+        try
+        {
+            var result = await _tvSeriesService.UpdateSeasonAsync(id, seasonNumber, dto);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException) { return NotFound(); }
+    }
+
+    // DELETE /api/media/{id}/seasons/{seasonNumber}
+    [HttpDelete("{id:guid}/seasons/{seasonNumber:int}")]
+    [Authorize]
+    [IgnoreAntiforgeryToken]
+    public async Task<IActionResult> DeleteSeason(Guid id, int seasonNumber)
+    {
+        try
+        {
+            await _tvSeriesService.DeleteSeasonAsync(id, seasonNumber);
+            return NoContent();
+        }
+        catch (KeyNotFoundException) { return NotFound(); }
+    }
+
+    // ── Episodes (nested under seasons) ──────────────────────────────────────
+
+    // POST /api/media/{id}/seasons/{seasonNumber}/episodes
+    [HttpPost("{id:guid}/seasons/{seasonNumber:int}/episodes")]
+    [Authorize]
+    [IgnoreAntiforgeryToken]
+    public async Task<IActionResult> AddEpisode(Guid id, int seasonNumber, [FromBody] UpsertEpisodeDto dto)
+    {
+        try
+        {
+            var result = await _tvSeriesService.AddEpisodeAsync(id, seasonNumber, dto);
+            return CreatedAtAction(nameof(GetSeasons), new { id }, result);
+        }
+        catch (KeyNotFoundException) { return NotFound(); }
+        catch (InvalidOperationException ex) { return Conflict(ex.Message); }
+    }
+
+    // PUT /api/media/{id}/seasons/{seasonNumber}/episodes/{episodeNumber}
+    [HttpPut("{id:guid}/seasons/{seasonNumber:int}/episodes/{episodeNumber:int}")]
+    [Authorize]
+    [IgnoreAntiforgeryToken]
+    public async Task<IActionResult> UpdateEpisode(
+        Guid id, int seasonNumber, int episodeNumber, [FromBody] UpsertEpisodeDto dto)
+    {
+        try
+        {
+            var result = await _tvSeriesService.UpdateEpisodeAsync(id, seasonNumber, episodeNumber, dto);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException) { return NotFound(); }
+    }
+
+    // DELETE /api/media/{id}/seasons/{seasonNumber}/episodes/{episodeNumber}
+    [HttpDelete("{id:guid}/seasons/{seasonNumber:int}/episodes/{episodeNumber:int}")]
+    [Authorize]
+    [IgnoreAntiforgeryToken]
+    public async Task<IActionResult> DeleteEpisode(Guid id, int seasonNumber, int episodeNumber)
+    {
+        try
+        {
+            await _tvSeriesService.DeleteEpisodeAsync(id, seasonNumber, episodeNumber);
+            return NoContent();
+        }
+        catch (KeyNotFoundException) { return NotFound(); }
     }
 }
