@@ -318,7 +318,7 @@ Done
 ### 1. Logout button in Header // Done
 The `AuthContext` already has `logout()`. The Header needs a logout button visible when `user` is not null.
 - Frontend only: update `Header.jsx` to read `useAuth()` and show Logout button when logged in.
-### 2. Media Management (Add & View)
+### 2. Media Management (Add & View) // Partially done - have to Make it admin-only and to make the book adding with the third part API availble
 Users need to browse media. Admins add it. This is the core of the product.
 
 **Backend:**

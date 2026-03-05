@@ -10,11 +10,15 @@ namespace RateOple.Core.Services;
 public class MediaService : IMediaService
 {
     private readonly ApplicationDbContext _db;
+    private readonly IOpenLibraryService _ol;
 
-    public MediaService(ApplicationDbContext db)
+    public MediaService(ApplicationDbContext db, IOpenLibraryService ol)
     {
         _db = db;
+        _ol = ol;
     }
+
+    // ── Read ──────────────────────────────────────────────────────────────────
 
     public async Task<PagedResultDto<MediaListItemDto>> GetAllAsync(MediaQueryDto query)
     {
@@ -22,7 +26,6 @@ public class MediaService : IMediaService
             .Include(m => m.MediaGenres).ThenInclude(mg => mg.Genre)
             .AsQueryable();
 
-        // Filter by type
         if (query.Types != null && query.Types.Count > 0)
         {
             var types = query.Types
@@ -35,23 +38,20 @@ public class MediaService : IMediaService
                 q = q.Where(m => types.Contains(m.Type));
         }
 
-        // Filter by genre
         if (query.GenreIds != null && query.GenreIds.Count > 0)
             q = q.Where(m => m.MediaGenres.Any(mg => query.GenreIds.Contains(mg.GenreId)));
 
-        // Search
         if (!string.IsNullOrWhiteSpace(query.Search))
             q = q.Where(m => m.Title.ToLower().Contains(query.Search.ToLower()));
 
-        // Sort
         q = (query.SortBy, query.SortDir) switch
         {
-            ("year", "asc")    => q.OrderBy(m => m.ReleaseDate),
-            ("year", "desc")   => q.OrderByDescending(m => m.ReleaseDate),
-            ("title", "asc")   => q.OrderBy(m => m.Title),
-            ("title", "desc")  => q.OrderByDescending(m => m.Title),
-            ("rating", "asc")  => q.OrderBy(m => m.AverageRating),
-            _                  => q.OrderByDescending(m => m.AverageRating), // default: top rated
+            ("year", "asc")   => q.OrderBy(m => m.ReleaseDate),
+            ("year", "desc")  => q.OrderByDescending(m => m.ReleaseDate),
+            ("title", "asc")  => q.OrderBy(m => m.Title),
+            ("title", "desc") => q.OrderByDescending(m => m.Title),
+            ("rating", "asc") => q.OrderBy(m => m.AverageRating),
+            _                 => q.OrderByDescending(m => m.AverageRating),
         };
 
         var totalCount = await q.CountAsync();
@@ -83,34 +83,24 @@ public class MediaService : IMediaService
 
     public async Task<MediaDetailDto?> GetByIdAsync(Guid id)
     {
-        var m = await _db.Media
-            .Include(m => m.MediaGenres).ThenInclude(mg => mg.Genre)
-            .Include(m => m.Movie)
-            .Include(m => m.Book)
-            .Include(m => m.TvSeries)
-                .ThenInclude(tv => tv!.Seasons)
-                .ThenInclude(s => s.Episodes)
-            .FirstOrDefaultAsync(m => m.Id == id);
-
-        if (m == null) return null;
-
-        return MapToDetail(m);
+        var m = await GetWithIncludes(id, throwIfMissing: false);
+        return m == null ? null : MapToDetail(m);
     }
+
+    public async Task<List<GenreDto>> GetGenresAsync()
+    {
+        return await _db.Genres
+            .OrderBy(g => g.Name)
+            .Select(g => new GenreDto { Id = g.Id, Name = g.Name })
+            .ToListAsync();
+    }
+
+    // ── Single create ─────────────────────────────────────────────────────────
 
     public async Task<MediaDetailDto> CreateMovieAsync(CreateMovieDto dto)
     {
-        var media = new Media
-        {
-            Id = Guid.NewGuid(),
-            Type = MediaType.Movie,
-            Title = dto.Title,
-            Description = dto.Description,
-            CoverUrl = dto.CoverUrl,
-            ReleaseDate = dto.ReleaseYear.HasValue
-            ? new DateTime(dto.ReleaseYear.Value, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-            : null,
-            CreatedAt = DateTime.UtcNow,
-        };
+        var media = BuildBaseMedia(MediaType.Movie, dto.Title, dto.Description,
+                                   dto.CoverUrl, dto.ReleaseYear);
 
         media.Movie = new Movie
         {
@@ -129,18 +119,8 @@ public class MediaService : IMediaService
 
     public async Task<MediaDetailDto> CreateBookAsync(CreateBookDto dto)
     {
-        var media = new Media
-        {
-            Id = Guid.NewGuid(),
-            Type = MediaType.Book,
-            Title = dto.Title,
-            Description = dto.Description,
-            CoverUrl = dto.CoverUrl,
-            ReleaseDate = dto.ReleaseYear.HasValue
-                ? new DateTime(dto.ReleaseYear.Value, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-                : null,
-            CreatedAt = DateTime.UtcNow,
-        };
+        var media = BuildBaseMedia(MediaType.Book, dto.Title, dto.Description,
+                                   dto.CoverUrl, dto.ReleaseYear);
 
         media.Book = new Book
         {
@@ -160,24 +140,42 @@ public class MediaService : IMediaService
 
     public async Task<MediaDetailDto> CreateTvSeriesAsync(CreateTvSeriesDto dto)
     {
-        var media = new Media
-        {
-            Id = Guid.NewGuid(),
-            Type = MediaType.TvSeries,
-            Title = dto.Title,
-            Description = dto.Description,
-            CoverUrl = dto.CoverUrl,
-            ReleaseDate = dto.ReleaseYear.HasValue
-                ? new DateTime(dto.ReleaseYear.Value, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-                : null,
-            CreatedAt = DateTime.UtcNow,
-        };
+        var media = BuildBaseMedia(MediaType.TvSeries, dto.Title, dto.Description,
+                                   dto.CoverUrl, dto.ReleaseYear);
 
-        media.TvSeries = new TvSeries
+        var tvSeries = new TvSeries
         {
             MediaId = media.Id,
             TmdbId = dto.TmdbId,
+            SeasonsCount = dto.Seasons.Count > 0 ? dto.Seasons.Count : null,
         };
+
+        // Bulk-insert seasons and episodes in the same transaction
+        foreach (var seasonDto in dto.Seasons.OrderBy(s => s.SeasonNumber))
+        {
+            var season = new Season
+            {
+                Id = Guid.NewGuid(),
+                TvSeriesId = media.Id,
+                SeasonNumber = seasonDto.SeasonNumber,
+            };
+
+            foreach (var epDto in seasonDto.Episodes.OrderBy(e => e.EpisodeNumber))
+            {
+                season.Episodes.Add(new Episode
+                {
+                    Id = Guid.NewGuid(),
+                    SeasonId = season.Id,
+                    EpisodeNumber = epDto.EpisodeNumber,
+                    Title = epDto.Title,
+                    Duration = epDto.Duration,
+                });
+            }
+
+            tvSeries.Seasons.Add(season);
+        }
+
+        media.TvSeries = tvSeries;
 
         await AttachGenres(media, dto.GenreIds);
         _db.Media.Add(media);
@@ -186,15 +184,90 @@ public class MediaService : IMediaService
         return MapToDetail(await GetWithIncludes(media.Id));
     }
 
-    public async Task<List<GenreDto>> GetGenresAsync()
+    // ── Bulk create (cart) ────────────────────────────────────────────────────
+
+    public async Task<BulkCreateResultDto> BulkCreateAsync(BulkCreateDto dto)
     {
-        return await _db.Genres
-            .OrderBy(g => g.Name)
-            .Select(g => new GenreDto { Id = g.Id, Name = g.Name })
-            .ToListAsync();
+        var result = new BulkCreateResultDto();
+
+        foreach (var movie in dto.Movies)
+        {
+            try
+            {
+                result.Created.Add(await CreateMovieAsync(movie));
+            }
+            catch (Exception ex)
+            {
+                result.Errors.Add(new BulkCreateErrorDto
+                {
+                    Title = movie.Title,
+                    Type = "Movie",
+                    Reason = ex.Message,
+                });
+            }
+        }
+
+        foreach (var book in dto.Books)
+        {
+            try
+            {
+                result.Created.Add(await CreateBookAsync(book));
+            }
+            catch (Exception ex)
+            {
+                result.Errors.Add(new BulkCreateErrorDto
+                {
+                    Title = book.Title,
+                    Type = "Book",
+                    Reason = ex.Message,
+                });
+            }
+        }
+
+        foreach (var series in dto.TvSeries)
+        {
+            try
+            {
+                result.Created.Add(await CreateTvSeriesAsync(series));
+            }
+            catch (Exception ex)
+            {
+                result.Errors.Add(new BulkCreateErrorDto
+                {
+                    Title = series.Title,
+                    Type = "TvSeries",
+                    Reason = ex.Message,
+                });
+            }
+        }
+
+        return result;
     }
 
+    // ── Open Library proxy ────────────────────────────────────────────────────
+
+    public Task<List<OlSearchResultDto>> SearchBooksAsync(string query) =>
+        _ol.SearchAsync(query);
+
+    public Task<OlDetailsDto?> GetBookDetailsAsync(string olId) =>
+        _ol.GetDetailsAsync(olId);
+
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private static Media BuildBaseMedia(
+        MediaType type, string title, string? description,
+        string? coverUrl, int? releaseYear) => new()
+    {
+        Id = Guid.NewGuid(),
+        Type = type,
+        Title = title,
+        Description = description,
+        CoverUrl = coverUrl,
+        ReleaseDate = releaseYear.HasValue
+            ? new DateTime(releaseYear.Value, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+            : null,
+        CreatedAt = DateTime.UtcNow,
+    };
 
     private async Task AttachGenres(Media media, List<int> genreIds)
     {
@@ -210,14 +283,21 @@ public class MediaService : IMediaService
             .ToList();
     }
 
-    private async Task<Media> GetWithIncludes(Guid id)
+    private async Task<Media> GetWithIncludes(Guid id, bool throwIfMissing = true)
     {
-        return await _db.Media
+        var m = await _db.Media
             .Include(m => m.MediaGenres).ThenInclude(mg => mg.Genre)
             .Include(m => m.Movie)
             .Include(m => m.Book)
-            .Include(m => m.TvSeries).ThenInclude(tv => tv!.Seasons).ThenInclude(s => s.Episodes)
-            .FirstAsync(m => m.Id == id);
+            .Include(m => m.TvSeries)
+                .ThenInclude(tv => tv!.Seasons)
+                .ThenInclude(s => s.Episodes)
+            .FirstOrDefaultAsync(m => m.Id == id);
+
+        if (m == null && throwIfMissing)
+            throw new KeyNotFoundException($"Media {id} not found.");
+
+        return m!;
     }
 
     private static MediaDetailDto MapToDetail(Media m)

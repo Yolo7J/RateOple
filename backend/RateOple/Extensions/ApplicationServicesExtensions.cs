@@ -14,7 +14,8 @@ public static class ApplicationServicesExtensions
         services.AddScoped<IMediaService, MediaService>();
         services.AddScoped<IRatingService, RatingService>();
         services.AddScoped<IJwtService, JwtService>();
-        services.AddHttpClient<ITmdbService, TmdbService>();   // HttpClient injected automatically
+        services.AddHttpClient<ITmdbService, TmdbService>();
+        services.AddHttpClient<IOpenLibraryService, OpenLibraryService>(); 
         return services;
     }
 }
