@@ -1,5 +1,4 @@
 using RateOple.Constants.Enums;
-
 namespace RateOple.Infrastructure.Data.Models;
 
 public class Media
@@ -13,6 +12,7 @@ public class Media
     public DateTime CreatedAt { get; set; }
     public double AverageRating { get; set; }
     public int RatingsCount { get; set; }
+    public bool IsDeleted { get; set; } = false;
 
     // Navigation
     public Movie? Movie { get; set; }

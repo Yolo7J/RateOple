@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-
 namespace RateOple.Infrastructure.Data.Models;
 
 public class Season
@@ -12,7 +11,9 @@ public class Season
     [Required]
     public int SeasonNumber { get; set; }
 
-    // Navigation Properties
+    public bool IsDeleted { get; set; } = false;
+
+    // Navigation
     public TvSeries TvSeries { get; set; } = null!;
     public ICollection<Episode> Episodes { get; set; } = new List<Episode>();
 }

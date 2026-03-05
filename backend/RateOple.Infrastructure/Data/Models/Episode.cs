@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-
 namespace RateOple.Infrastructure.Data.Models;
 
 public class Episode
@@ -18,6 +17,8 @@ public class Episode
 
     public int? Duration { get; set; } // in minutes
 
-    // Navigation Properties
+    public bool IsDeleted { get; set; } = false;
+
+    // Navigation
     public Season Season { get; set; } = null!;
 }
