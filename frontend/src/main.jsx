@@ -5,7 +5,9 @@ import App from './App.jsx'
 import { ThemeProvider } from './context/ThemeContext'
 import { LanguageProvider } from './context/LanguageContext'
 import { BrowserRouter } from 'react-router-dom'
+
 import { AuthProvider } from './context/AuthContext'
+import { MediaCartProvider } from './context/MediaCartContext'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -13,7 +15,9 @@ createRoot(document.getElementById('root')).render(
       <LanguageProvider>
         <BrowserRouter>
           <AuthProvider>
-            <App />
+            <MediaCartProvider>
+              <App />
+            </MediaCartProvider>
           </AuthProvider>
         </BrowserRouter>
       </LanguageProvider>

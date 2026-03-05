@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import mediaService from '../../services/mediaService';
+import * as mediaService from '../../services/mediaService';
+import { useMediaCart } from '../../context/MediaCartContext';
 import tmdbService from '../../services/tmdbService';
 import './AddMediaPage.css';
 
@@ -8,6 +9,7 @@ const STEPS = { SELECT_TYPE: 0, SEARCH: 1, FILL_FORM: 2 };
 
 const AddMediaPage = () => {
     const navigate = useNavigate();
+    const { addItem } = useMediaCart();
 
     const [step, setStep] = useState(STEPS.SELECT_TYPE);
     const [mediaType, setMediaType] = useState(null);   // 'Movie' | 'Book' | 'TvSeries'
@@ -32,7 +34,7 @@ const AddMediaPage = () => {
     const [saveError, setSaveError] = useState(null);
 
     useEffect(() => {
-        mediaService.getGenres().then(r => setGenres(r.data)).catch(() => {});
+        mediaService.getGenres().then(setGenres).catch(() => setGenres([]));
     }, []);
 
     // Debounced TMDB search
@@ -116,46 +118,16 @@ const AddMediaPage = () => {
         setSaving(true);
         setSaveError(null);
 
-        const year = form.releaseYear ? parseInt(form.releaseYear) : null;
-
         try {
-            let created;
-            if (mediaType === 'Movie') {
-                created = await mediaService.createMovie({
-                    title: form.title,
-                    description: form.description || null,
-                    coverUrl: form.coverUrl || null,
-                    releaseYear: year,
-                    director: form.director || null,
-                    duration: form.duration ? parseInt(form.duration) : null,
-                    tmdbId: form.tmdbId,
-                    genreIds: form.genreIds,
-                });
-            } else if (mediaType === 'Book') {
-                created = await mediaService.createBook({
-                    title: form.title,
-                    description: form.description || null,
-                    coverUrl: form.coverUrl || null,
-                    releaseYear: year,
-                    author: form.author || null,
-                    pages: form.pages ? parseInt(form.pages) : null,
-                    isbn: form.isbn || null,
-                    olId: form.olId,
-                    genreIds: form.genreIds,
-                });
-            } else {
-                created = await mediaService.createTvSeries({
-                    title: form.title,
-                    description: form.description || null,
-                    coverUrl: form.coverUrl || null,
-                    releaseYear: year,
-                    tmdbId: form.tmdbId,
-                    genreIds: form.genreIds,
-                });
-            }
-            navigate(`/media/${created.data.id}`);
+            addItem(mediaType, {
+                ...form,
+                releaseYear: form.releaseYear ? parseInt(form.releaseYear) : null,
+                duration: form.duration ? parseInt(form.duration) : null,
+                pages: form.pages ? parseInt(form.pages) : null,
+            });
+            navigate('/cart');
         } catch (err) {
-            setSaveError(err.response?.data?.message ?? 'Failed to save media.');
+            setSaveError('Failed to add to cart.');
         } finally {
             setSaving(false);
         }
@@ -324,7 +296,7 @@ const AddMediaPage = () => {
                 </label>
 
                 {/* Genres */}
-                {genres.length > 0 && (
+                {Array.isArray(genres) && genres.length > 0 && (
                     <div className="form-label">
                         Genres
                         <div className="genre-picker">

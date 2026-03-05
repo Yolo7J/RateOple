@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useAuth } from '../../context/AuthContext';
-import mediaService from '../../services/mediaService';
+import * as mediaService from '../../services/mediaService';
 import MediaCard from '../../components/media/MediaCard/MediaCard';
 import './MediaListPage.css';
 
@@ -18,6 +18,7 @@ const SORT_OPTIONS = [
 const PAGE_SIZE = 24;
 
 const MediaListPage = () => {
+    console.log('Rendering MediaListPage');
     const { t } = useLanguage();
     const { user } = useAuth();
     const navigate = useNavigate();
@@ -45,9 +46,15 @@ const MediaListPage = () => {
     // Load genres once
     useEffect(() => {
         mediaService.getGenres()
-            .then(r => setGenres(r.data))
-            .catch(() => {});
-    }, []);
+            .then(r => setGenres(Array.isArray(r.data) ? r.data : []))
+            .catch(err => {
+                setGenres([]);
+                // If unauthorized, redirect to login
+                if (err?.response?.status === 401) {
+                    navigate('/login');
+                }
+            });
+    }, [navigate]);
 
     // Sync state → URL
     useEffect(() => {
@@ -62,6 +69,7 @@ const MediaListPage = () => {
 
     // Fetch media
     const fetchMedia = useCallback(async () => {
+        console.log('fetchMedia called');
         setLoading(true);
         setError(null);
         try {
@@ -76,8 +84,14 @@ const MediaListPage = () => {
                 pageSize: PAGE_SIZE,
             };
             const r = await mediaService.getAll(params);
-            setResult(r.data);
-        } catch {
+            console.log('mediaService.getAll result:', r);
+            if (r && Array.isArray(r.items)) {
+                setResult(r);
+            } else {
+                setError('Media response format invalid.');
+            }
+        } catch (e) {
+            console.error('fetchMedia error:', e);
             setError('Failed to load media.');
         } finally {
             setLoading(false);
@@ -163,7 +177,7 @@ const MediaListPage = () => {
                         ))}
                     </div>
 
-                    {genres.length > 0 && (
+                    {Array.isArray(genres) && genres.length > 0 && (
                         <div className="filter-section">
                             <h4 className="filter-heading">Genre</h4>
                             {genres.map(g => (
