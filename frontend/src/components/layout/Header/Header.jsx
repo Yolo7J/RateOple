@@ -52,6 +52,12 @@ const Header = () => {
                                     <span className="mobile-greeting">
                                         {t('header.auth.hello', { username: user.username })}
                                     </span>
+                                    <button onClick={() => handleAuthAction('account')}>
+                                        Account
+                                    </button>
+                                    <button onClick={() => navigate('/account/watchlist')}>
+                                        Watchlist
+                                    </button>
                                     <button onClick={() => handleAuthAction('logout')}>
                                         {t('header.auth.logout')}
                                     </button>
@@ -110,6 +116,18 @@ const Header = () => {
                                 <span className="auth-greeting">
                                     {t('header.auth.hello', { username: user.username })}
                                 </span>
+                                <button
+                                    className="auth-button"
+                                    onClick={() => handleAuthAction('account')}
+                                >
+                                    Account
+                                </button>
+                                <button
+                                    className="auth-button"
+                                    onClick={() => navigate('/account/watchlist')}
+                                >
+                                    Watchlist
+                                </button>
                                 <button
                                     className="auth-button logout-button"
                                     onClick={() => handleAuthAction('logout')}

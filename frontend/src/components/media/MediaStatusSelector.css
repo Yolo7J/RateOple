@@ -1,0 +1,19 @@
+.ro-status-selector {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 14px;
+    border: 1px solid var(--border, #313847);
+    border-radius: 10px;
+    background: var(--card-bg, #1b2029);
+}
+.ro-status-selector select,
+.ro-status-selector button {
+    background: var(--bg-secondary, #11151d);
+    color: var(--text-primary, #e5e7eb);
+    border: 1px solid var(--border, #313847);
+    border-radius: 8px;
+    padding: 8px 10px;
+}
+.ro-status-selector button { cursor: pointer; }

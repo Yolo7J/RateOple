@@ -1,0 +1,16 @@
+.ro-account-section {
+    border: 1px solid var(--border, #313847);
+    border-radius: 12px;
+    padding: 14px;
+    background: var(--card-bg, #1b2029);
+}
+.ro-account-section h2 { margin: 0 0 10px; font-size: 1.05rem; }
+.ro-account-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.ro-account-list li {
+    border: 1px solid var(--border, #313847);
+    border-radius: 8px;
+    padding: 10px;
+    background: var(--bg-secondary, #11151d);
+}
+.ro-chip-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.ro-chip { border: 1px solid var(--border, #313847); border-radius: 999px; padding: 4px 10px; }
