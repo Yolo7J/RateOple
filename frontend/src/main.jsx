@@ -8,6 +8,8 @@ import { BrowserRouter } from 'react-router-dom'
 
 import { AuthProvider } from './context/AuthContext'
 import { MediaCartProvider } from './context/MediaCartContext'
+import Header from './components/layout/Header/Header.jsx'
+import Footer from './components/layout/Footer/Footer.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -16,7 +18,9 @@ createRoot(document.getElementById('root')).render(
         <BrowserRouter>
           <AuthProvider>
             <MediaCartProvider>
+              <Header />
               <App />
+              <Footer />
             </MediaCartProvider>
           </AuthProvider>
         </BrowserRouter>

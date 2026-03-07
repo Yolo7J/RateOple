@@ -159,6 +159,9 @@ public class MediaService : IMediaService
             SeasonsCount = dto.Seasons.Count > 0 ? dto.Seasons.Count : null,
         };
 
+        var allSeasons = new List<Season>();
+        var allEpisodes = new List<Episode>();
+
         foreach (var seasonDto in dto.Seasons.OrderBy(s => s.SeasonNumber))
         {
             var season = new Season
@@ -167,17 +170,20 @@ public class MediaService : IMediaService
                 TvSeriesId   = media.Id,
                 SeasonNumber = seasonDto.SeasonNumber,
             };
+            allSeasons.Add(season);
 
             foreach (var epDto in seasonDto.Episodes.OrderBy(e => e.EpisodeNumber))
             {
-                season.Episodes.Add(new Episode
+                var episode = new Episode
                 {
                     Id            = Guid.NewGuid(),
                     SeasonId      = season.Id,
                     EpisodeNumber = epDto.EpisodeNumber,
                     Title         = epDto.Title,
                     Duration      = epDto.Duration,
-                });
+                };
+                allEpisodes.Add(episode);
+                season.Episodes.Add(episode);
             }
 
             tvSeries.Seasons.Add(season);
@@ -186,6 +192,10 @@ public class MediaService : IMediaService
         media.TvSeries = tvSeries;
         await AttachGenres(media, dto.GenreIds);
         _db.Media.Add(media);
+        if (allSeasons.Count > 0)
+            _db.Seasons.AddRange(allSeasons);
+        if (allEpisodes.Count > 0)
+            _db.Episodes.AddRange(allEpisodes);
         await _db.SaveChangesAsync();
         return MapToDetail(await GetWithIncludes(media.Id));
     }

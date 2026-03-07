@@ -1,5 +1,3 @@
-import Header from '../../components/layout/Header/Header'
-import Footer from '../../components/layout/Footer/Footer'
 import './Home.css'
 
 import { useLanguage } from '../../hooks/useLanguage'
@@ -11,7 +9,6 @@ function Home() {
 
   return (
     <>
-      <Header />
 
       <main className={`main-content ${theme}`}>
         <section className="welcome-section">
@@ -37,7 +34,6 @@ function Home() {
         </section>
       </main>
 
-      <Footer />
     </>
   )
 }
