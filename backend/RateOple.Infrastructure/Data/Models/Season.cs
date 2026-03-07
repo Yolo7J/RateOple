@@ -17,4 +17,5 @@ public class Season
     public TvSeries TvSeries { get; set; } = null!;
     public ICollection<Episode> Episodes { get; set; } = new List<Episode>();
     public ICollection<Rating> Ratings { get; set; } = new List<Rating>();
+    public ICollection<MediaInteraction> Interactions { get; set; } = new List<MediaInteraction>();
 }

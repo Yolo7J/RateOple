@@ -22,4 +22,5 @@ public class Episode
     // Navigation
     public Season Season { get; set; } = null!;
     public ICollection<Rating> Ratings { get; set; } = new List<Rating>();
+    public ICollection<MediaInteraction> Interactions { get; set; } = new List<MediaInteraction>();
 }

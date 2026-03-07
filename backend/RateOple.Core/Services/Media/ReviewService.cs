@@ -10,11 +10,16 @@ public class ReviewService : IReviewService
 {
     private readonly ApplicationDbContext _context;
     private readonly IRatingService _ratingService;
+    private readonly IInteractionService _interactionService;
 
-    public ReviewService(ApplicationDbContext context, IRatingService ratingService)
+    public ReviewService(
+        ApplicationDbContext context,
+        IRatingService ratingService,
+        IInteractionService interactionService)
     {
         _context = context;
         _ratingService = ratingService;
+        _interactionService = interactionService;
     }
 
     public async Task<ReviewDto> CreateReviewAsync(Guid userId, CreateReviewDto dto)
@@ -57,6 +62,7 @@ public class ReviewService : IReviewService
 
         _context.Reviews.Add(review);
         await _context.SaveChangesAsync();
+        await _interactionService.TrackReviewCreatedAsync(userId, rating.MediaId, rating.SeasonId, rating.EpisodeId);
         return Map(review);
     }
 

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using RateOple.Core.Contracts;
 using RateOple.Core.Contracts.DTOs.Media;
 
@@ -12,15 +13,18 @@ public class MediaController : ControllerBase
     private readonly IMediaService _mediaService;
     private readonly ITvSeriesService _tvSeriesService;
     private readonly ITmdbService _tmdb;
+    private readonly IInteractionService _interactionService;
 
     public MediaController(
         IMediaService mediaService,
         ITvSeriesService tvSeriesService,
-        ITmdbService tmdb)
+        ITmdbService tmdb,
+        IInteractionService interactionService)
     {
         _mediaService     = mediaService;
         _tvSeriesService  = tvSeriesService;
         _tmdb             = tmdb;
+        _interactionService = interactionService;
     }
 
     // ── Read ──────────────────────────────────────────────────────────────────
@@ -38,6 +42,13 @@ public class MediaController : ControllerBase
     public async Task<IActionResult> GetById(Guid id)
     {
         var result = await _mediaService.GetByIdAsync(id);
+
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (result != null && !string.IsNullOrWhiteSpace(userIdClaim))
+        {
+            await _interactionService.TrackMediaOpenedAsync(Guid.Parse(userIdClaim), id);
+        }
+
         return result == null ? NotFound() : Ok(result);
     }
 
@@ -159,6 +170,7 @@ public class MediaController : ControllerBase
         try
         {
             var result = await _mediaService.UpdateMovieAsync(id, dto);
+            await TrackMediaStatusChangedAsync(id);
             return Ok(result);
         }
         catch (KeyNotFoundException) { return NotFound(); }
@@ -174,6 +186,7 @@ public class MediaController : ControllerBase
         try
         {
             var result = await _mediaService.UpdateBookAsync(id, dto);
+            await TrackMediaStatusChangedAsync(id);
             return Ok(result);
         }
         catch (KeyNotFoundException) { return NotFound(); }
@@ -189,6 +202,7 @@ public class MediaController : ControllerBase
         try
         {
             var result = await _mediaService.UpdateTvSeriesAsync(id, dto);
+            await TrackMediaStatusChangedAsync(id);
             return Ok(result);
         }
         catch (KeyNotFoundException) { return NotFound(); }
@@ -313,5 +327,14 @@ public class MediaController : ControllerBase
             return NoContent();
         }
         catch (KeyNotFoundException) { return NotFound(); }
+    }
+
+    private async Task TrackMediaStatusChangedAsync(Guid mediaId)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userIdClaim))
+            return;
+
+        await _interactionService.TrackMediaStatusChangedAsync(Guid.Parse(userIdClaim), mediaId);
     }
 }

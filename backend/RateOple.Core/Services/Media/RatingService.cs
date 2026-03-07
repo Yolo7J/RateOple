@@ -9,10 +9,12 @@ namespace RateOple.Core.Services;
 public class RatingService : IRatingService
 {
     private readonly ApplicationDbContext _context;
+    private readonly IInteractionService _interactionService;
 
-    public RatingService(ApplicationDbContext context)
+    public RatingService(ApplicationDbContext context, IInteractionService interactionService)
     {
         _context = context;
+        _interactionService = interactionService;
     }
 
     public Task<RatingDto> RateMediaAsync(Guid userId, Guid mediaId, int value) =>
@@ -114,6 +116,7 @@ public class RatingService : IRatingService
             r.SeasonId == seasonId &&
             r.EpisodeId == episodeId);
 
+        var isNewRating = existingRating == null;
         if (existingRating != null)
         {
             existingRating.Value = value;
@@ -140,6 +143,9 @@ public class RatingService : IRatingService
         var ownerMediaId = await ResolveOwnerMediaIdAsync(mediaId, seasonId, episodeId);
         if (ownerMediaId.HasValue)
             await RefreshMediaAggregateAsync(ownerMediaId.Value);
+
+        if (isNewRating)
+            await _interactionService.TrackRatingCreatedAsync(userId, mediaId, seasonId, episodeId);
 
         return MapToDto(existingRating);
     }
