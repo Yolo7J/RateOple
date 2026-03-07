@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RateOple.Core.Contracts;
@@ -21,31 +20,25 @@ public class RatingsController : ControllerBase
     [HttpPost("media/{mediaId:guid}/ratings")]
     [Authorize]
     [IgnoreAntiforgeryToken]
-    public async Task<ActionResult<RatingDto>> RateMedia(Guid mediaId, [FromBody] JsonElement payload)
+    public async Task<ActionResult<RatingDto>> RateMedia(Guid mediaId, [FromBody] RatingUpsertDto dto)
     {
-        var valueResult = TryExtractValue(payload);
-        if (!valueResult.IsValid) return BadRequest("Rating value is required.");
-        return await HandleRate(async userId => await _ratingService.RateMediaAsync(userId, mediaId, valueResult.Value));
+        return await HandleRate(async userId => await _ratingService.RateMediaAsync(userId, mediaId, dto.Value));
     }
 
     [HttpPost("seasons/{seasonId:guid}/ratings")]
     [Authorize]
     [IgnoreAntiforgeryToken]
-    public async Task<ActionResult<RatingDto>> RateSeason(Guid seasonId, [FromBody] JsonElement payload)
+    public async Task<ActionResult<RatingDto>> RateSeason(Guid seasonId, [FromBody] RatingUpsertDto dto)
     {
-        var valueResult = TryExtractValue(payload);
-        if (!valueResult.IsValid) return BadRequest("Rating value is required.");
-        return await HandleRate(async userId => await _ratingService.RateSeasonAsync(userId, seasonId, valueResult.Value));
+        return await HandleRate(async userId => await _ratingService.RateSeasonAsync(userId, seasonId, dto.Value));
     }
 
     [HttpPost("episodes/{episodeId:guid}/ratings")]
     [Authorize]
     [IgnoreAntiforgeryToken]
-    public async Task<ActionResult<RatingDto>> RateEpisode(Guid episodeId, [FromBody] JsonElement payload)
+    public async Task<ActionResult<RatingDto>> RateEpisode(Guid episodeId, [FromBody] RatingUpsertDto dto)
     {
-        var valueResult = TryExtractValue(payload);
-        if (!valueResult.IsValid) return BadRequest("Rating value is required.");
-        return await HandleRate(async userId => await _ratingService.RateEpisodeAsync(userId, episodeId, valueResult.Value));
+        return await HandleRate(async userId => await _ratingService.RateEpisodeAsync(userId, episodeId, dto.Value));
     }
 
     [HttpDelete("media/{mediaId:guid}/ratings")]
@@ -152,19 +145,5 @@ public class RatingsController : ControllerBase
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         return string.IsNullOrWhiteSpace(userId) ? null : Guid.Parse(userId);
-    }
-
-    private static (bool IsValid, int Value) TryExtractValue(JsonElement payload)
-    {
-        if (payload.ValueKind == JsonValueKind.Number && payload.TryGetInt32(out var numberValue))
-            return (true, numberValue);
-
-        if (payload.ValueKind == JsonValueKind.Object &&
-            payload.TryGetProperty("value", out var valueProperty) &&
-            valueProperty.ValueKind == JsonValueKind.Number &&
-            valueProperty.TryGetInt32(out var objectValue))
-            return (true, objectValue);
-
-        return (false, default);
     }
 }

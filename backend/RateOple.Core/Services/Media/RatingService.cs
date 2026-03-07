@@ -167,6 +167,13 @@ public class RatingService : IRatingService
         if (targetCount != 1)
             throw new ArgumentException("Exactly one target must be specified.");
 
+        if (mediaId.HasValue)
+            await EnsureMediaExistsAsync(mediaId.Value);
+        if (seasonId.HasValue)
+            await EnsureSeasonExistsAsync(seasonId.Value);
+        if (episodeId.HasValue)
+            await EnsureEpisodeExistsAsync(episodeId.Value);
+
         var rating = await _context.Ratings.FirstOrDefaultAsync(r =>
             r.UserId == userId &&
             r.MediaId == mediaId &&

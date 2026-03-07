@@ -15,7 +15,7 @@ const ratingService = {
     // Rate a media item (1-10)
     rateMedia: async (mediaId, value) => {
         try {
-            const response = await api.post(`/media/${mediaId}/ratings`, value, {
+            const response = await api.post(`/media/${mediaId}/ratings`, { value }, {
                 headers: { 'Content-Type': 'application/json' }
             });
             return response.data;
