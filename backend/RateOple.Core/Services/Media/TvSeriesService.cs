@@ -103,6 +103,23 @@ public class TvSeriesService : ITvSeriesService
             .FirstOrDefaultAsync(s => s.TvSeriesId == mediaId && s.SeasonNumber == seasonNumber && !s.IsDeleted)
             ?? throw new KeyNotFoundException($"Season {seasonNumber} not found.");
 
+        var targetSeasonNumber = seasonNumber;
+        if (dto.SeasonNumber > 0 && dto.SeasonNumber != seasonNumber)
+        {
+            var duplicateSeasonExists = await _db.Seasons
+                .AnyAsync(s =>
+                    s.TvSeriesId == mediaId &&
+                    s.SeasonNumber == dto.SeasonNumber &&
+                    !s.IsDeleted &&
+                    s.Id != season.Id);
+
+            if (duplicateSeasonExists)
+                throw new InvalidOperationException($"Season {dto.SeasonNumber} already exists.");
+
+            season.SeasonNumber = dto.SeasonNumber;
+            targetSeasonNumber = dto.SeasonNumber;
+        }
+
         // Patch episodes: match by EpisodeNumber, insert new ones
         foreach (var epDto in dto.Episodes)
         {
@@ -130,7 +147,7 @@ public class TvSeriesService : ITvSeriesService
         }
 
         await _db.SaveChangesAsync();
-        return await GetSeasonDtoAsync(mediaId, seasonNumber);
+        return await GetSeasonDtoAsync(mediaId, targetSeasonNumber);
     }
 
     public async Task DeleteSeasonAsync(Guid mediaId, int seasonNumber)

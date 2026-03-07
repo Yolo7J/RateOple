@@ -252,6 +252,7 @@ public class MediaController : ControllerBase
             return Ok(result);
         }
         catch (KeyNotFoundException) { return NotFound(); }
+        catch (InvalidOperationException ex) { return Conflict(ex.Message); }
     }
 
     // DELETE /api/media/{id}/seasons/{seasonNumber}

@@ -486,6 +486,7 @@ public class MediaService : IMediaService
         {
             dto.Director = m.Movie.Director;
             dto.Duration = m.Movie.Duration;
+            dto.TmdbId = m.Movie.TmdbId;
         }
 
         if (m.Book != null)
@@ -493,10 +494,12 @@ public class MediaService : IMediaService
             dto.Author = m.Book.Author;
             dto.Pages  = m.Book.Pages;
             dto.Isbn   = m.Book.Isbn;
+            dto.OlId   = m.Book.OlId;
         }
 
         if (m.TvSeries != null)
         {
+            dto.TmdbId = m.TvSeries.TmdbId;
             dto.SeasonsCount = m.TvSeries.SeasonsCount ?? m.TvSeries.Seasons.Count;
             dto.Seasons = m.TvSeries.Seasons
                 .OrderBy(s => s.SeasonNumber)

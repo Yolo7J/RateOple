@@ -31,11 +31,13 @@ public class MediaDetailDto
     // Movie-specific
     public string? Director { get; set; }
     public int? Duration { get; set; }
+    public int? TmdbId { get; set; }
 
     // Book-specific
     public string? Author { get; set; }
     public int? Pages { get; set; }
     public string? Isbn { get; set; }
+    public string? OlId { get; set; }
 
     // TvSeries-specific
     public int? SeasonsCount { get; set; }
