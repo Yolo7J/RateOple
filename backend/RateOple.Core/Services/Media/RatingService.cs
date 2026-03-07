@@ -15,20 +15,109 @@ public class RatingService : IRatingService
         _context = context;
     }
 
-    public async Task<RatingDto> RateMediaAsync(Guid userId, Guid mediaId, int value)
+    public Task<RatingDto> RateMediaAsync(Guid userId, Guid mediaId, int value) =>
+        UpsertRatingAsync(userId, mediaId: mediaId, seasonId: null, episodeId: null, value: value);
+
+    public Task<RatingDto> RateSeasonAsync(Guid userId, Guid seasonId, int value) =>
+        UpsertRatingAsync(userId, mediaId: null, seasonId: seasonId, episodeId: null, value: value);
+
+    public Task<RatingDto> RateEpisodeAsync(Guid userId, Guid episodeId, int value) =>
+        UpsertRatingAsync(userId, mediaId: null, seasonId: null, episodeId: episodeId, value: value);
+
+    public Task DeleteMediaRatingAsync(Guid userId, Guid mediaId) =>
+        DeleteRatingAsync(userId, mediaId: mediaId, seasonId: null, episodeId: null);
+
+    public Task DeleteSeasonRatingAsync(Guid userId, Guid seasonId) =>
+        DeleteRatingAsync(userId, mediaId: null, seasonId: seasonId, episodeId: null);
+
+    public Task DeleteEpisodeRatingAsync(Guid userId, Guid episodeId) =>
+        DeleteRatingAsync(userId, mediaId: null, seasonId: null, episodeId: episodeId);
+
+    public async Task<MediaRatingSummaryDto> GetMediaRatingSummaryAsync(Guid mediaId, Guid? userId = null)
     {
-        if (value < 1 || value > 10)
+        await EnsureMediaExistsAsync(mediaId);
+
+        var query = _context.Ratings
+            .AsNoTracking()
+            .Where(r => r.MediaId == mediaId);
+
+        var ratingsCount = await query.CountAsync();
+        var averageRating = ratingsCount > 0
+            ? await query.AverageAsync(r => (double)r.Value)
+            : 0;
+
+        int? userRating = null;
+        if (userId.HasValue)
         {
-            throw new ArgumentOutOfRangeException(nameof(value), "Rating must be between 1 and 10.");
+            userRating = await query
+                .Where(r => r.UserId == userId.Value)
+                .Select(r => (int?)r.Value)
+                .FirstOrDefaultAsync();
         }
 
-        var existingRating = await _context.Ratings
-            .FirstOrDefaultAsync(r => r.UserId == userId && r.MediaId == mediaId);
+        return new MediaRatingSummaryDto
+        {
+            MediaId = mediaId,
+            AverageRating = averageRating,
+            RatingsCount = ratingsCount,
+            UserRating = userRating
+        };
+    }
+
+    public async Task<TargetRatingSummaryDto> GetSeasonRatingSummaryAsync(Guid seasonId, Guid? userId = null)
+    {
+        await EnsureSeasonExistsAsync(seasonId);
+        return await GetSummaryAsync(mediaId: null, seasonId: seasonId, episodeId: null, userId);
+    }
+
+    public async Task<TargetRatingSummaryDto> GetEpisodeRatingSummaryAsync(Guid episodeId, Guid? userId = null)
+    {
+        await EnsureEpisodeExistsAsync(episodeId);
+        return await GetSummaryAsync(mediaId: null, seasonId: null, episodeId: episodeId, userId);
+    }
+
+    public async Task<IEnumerable<RatingDto>> GetUserRatingsAsync(Guid userId)
+    {
+        var ratings = await _context.Ratings
+            .AsNoTracking()
+            .Where(r => r.UserId == userId)
+            .OrderByDescending(r => r.UpdatedAt)
+            .ToListAsync();
+
+        return ratings.Select(MapToDto);
+    }
+
+    private async Task<RatingDto> UpsertRatingAsync(
+        Guid userId,
+        Guid? mediaId,
+        Guid? seasonId,
+        Guid? episodeId,
+        int value)
+    {
+        if (value < 1 || value > 10)
+            throw new ArgumentOutOfRangeException(nameof(value), "Rating must be between 1 and 10.");
+
+        var targetCount = (mediaId.HasValue ? 1 : 0) + (seasonId.HasValue ? 1 : 0) + (episodeId.HasValue ? 1 : 0);
+        if (targetCount != 1)
+            throw new ArgumentException("Exactly one target must be specified.");
+
+        if (mediaId.HasValue)
+            await EnsureMediaExistsAsync(mediaId.Value);
+        if (seasonId.HasValue)
+            await EnsureSeasonExistsAsync(seasonId.Value);
+        if (episodeId.HasValue)
+            await EnsureEpisodeExistsAsync(episodeId.Value);
+
+        var existingRating = await _context.Ratings.FirstOrDefaultAsync(r =>
+            r.UserId == userId &&
+            r.MediaId == mediaId &&
+            r.SeasonId == seasonId &&
+            r.EpisodeId == episodeId);
 
         if (existingRating != null)
         {
             existingRating.Value = value;
-            // Ideally we'd have UpdatedAt
+            existingRating.UpdatedAt = DateTime.UtcNow;
         }
         else
         {
@@ -37,133 +126,169 @@ public class RatingService : IRatingService
                 Id = Guid.NewGuid(),
                 UserId = userId,
                 MediaId = mediaId,
+                SeasonId = seasonId,
+                EpisodeId = episodeId,
                 Value = value,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
             _context.Ratings.Add(existingRating);
         }
 
-        // Update Aggregates on Media
-        // We need to fetch all ratings to calculate accurate average, or simpler:
-        // Since we haven't saved yet, the new rating is in the tracker but not in DB for SQL AVG calculation if we use SQL.
-        // Let's save the rating first to ensure consistency for aggregation query.
         await _context.SaveChangesAsync();
 
-        // Now calculate aggregates
-        // Note: For high scale, this should be eventually consistent or done via stored proc/trigger, 
-        // but for v1 this is fine.
-        var ratings = await _context.Ratings
-            .Where(r => r.MediaId == mediaId)
-            .Select(r => r.Value)
-            .ToListAsync();
-
-        var count = ratings.Count;
-        var average = count > 0 ? ratings.Average() : 0;
-
-        // Update Media entity
-        // We verify media exists implicitly because of FK, but let's fetch to update
-        var media = await _context.Media.FindAsync(mediaId);
-        if (media != null)
-        {
-            media.RatingsCount = count;
-            media.AverageRating = average;
-            await _context.SaveChangesAsync();
-        }
+        var ownerMediaId = await ResolveOwnerMediaIdAsync(mediaId, seasonId, episodeId);
+        if (ownerMediaId.HasValue)
+            await RefreshMediaAggregateAsync(ownerMediaId.Value);
 
         return MapToDto(existingRating);
     }
 
-    public async Task DeleteRatingAsync(Guid userId, Guid mediaId)
+    private async Task DeleteRatingAsync(
+        Guid userId,
+        Guid? mediaId,
+        Guid? seasonId,
+        Guid? episodeId)
     {
-        var rating = await _context.Ratings
-            .FirstOrDefaultAsync(r => r.UserId == userId && r.MediaId == mediaId);
+        var targetCount = (mediaId.HasValue ? 1 : 0) + (seasonId.HasValue ? 1 : 0) + (episodeId.HasValue ? 1 : 0);
+        if (targetCount != 1)
+            throw new ArgumentException("Exactly one target must be specified.");
 
-        if (rating == null) return;
+        var rating = await _context.Ratings.FirstOrDefaultAsync(r =>
+            r.UserId == userId &&
+            r.MediaId == mediaId &&
+            r.SeasonId == seasonId &&
+            r.EpisodeId == episodeId);
+
+        if (rating == null)
+            return;
 
         _context.Ratings.Remove(rating);
         await _context.SaveChangesAsync();
 
-        // Update Aggregates
-        var ratings = await _context.Ratings
-            .Where(r => r.MediaId == mediaId)
-            .Select(r => r.Value)
-            .ToListAsync();
-
-        var count = ratings.Count;
-        var average = count > 0 ? ratings.Average() : 0;
-
-        var media = await _context.Media.FindAsync(mediaId);
-        if (media != null)
-        {
-            media.RatingsCount = count;
-            media.AverageRating = average;
-            await _context.SaveChangesAsync();
-        }
+        var ownerMediaId = await ResolveOwnerMediaIdAsync(mediaId, seasonId, episodeId);
+        if (ownerMediaId.HasValue)
+            await RefreshMediaAggregateAsync(ownerMediaId.Value);
     }
 
-    public async Task<MediaRatingSummaryDto> GetMediaRatingSummaryAsync(Guid mediaId, Guid? userId = null)
+    private async Task<TargetRatingSummaryDto> GetSummaryAsync(
+        Guid? mediaId,
+        Guid? seasonId,
+        Guid? episodeId,
+        Guid? userId)
     {
-        // We can read aggregates directly from Media table now!
-        var media = await _context.Media
+        var query = _context.Ratings
             .AsNoTracking()
-            .Select(m => new { m.AverageRating, m.RatingsCount })
-            .FirstOrDefaultAsync(); // Wait, we need to filter by ID
+            .Where(r => r.MediaId == mediaId && r.SeasonId == seasonId && r.EpisodeId == episodeId);
 
-        // Correct query
-        var mediaStats = await _context.Media
-            .Where(m => m.Id == mediaId)
-            .Select(m => new { m.AverageRating, m.RatingsCount })
-            .FirstOrDefaultAsync();
-
-        if (mediaStats == null) return new MediaRatingSummaryDto { MediaId = mediaId };
+        var ratingsCount = await query.CountAsync();
+        var averageRating = ratingsCount > 0
+            ? await query.AverageAsync(r => (double)r.Value)
+            : 0;
 
         int? userRating = null;
         if (userId.HasValue)
         {
-            var rating = await _context.Ratings
-                .AsNoTracking()
-                .Where(r => r.MediaId == mediaId && r.UserId == userId.Value)
-                .Select(r => r.Value)
+            userRating = await query
+                .Where(r => r.UserId == userId.Value)
+                .Select(r => (int?)r.Value)
                 .FirstOrDefaultAsync();
-            
-            if (rating != 0) userRating = rating; // Assuming database returns 0 for not found int? No, FirstOrDefaultAsync on int returns 0.
-            
-            // To be safe with int vs int?
-            var ratingEntity = await _context.Ratings
-                .AsNoTracking()
-                .FirstOrDefaultAsync(r => r.MediaId == mediaId && r.UserId == userId.Value);
-            userRating = ratingEntity?.Value;
         }
 
-        return new MediaRatingSummaryDto
+        return new TargetRatingSummaryDto
         {
             MediaId = mediaId,
-            AverageRating = mediaStats.AverageRating,
-            RatingsCount = mediaStats.RatingsCount,
+            SeasonId = seasonId,
+            EpisodeId = episodeId,
+            AverageRating = averageRating,
+            RatingsCount = ratingsCount,
             UserRating = userRating
         };
     }
 
-    public async Task<IEnumerable<RatingDto>> GetUserRatingsAsync(Guid userId)
+    private async Task RefreshMediaAggregateAsync(Guid mediaId)
     {
-        var ratings = await _context.Ratings
-            .AsNoTracking()
-            .Where(r => r.UserId == userId)
-            .OrderByDescending(r => r.CreatedAt)
+        var media = await _context.Media.FirstOrDefaultAsync(m => m.Id == mediaId && !m.IsDeleted);
+        if (media == null)
+            return;
+
+        var seasonIds = await _context.Seasons
+            .Where(s => s.TvSeriesId == mediaId && !s.IsDeleted)
+            .Select(s => s.Id)
             .ToListAsync();
 
-        return ratings.Select(MapToDto);
+        var episodeIds = await _context.Episodes
+            .Where(e => seasonIds.Contains(e.SeasonId) && !e.IsDeleted)
+            .Select(e => e.Id)
+            .ToListAsync();
+
+        var relevantRatings = await _context.Ratings
+            .AsNoTracking()
+            .Where(r =>
+                r.MediaId == mediaId ||
+                (r.SeasonId.HasValue && seasonIds.Contains(r.SeasonId.Value)) ||
+                (r.EpisodeId.HasValue && episodeIds.Contains(r.EpisodeId.Value)))
+            .Select(r => r.Value)
+            .ToListAsync();
+
+        media.RatingsCount = relevantRatings.Count;
+        media.AverageRating = relevantRatings.Count > 0 ? relevantRatings.Average() : 0;
+
+        await _context.SaveChangesAsync();
     }
 
-    private static RatingDto MapToDto(Rating rating)
+    private async Task<Guid?> ResolveOwnerMediaIdAsync(Guid? mediaId, Guid? seasonId, Guid? episodeId)
     {
-        return new RatingDto
+        if (mediaId.HasValue)
+            return mediaId.Value;
+
+        if (seasonId.HasValue)
+            return await _context.Seasons
+                .Where(s => s.Id == seasonId.Value && !s.IsDeleted)
+                .Select(s => (Guid?)s.TvSeriesId)
+                .FirstOrDefaultAsync();
+
+        if (episodeId.HasValue)
         {
-            Id = rating.Id,
-            Value = rating.Value,
-            UserId = rating.UserId,
-            MediaId = rating.MediaId,
-            CreatedAt = rating.CreatedAt
-        };
+            return await _context.Episodes
+                .Where(e => e.Id == episodeId.Value && !e.IsDeleted)
+                .Select(e => (Guid?)e.Season.TvSeriesId)
+                .FirstOrDefaultAsync();
+        }
+
+        return null;
     }
+
+    private async Task EnsureMediaExistsAsync(Guid mediaId)
+    {
+        var exists = await _context.Media.AnyAsync(m => m.Id == mediaId && !m.IsDeleted);
+        if (!exists)
+            throw new KeyNotFoundException($"Media {mediaId} not found.");
+    }
+
+    private async Task EnsureSeasonExistsAsync(Guid seasonId)
+    {
+        var exists = await _context.Seasons.AnyAsync(s => s.Id == seasonId && !s.IsDeleted);
+        if (!exists)
+            throw new KeyNotFoundException($"Season {seasonId} not found.");
+    }
+
+    private async Task EnsureEpisodeExistsAsync(Guid episodeId)
+    {
+        var exists = await _context.Episodes.AnyAsync(e => e.Id == episodeId && !e.IsDeleted);
+        if (!exists)
+            throw new KeyNotFoundException($"Episode {episodeId} not found.");
+    }
+
+    private static RatingDto MapToDto(Rating rating) => new()
+    {
+        Id = rating.Id,
+        Value = rating.Value,
+        UserId = rating.UserId,
+        MediaId = rating.MediaId,
+        SeasonId = rating.SeasonId,
+        EpisodeId = rating.EpisodeId,
+        CreatedAt = rating.CreatedAt,
+        UpdatedAt = rating.UpdatedAt
+    };
 }

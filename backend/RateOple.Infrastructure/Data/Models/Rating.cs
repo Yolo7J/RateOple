@@ -13,12 +13,16 @@ public class Rating
     [Required]
     public Guid UserId { get; set; }
 
-    [Required]
-    public Guid MediaId { get; set; }
+    public Guid? MediaId { get; set; }
+    public Guid? SeasonId { get; set; }
+    public Guid? EpisodeId { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation Properties
     public User User { get; set; } = null!;
-    public Media Media { get; set; } = null!;
+    public Media? Media { get; set; }
+    public Season? Season { get; set; }
+    public Episode? Episode { get; set; }
 }
