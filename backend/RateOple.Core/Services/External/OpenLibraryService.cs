@@ -2,7 +2,7 @@ using System.Text.Json;
 using RateOple.Core.Contracts;
 using RateOple.Core.Contracts.DTOs.Media;
 
-namespace RateOple.Infrastructure.Services;
+namespace RateOple.Core.Services;
 
 public class OpenLibraryService : IOpenLibraryService
 {

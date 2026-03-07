@@ -1,383 +1,187 @@
-# RateOple Project Architecture
+# RateOple Architecture (Current)
 
-## Executive Summary
-RateOple is a comprehensive media rating and social platform built using **Clean Architecture** on the backend (.NET 9) and a modern **SPA (Single Page Application)** on the frontend (Vite + React 19). The system supports user ratings, reviews, collections, groups, and social features for movies, books, and TV series.
+## 1. System Overview
+RateOple is a full-stack media platform for movies, books, and TV series.
 
-**Current Status:**
-- ✅ **Backend**: Complete 4-layer architecture with **PostgreSQL** database. Ratings slice implemented.
-- ✅ **Database**: PostgreSQL schema matching Prisma specification with 16+ entities, including constraints and aggregates.
-- ✅ **Authentication**: ASP.NET Core Identity with role-based authorization.
-- ⚠️ **Frontend**: Core architecture set up. Ratings UI integrated (`MediaCard`, `RatingStars`). Auth & other pages pending.
+- Frontend: React SPA (`frontend/`) served by Vite.
+- Backend: ASP.NET Core Web API (`backend/RateOple`) on .NET 9.
+- Database: PostgreSQL via EF Core/Npgsql.
+- Auth model: ASP.NET Core Identity + JWT in HttpOnly cookies + refresh-token rotation.
 
----
+High-level flow:
 
-## 1. High-Level System Design
-
-```mermaid
-graph TD
-    User[Client Browser] -->|HTTPS/JSON| Frontend[Frontend: Vite + React]
-    Frontend -->|REST API Calls| Backend[Backend API: .NET 9]
-    
-    subgraph "Backend System - Clean Architecture"
-        Backend -->|Controllers| API[RateOple API Layer]
-        API -->|Uses| Core[RateOple.Core<br/>Domain + Services]
-        API -->|Uses| Infra[RateOple.Infrastructure<br/>Data Access]
-        API -->|Uses| Const[RateOple.Constants<br/>Enums + Constants]
-        
-        Infra -->|Implements| Core
-        Infra -->|EF Core (Npgsql)| DB[(PostgreSQL Database)]
-        
-        Core -.-> Const
-        Infra -.-> Const
-    end
+```text
+Browser (React) -> REST API (.NET) -> EF Core -> PostgreSQL
+                    \-> TMDB API (server-to-server)
+                    \-> Open Library API (server-to-server)
 ```
 
 ---
 
-## 2. Frontend Architecture
+## 2. Repository Layout
 
-### Tech Stack
-- React 19.2.0, Vite 7.2.4, React Router DOM 7.9.6
-- Axios 1.13.2 — `withCredentials: true`, base URL `http://localhost:5113/api`
-- Context API: ThemeContext, LanguageContext, **AuthContext**
+```text
+backend/
+  RateOple/                # API entrypoint, controllers, DI, middleware setup
+  RateOple.Core/           # service implementations + contracts/DTOs
+  RateOple.Infrastructure/ # DbContext, entities, EF configs, migrations, middleware, security helpers
+  RateOple.Constants/      # enums and policy/role constants
 
-### Directory Structure
-```
-frontend/src/
-├── app/               # AppRouter.jsx, routes.jsx
-├── components/
-│   ├── auth/          # AuthCard, LoginForm, RegisterForm
-│   ├── layout/        # Header, Footer, Sidebar, Layout
-│   ├── ui/            # Button, Card, RatingStars, ThemeToggle, LanguageToggle
-│   └── media/         # MediaCard, MediaGrid, MediaFilters
-├── pages/             # Home, LoginPage, RegisterPage
-├── context/           # ThemeContext, LanguageContext, AuthContext
-├── hooks/             # useTheme, useLanguage
-├── services/          # api.js, authService.js, ratingService.js
-├── locales/           # en.json, bg.json
-├── App.jsx
-└── main.jsx           # ThemeProvider > LanguageProvider > BrowserRouter > AuthProvider
+frontend/
+  src/app/                 # route table + AppRouter
+  src/pages/               # page-level screens
+  src/components/          # reusable UI and layout components
+  src/services/            # Axios client + API wrappers
+  src/context/             # Auth, Theme, Language, MediaCart state
 ```
 
 ---
 
-## 3. Backend Architecture (.NET Clean Architecture)
+## 3. Backend Architecture
 
-### Technology Stack
-- **Framework**: .NET 9 (ASP.NET Core Web API)
-- **ORM**: Entity Framework Core 9 (Npgsql Provider)
-- **Database**: PostgreSQL
-- **Authentication**: ASP.NET Core Identity with JWT support
-- **Authorization**: Policy-based with role hierarchies
-- **API Documentation**: OpenAPI/Swagger
-- **Architecture Pattern**: Clean Architecture (4-layer)
+### 3.1 Composition and Startup
+`backend/RateOple/Program.cs` wires the app through extension methods:
 
-### Solution Structure
+- Database: `AddDatabase` -> `ApplicationDbContext` with Npgsql.
+- Identity: `AddIdentityConfiguration` with custom `User` (`IdentityUser<Guid>`).
+- Authorization: role/policy registration (`RequireAdmin`, `RequireModerator`, etc.).
+- Authentication: JWT bearer configured to read `accessToken` from cookie.
+- Antiforgery: header `X-CSRF-TOKEN`, cookie `X-CSRF-COOKIE`.
+- App services: domain services + HTTP clients for TMDB/Open Library.
+- API: Controllers + OpenAPI.
 
-#### **Layer 1: RateOple (API/Presentation Layer)**
-*Entry point - handles HTTP requests, dependency injection, middleware*
+Startup also runs `SeedDatabaseAsync()` to seed roles, superadmin, and genres.
 
-**Responsibilities:**
-- API Controllers (`FollowsController`, `MediaController`, `RatingsController`)
-- Program.cs (Service registration: `IRatingService`, `Npgsql`, Middleware)
-##### Extension Methods (Program.cs)
-- `AddDatabase` — Npgsql + EF Core
-- `AddIdentityConfiguration` — ASP.NET Identity
-- `AddJwtAuthentication` — JWT Bearer
-- `AddCsrfProtection` — Antiforgery, `CookieSecurePolicy.SameAsRequest`
-- `AddApplicationServices` — FollowService, VisibilityService, MediaService, RatingService, **JwtService**
-- `AddCorsConfiguration` — `http://localhost:5173` with credentials
-- `ConfigureMiddleware` — UseRouting → SecurityHeaders → CORS → Authentication → Antiforgery (respects `[IgnoreAntiforgeryToken]`) → Authorization → MapControllers
-#####
-- Authentication & authorization configuration
-- CORS policy configuration
+### 3.2 Runtime Middleware Order
+Configured in `Extensions/MiddlewareExtensions.cs`:
 
-**Dependencies:** → Core, Infrastructure, Constants
+1. OpenAPI (development)
+2. HTTPS redirection
+3. Security headers middleware
+4. CORS (`http://localhost:5173`, credentials enabled)
+5. Routing
+6. Authentication
+7. Manual antiforgery validation for mutating verbs (unless `[IgnoreAntiforgeryToken]`)
+8. Authorization
+9. Controller endpoints
 
----
+### 3.3 Layering (as implemented)
 
-#### **Layer 2: RateOple.Core (Domain Layer)**
-*Enterprise logic and types - has NO dependencies on other projects*
+- `RateOple` (API layer): controllers and host configuration.
+- `RateOple.Core`: service logic + contracts/DTOs.
+- `RateOple.Infrastructure`: EF models/configurations/migrations and security/middleware helpers.
+- `RateOple.Constants`: shared enums/constants.
 
-**Structure:**
-```
+Note: `RateOple.Core` currently references `RateOple.Infrastructure` (project reference), so the code is not strictly dependency-inverted clean architecture; it is a pragmatic layered monolith.
 
-RateOple.Core/
-├── Contracts/
-│   ├── DTOs/
-        ├── Auth 
-        |        Core DTOs
-        |        - `LoginDto`: `{ Email, Password }`
-        |        - `RegisterDto`: `{ Username, Email, Password }`
-│   │   ├── MediaDetailsDto.cs       # Detailed media info
-│   │   ├── MediaListDto.cs          # List view media info 
-│   │   ├── MediaRatingSummaryDto.cs # Rating aggregates 
-│   │   └── RatingDto.cs             # Individual ratings
-│   ├── IFollowService.cs
-│   ├── IMediaService.cs
-│   ├── IRatingService.cs
-│   └── IVisibilityService.cs
-    └── IJwtService.cs
-└── Services/
-    ├── FollowService.cs
-    ├── MediaService.cs
-    ├── RatingService.cs     # Handles logic + aggregation
-    └── VisibilityService.cs
-    └── JwtService.cs - generates access + refresh tokens
-```
+### 3.4 Implemented API Slices
 
-**Key Services:**
-- `IRatingService`: Rate media, delete ratings, calculate aggregates.
-- `IMediaService`: Get media lists and details.
-- `IFollowService`: User follow logic.
-
-**Dependencies:** None (pure domain layer)
+- Auth (`/api/auth`): register, login, refresh, logout, me.
+- Media (`/api/media`): list/detail/genres, create/update/delete, bulk create.
+- TV Series management (`/api/media/{id}/seasons...`): season/episode CRUD (soft-delete based).
+- Ratings (`/api/media/{mediaId}/ratings`): create/delete + summary.
+- Follow graph (`/api/follows`): follow/unfollow/status.
+- External source endpoints:
+  - `/api/media/tmdb/*` and `/api/tmdb/*`
+  - `/api/media/books/*` (Open Library proxy)
+- CSRF token endpoint: `/api/csrf`.
 
 ---
 
-#### **Layer 3: RateOple.Infrastructure (Data Access Layer)**
-*Implements Core contracts - handles database operations*
+## 4. Data Architecture
 
-**Structure:**
-```
-RateOple.Infrastructure/
-├── Data/
-│   ├── ApplicationDbContext.cs
-│   ├── Models/              
-│   │   ├── Media.cs (Base), Movie.cs, Book.cs, TvSeries.cs, Episode.cs, Season.cs
-│   │   ├── User.cs, Follow.cs
-│   │   ├── Rating.cs, Review.cs, Comment.cs
-│   │   ├── Collection.cs, CollectionItem.cs
-│   │   ├── Group.cs, GroupMembership.cs, GroupPost.cs, GroupMedia.cs
-│   ├── Configurations/      
-│   │   ├── MediaConfiguration.cs  # Aggregates config + Indexes
-│   │   ├── RatingConfiguration.cs # Check Constraint (1-10)
-│   │   ├── UserConfiguration.cs   # Unique Username Constraint
-│   │   └── RefreshTokenConfiguration.cs # PK + FK mapping
-│   │   └── ... (Configs for all entities)
-├── Migrations/          # PostgreSQL migrations
-├── Middleware
-    ├── SecurityHeadersMiddleware.cs
-    ├── SecurityHeadersExtension.cs
-├── Security
-    ├── TokenHasher.cs
-```
+### 4.1 Persistence Model
+`ApplicationDbContext` includes Identity tables plus core domain sets:
 
-**Database Provider:** `Npgsql.EntityFrameworkCore.PostgreSQL`
+- Media hierarchy: `Media`, `Movie`, `Book`, `TvSeries`, `Season`, `Episode`
+- Discovery: `Genre`, `MediaGenre`
+- Social/content: `Follow`, `Rating`, `Review`, `Comment`
+- Community: `Group`, `GroupMembership`, `GroupPost`, `GroupMedia`
+- Library: `Collection`, `CollectionItem`
+- Auth sessions: `RefreshToken`
 
-**Dependencies:** → Core
+### 4.2 Key Modeling Choices
+
+- Soft delete is used for `Media`, `Season`, and `Episode`.
+- `Media` stores denormalized rating aggregates (`AverageRating`, `RatingsCount`) maintained by `RatingService`.
+- EF configuration classes in `Infrastructure/Data/Configurations` define constraints and indexes.
+- Migrations are tracked in `Infrastructure/Migrations`.
 
 ---
 
-#### **Layer 4: RateOple.Constants (Shared Constants)**
-*Enums and constant values used across all layers*
+## 5. Authentication and Security
 
-Includes `MediaType`, `UserVisibility`, `RoleConstants`, etc.
+- Login creates short-lived JWT access token and long-lived refresh token.
+- Both tokens are stored as HttpOnly cookies.
+- Refresh tokens are hashed before DB storage (`TokenHasher`).
+- Refresh endpoint revokes old token and rotates both tokens.
+- Security headers middleware sets CSP, frame/content/referrer/permissions policies, HSTS (HTTPS only), and strips server banners.
+- CORS is credential-enabled for local frontend origin.
 
----
+Antiforgery model:
 
-## 4. Database Schema
-
-### Entity Relationship Diagram
-(Standard ERD + Aggregates)
-
-### Key Relationships & Constraints
-
-**User Relationships:**
-- One-to-Many: User → {Ratings, Reviews, Collections, GroupMemberships, OwnedGroups, GroupPosts, Comments}
-- Self-Referencing Many-to-Many: User ↔ User (via Follow)
-
-**New Constraints & Features:**
-- **Unique Users**: `NormalizedUserName` is strictly unique at the database level.
-- **Rating Validation**: SQL Check Constraint on `Rating` table (`"Value" >= 1 AND "Value" <= 10`).
-- **Media Aggregates**: Denormalized `AverageRating` (double) and `RatingsCount` (int) on `Media` table for performance.
-- **Indexes**: Added indexes for `AverageRating` for sorting "Top Rated" media.
-- **Refresh Tokens**: Dedicated `RefreshTokens` table for JWT session management with cascade delete on User removal.
-
-**Polymorphic Relationships (Comment):**
-- Comments use nullable foreign keys (`ReviewId?`, `GroupPostId?`, `ParentCommentId?`).
+- Global middleware enforces CSRF on mutating methods.
+- Endpoints explicitly marked `[IgnoreAntiforgeryToken]` bypass that check.
+- Dedicated endpoint exists to fetch token (`/api/csrf`).
 
 ---
 
-## 5. Authentication & Authorization
+## 6. Frontend Architecture
 
-### Identity Configuration
-- **User Model**: Custom `User` entity inheriting from `IdentityUser<Guid>`
-- **Role Model**: `IdentityRole<Guid>`
-- **Password Policy**: Min 6 chars, requires digit, upper, lower case
+### 6.1 App Shell and Routing
 
-### Role Hierarchy & Policies
-- **Roles**: SuperAdmin > Admin > Moderator > User
-- **Policies**: RequireAdmin, RequireModerator, CanModerateContent, CanManageGroups
+- Root providers in `src/main.jsx`:
+  - `ThemeProvider` -> `LanguageProvider` -> `BrowserRouter` -> `AuthProvider` -> `MediaCartProvider`
+- `Header` and `Footer` wrap all routes globally.
+- Route mapping is centralized in `src/app/routes.jsx`.
 
-### 5.1 Auth Flow
-1. **Register** `POST /api/auth/register` → creates user, assigns "User" role
-2. **Login** `POST /api/auth/login` → finds by email → issues `accessToken` (15min) + `refreshToken` (7d) as HttpOnly cookies → returns `{ id, userName, roles }`
-3. **Refresh** `POST /api/auth/refresh` → validates hash → rotates both tokens
-4. **Logout** `POST /api/auth/logout` → revokes token → clears cookies
+Current routed pages:
 
-**Cookie policy:** HttpOnly, SameSite=Strict, Secure=false in dev / true in prod.
+- `/` home
+- `/login`, `/register`
+- `/media` list
+- `/media/add`
+- `/media/:id`
+- `/media/:id/seasons`
+- `/cart`
 
----
+### 6.2 State and Service Boundaries
 
+- `AuthContext`: boot-time session restore (`/auth/me`, fallback `/auth/refresh`), login/register/logout actions.
+- `MediaCartContext`: localStorage-backed staging area for bulk media creation.
+- `services/api.js`: shared Axios instance (`withCredentials: true`, base URL `http://localhost:5113/api`).
+- Feature services (`mediaService`, `tvSeriesService`, `ratingService`, `tmdbService`) wrap endpoint calls.
 
-## 6. API Endpoints
+### 6.3 Current Feature Coverage
 
-| Controller | Method | Route | Description |
-|---|---|---|---|
-| Auth | POST | `/api/auth/register` | Create account |
-| Auth | POST | `/api/auth/login` | Login → cookies |
-| Auth | POST | `/api/auth/refresh` | Rotate tokens |
-| Auth | POST | `/api/auth/logout` | Revoke + clear |
-| Ratings | POST | `/api/media/{id}/ratings` | Rate (1–10) |
-| Ratings | DELETE | `/api/media/{id}/ratings` | Remove rating |
-| Ratings | GET | `/api/media/{id}/ratings/summary` | Aggregate |
-| Follows | POST | `/api/follows/{userId}` | Follow user |
-| Follows | DELETE | `/api/follows/{userId}` | Unfollow |
-| Follows | GET | `/api/follows/{userId}/status` | Check status |
-| Media | GET | `/api/media` | List all |
-| Media | GET | `/api/media/{id}` | Details |
+Implemented UI flows:
+
+- Media browsing with filters/sort/search/pagination.
+- Media detail view.
+- Add media workflow with TMDB/Open Library assisted autofill.
+- Cart-based bulk submission.
+- TV season/episode manager with TMDB preview/import support.
+- Login/register and session-aware header.
 
 ---
 
+## 7. End-to-End Request Flow (Typical)
 
-## 7. Configuration
+Example: user rates a media item.
 
-### Connection String (appsettings.json)
-```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Port=5432;Database=RateOple;Username=postgres;Password="
-  },
-  "Jwt": {
-    "Key": "",
-    "Issuer": "RateOple",
-    "Audience": "RateOple"
-  },
-  "AllowedHosts": "*"
-}
-```
-
-### CORS Policy
-- **Allowed Origin**: `http://localhost:5173` (Vite dev server)
-- **Allow Credentials**: `true` (Enabled for Identity cookies/auth)
+1. React calls `POST /api/media/{id}/ratings` with credentials.
+2. API authenticates via JWT cookie.
+3. Antiforgery middleware validates request unless endpoint is opted out.
+4. `RatingsController` delegates to `RatingService`.
+5. Service upserts user rating, recalculates media aggregates, persists via EF Core.
+6. Updated summary is available via `GET /api/media/{id}/ratings/summary`.
 
 ---
 
-## 8. Development Workflow
+## 8. Architecture Notes (Current Reality)
 
-### Building the Project
-```bash
-cd backend
-dotnet build RateOple.sln
-```
+- The codebase is modular and layered, but not fully strict clean architecture because Core depends on Infrastructure.
+- API surface is ahead of frontend in some slices (e.g., groups/collections/reviews entities exist but are not yet first-class UI flows).
+- There are two TMDB entrypoint styles (`/api/tmdb/*` and `/api/media/tmdb/*`); both are currently used by frontend services/pages.
 
-### Running the API
-```bash
-cd backend/RateOple
-dotnet run
-```
-**Swagger UI**: `https://localhost:7167/swagger`
-
-### Running the Frontend
-```bash
-cd frontend
-npm run dev
-```
-**Dev Server**: `http://localhost:5173`
-
-### Creating Migrations (Postgres)
-```bash
-cd backend
-dotnet ef migrations add <MigrationName> --project RateOple.Infrastructure --startup-project RateOple
-dotnet ef database update --project RateOple.Infrastructure --startup-project RateOple
-```
-
----
-
-## 9. Next Steps
-
-# RateOple — Feature Roadmap
-
-Priority levels: 🔴 Crucial | 🟡 Important | 🟢 Second grade
-
----
-
-## ✅ Done
-
-- [x] Backend Clean Architecture (4 layers)
-- [x] PostgreSQL schema (16+ entities)
-- [x] JWT auth via HttpOnly cookies (register, login, logout, refresh)
-- [x] Frontend AuthContext + forms connected to backend
-- [x] Ratings UI (RatingStars, MediaCard)
-
----
-
-## 🔴 Crucial — Do Next
-Done
-### 1. Logout button in Header // Done
-The `AuthContext` already has `logout()`. The Header needs a logout button visible when `user` is not null.
-- Frontend only: update `Header.jsx` to read `useAuth()` and show Logout button when logged in.
-### 2. Media Management (Add & View) // Partially done - have to Make it admin-only and to make the book adding with the third part API availble
-Users need to browse media. Admins add it. This is the core of the product.
-
-**Backend:**
-- `MediaController` — extend `POST /api/media` (admin only, `[Authorize(Policy = "RequireAdmin")]`)
-- DTOs: `CreateMovieDto`, `CreateBookDto`, `CreateTvSeriesDto`
-- Service methods: `AddMedia`, `GetAllMedia` (with filters/pagination), `GetMediaById`
-
-**Frontend:**
-- `MediaListPage` — grid of all media with filters (type, genre, rating)
-- `MediaDetailPage` — single media with rating, reviews
-- Admin-only: `AddMediaForm` — select type (Movie/Book/TvSeries), fill fields, submit
-
----
-
-## 🟡 Important
-
-### 3. Admin Panel
-Only admins can add media in the finished product.
-- Frontend: `/admin` route, protected by role check (`user.roles.includes("Admin")`)
-- Includes: Add Media form, user management (list users, change roles)
-- Backend: admin-only endpoints already covered by `RequireAdmin` policy
-
-### 4. Follow System
-Already modeled in DB (`Follow` table) and `FollowsController` exists.
-- Frontend: Follow/Unfollow button on user profiles
-- `UserProfilePage` — shows user's ratings, reviews, collections
-- Feed: activity from followed users
-
-### 5. Collections ("My Christmas Watch")
-Users group any media into named collections.
-- Already modeled: `Collection`, `CollectionItem`
-- Backend: `CollectionsController` (CRUD)
-- Frontend: `CollectionPage`, "Add to Collection" button on `MediaDetailPage`
-
----
-
-## 🟢 Second Grade (after above is stable)
-
-### 6. Account Settings in Header
-- Dropdown from avatar/username when logged in
-- Links to: Profile, Settings, Logout
-- `AccountSettingsPage`: change username, email, password, avatar, theme preference
-
-### 7. Groups
-Users with shared interests join or create groups.
-- Already modeled: `Group`, `GroupMembership`, `GroupPost`, `GroupMedia`
-- Backend: `GroupsController` (create, join, post, add media)
-- Frontend: `GroupsPage`, `GroupDetailPage`
-
----
-
-## Open Questions / Suggestions
-
-1. **Media images** — where do cover images come from? Options: admin uploads a URL, integrate a public API (TMDB for movies, Open Library for books), or file upload to S3/local storage. Recommend TMDB + Open Library to avoid manual data entry.
-
-2. **Pagination** — `GET /api/media` will grow large fast. Add cursor or page-based pagination before the media list is built.
-
-3. **Route guards** — currently a logged-in user can still visit `/login` and `/register`. Add a simple guard: if `user` exists, redirect away from auth pages.
-
-4. **Token refresh on 401** — the Axios response interceptor currently just logs a warning on 401. It should automatically call `POST /api/auth/refresh` and retry the original request before logging the user out.
-
-5. **Review system** — not yet planned in detail. Needed alongside media pages: `ReviewsController`, `ReviewService`, review form on `MediaDetailPage`.
+This document reflects the repository state as of **March 7, 2026**.

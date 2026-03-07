@@ -1,7 +1,5 @@
 using RateOple.Core.Contracts;
 using RateOple.Core.Services;
-using RateOple.Infrastructure.Security;
-using RateOple.Infrastructure.Services;
 
 namespace RateOple.Extensions;
 
