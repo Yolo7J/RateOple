@@ -10,11 +10,16 @@ public class RatingService : IRatingService
 {
     private readonly ApplicationDbContext _context;
     private readonly IInteractionService _interactionService;
+    private readonly IUserTasteService _userTasteService;
 
-    public RatingService(ApplicationDbContext context, IInteractionService interactionService)
+    public RatingService(
+        ApplicationDbContext context,
+        IInteractionService interactionService,
+        IUserTasteService userTasteService)
     {
         _context = context;
         _interactionService = interactionService;
+        _userTasteService = userTasteService;
     }
 
     public Task<RatingDto> RateMediaAsync(Guid userId, Guid mediaId, int value) =>
@@ -143,6 +148,8 @@ public class RatingService : IRatingService
         var ownerMediaId = await ResolveOwnerMediaIdAsync(mediaId, seasonId, episodeId);
         if (ownerMediaId.HasValue)
             await RefreshMediaAggregateAsync(ownerMediaId.Value);
+        if (ownerMediaId.HasValue)
+            await _userTasteService.RecalculateForMediaContextAsync(userId, ownerMediaId.Value);
 
         if (isNewRating)
             await _interactionService.TrackRatingCreatedAsync(userId, mediaId, seasonId, episodeId);
@@ -175,6 +182,8 @@ public class RatingService : IRatingService
         var ownerMediaId = await ResolveOwnerMediaIdAsync(mediaId, seasonId, episodeId);
         if (ownerMediaId.HasValue)
             await RefreshMediaAggregateAsync(ownerMediaId.Value);
+        if (ownerMediaId.HasValue)
+            await _userTasteService.RecalculateForMediaContextAsync(userId, ownerMediaId.Value);
     }
 
     private async Task<TargetRatingSummaryDto> GetSummaryAsync(

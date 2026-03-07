@@ -18,6 +18,7 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, 
     // Genres
     public DbSet<Genre> Genres { get; set; }
     public DbSet<MediaGenre> MediaGenres { get; set; }
+    public DbSet<UserGenreScore> UserGenreScores { get; set; }
 
     // User interactions
     public DbSet<Follow> Follows { get; set; }

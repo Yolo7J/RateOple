@@ -11,15 +11,18 @@ public class ReviewService : IReviewService
     private readonly ApplicationDbContext _context;
     private readonly IRatingService _ratingService;
     private readonly IInteractionService _interactionService;
+    private readonly IUserTasteService _userTasteService;
 
     public ReviewService(
         ApplicationDbContext context,
         IRatingService ratingService,
-        IInteractionService interactionService)
+        IInteractionService interactionService,
+        IUserTasteService userTasteService)
     {
         _context = context;
         _ratingService = ratingService;
         _interactionService = interactionService;
+        _userTasteService = userTasteService;
     }
 
     public async Task<ReviewDto> CreateReviewAsync(Guid userId, CreateReviewDto dto)
@@ -62,6 +65,7 @@ public class ReviewService : IReviewService
 
         _context.Reviews.Add(review);
         await _context.SaveChangesAsync();
+        await _userTasteService.RecalculateForMediaContextAsync(userId, review.MediaId);
         await _interactionService.TrackReviewCreatedAsync(userId, rating.MediaId, rating.SeasonId, rating.EpisodeId);
         return Map(review);
     }
@@ -85,6 +89,7 @@ public class ReviewService : IReviewService
         review.Content = dto.Content.Trim();
         review.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
+        await _userTasteService.RecalculateForMediaContextAsync(userId, review.MediaId);
 
         return Map(review);
     }
@@ -101,6 +106,7 @@ public class ReviewService : IReviewService
 
         _context.Reviews.Remove(review);
         await _context.SaveChangesAsync();
+        await _userTasteService.RecalculateForMediaContextAsync(userId, review.MediaId);
 
         if (!deleteRating)
             return;

@@ -36,5 +36,6 @@ namespace RateOple.Infrastructure.Data.Models
         public ICollection<GroupPost> GroupPosts { get; set; } = new List<GroupPost>();
         public ICollection<Comment> Comments { get; set; } = new List<Comment>();
         public ICollection<MediaInteraction> MediaInteractions { get; set; } = new List<MediaInteraction>();
+        public ICollection<UserGenreScore> GenreScores { get; set; } = new List<UserGenreScore>();
     }
 }

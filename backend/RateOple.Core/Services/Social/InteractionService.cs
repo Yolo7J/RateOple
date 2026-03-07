@@ -9,10 +9,12 @@ namespace RateOple.Core.Services;
 public class InteractionService : IInteractionService
 {
     private readonly ApplicationDbContext _context;
+    private readonly IUserTasteService _userTasteService;
 
-    public InteractionService(ApplicationDbContext context)
+    public InteractionService(ApplicationDbContext context, IUserTasteService userTasteService)
     {
         _context = context;
+        _userTasteService = userTasteService;
     }
 
     public Task TrackMediaOpenedAsync(Guid userId, Guid mediaId) =>
@@ -55,6 +57,10 @@ public class InteractionService : IInteractionService
 
         _context.MediaInteractions.Add(interaction);
         await _context.SaveChangesAsync();
+
+        var ownerMediaId = await ResolveMediaIdAsync(mediaId, seasonId, episodeId);
+        if (ownerMediaId.HasValue)
+            await _userTasteService.RecalculateForMediaContextAsync(userId, ownerMediaId.Value);
     }
 
     private async Task EnsureTargetExistsAsync(Guid? mediaId, Guid? seasonId, Guid? episodeId)
@@ -81,5 +87,29 @@ public class InteractionService : IInteractionService
             if (!episodeExists)
                 throw new KeyNotFoundException($"Episode {episodeId.Value} not found.");
         }
+    }
+
+    private async Task<Guid?> ResolveMediaIdAsync(Guid? mediaId, Guid? seasonId, Guid? episodeId)
+    {
+        if (mediaId.HasValue)
+            return mediaId.Value;
+
+        if (seasonId.HasValue)
+        {
+            return await _context.Seasons
+                .Where(s => s.Id == seasonId.Value && !s.IsDeleted)
+                .Select(s => (Guid?)s.TvSeriesId)
+                .FirstOrDefaultAsync();
+        }
+
+        if (episodeId.HasValue)
+        {
+            return await _context.Episodes
+                .Where(e => e.Id == episodeId.Value && !e.IsDeleted)
+                .Select(e => (Guid?)e.Season.TvSeriesId)
+                .FirstOrDefaultAsync();
+        }
+
+        return null;
     }
 }

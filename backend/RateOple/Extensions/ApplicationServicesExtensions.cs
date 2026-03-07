@@ -9,6 +9,7 @@ public static class ApplicationServicesExtensions
     {
         services.AddScoped<IFollowService, FollowService>();
         services.AddScoped<IInteractionService, InteractionService>();
+        services.AddScoped<IUserTasteService, UserTasteService>();
         services.AddScoped<IVisibilityService, VisibilityService>();
         services.AddScoped<ITvSeriesService, TvSeriesService>();
         services.AddScoped<IMediaService, MediaService>();
