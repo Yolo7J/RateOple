@@ -12,6 +12,7 @@ public static class ApplicationServicesExtensions
         services.AddScoped<ITvSeriesService, TvSeriesService>();
         services.AddScoped<IMediaService, MediaService>();
         services.AddScoped<IRatingService, RatingService>();
+        services.AddScoped<IReviewService, ReviewService>();
         services.AddScoped<IJwtService, JwtService>();
         services.AddHttpClient<ITmdbService, TmdbService>();
         services.AddHttpClient<IOpenLibraryService, OpenLibraryService>(); 

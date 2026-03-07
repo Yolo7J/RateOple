@@ -30,5 +30,14 @@ public class ReviewConfiguration : IEntityTypeConfiguration<Review>
             .WithMany(m => m.Reviews)
             .HasForeignKey(r => r.MediaId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // One Rating -> One Review
+        builder.HasOne(r => r.Rating)
+            .WithOne(r => r.Review)
+            .HasForeignKey<Review>(r => r.RatingId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasIndex(r => r.RatingId)
+            .IsUnique();
     }
 }

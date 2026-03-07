@@ -25,4 +25,5 @@ public class Rating
     public Media? Media { get; set; }
     public Season? Season { get; set; }
     public Episode? Episode { get; set; }
+    public Review? Review { get; set; }
 }
