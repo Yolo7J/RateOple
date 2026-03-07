@@ -17,6 +17,7 @@ public static class ApplicationServicesExtensions
         services.AddScoped<IJwtService, JwtService>();
         services.AddHttpClient<ITmdbService, TmdbService>();
         services.AddHttpClient<IOpenLibraryService, OpenLibraryService>(); 
+        services.AddScoped<ITmdbImportService, TmdbImportService>();
         return services;
     }
 }

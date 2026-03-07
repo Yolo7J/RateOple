@@ -22,64 +22,76 @@ public class MediaService : IMediaService
 
     public async Task<PagedResultDto<MediaListItemDto>> GetAllAsync(MediaQueryDto query)
     {
-        var q = _db.Media
-            .Where(m => !m.IsDeleted)                           // soft-delete filter
-            .Include(m => m.MediaGenres).ThenInclude(mg => mg.Genre)
-            .AsQueryable();
-
-        if (query.Types != null && query.Types.Count > 0)
+        try
         {
-            var types = query.Types
-                .Select(t => Enum.TryParse<MediaType>(t, true, out var mt) ? mt : (MediaType?)null)
-                .Where(t => t != null)
-                .Select(t => t!.Value)
-                .ToList();
+            var q = _db.Media
+                .Where(m => !m.IsDeleted)
+                .Include(m => m.MediaGenres).ThenInclude(mg => mg.Genre)
+                .AsQueryable();
 
-            if (types.Count > 0)
-                q = q.Where(m => types.Contains(m.Type));
-        }
-
-        if (query.GenreIds != null && query.GenreIds.Count > 0)
-            q = q.Where(m => m.MediaGenres.Any(mg => query.GenreIds.Contains(mg.GenreId)));
-
-        if (!string.IsNullOrWhiteSpace(query.Search))
-            q = q.Where(m => m.Title.ToLower().Contains(query.Search.ToLower()));
-
-        q = (query.SortBy, query.SortDir) switch
-        {
-            ("year",   "asc")  => q.OrderBy(m => m.ReleaseDate),
-            ("year",   "desc") => q.OrderByDescending(m => m.ReleaseDate),
-            ("title",  "asc")  => q.OrderBy(m => m.Title),
-            ("title",  "desc") => q.OrderByDescending(m => m.Title),
-            ("rating", "asc")  => q.OrderBy(m => m.AverageRating),
-            _                  => q.OrderByDescending(m => m.AverageRating),
-        };
-
-        var totalCount = await q.CountAsync();
-
-        var items = await q
-            .Skip((query.Page - 1) * query.PageSize)
-            .Take(query.PageSize)
-            .Select(m => new MediaListItemDto
+            if (query.Types != null && query.Types.Count > 0)
             {
-                Id            = m.Id,
-                Type          = m.Type.ToString(),
-                Title         = m.Title,
-                ReleaseYear   = m.ReleaseDate != null ? m.ReleaseDate.Value.Year : null,
-                CoverUrl      = m.CoverUrl,
-                AverageRating = m.AverageRating,
-                RatingsCount  = m.RatingsCount,
-                Genres        = m.MediaGenres.Select(mg => mg.Genre.Name).ToList(),
-            })
-            .ToListAsync();
+                var types = query.Types
+                    .Select(t => Enum.TryParse<MediaType>(t, true, out var mt) ? mt : (MediaType?)null)
+                    .Where(t => t != null)
+                    .Select(t => t!.Value)
+                    .ToList();
 
-        return new PagedResultDto<MediaListItemDto>
+                if (types.Count > 0)
+                    q = q.Where(m => types.Contains(m.Type));
+            }
+
+            if (query.GenreIds != null && query.GenreIds.Count > 0)
+                q = q.Where(m => m.MediaGenres.Any(mg => query.GenreIds.Contains(mg.GenreId)));
+
+            if (!string.IsNullOrWhiteSpace(query.Search))
+                q = q.Where(m => m.Title.ToLower().Contains(query.Search.ToLower()));
+
+            q = (query.SortBy, query.SortDir) switch
+            {
+                ("year",   "asc")  => q.OrderBy(m => m.ReleaseDate),
+                ("year",   "desc") => q.OrderByDescending(m => m.ReleaseDate),
+                ("title",  "asc")  => q.OrderBy(m => m.Title),
+                ("title",  "desc") => q.OrderByDescending(m => m.Title),
+                ("rating", "asc")  => q.OrderBy(m => m.AverageRating),
+                _                  => q.OrderByDescending(m => m.AverageRating),
+            };
+
+            var totalCount = await q.CountAsync();
+
+            var items = await q
+                .Skip((query.Page - 1) * query.PageSize)
+                .Take(query.PageSize)
+                .Select(m => new MediaListItemDto
+                {
+                    Id            = m.Id,
+                    Type          = m.Type.ToString(),
+                    Title         = m.Title,
+                    ReleaseYear   = m.ReleaseDate != null ? m.ReleaseDate.Value.Year : null,
+                    CoverUrl      = m.CoverUrl,
+                    AverageRating = m.AverageRating,
+                    RatingsCount  = m.RatingsCount,
+                    Genres        = m.MediaGenres
+                        .Where(mg => mg.Genre != null && mg.Genre.Name != null)
+                        .Select(mg => mg.Genre.Name!)
+                        .ToList(),
+                })
+                .ToListAsync();
+
+            return new PagedResultDto<MediaListItemDto>
+            {
+                Items      = items,
+                TotalCount = totalCount,
+                Page       = query.Page,
+                PageSize   = query.PageSize,
+            };
+        }
+        catch (Exception ex)
         {
-            Items      = items,
-            TotalCount = totalCount,
-            Page       = query.Page,
-            PageSize   = query.PageSize,
-        };
+            // Log to console for now; in production use a logger
+            Console.WriteLine($"[MediaService.GetAllAsync] ERROR: {ex.Message}\n{ex.StackTrace}");
+            throw new Exception("A server error occurred while fetching media. Please check the server logs for details.");
+        }
     }
 
     public async Task<MediaDetailDto?> GetByIdAsync(Guid id)

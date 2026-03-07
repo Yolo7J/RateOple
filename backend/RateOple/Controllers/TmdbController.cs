@@ -11,10 +11,12 @@ namespace RateOple.Controllers;
 public class TmdbController : ControllerBase
 {
     private readonly ITmdbService _tmdb;
+    private readonly ITmdbImportService _import;
 
-    public TmdbController(ITmdbService tmdb)
+    public TmdbController(ITmdbService tmdb, ITmdbImportService import)
     {
         _tmdb = tmdb;
+        _import = import;
     }
 
     // GET /api/tmdb/search?query=inception&type=movie
@@ -41,5 +43,15 @@ public class TmdbController : ControllerBase
 
         var result = await _tmdb.GetDetailsAsync(tmdbId, type);
         return result == null ? NotFound() : Ok(result);
+    }
+
+    // POST /api/tmdb/import-series/{tmdbId}
+    [HttpPost("import-series/{tmdbId:int}")]
+    [Authorize]
+    [IgnoreAntiforgeryToken]
+    public async Task<IActionResult> ImportSeries(int tmdbId)
+    {
+        var id = await _import.ImportSeriesAsync(tmdbId);
+        return Ok(new { mediaId = id });
     }
 }
