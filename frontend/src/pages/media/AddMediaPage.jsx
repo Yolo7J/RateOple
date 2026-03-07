@@ -15,30 +15,40 @@ const AddMediaPage = () => {
     const [mediaType, setMediaType] = useState(null);   // 'Movie' | 'Book' | 'TvSeries'
     const [genres, setGenres] = useState([]);
 
-    // Search state — shared for TMDB and OL
+    // Search state
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [searchLoading, setSearchLoading] = useState(false);
     const [searchError, setSearchError] = useState(null);
     const searchTimeout = useRef(null);
 
-    // Form state — pre-populated from TMDB / OL or filled manually
+    // Holds the raw TMDB series details (including tmdbId) when a TvSeries is selected
+    const [selectedTmdbSeries, setSelectedTmdbSeries] = useState(null);
+
+    // Form state
     const [form, setForm] = useState({
         title: '', description: '', coverUrl: '', releaseYear: '',
-        director: '', duration: '',         // movie
-        author: '', pages: '', isbn: '',    // book
-        subjects: '',                       // book (display only)
+        director: '', duration: '',
+        author: '', pages: '', isbn: '',
+        subjects: '',
         tmdbId: null, olId: null,
         genreIds: [],
     });
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState(null);
 
+    // After a TvSeries is added to cart, offer navigation to season manager
+    // We store the created media id (from cart item) to link to /media/:id/seasons
+    // Since cart items don't have a DB id yet, we navigate to cart and let them
+    // submit first. But if a series is submitted directly, we can navigate.
+    // Here we track if we just added a TvSeries to cart.
+    const [justAddedSeries, setJustAddedSeries] = useState(false);
+
     useEffect(() => {
         mediaService.getGenres().then(setGenres).catch(() => setGenres([]));
     }, []);
 
-    // ── Debounced search — TMDB for Movie/TvSeries, OL for Book ──────────────
+    // ── Debounced search ──────────────────────────────────────────────────────
     useEffect(() => {
         if (step !== STEPS.SEARCH || !searchQuery.trim()) {
             setSearchResults([]);
@@ -54,14 +64,13 @@ const AddMediaPage = () => {
             try {
                 if (mediaType === 'Book') {
                     const results = await mediaService.searchBooks(searchQuery);
-                    // Normalise OL results to the same shape used in the results list
                     setSearchResults(results.map(r => ({
-                        id:          r.olId,
-                        title:       r.title,
-                        subtitle:    r.authorName ?? '',
-                        coverUrl:    r.coverUrl ?? null,
-                        year:        r.firstPublishYear ?? null,
-                        _raw:        r,   // keep original for details fetch
+                        id:       r.olId,
+                        title:    r.title,
+                        subtitle: r.authorName ?? '',
+                        coverUrl: r.coverUrl ?? null,
+                        year:     r.firstPublishYear ?? null,
+                        _raw:     r,
                     })));
                 } else {
                     const type = mediaType === 'TvSeries' ? 'tv' : 'movie';
@@ -90,10 +99,12 @@ const AddMediaPage = () => {
         setMediaType(type);
         setSearchQuery('');
         setSearchResults([]);
+        setSelectedTmdbSeries(null);
+        setJustAddedSeries(false);
         setStep(STEPS.SEARCH);
     };
 
-    // ── Result selected — fetch full details then go to form ─────────────────
+    // ── Result selected — fetch details then go to form ───────────────────────
     const handleSelectResult = async (result) => {
         try {
             if (mediaType === 'Book') {
@@ -112,6 +123,7 @@ const AddMediaPage = () => {
                     olId:   details.olId ?? result._raw.olId,
                     genreIds: [],
                 });
+                setSelectedTmdbSeries(null);
             } else {
                 const type = mediaType === 'TvSeries' ? 'tv' : 'movie';
                 const r = await tmdbService.getDetails(result._raw.tmdbId, type);
@@ -125,7 +137,7 @@ const AddMediaPage = () => {
                     title:       details.title       ?? '',
                     description: details.description ?? '',
                     coverUrl:    details.coverUrl    ?? '',
-                    releaseYear: details.releaseYear  ? String(details.releaseYear) : '',
+                    releaseYear: details.releaseYear ? String(details.releaseYear) : '',
                     director:    details.director    ?? '',
                     duration:    details.duration    ? String(details.duration) : '',
                     author: '', pages: '', isbn: '', subjects: '',
@@ -133,9 +145,13 @@ const AddMediaPage = () => {
                     olId:   null,
                     genreIds: matchedGenreIds,
                 });
+
+                // Store the tmdbId for TvSeries so SeasonManagerPage can use it
+                if (mediaType === 'TvSeries') {
+                    setSelectedTmdbSeries({ tmdbId: details.tmdbId });
+                }
             }
         } catch {
-            // Fallback — pre-fill what we have from search result
             setForm(prev => ({
                 ...prev,
                 title:    result.title ?? '',
@@ -145,6 +161,9 @@ const AddMediaPage = () => {
                     ? { author: result._raw.authorName ?? '', olId: result._raw.olId }
                     : { tmdbId: result._raw.tmdbId }),
             }));
+            if (mediaType === 'TvSeries') {
+                setSelectedTmdbSeries({ tmdbId: result._raw.tmdbId });
+            }
         }
         setStep(STEPS.FILL_FORM);
     };
@@ -157,6 +176,7 @@ const AddMediaPage = () => {
             tmdbId: null, olId: null,
             genreIds: [],
         });
+        setSelectedTmdbSeries(null);
         setStep(STEPS.FILL_FORM);
     };
 
@@ -180,7 +200,12 @@ const AddMediaPage = () => {
                 duration:    form.duration    ? parseInt(form.duration)    : null,
                 pages:       form.pages       ? parseInt(form.pages)       : null,
             });
-            navigate('/cart');
+
+            if (mediaType === 'TvSeries') {
+                setJustAddedSeries(true);
+            } else {
+                navigate('/cart');
+            }
         } catch {
             setSaveError('Failed to add to cart.');
         } finally {
@@ -219,9 +244,7 @@ const AddMediaPage = () => {
         const isBook = mediaType === 'Book';
         const placeholder = isBook
             ? 'Search by title, author, ISBN…'
-            : mediaType === 'TvSeries'
-                ? 'Search TV series…'
-                : 'Search movies…';
+            : mediaType === 'TvSeries' ? 'Search TV series…' : 'Search movies…';
 
         return (
             <div className="add-media-page">
@@ -258,9 +281,7 @@ const AddMediaPage = () => {
                             }
                             <div className="tmdb-result-info">
                                 <span className="tmdb-result-title">{r.title}</span>
-                                {r.subtitle && (
-                                    <span className="tmdb-result-year">{r.subtitle}</span>
-                                )}
+                                {r.subtitle && <span className="tmdb-result-year">{r.subtitle}</span>}
                             </div>
                         </button>
                     ))}
@@ -269,6 +290,46 @@ const AddMediaPage = () => {
                 <button className="add-skip-btn" onClick={handleSkipSearch}>
                     Skip and fill manually →
                 </button>
+            </div>
+        );
+    }
+
+    // ── Post-add TvSeries prompt ───────────────────────────────────────────────
+    if (justAddedSeries) {
+        return (
+            <div className="add-media-page">
+                <div className="tv-added-banner">
+                    <span className="tv-added-icon">📺</span>
+                    <h2 className="tv-added-title">"{form.title}" added to cart</h2>
+                    <p className="tv-added-sub">
+                        The series is in your cart. You can submit it now, or first
+                        go to your cart and confirm the submission — then manage its
+                        seasons and episodes from the media detail page.
+                    </p>
+                    <div className="tv-added-actions">
+                        <button
+                            className="tv-added-btn tv-added-btn--primary"
+                            onClick={() => navigate('/cart')}
+                        >
+                            Go to Cart & Submit →
+                        </button>
+                        <button
+                            className="tv-added-btn tv-added-btn--ghost"
+                            onClick={() => {
+                                setStep(STEPS.SELECT_TYPE);
+                                setJustAddedSeries(false);
+                                setMediaType(null);
+                            }}
+                        >
+                            Add another title
+                        </button>
+                    </div>
+                    <p className="tv-added-note">
+                        💡 After submitting, open the series page and click
+                        <strong> "Manage Seasons"</strong> to import or edit seasons and episodes.
+                        {selectedTmdbSeries && " TMDB data will auto-load."}
+                    </p>
+                </div>
             </div>
         );
     }
@@ -284,9 +345,16 @@ const AddMediaPage = () => {
                 {mediaType === 'TvSeries' ? 'Add TV Series' : `Add ${mediaType}`}
             </h1>
 
+            {mediaType === 'TvSeries' && (
+                <div className="tv-series-notice">
+                    📺 After adding to cart and submitting, you'll be able to manage
+                    seasons &amp; episodes from the series page.
+                    {selectedTmdbSeries && ' TMDB seasons will auto-load.'}
+                </div>
+            )}
+
             <form className="add-media-form" onSubmit={handleSubmit}>
                 <div className="form-row">
-                    {/* Cover preview */}
                     {f('coverUrl') && (
                         <div className="cover-preview">
                             <img
@@ -361,7 +429,6 @@ const AddMediaPage = () => {
                         value={f('description')} onChange={set('description')} />
                 </label>
 
-                {/* Genres */}
                 {Array.isArray(genres) && genres.length > 0 && (
                     <div className="form-label">
                         Genres

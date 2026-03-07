@@ -73,6 +73,7 @@ public class TvSeriesService : ITvSeriesService
         }
 
         // Add episodes
+        season.Episodes ??= new List<Episode>();
         foreach (var epDto in dto.Episodes.OrderBy(e => e.EpisodeNumber))
         {
             season.Episodes.Add(new Episode

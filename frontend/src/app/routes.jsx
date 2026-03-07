@@ -4,6 +4,7 @@ import RegisterPage from '../pages/auth/RegisterPage';
 import MediaListPage from '../pages/media/MediaListPage';
 
 import MediaDetailPage from '../pages/media/MediaDetailPage';
+import SeasonManagerPage from '../pages/media/SeasonManagerPage';
 import AddMediaPage from '../pages/media/AddMediaPage';
 import CartPage from '../pages/media/CartPage';
 
@@ -36,6 +37,10 @@ export const routes = [
         path: '/cart',
         element: <CartPage />,
     },
+    {
+        path: "/media/:id/seasons",
+        element: <SeasonManagerPage/>
+    }
 ];
 
 export const fallbackRoute = {

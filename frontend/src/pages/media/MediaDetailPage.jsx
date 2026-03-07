@@ -1,140 +1,174 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import * as mediaService from '../../services/mediaService';
-import './MediaDetailPage.css';
+import { useEffect, useState } from "react";
+import api from "../../services/api"; 
+import { useParams, useNavigate } from "react-router-dom";
+import "./MediaDetailPage.css";
 
-const MediaDetailPage = () => {
+export default function MediaDetailPage() {
     const { id } = useParams();
-    console.log("mediaId:", id);
     const navigate = useNavigate();
 
     const [media, setMedia] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [expandedSeasons, setExpandedSeasons] = useState({});
+    const [openSeason, setOpenSeason] = useState(null);
 
     useEffect(() => {
-    setLoading(true);
-    mediaService.getMediaById(id)
-        .then(setMedia)
-        .catch(() => setError('Media not found.'))
-        .finally(() => setLoading(false));
+    async function loadMedia() {
+        try {
+            setLoading(true);
 
+            const res = await api.get(`/media/${id}`);
+
+            setMedia(res.data);
+        } catch (err) {
+            setError(err.response?.data || err.message);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    loadMedia();
 }, [id]);
 
-    const toggleSeason = (seasonId) =>
-        setExpandedSeasons(prev => ({ ...prev, [seasonId]: !prev[seasonId] }));
+    function toggleSeason(seasonNumber) {
+        setOpenSeason(prev => (prev === seasonNumber ? null : seasonNumber));
+    }
 
-    if (loading) return <div className="media-detail-loading">Loading…</div>;
-    if (error || !media) return (
-        <div className="media-detail-error">
-            <p>{error ?? 'Not found.'}</p>
-            <button onClick={() => navigate('/media')}>← Back to Media</button>
-        </div>
-    );
+    if (loading)
+        return (
+            <div className="media-detail-loading">
+                <p>Loading media...</p>
+            </div>
+        );
 
-    const {
-        type, title, description, coverUrl, releaseYear,
-        averageRating, ratingsCount, genres,
-        director, duration, author, pages, isbn,
-        seasonsCount, seasons,
-    } = media;
+    if (error || !media)
+        return (
+            <div className="media-detail-error">
+                <p>{error || "Media not found."}</p>
+                <button onClick={() => navigate(-1)}>Go Back</button>
+            </div>
+        );
+
+    const genres = media.genres ?? [];
+    const seasons = media.seasons ?? [];
 
     return (
         <div className="media-detail-page">
-            <button className="media-detail-back" onClick={() => navigate('/media')}>
+            <button
+                className="media-detail-back"
+                onClick={() => navigate(-1)}
+            >
                 ← Back
             </button>
 
             <div className="media-detail-hero">
                 <div className="media-detail-cover">
                     <img
-                        src={coverUrl || 'https://via.placeholder.com/300x450?text=No+Cover'}
-                        alt={title}
-                        onError={e => { e.target.src = 'https://via.placeholder.com/300x450?text=No+Cover'; }}
+                        src={
+                            media.coverUrl ||
+                            "https://placehold.co/300x450?text=No+Image"
+                        }
+                        alt={media.title}
                     />
                 </div>
 
                 <div className="media-detail-info">
-                    <span className="media-detail-type-badge">{type === 'TvSeries' ? 'TV Series' : type}</span>
-                    <h1 className="media-detail-title">{title}</h1>
+                    <span className="media-detail-type-badge">
+                        {media.type}
+                    </span>
+
+                    <h1 className="media-detail-title">{media.title}</h1>
 
                     <div className="media-detail-meta">
-                        {releaseYear && <span>{releaseYear}</span>}
-                        {duration && <span>{duration} min</span>}
-                        {pages && <span>{pages} pages</span>}
-                        {seasonsCount && <span>{seasonsCount} season{seasonsCount !== 1 ? 's' : ''}</span>}
+                        {media.releaseYear && <span>{media.releaseYear}</span>}
+                        {media.durationMinutes && (
+                            <span>{media.durationMinutes} min</span>
+                        )}
                     </div>
 
-                    {averageRating > 0 && (
-                        <div className="media-detail-rating">
-                            <span className="rating-star">★</span>
-                            <span className="rating-value">{averageRating.toFixed(1)}</span>
-                            <span className="rating-count">/ 10 · {ratingsCount} rating{ratingsCount !== 1 ? 's' : ''}</span>
-                        </div>
-                    )}
+                    <div className="media-detail-rating">
+                        <span className="rating-star">★</span>
+                        <span className="rating-value">
+                            {media.averageRating?.toFixed(1) ?? "N/A"}
+                        </span>
+                        <span className="rating-count">
+                            ({media.reviewCount ?? 0} reviews)
+                        </span>
+                    </div>
 
                     {genres.length > 0 && (
                         <div className="media-detail-genres">
-                            {genres.map(g => (
-                                <span key={g} className="genre-tag">{g}</span>
+                            {genres.map((g, i) => (
+                                <span key={i} className="genre-tag">
+                                    {g.name}
+                                </span>
                             ))}
                         </div>
                     )}
 
-                    {/* Type-specific fields */}
-                    {director && (
-                        <div className="media-detail-field">
-                            <span className="field-label">Director</span>
-                            <span>{director}</span>
-                        </div>
+                    {media.description && (
+                        <p className="media-detail-description">
+                            {media.description}
+                        </p>
                     )}
-                    {author && (
-                        <div className="media-detail-field">
-                            <span className="field-label">Author</span>
-                            <span>{author}</span>
-                        </div>
-                    )}
-                    {isbn && (
-                        <div className="media-detail-field">
-                            <span className="field-label">ISBN</span>
-                            <span>{isbn}</span>
-                        </div>
-                    )}
-
-                    {description && (
-                        <p className="media-detail-description">{description}</p>
-                    )}
+                    {media.type === "TvSeries" && (
+                    <button
+                        className="manage-seasons-btn"
+                        onClick={() => navigate(`/media/${media.id}/seasons`)}
+                    >
+                        ⚙ Manage Seasons
+                    </button>
+)}
                 </div>
             </div>
 
-            {/* Seasons & Episodes — TV Series only */}
-            {type === 'TvSeries' && seasons.length > 0 && (
+            {seasons.length > 0 && (
                 <div className="media-seasons">
-                    <h2 className="seasons-heading">Seasons & Episodes</h2>
+                    <h2 className="seasons-heading">Seasons</h2>
+
                     {seasons.map(season => (
-                        <div key={season.id} className="season-block">
+                        <div
+                            key={season.seasonNumber}
+                            className="season-block"
+                        >
                             <button
                                 className="season-toggle"
-                                onClick={() => toggleSeason(season.id)}
+                                onClick={() =>
+                                    toggleSeason(season.seasonNumber)
+                                }
                             >
-                                <span>Season {season.seasonNumber}</span>
+                                Season {season.seasonNumber}
+
                                 <span className="season-episode-count">
-                                    {season.episodes.length} episode{season.episodes.length !== 1 ? 's' : ''}
+                                    {season.episodes?.length ?? 0} episodes
                                 </span>
+
                                 <span className="season-chevron">
-                                    {expandedSeasons[season.id] ? '▲' : '▼'}
+                                    {openSeason === season.seasonNumber
+                                        ? "▲"
+                                        : "▼"}
                                 </span>
                             </button>
 
-                            {expandedSeasons[season.id] && (
+                            {openSeason === season.seasonNumber && (
                                 <div className="episodes-list">
-                                    {season.episodes.map(ep => (
-                                        <div key={ep.id} className="episode-row">
-                                            <span className="ep-number">E{ep.episodeNumber}</span>
-                                            <span className="ep-title">{ep.title}</span>
-                                            {ep.duration && (
-                                                <span className="ep-duration">{ep.duration} min</span>
+                                    {season.episodes?.map(ep => (
+                                        <div
+                                            key={ep.episodeNumber}
+                                            className="episode-row"
+                                        >
+                                            <span className="ep-number">
+                                                E{ep.episodeNumber}
+                                            </span>
+
+                                            <span className="ep-title">
+                                                {ep.title}
+                                            </span>
+
+                                            {ep.durationMinutes && (
+                                                <span className="ep-duration">
+                                                    {ep.durationMinutes} min
+                                                </span>
                                             )}
                                         </div>
                                     ))}
@@ -146,6 +180,4 @@ const MediaDetailPage = () => {
             )}
         </div>
     );
-};
-
-export default MediaDetailPage;
+}
