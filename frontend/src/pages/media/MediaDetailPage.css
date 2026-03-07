@@ -36,6 +36,10 @@
     display: flex;
     gap: 32px;
     align-items: flex-start;
+    border: 1px solid var(--border, #333);
+    border-radius: 14px;
+    background: var(--card-bg, #1e1e2e);
+    padding: 18px;
 }
 
 .media-detail-cover {
@@ -48,6 +52,7 @@
 
 .media-detail-cover img {
     width: 100%;
+    height: auto;
     display: block;
 }
 
@@ -142,6 +147,7 @@
     border: 1px solid var(--border, #333);
     border-radius: 8px;
     overflow: hidden;
+    background: var(--card-bg, #1e1e2e);
 }
 
 .season-toggle {
@@ -202,8 +208,25 @@
 
 /* Responsive */
 @media (max-width: 640px) {
-    .media-detail-hero { flex-direction: column; }
-    .media-detail-cover { width: 160px; align-self: center; }
+    .media-detail-page { padding: 16px 12px 32px; gap: 18px; }
+    .media-detail-hero { flex-direction: column; gap: 16px; padding: 0; border: none; background: transparent; }
+    .media-detail-cover {
+        width: calc(100% + 24px);
+        margin: -16px -12px 4px;
+        border-radius: 0;
+        box-shadow: none;
+    }
+    .media-detail-cover img {
+        height: min(68vh, 540px);
+        object-fit: cover;
+        object-position: top center;
+    }
+    .media-detail-info {
+        background: var(--card-bg, #1e1e2e);
+        border: 1px solid var(--border, #333);
+        border-radius: 12px;
+        padding: 14px;
+    }
     .media-detail-title { font-size: 1.5rem; }
     .rating-value { font-size: 1.4rem; }
 }

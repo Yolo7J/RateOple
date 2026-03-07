@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getMediaById, getTmdbSeriesDetails } from "../../services/mediaService";
+import { getMediaById, getTmdbSeriesDetails, searchTmdb } from "../../services/mediaService";
 import {
   getSeasons,
   addSeason,
@@ -53,12 +53,19 @@ export default function SeasonManagerPage() {
   const [tmdbLoading, setTmdbLoading] = useState(false);
   const [tmdbError, setTmdbError] = useState(null);
   const [tmdbPreview, setTmdbPreview] = useState(null); // raw TMDB seasons before import
+  const [tmdbImportResult, setTmdbImportResult] = useState(null);
+  const [tmdbSyncingSeason, setTmdbSyncingSeason] = useState(null);
+  const [activeTmdbId, setActiveTmdbId] = useState(null);
+  const [tmdbLookupLoading, setTmdbLookupLoading] = useState(false);
+  const [tmdbLookupError, setTmdbLookupError] = useState(null);
+  const [tmdbCandidates, setTmdbCandidates] = useState([]);
 
   // Add season form
   const [showAddSeason, setShowAddSeason] = useState(false);
   const [addSeasonForm, setAddSeasonForm] = useState(null);
   const [addSeasonSaving, setAddSeasonSaving] = useState(false);
   const [addSeasonError, setAddSeasonError] = useState(null);
+  const [seasonEdit, setSeasonEdit] = useState(null);
 
   // Per-episode inline edit: { seasonNumber, episodeNumber } | null
   const [editingEpisode, setEditingEpisode] = useState(null);
@@ -89,6 +96,7 @@ export default function SeasonManagerPage() {
         }
         setMedia(m);
         setSeasons(s);
+        setActiveTmdbId(m.tmdbId ?? null);
 
         // Auto-load TMDB seasons if series has a tmdbId and no seasons yet
         if (m.tmdbId && s.length === 0) {
@@ -101,14 +109,17 @@ export default function SeasonManagerPage() {
       }
     }
     init();
-  }, [id]);
+  }, [id, navigate]);
 
   // ── TMDB auto/manual load ───────────────────────────────────────────────────
   async function autoLoadTmdb(tmdbId) {
     setTmdbLoading(true);
     setTmdbError(null);
+    setTmdbImportResult(null);
+    setTmdbLookupError(null);
     try {
       const details = await getTmdbSeriesDetails(tmdbId);
+      setActiveTmdbId(tmdbId);
       setTmdbPreview(details.seasons ?? []);
     } catch {
       setTmdbError("Could not fetch seasons from TMDB.");
@@ -118,8 +129,54 @@ export default function SeasonManagerPage() {
   }
 
   async function handleReloadTmdb() {
-    if (!media?.tmdbId) return;
-    autoLoadTmdb(media.tmdbId);
+    const tmdbId = activeTmdbId ?? media?.tmdbId;
+    if (!tmdbId) return;
+    autoLoadTmdb(tmdbId);
+  }
+
+  async function handleLookupTmdbByTitle() {
+    if (!media?.title?.trim()) return;
+    setTmdbLookupLoading(true);
+    setTmdbLookupError(null);
+    try {
+      const results = await searchTmdb(media.title.trim(), "tv");
+      setTmdbCandidates(results ?? []);
+      if (!results || results.length === 0) {
+        setTmdbLookupError("No TMDB matches found for this title.");
+      }
+    } catch {
+      setTmdbLookupError("Could not search TMDB by title.");
+      setTmdbCandidates([]);
+    } finally {
+      setTmdbLookupLoading(false);
+    }
+  }
+
+  async function syncSingleTmdbSeason(tmdbSeason, existingSeasons = seasons) {
+    const mappedEpisodes = (tmdbSeason.episodes ?? []).map((e) => ({
+      episodeNumber: e.episodeNumber,
+      title: e.title,
+      duration: e.duration ?? null,
+    }));
+    const existingSeason = existingSeasons.find((dbS) => dbS.seasonNumber === tmdbSeason.seasonNumber);
+
+    if (!existingSeason) {
+      await addSeason(id, {
+        seasonNumber: tmdbSeason.seasonNumber,
+        episodes: mappedEpisodes,
+      });
+      return { createdSeasons: 1, updatedSeasons: 0, addedEpisodes: mappedEpisodes.length };
+    }
+
+    const existingEpisodeNumbers = new Set(existingSeason.episodes.map((ep) => ep.episodeNumber));
+    const missingEpisodesCount = mappedEpisodes.filter((ep) => !existingEpisodeNumbers.has(ep.episodeNumber)).length;
+
+    await updateSeason(id, tmdbSeason.seasonNumber, {
+      seasonNumber: tmdbSeason.seasonNumber,
+      episodes: mappedEpisodes,
+    });
+
+    return { createdSeasons: 0, updatedSeasons: 1, addedEpisodes: missingEpisodesCount };
   }
 
   // ── Import all TMDB preview seasons into DB ─────────────────────────────────
@@ -127,22 +184,25 @@ export default function SeasonManagerPage() {
     if (!tmdbPreview) return;
     setTmdbLoading(true);
     setTmdbError(null);
+    setTmdbImportResult(null);
     try {
-      for (const s of tmdbPreview) {
-        // Skip seasons already in DB
-        const exists = seasons.some((dbS) => dbS.seasonNumber === s.seasonNumber);
-        if (exists) continue;
+      let createdSeasons = 0;
+      let updatedSeasons = 0;
+      let addedEpisodes = 0;
+      let workingSeasons = [...seasons];
 
-        await addSeason(id, {
-          seasonNumber: s.seasonNumber,
-          episodes: (s.episodes ?? []).map((e) => ({
-            episodeNumber: e.episodeNumber,
-            title: e.title,
-            duration: e.duration ?? null,
-          })),
-        });
+      for (const s of tmdbPreview) {
+        const result = await syncSingleTmdbSeason(s, workingSeasons);
+        createdSeasons += result.createdSeasons;
+        updatedSeasons += result.updatedSeasons;
+        addedEpisodes += result.addedEpisodes;
+        if (!workingSeasons.some((season) => season.seasonNumber === s.seasonNumber)) {
+          workingSeasons.push({ seasonNumber: s.seasonNumber, episodes: s.episodes ?? [] });
+        }
       }
+
       await loadSeasons();
+      setTmdbImportResult({ createdSeasons, updatedSeasons, addedEpisodes });
       setTmdbPreview(null);
     } catch {
       setTmdbError("Import failed. Some seasons may not have been saved.");
@@ -154,6 +214,20 @@ export default function SeasonManagerPage() {
   // ── Dismiss a single season from TMDB preview ───────────────────────────────
   function dismissTmdbSeason(seasonNumber) {
     setTmdbPreview((prev) => prev.filter((s) => s.seasonNumber !== seasonNumber));
+  }
+
+  async function handleSyncTmdbSeason(tmdbSeason) {
+    setTmdbSyncingSeason(tmdbSeason.seasonNumber);
+    setTmdbError(null);
+    try {
+      const result = await syncSingleTmdbSeason(tmdbSeason);
+      await loadSeasons();
+      setTmdbImportResult(result);
+    } catch {
+      setTmdbError(`Could not sync Season ${tmdbSeason.seasonNumber} from TMDB.`);
+    } finally {
+      setTmdbSyncingSeason(null);
+    }
   }
 
   // ── Add season (manual) ─────────────────────────────────────────────────────
@@ -175,33 +249,51 @@ export default function SeasonManagerPage() {
   }
 
   function addEpisodeToForm() {
+    const nextEpisodeNumber =
+      addSeasonForm.episodes.length > 0
+        ? Math.max(...addSeasonForm.episodes.map((ep) => Number(ep.episodeNumber) || 0)) + 1
+        : 1;
+
     setAddSeasonForm((prev) => ({
       ...prev,
-      episodes: [...prev.episodes, emptyEpisode(prev.episodes.length + 1)],
+      episodes: [...prev.episodes, emptyEpisode(nextEpisodeNumber)],
     }));
   }
 
   function removeEpisodeFromForm(idx) {
     setAddSeasonForm((prev) => ({
       ...prev,
-      episodes: prev.episodes.filter((_, i) => i !== idx),
+      episodes: prev.episodes
+        .filter((_, i) => i !== idx)
+        .map((ep, i) => ({ ...ep, episodeNumber: i + 1 })),
     }));
   }
 
   async function handleSaveNewSeason() {
     if (!addSeasonForm) return;
+    const seasonNumber = Number(addSeasonForm.seasonNumber);
+    if (!Number.isInteger(seasonNumber) || seasonNumber < 1) {
+      setAddSeasonError("Season number must be a positive integer.");
+      return;
+    }
+
+    if (seasons.some((s) => s.seasonNumber === seasonNumber)) {
+      setAddSeasonError(`Season ${seasonNumber} already exists.`);
+      return;
+    }
+
+    const episodesPayload = addSeasonForm.episodes.map((e, index) => ({
+      episodeNumber: Number(e.episodeNumber) || index + 1,
+      title: e.title.trim() ? e.title.trim() : null,
+      duration: e.duration ? Number(e.duration) : null,
+    }));
+
     setAddSeasonSaving(true);
     setAddSeasonError(null);
     try {
       await addSeason(id, {
-        seasonNumber: Number(addSeasonForm.seasonNumber),
-        episodes: addSeasonForm.episodes
-          .filter((e) => e.title.trim())
-          .map((e) => ({
-            episodeNumber: Number(e.episodeNumber),
-            title: e.title.trim(),
-            duration: e.duration ? Number(e.duration) : null,
-          })),
+        seasonNumber,
+        episodes: episodesPayload,
       });
       await loadSeasons();
       setShowAddSeason(false);
@@ -232,6 +324,49 @@ export default function SeasonManagerPage() {
       // keep editing open, user can retry
     } finally {
       setEditEpSaving(false);
+    }
+  }
+
+  function startSeasonNumberEdit(season) {
+    setSeasonEdit({
+      seasonId: season.id,
+      currentSeasonNumber: season.seasonNumber,
+      newSeasonNumber: season.seasonNumber,
+      saving: false,
+      error: null,
+    });
+  }
+
+  async function saveSeasonNumberEdit(season) {
+    if (!seasonEdit) return;
+    const parsedSeasonNumber = Number(seasonEdit.newSeasonNumber);
+    if (!Number.isInteger(parsedSeasonNumber) || parsedSeasonNumber < 1) {
+      setSeasonEdit((prev) => ({ ...prev, error: "Season number must be a positive integer." }));
+      return;
+    }
+
+    const duplicateExists = seasons.some(
+      (s) => s.id !== season.id && s.seasonNumber === parsedSeasonNumber
+    );
+    if (duplicateExists) {
+      setSeasonEdit((prev) => ({ ...prev, error: `Season ${parsedSeasonNumber} already exists.` }));
+      return;
+    }
+
+    setSeasonEdit((prev) => ({ ...prev, saving: true, error: null }));
+    try {
+      await updateSeason(id, season.seasonNumber, {
+        seasonNumber: parsedSeasonNumber,
+        episodes: [],
+      });
+      await loadSeasons();
+      setSeasonEdit(null);
+    } catch (err) {
+      setSeasonEdit((prev) => ({
+        ...prev,
+        saving: false,
+        error: err?.response?.data || "Failed to update season number.",
+      }));
     }
   }
 
@@ -312,6 +447,13 @@ export default function SeasonManagerPage() {
             </div>
 
             {tmdbError && <p className="sm-tmdb-error">{tmdbError}</p>}
+            {tmdbImportResult && (
+              <p className="sm-tmdb-success">
+                Synced {tmdbImportResult.createdSeasons} new season{tmdbImportResult.createdSeasons !== 1 ? "s" : ""},{" "}
+                updated {tmdbImportResult.updatedSeasons} existing season{tmdbImportResult.updatedSeasons !== 1 ? "s" : ""},{" "}
+                and added {tmdbImportResult.addedEpisodes} new episode{tmdbImportResult.addedEpisodes !== 1 ? "s" : ""}.
+              </p>
+            )}
 
             {tmdbPreview && tmdbPreview.length > 0 && (
               <>
@@ -322,6 +464,7 @@ export default function SeasonManagerPage() {
                 <div className="sm-tmdb-seasons">
                   {tmdbPreview.map((s) => {
                     const alreadyInDb = seasons.some((db) => db.seasonNumber === s.seasonNumber);
+                    const isSyncing = tmdbSyncingSeason === s.seasonNumber;
                     return (
                       <div key={s.seasonNumber} className={`sm-tmdb-season ${alreadyInDb ? "sm-tmdb-season--exists" : ""}`}>
                         <div className="sm-tmdb-season-header">
@@ -330,15 +473,22 @@ export default function SeasonManagerPage() {
                             {alreadyInDb && <span className="sm-badge sm-badge--exists">already saved</span>}
                           </span>
                           <span className="sm-tmdb-ep-count">{s.episodes?.length ?? 0} eps</span>
-                          {!alreadyInDb && (
-                            <button
-                              className="sm-tmdb-dismiss"
-                              onClick={() => dismissTmdbSeason(s.seasonNumber)}
-                              title="Remove from import"
-                            >
-                              ✕
-                            </button>
-                          )}
+                        </div>
+                        <div className="sm-tmdb-season-actions">
+                          <button
+                            className="sm-btn sm-btn--xs sm-btn--secondary"
+                            onClick={() => handleSyncTmdbSeason(s)}
+                            disabled={isSyncing || tmdbLoading}
+                          >
+                            {isSyncing ? <><Spinner /> Syncing…</> : alreadyInDb ? "Update from TMDB" : "Import from TMDB"}
+                          </button>
+                          <button
+                            className="sm-tmdb-dismiss"
+                            onClick={() => dismissTmdbSeason(s.seasonNumber)}
+                            title="Remove from list"
+                          >
+                            ✕
+                          </button>
                         </div>
                       </div>
                     );
@@ -361,11 +511,38 @@ export default function SeasonManagerPage() {
         )}
 
         {/* TMDB reload button when no preview shown */}
-        {!tmdbPreview && !tmdbLoading && media?.tmdbId && (
+        {!tmdbPreview && !tmdbLoading && (media?.tmdbId || activeTmdbId) && (
           <div className="sm-tmdb-trigger">
             <button className="sm-btn sm-btn--ghost" onClick={handleReloadTmdb}>
               🎬 Load seasons from TMDB
             </button>
+          </div>
+        )}
+
+        {!tmdbPreview && !tmdbLoading && !media?.tmdbId && !activeTmdbId && (
+          <div className="sm-tmdb-trigger">
+            <button
+              className="sm-btn sm-btn--ghost"
+              onClick={handleLookupTmdbByTitle}
+              disabled={tmdbLookupLoading}
+            >
+              {tmdbLookupLoading ? <><Spinner /> Searching TMDB…</> : "🎬 Find on TMDB by title"}
+            </button>
+            {tmdbLookupError && <p className="sm-tmdb-error">{tmdbLookupError}</p>}
+            {tmdbCandidates.length > 0 && (
+              <div className="sm-tmdb-candidates">
+                {tmdbCandidates.map((candidate) => (
+                  <button
+                    key={candidate.tmdbId}
+                    className="sm-btn sm-btn--secondary sm-btn--xs"
+                    onClick={() => autoLoadTmdb(candidate.tmdbId)}
+                  >
+                    {candidate.title}
+                    {candidate.releaseYear ? ` (${candidate.releaseYear})` : ""}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -379,6 +556,7 @@ export default function SeasonManagerPage() {
 
           {seasons.map((season) => {
             const isOpen = openSeasonId === season.id;
+            const isEditingSeason = seasonEdit?.seasonId === season.id;
             return (
               <div key={season.id} className={`sm-season ${isOpen ? "sm-season--open" : ""}`}>
                 {/* Season header */}
@@ -386,11 +564,46 @@ export default function SeasonManagerPage() {
                   className="sm-season-header"
                   onClick={() => setOpenSeasonId(isOpen ? null : season.id)}
                 >
-                  <span className="sm-season-num">Season {season.seasonNumber}</span>
+                  {isEditingSeason ? (
+                    <div className="sm-season-edit" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        className="sm-form-input sm-season-edit-input"
+                        type="number"
+                        min="1"
+                        value={seasonEdit.newSeasonNumber}
+                        onChange={(e) =>
+                          setSeasonEdit((prev) => ({ ...prev, newSeasonNumber: e.target.value }))
+                        }
+                      />
+                      <button
+                        className="sm-btn sm-btn--xs sm-btn--primary"
+                        onClick={() => saveSeasonNumberEdit(season)}
+                        disabled={seasonEdit.saving}
+                      >
+                        {seasonEdit.saving ? <Spinner /> : "Save"}
+                      </button>
+                      <button
+                        className="sm-btn sm-btn--xs sm-btn--ghost"
+                        onClick={() => setSeasonEdit(null)}
+                        disabled={seasonEdit.saving}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="sm-season-num">Season {season.seasonNumber}</span>
+                  )}
                   <span className="sm-season-ep-count">
                     {season.episodes.length} episode{season.episodes.length !== 1 ? "s" : ""}
                   </span>
                   <div className="sm-season-actions" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      className="sm-icon-btn"
+                      title="Edit season number"
+                      onClick={() => startSeasonNumberEdit(season)}
+                    >
+                      ✏️
+                    </button>
                     <button
                       className="sm-icon-btn sm-icon-btn--danger"
                       title="Delete season"
@@ -405,6 +618,9 @@ export default function SeasonManagerPage() {
                 {/* Episodes */}
                 {isOpen && (
                   <div className="sm-episodes">
+                    {isEditingSeason && seasonEdit?.error && (
+                      <p className="sm-form-error">{seasonEdit.error}</p>
+                    )}
                     {season.episodes.length === 0 && (
                       <p className="sm-no-episodes">No episodes in this season.</p>
                     )}
@@ -483,8 +699,11 @@ export default function SeasonManagerPage() {
 
                     {/* Add episode inline */}
                     <AddEpisodeInline
-                      seasonNumber={season.seasonNumber}
-                      existingCount={season.episodes.length}
+                      nextEpisodeNumber={
+                        season.episodes.length > 0
+                          ? Math.max(...season.episodes.map((ep) => ep.episodeNumber)) + 1
+                          : 1
+                      }
                       onAdd={async (dto) => {
                         await addEpisode(id, season.seasonNumber, dto);
                         await loadSeasons();
@@ -612,7 +831,7 @@ export default function SeasonManagerPage() {
 }
 
 // ── Add episode inline sub-component ─────────────────────────────────────────
-function AddEpisodeInline({ seasonNumber, existingCount, onAdd }) {
+function AddEpisodeInline({ nextEpisodeNumber, onAdd }) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ title: "", duration: "" });
   const [saving, setSaving] = useState(false);
@@ -624,7 +843,7 @@ function AddEpisodeInline({ seasonNumber, existingCount, onAdd }) {
     setError(null);
     try {
       await onAdd({
-        episodeNumber: existingCount + 1,
+        episodeNumber: nextEpisodeNumber,
         title: form.title.trim(),
         duration: form.duration ? Number(form.duration) : null,
       });
@@ -647,7 +866,7 @@ function AddEpisodeInline({ seasonNumber, existingCount, onAdd }) {
 
   return (
     <div className="sm-add-ep-form">
-      <span className="sm-ep-num">E{existingCount + 1}</span>
+      <span className="sm-ep-num">E{nextEpisodeNumber}</span>
       <input
         className="sm-ep-input"
         placeholder="Episode title"

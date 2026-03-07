@@ -2,35 +2,45 @@
 @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
 .sm-page {
-  max-width: 780px;
+  max-width: 1120px;
   margin: 0 auto;
-  padding: 2rem 1.5rem 4rem;
+  padding: 1.5rem 1rem 4rem;
   font-family: 'DM Sans', 'Segoe UI', sans-serif;
   color: var(--text, #111827);
 }
 
-.sm-header { margin-bottom: 2rem; }
+.sm-header {
+  margin-bottom: 1.5rem;
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 16px;
+  padding: 1.1rem 1.2rem 1.3rem;
+}
+.dark .sm-header {
+  background: #111827;
+  border-color: #374151;
+}
 .sm-back {
   background: none; border: none; cursor: pointer;
-  color: #6366f1; font-size: 0.875rem; padding: 0; margin-bottom: 1rem;
+  color: #6366f1; font-size: 0.95rem; padding: 0; margin-bottom: 0.85rem;
 }
 .sm-back:hover { text-decoration: underline; }
 
-.sm-title-row { display: flex; gap: 1rem; align-items: flex-start; }
+.sm-title-row { display: flex; gap: 1rem; align-items: center; }
 .sm-cover {
-  width: 64px; height: 90px; object-fit: cover;
-  border-radius: 6px; flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  width: 90px; height: 126px; object-fit: cover;
+  border-radius: 10px; flex-shrink: 0;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.2);
 }
-.sm-title { font-size: 1.5rem; font-weight: 700; margin: 0 0 0.25rem; }
-.sm-meta { color: #6b7280; font-size: 0.875rem; margin: 0; }
+.sm-title { font-size: 2rem; font-weight: 800; margin: 0 0 0.25rem; line-height: 1.12; }
+.sm-meta { color: #6b7280; font-size: 1rem; margin: 0; }
 
 /* TMDB banner */
 .sm-tmdb-banner {
   background: #f0f0ff;
   border: 1px solid #c7d2fe;
-  border-radius: 12px;
-  padding: 1rem 1.25rem;
+  border-radius: 16px;
+  padding: 1.1rem 1.2rem;
   margin-bottom: 1.5rem;
   animation: fadeIn 0.3s ease;
 }
@@ -46,6 +56,7 @@
 .sm-tmdb-reload:hover { background: #e0e7ff; }
 .sm-tmdb-sub { font-size: 0.85rem; color: #6b7280; margin: 0 0 0.75rem; }
 .sm-tmdb-error { color: #dc2626; font-size: 0.85rem; margin: 0.25rem 0; }
+.sm-tmdb-success { color: #15803d; font-size: 0.86rem; margin: 0.25rem 0 0.6rem; }
 .sm-tmdb-seasons { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
 .sm-tmdb-season {
   background: white; border: 1px solid #e0e7ff; border-radius: 8px;
@@ -56,6 +67,12 @@
 .sm-tmdb-season-header { display: flex; align-items: center; gap: 0.5rem; }
 .sm-tmdb-season-name { font-weight: 600; }
 .sm-tmdb-ep-count { color: #9ca3af; font-size: 0.78rem; }
+.sm-tmdb-season-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
 .sm-tmdb-dismiss {
   background: none; border: none; cursor: pointer; color: #9ca3af;
   font-size: 0.8rem; padding: 0 0 0 0.25rem;
@@ -65,6 +82,12 @@
 .sm-badge--exists { background: #d1fae5; color: #065f46; }
 
 .sm-tmdb-trigger { margin-bottom: 1.5rem; }
+.sm-tmdb-candidates {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
 
 /* Accordion */
 .sm-seasons { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem; }
@@ -83,14 +106,23 @@
 
 .sm-season-header {
   width: 100%; display: flex; align-items: center; gap: 0.75rem;
-  padding: 0.875rem 1rem; background: none; border: none; cursor: pointer;
+  padding: 1rem 1rem; background: none; border: none; cursor: pointer;
   text-align: left; font-family: inherit;
 }
 .sm-season-header:hover { background: #f9fafb; }
 .dark .sm-season-header:hover { background: #111827; }
-.sm-season-num { font-weight: 700; font-size: 0.95rem; flex: 1; color: inherit; }
-.sm-season-ep-count { font-size: 0.82rem; color: #9ca3af; }
+.sm-season-num { font-weight: 700; font-size: 1rem; flex: 1; color: inherit; }
+.sm-season-ep-count { font-size: 0.9rem; color: #9ca3af; }
 .sm-season-actions { display: flex; gap: 0.25rem; }
+.sm-season-edit {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1;
+}
+.sm-season-edit-input {
+  width: 90px;
+}
 
 /* Episodes */
 .sm-episodes { border-top: 1px solid #f3f4f6; padding: 0.5rem 0.75rem 0.75rem; }
@@ -100,7 +132,7 @@
 .sm-episode {
   display: flex; align-items: center; gap: 0.6rem;
   padding: 0.45rem 0.5rem; border-radius: 8px;
-  font-size: 0.875rem; transition: background 0.15s;
+  font-size: 0.94rem; transition: background 0.15s;
 }
 .sm-episode:hover { background: #f9fafb; }
 .dark .sm-episode:hover { background: #111827; }
@@ -111,8 +143,8 @@
   font-size: 0.75rem; font-weight: 700; color: #9ca3af;
   min-width: 28px; flex-shrink: 0;
 }
-.sm-ep-title { flex: 1; color: inherit; }
-.sm-ep-duration { font-size: 0.78rem; color: #9ca3af; flex-shrink: 0; }
+.sm-ep-title { flex: 1; color: inherit; font-size: 0.94rem; }
+.sm-ep-duration { font-size: 0.85rem; color: #9ca3af; flex-shrink: 0; }
 .sm-ep-actions { display: flex; gap: 0.25rem; opacity: 0; transition: opacity 0.15s; }
 .sm-episode:hover .sm-ep-actions { opacity: 1; }
 
@@ -198,9 +230,19 @@
 
 /* Loading / error states */
 .sm-season-manager-loading,
-.sm-season-manager-error {
+.sm-season-manager-error,
+.season-manager-loading,
+.season-manager-error {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   min-height: 40vh; gap: 1rem; color: #6b7280;
+}
+
+@media (max-width: 800px) {
+  .sm-page { padding: 1rem 0.75rem 3rem; }
+  .sm-title-row { align-items: flex-start; }
+  .sm-cover { width: 78px; height: 110px; }
+  .sm-title { font-size: 1.5rem; }
+  .sm-meta { font-size: 0.93rem; }
 }
 
 /* Delete modal */

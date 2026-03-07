@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useLanguage } from '../../hooks/useLanguage';
 import { useAuth } from '../../context/AuthContext';
 import * as mediaService from '../../services/mediaService';
 import MediaCard from '../../components/media/MediaCard/MediaCard';
@@ -18,8 +17,6 @@ const SORT_OPTIONS = [
 const PAGE_SIZE = 24;
 
 const MediaListPage = () => {
-    console.log('Rendering MediaListPage');
-    const { t } = useLanguage();
     const { user } = useAuth();
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
@@ -65,11 +62,10 @@ const MediaListPage = () => {
         if (sort !== 'rating:desc') params.sort = sort;
         if (page > 1) params.page = page;
         setSearchParams(params, { replace: true });
-    }, [selectedTypes, selectedGenres, search, sort, page]);
+    }, [selectedTypes, selectedGenres, search, sort, page, setSearchParams]);
 
     // Fetch media
     const fetchMedia = useCallback(async () => {
-        console.log('fetchMedia called');
         setLoading(true);
         setError(null);
         try {
@@ -84,7 +80,6 @@ const MediaListPage = () => {
                 pageSize: PAGE_SIZE,
             };
             const r = await mediaService.getAll(params);
-            console.log('mediaService.getAll result:', r);
             if (r && Array.isArray(r.items)) {
                 setResult(r);
             } else {

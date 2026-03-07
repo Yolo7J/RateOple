@@ -6,6 +6,17 @@ import tmdbService from '../../services/tmdbService';
 import './AddMediaPage.css';
 
 const STEPS = { SELECT_TYPE: 0, SEARCH: 1, FILL_FORM: 2 };
+const emptyEpisode = (episodeNumber) => ({ episodeNumber, title: '', duration: '' });
+const emptySeason = (seasonNumber) => ({ seasonNumber, episodes: [emptyEpisode(1)] });
+const mapTmdbSeasonsToForm = (seasons) =>
+    (seasons ?? []).map((season, seasonIndex) => ({
+        seasonNumber: Number(season.seasonNumber) || seasonIndex + 1,
+        episodes: (season.episodes ?? []).map((episode, episodeIndex) => ({
+            episodeNumber: Number(episode.episodeNumber) || episodeIndex + 1,
+            title: episode.title ?? '',
+            duration: episode.duration != null ? String(episode.duration) : '',
+        })),
+    }));
 
 const AddMediaPage = () => {
     const navigate = useNavigate();
@@ -33,6 +44,7 @@ const AddMediaPage = () => {
         subjects: '',
         tmdbId: null, olId: null,
         genreIds: [],
+        seasons: [],
     });
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState(null);
@@ -122,12 +134,23 @@ const AddMediaPage = () => {
                     tmdbId: null,
                     olId:   details.olId ?? result._raw.olId,
                     genreIds: [],
+                    seasons: [],
                 });
                 setSelectedTmdbSeries(null);
             } else {
                 const type = mediaType === 'TvSeries' ? 'tv' : 'movie';
                 const r = await tmdbService.getDetails(result._raw.tmdbId, type);
                 const details = r.data;
+                let seriesSeasons = [];
+
+                if (mediaType === 'TvSeries') {
+                    try {
+                        const tmdbSeries = await mediaService.getTmdbSeriesDetails(details.tmdbId);
+                        seriesSeasons = mapTmdbSeasonsToForm(tmdbSeries.seasons);
+                    } catch {
+                        seriesSeasons = [];
+                    }
+                }
 
                 const matchedGenreIds = genres
                     .filter(g => details.genres?.includes(g.name))
@@ -144,6 +167,9 @@ const AddMediaPage = () => {
                     tmdbId: details.tmdbId,
                     olId:   null,
                     genreIds: matchedGenreIds,
+                    seasons: mediaType === 'TvSeries'
+                        ? (seriesSeasons.length > 0 ? seriesSeasons : [emptySeason(1)])
+                        : [],
                 });
 
                 // Store the tmdbId for TvSeries so SeasonManagerPage can use it
@@ -160,6 +186,7 @@ const AddMediaPage = () => {
                 ...(mediaType === 'Book'
                     ? { author: result._raw.authorName ?? '', olId: result._raw.olId }
                     : { tmdbId: result._raw.tmdbId }),
+                ...(mediaType === 'TvSeries' ? { seasons: [emptySeason(1)] } : {}),
             }));
             if (mediaType === 'TvSeries') {
                 setSelectedTmdbSeries({ tmdbId: result._raw.tmdbId });
@@ -175,6 +202,7 @@ const AddMediaPage = () => {
             author: '', pages: '', isbn: '', subjects: '',
             tmdbId: null, olId: null,
             genreIds: [],
+            seasons: mediaType === 'TvSeries' ? [emptySeason(1)] : [],
         });
         setSelectedTmdbSeries(null);
         setStep(STEPS.FILL_FORM);
@@ -189,16 +217,86 @@ const AddMediaPage = () => {
         }));
     };
 
+    const addSeasonToSeries = () => {
+        setForm(prev => ({
+            ...prev,
+            seasons: [...(prev.seasons ?? []), emptySeason((prev.seasons?.length ?? 0) + 1)],
+        }));
+    };
+
+    const removeSeasonFromSeries = (seasonIdx) => {
+        setForm(prev => ({
+            ...prev,
+            seasons: (prev.seasons ?? [])
+                .filter((_, idx) => idx !== seasonIdx)
+                .map((season, idx) => ({ ...season, seasonNumber: idx + 1 })),
+        }));
+    };
+
+    const addEpisodeToSeason = (seasonIdx) => {
+        setForm(prev => ({
+            ...prev,
+            seasons: (prev.seasons ?? []).map((season, idx) => {
+                if (idx !== seasonIdx) return season;
+                const nextEpisodeNumber = (season.episodes?.length ?? 0) + 1;
+                return {
+                    ...season,
+                    episodes: [...(season.episodes ?? []), emptyEpisode(nextEpisodeNumber)],
+                };
+            }),
+        }));
+    };
+
+    const removeEpisodeFromSeason = (seasonIdx, episodeIdx) => {
+        setForm(prev => ({
+            ...prev,
+            seasons: (prev.seasons ?? []).map((season, idx) => {
+                if (idx !== seasonIdx) return season;
+                const nextEpisodes = (season.episodes ?? [])
+                    .filter((_, epIdx) => epIdx !== episodeIdx)
+                    .map((episode, epIdx) => ({ ...episode, episodeNumber: epIdx + 1 }));
+                return { ...season, episodes: nextEpisodes };
+            }),
+        }));
+    };
+
+    const setSeasonEpisodeField = (seasonIdx, episodeIdx, field, value) => {
+        setForm(prev => ({
+            ...prev,
+            seasons: (prev.seasons ?? []).map((season, idx) => {
+                if (idx !== seasonIdx) return season;
+                return {
+                    ...season,
+                    episodes: (season.episodes ?? []).map((episode, epIdx) =>
+                        epIdx === episodeIdx ? { ...episode, [field]: value } : episode
+                    ),
+                };
+            }),
+        }));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSaving(true);
         setSaveError(null);
         try {
+            const mappedSeasons = mediaType === 'TvSeries'
+                ? (form.seasons ?? []).map((season, seasonIndex) => ({
+                    seasonNumber: seasonIndex + 1,
+                    episodes: (season.episodes ?? []).map((episode, episodeIndex) => ({
+                        episodeNumber: episodeIndex + 1,
+                        title: episode.title?.trim() || `Episode ${episodeIndex + 1}`,
+                        duration: episode.duration ? parseInt(episode.duration) : null,
+                    })),
+                }))
+                : [];
+
             addItem(mediaType, {
                 ...form,
                 releaseYear: form.releaseYear ? parseInt(form.releaseYear) : null,
                 duration:    form.duration    ? parseInt(form.duration)    : null,
                 pages:       form.pages       ? parseInt(form.pages)       : null,
+                seasons: mappedSeasons,
             });
 
             if (mediaType === 'TvSeries') {
@@ -444,6 +542,84 @@ const AddMediaPage = () => {
                                 </label>
                             ))}
                         </div>
+                    </div>
+                )}
+
+                {mediaType === 'TvSeries' && (
+                    <div className="series-seasons-builder">
+                        <div className="series-seasons-builder__header">
+                            <h3>Seasons & Episodes</h3>
+                            <button
+                                type="button"
+                                className="series-seasons-builder__add-season"
+                                onClick={addSeasonToSeries}
+                            >
+                                + Add Season
+                            </button>
+                        </div>
+
+                        {(form.seasons ?? []).length === 0 && (
+                            <p className="series-seasons-builder__empty">
+                                No seasons yet. Add a season with episodes.
+                            </p>
+                        )}
+
+                        {(form.seasons ?? []).map((season, seasonIdx) => (
+                            <div key={seasonIdx} className="series-season-block">
+                                <div className="series-season-block__header">
+                                    <span>Season {seasonIdx + 1}</span>
+                                    <button
+                                        type="button"
+                                        className="series-season-block__remove"
+                                        onClick={() => removeSeasonFromSeries(seasonIdx)}
+                                    >
+                                        Remove season
+                                    </button>
+                                </div>
+
+                                <div className="series-season-episodes">
+                                    {(season.episodes ?? []).map((episode, episodeIdx) => (
+                                        <div key={episodeIdx} className="series-episode-row">
+                                            <span className="series-episode-row__num">E{episodeIdx + 1}</span>
+                                            <input
+                                                className="form-input"
+                                                placeholder="Episode title"
+                                                value={episode.title}
+                                                onChange={(e) =>
+                                                    setSeasonEpisodeField(seasonIdx, episodeIdx, 'title', e.target.value)
+                                                }
+                                            />
+                                            <input
+                                                className="form-input series-episode-row__duration"
+                                                type="number"
+                                                min="1"
+                                                placeholder="min"
+                                                value={episode.duration}
+                                                onChange={(e) =>
+                                                    setSeasonEpisodeField(seasonIdx, episodeIdx, 'duration', e.target.value)
+                                                }
+                                            />
+                                            <button
+                                                type="button"
+                                                className="series-season-block__remove"
+                                                onClick={() => removeEpisodeFromSeason(seasonIdx, episodeIdx)}
+                                                disabled={(season.episodes?.length ?? 0) === 1}
+                                            >
+                                                Remove
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <button
+                                    type="button"
+                                    className="series-season-block__add-episode"
+                                    onClick={() => addEpisodeToSeason(seasonIdx)}
+                                >
+                                    + Add Episode
+                                </button>
+                            </div>
+                        ))}
                     </div>
                 )}
 

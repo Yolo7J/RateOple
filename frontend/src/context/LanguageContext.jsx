@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useState, useEffect } from 'react';
 import enTranslations from '../locales/en.json';
 import bgTranslations from '../locales/bg.json';

@@ -45,7 +45,7 @@ export default function MediaDetailPage() {
         return (
             <div className="media-detail-error">
                 <p>{error || "Media not found."}</p>
-                <button onClick={() => navigate(-1)}>Go Back</button>
+                <button onClick={() => navigate("/media")}>Go Back</button>
             </div>
         );
 
@@ -56,7 +56,7 @@ export default function MediaDetailPage() {
         <div className="media-detail-page">
             <button
                 className="media-detail-back"
-                onClick={() => navigate(-1)}
+                onClick={() => navigate("/media")}
             >
                 ← Back
             </button>
@@ -81,8 +81,8 @@ export default function MediaDetailPage() {
 
                     <div className="media-detail-meta">
                         {media.releaseYear && <span>{media.releaseYear}</span>}
-                        {media.durationMinutes && (
-                            <span>{media.durationMinutes} min</span>
+                        {media.duration && (
+                            <span>{media.duration} min</span>
                         )}
                     </div>
 
@@ -165,9 +165,9 @@ export default function MediaDetailPage() {
                                                 {ep.title}
                                             </span>
 
-                                            {ep.durationMinutes && (
+                                            {ep.duration && (
                                                 <span className="ep-duration">
-                                                    {ep.durationMinutes} min
+                                                    {ep.duration} min
                                                 </span>
                                             )}
                                         </div>
