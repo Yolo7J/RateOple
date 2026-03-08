@@ -1,6 +1,7 @@
 using RateOple.Core.Contracts;
 using RateOple.Core.Auth.Services;
 using RateOple.Core.Collections.Services;
+using RateOple.Core.Groups.Services;
 using RateOple.Core.Media.Services;
 using RateOple.Core.Social.Services;
 using RateOple.Core.Users.Services;
@@ -18,6 +19,7 @@ public static class ApplicationServicesExtensions
         services.AddScoped<IUserProfileService, UserProfileService>();
         services.AddScoped<IUserMediaStatusService, UserMediaStatusService>();
         services.AddScoped<ICollectionService, CollectionService>();
+        services.AddScoped<IGroupService, GroupService>();
         services.AddScoped<ITvSeriesService, TvSeriesService>();
         services.AddScoped<IMediaService, MediaService>();
         services.AddScoped<IDiscoveryService, DiscoveryService>();
