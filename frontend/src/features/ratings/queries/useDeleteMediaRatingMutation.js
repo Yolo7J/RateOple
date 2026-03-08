@@ -1,22 +1,21 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import ratingService from '../services/ratingService';
 
-export const useRateMediaMutation = () => {
+export const useDeleteMediaRatingMutation = () => {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: ({ mediaId, value }) => ratingService.rateMedia(mediaId, value),
-    onSuccess: (_data, variables) => {
-      const { mediaId } = variables;
+    mutationFn: (mediaId) => ratingService.deleteMediaRating(mediaId),
+    onSuccess: (_data, mediaId) => {
       queryClient.invalidateQueries({ queryKey: ['ratings', 'summary', mediaId], exact: true });
       queryClient.invalidateQueries({ queryKey: ['media', 'detail', mediaId], exact: true });
       queryClient.invalidateQueries({ queryKey: ['users', 'account'], exact: true });
     },
   });
 
-  const mutate = async (mediaId, value) => {
-    return await mutation.mutateAsync({ mediaId, value });
+  return {
+    mutate: mutation.mutateAsync,
+    loading: mutation.isPending,
+    error: mutation.error,
   };
-
-  return { mutate, loading: mutation.isPending, error: mutation.error };
 };

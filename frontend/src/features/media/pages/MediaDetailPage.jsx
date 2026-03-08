@@ -173,6 +173,7 @@ function MediaDetailPage() {
 
           {user ? (
             <RatingSelector
+              key={`rating-${summary?.userRating ?? 'none'}`}
               initialValue={summary?.userRating ?? 10}
               onSubmit={handleRate}
               submitting={submittingRating}
