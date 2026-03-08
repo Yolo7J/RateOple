@@ -214,7 +214,14 @@ function MediaDetailPage() {
       {activeTab === 'Collections' ? (
         <section className="ro-review-section">
           <h2>Collections</h2>
-          <p className="ro-muted">Collections integration for this media is coming soon.</p>
+          <p className="ro-muted">Browse collections or create one and add this media.</p>
+          <button
+            type="button"
+            className="ro-back"
+            onClick={() => navigate(`/collections?mediaId=${id}`)}
+          >
+            Open Collections
+          </button>
         </section>
       ) : null}
 

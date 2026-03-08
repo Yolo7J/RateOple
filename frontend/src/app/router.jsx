@@ -11,6 +11,8 @@ import LoginPage from '../features/auth/pages/LoginPage';
 import RegisterPage from '../features/auth/pages/RegisterPage';
 import MediaListPage from '../features/media/pages/MediaListPage';
 import MediaDetailPage from '../features/media/pages/MediaDetailPage';
+import CollectionsPage from '../features/collections/pages/CollectionsPage';
+import CollectionDetailPage from '../features/collections/pages/CollectionDetailPage';
 import WatchlistPage from '../pages/WatchlistPage';
 import AccountPage from '../pages/AccountPage';
 import SeasonManagerPage from '../features/media/pages/SeasonManagerPage';
@@ -24,6 +26,8 @@ const Router = () => {
         <Route path="/" element={<DiscoveryPage />} />
         <Route path="/media" element={<MediaListPage />} />
         <Route path="/media/:id" element={<MediaDetailPage />} />
+        <Route path="/collections" element={<CollectionsPage />} />
+        <Route path="/collections/:id" element={<CollectionDetailPage />} />
         <Route element={<RequireAuth />}>
           <Route path="/media/add" element={<AddMediaPage />} />
           <Route path="/media/:id/seasons" element={<SeasonManagerPage />} />
