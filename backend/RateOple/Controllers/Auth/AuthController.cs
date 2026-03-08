@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RateOple.Core.Contracts;
-using RateOple.Core.Contracts.DTOs.Auth;
+using RateOple.Core.Auth.DTOs;
 using RateOple.Constants.Enums;
 using RateOple.Infrastructure.Data;
 using RateOple.Infrastructure.Data.Entities;

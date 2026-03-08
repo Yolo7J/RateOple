@@ -1,4 +1,4 @@
-namespace RateOple.Core.Contracts.DTOs.Media;
+namespace RateOple.Core.Media.DTOs;
 
 // ── Search / list ─────────────────────────────────────────────────────────────
 

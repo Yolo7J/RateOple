@@ -2,7 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RateOple.Core.Contracts;
-using RateOple.Core.Contracts.DTOs.Users;
+using RateOple.Core.Users.DTOs;
 
 namespace RateOple.Controllers;
 

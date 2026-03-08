@@ -1,5 +1,9 @@
 using RateOple.Core.Contracts;
-using RateOple.Core.Services;
+using RateOple.Core.Auth.Services;
+using RateOple.Core.Collections.Services;
+using RateOple.Core.Media.Services;
+using RateOple.Core.Social.Services;
+using RateOple.Core.Users.Services;
 
 namespace RateOple.Extensions;
 

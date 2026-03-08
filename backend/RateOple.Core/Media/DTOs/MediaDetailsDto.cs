@@ -1,6 +1,6 @@
 using RateOple.Constants.Enums;
 
-namespace RateOple.Core.Contracts.DTOs.Media;
+namespace RateOple.Core.Media.DTOs;
 
 public class MediaDetailsDto
 {

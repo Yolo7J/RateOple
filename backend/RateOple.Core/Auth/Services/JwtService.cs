@@ -7,7 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 using RateOple.Core.Contracts;
 using RateOple.Infrastructure.Data.Entities;
 
-namespace RateOple.Core.Services;
+namespace RateOple.Core.Auth.Services;
 
 public class JwtService : IJwtService
 {

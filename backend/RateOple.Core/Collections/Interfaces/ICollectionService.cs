@@ -1,4 +1,4 @@
-using RateOple.Core.Contracts.DTOs.Collections;
+using RateOple.Core.Collections.DTOs;
 
 namespace RateOple.Core.Contracts;
 

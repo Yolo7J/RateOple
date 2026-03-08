@@ -1,6 +1,6 @@
 using RateOple.Constants.Enums;
 
-namespace RateOple.Core.Contracts.DTOs.Collections;
+namespace RateOple.Core.Collections.DTOs;
 
 public class CollectionDto
 {

@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace RateOple.Core.Contracts.DTOs;
+namespace RateOple.Core.Social.DTOs;
 
 public class RatingUpsertDto
 {

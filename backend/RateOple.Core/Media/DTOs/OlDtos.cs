@@ -1,4 +1,4 @@
-namespace RateOple.Core.Contracts.DTOs.Media;
+namespace RateOple.Core.Media.DTOs;
 
 /// <summary>
 /// What the frontend receives from our Open Library proxy — clean, no raw OL shape exposed.

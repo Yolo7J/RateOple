@@ -1,11 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using RateOple.Constants.Enums;
 using RateOple.Core.Contracts;
-using RateOple.Core.Contracts.DTOs.Collections;
+using RateOple.Core.Collections.DTOs;
 using RateOple.Infrastructure.Data;
 using RateOple.Infrastructure.Data.Entities;
 
-namespace RateOple.Core.Services;
+namespace RateOple.Core.Collections.Services;
 
 public class CollectionService : ICollectionService
 {

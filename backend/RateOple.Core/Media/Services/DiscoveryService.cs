@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using RateOple.Core.Contracts;
-using RateOple.Core.Contracts.DTOs.Media;
+using RateOple.Core.Media.DTOs;
 using RateOple.Infrastructure.Data;
 
-namespace RateOple.Core.Services;
+namespace RateOple.Core.Media.Services;
 
 public class DiscoveryService : IDiscoveryService
 {

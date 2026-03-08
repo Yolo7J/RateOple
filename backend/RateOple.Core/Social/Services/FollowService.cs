@@ -3,7 +3,7 @@ using RateOple.Core.Contracts;
 using RateOple.Infrastructure.Data;
 using RateOple.Infrastructure.Data.Entities;
 
-namespace RateOple.Core.Services;
+namespace RateOple.Core.Social.Services;
 
 public class FollowService : IFollowService
 {

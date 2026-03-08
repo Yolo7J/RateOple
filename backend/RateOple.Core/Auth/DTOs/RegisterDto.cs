@@ -1,4 +1,4 @@
-namespace RateOple.Core.Contracts.DTOs.Auth;
+namespace RateOple.Core.Auth.DTOs;
 
 public class RegisterDto
 {

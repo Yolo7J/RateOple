@@ -1,10 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using RateOple.Core.Contracts;
-using RateOple.Core.Contracts.DTOs.Media;
+using RateOple.Core.Media.DTOs;
 using RateOple.Infrastructure.Data;
 using RateOple.Infrastructure.Data.Entities;
 
-namespace RateOple.Core.Services;
+namespace RateOple.Core.Media.Services;
 
 public class TvSeriesService : ITvSeriesService
 {

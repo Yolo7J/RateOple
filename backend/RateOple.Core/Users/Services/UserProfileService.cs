@@ -3,11 +3,11 @@ using Microsoft.EntityFrameworkCore;
 using RateOple.Constants.Constants;
 using RateOple.Constants.Enums;
 using RateOple.Core.Contracts;
-using RateOple.Core.Contracts.DTOs.Users;
+using RateOple.Core.Users.DTOs;
 using RateOple.Infrastructure.Data;
 using RateOple.Infrastructure.Data.Entities;
 
-namespace RateOple.Core.Services;
+namespace RateOple.Core.Users.Services;
 
 public class UserProfileService : IUserProfileService
 {

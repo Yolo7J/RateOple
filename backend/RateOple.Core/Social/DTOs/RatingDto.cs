@@ -1,4 +1,4 @@
-namespace RateOple.Core.Contracts.DTOs;
+namespace RateOple.Core.Social.DTOs;
 
 public class RatingDto
 {

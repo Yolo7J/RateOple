@@ -1,10 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using RateOple.Core.Contracts;
-using RateOple.Core.Contracts.DTOs;
+using RateOple.Core.Social.DTOs;
 using RateOple.Infrastructure.Data;
 using RateOple.Infrastructure.Data.Entities;
 
-namespace RateOple.Core.Services;
+namespace RateOple.Core.Social.Services;
 
 public class ReviewService : IReviewService
 {

@@ -1,4 +1,4 @@
-using RateOple.Core.Contracts.DTOs.Media;
+using RateOple.Core.Media.DTOs;
 
 namespace RateOple.Core.Contracts;
 

@@ -1,6 +1,6 @@
 using RateOple.Constants.Enums;
 
-namespace RateOple.Core.Contracts.DTOs.Users;
+namespace RateOple.Core.Users.DTOs;
 
 public class UserProfileDto
 {

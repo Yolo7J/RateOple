@@ -2,9 +2,9 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using RateOple.Core.Contracts;
-using RateOple.Core.Contracts.DTOs.Media;
+using RateOple.Core.Media.DTOs;
 
-namespace RateOple.Core.Services;
+namespace RateOple.Core.Media.Services;
 
 public class TmdbService : ITmdbService
 {
