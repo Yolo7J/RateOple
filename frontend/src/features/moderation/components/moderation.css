@@ -1,0 +1,64 @@
+.ro-moderation-filters,
+.ro-moderation-actions,
+.ro-assignment-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.ro-moderation-grid,
+.ro-assignment-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.ro-moderation-grid {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.ro-moderation-card {
+  border: 1px solid var(--border, #313847);
+  border-radius: 12px;
+  background: var(--card-bg, #1b2029);
+  padding: 0.875rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.ro-moderation-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.ro-moderation-meta {
+  color: var(--text-muted, #9ba0ab);
+  font-size: 0.92rem;
+  margin: 0;
+}
+
+.ro-chip {
+  border: 1px solid var(--border, #313847);
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+.ro-moderation-card code {
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.ro-assignment-form input,
+.ro-assignment-form select,
+.ro-moderation-actions select {
+  min-width: 150px;
+}
+
+.ro-moderation-filters button[disabled],
+.ro-moderation-actions button[disabled] {
+  opacity: 0.65;
+}

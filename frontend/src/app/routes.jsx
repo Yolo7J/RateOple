@@ -13,6 +13,7 @@ import AccountPage from '../features/users/pages/AccountPage';
 import SeasonManagerPage from '../features/media/pages/SeasonManagerPage';
 import AddMediaPage from '../features/media/pages/AddMediaPage';
 import CartPage from '../features/media/pages/CartPage';
+import ModerationPage from '../features/moderation/pages/ModerationPage';
 
 export const routes = [
     {
@@ -74,6 +75,10 @@ export const routes = [
     {
         path: '/account',
         element: <AccountPage />,
+    },
+    {
+        path: '/admin',
+        element: <ModerationPage />,
     }
 ];
 

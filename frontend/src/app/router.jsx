@@ -5,6 +5,7 @@ import GroupLayout from '../layouts/GroupLayout';
 import AdminLayout from '../layouts/AdminLayout';
 import RequireAuth from '../features/auth/components/RequireAuth';
 import RequireGuest from '../features/auth/components/RequireGuest';
+import RequireRole from '../features/auth/components/RequireRole';
 
 import DiscoveryPage from '../features/discovery/pages/DiscoveryPage';
 import GroupsPage from '../features/groups/pages/GroupsPage';
@@ -21,6 +22,7 @@ import AccountPage from '../features/users/pages/AccountPage';
 import SeasonManagerPage from '../features/media/pages/SeasonManagerPage';
 import AddMediaPage from '../features/media/pages/AddMediaPage';
 import CartPage from '../features/media/pages/CartPage';
+import ModerationPage from '../features/moderation/pages/ModerationPage';
 
 const Router = () => {
   return (
@@ -53,8 +55,12 @@ const Router = () => {
         <Route path="/groups/:id" element={<GroupDetailPage />} />
       </Route>
 
-      <Route element={<AdminLayout />}>
-        <Route path="/admin" element={<DiscoveryPage />} />
+      <Route element={<RequireAuth />}>
+        <Route element={<RequireRole allow={['Moderator', 'Admin', 'SuperAdmin']} />}>
+          <Route element={<AdminLayout />}>
+            <Route path="/admin" element={<ModerationPage />} />
+          </Route>
+        </Route>
       </Route>
 
       <Route path="*" element={<DiscoveryPage />} />

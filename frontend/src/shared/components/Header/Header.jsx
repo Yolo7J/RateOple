@@ -18,6 +18,9 @@ const Header = () => {
     const { data: unreadData } = useNotificationsQuery({ unreadOnly: true, page: 1, pageSize: 1 }, Boolean(user));
     const navigate = useNavigate();
     const unreadCount = unreadData?.totalCount ?? 0;
+    const canModerate = Array.isArray(user?.roles)
+        ? user.roles.some((role) => ['Moderator', 'Admin', 'SuperAdmin'].includes(role))
+        : false;
 
     const handleAuthAction = async (action) => {
         switch (action) {
@@ -65,6 +68,11 @@ const Header = () => {
                                         Notifications
                                         {unreadCount > 0 ? <span className="header-notification-badge">{unreadCount}</span> : null}
                                     </button>
+                                    {canModerate ? (
+                                        <button onClick={() => navigate('/admin')}>
+                                            Moderation
+                                        </button>
+                                    ) : null}
                                     <button onClick={() => handleAuthAction('logout')}>
                                         {t('header.auth.logout')}
                                     </button>
@@ -142,6 +150,14 @@ const Header = () => {
                                     Notifications
                                     {unreadCount > 0 ? <span className="header-notification-badge">{unreadCount}</span> : null}
                                 </button>
+                                {canModerate ? (
+                                    <button
+                                        className="auth-button"
+                                        onClick={() => navigate('/admin')}
+                                    >
+                                        Moderation
+                                    </button>
+                                ) : null}
                                 <button
                                     className="auth-button logout-button"
                                     onClick={() => handleAuthAction('logout')}
