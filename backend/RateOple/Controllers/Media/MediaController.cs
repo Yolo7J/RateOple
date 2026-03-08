@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using RateOple.Core.Contracts;
 using RateOple.Core.Media.DTOs;
+using RateOple.Core.Users.DTOs;
 
 namespace RateOple.Controllers;
 
@@ -14,17 +15,20 @@ public class MediaController : ControllerBase
     private readonly ITvSeriesService _tvSeriesService;
     private readonly ITmdbService _tmdb;
     private readonly IInteractionService _interactionService;
+    private readonly IUserMediaStatusService _userMediaStatusService;
 
     public MediaController(
         IMediaService mediaService,
         ITvSeriesService tvSeriesService,
         ITmdbService tmdb,
-        IInteractionService interactionService)
+        IInteractionService interactionService,
+        IUserMediaStatusService userMediaStatusService)
     {
         _mediaService     = mediaService;
         _tvSeriesService  = tvSeriesService;
         _tmdb             = tmdb;
         _interactionService = interactionService;
+        _userMediaStatusService = userMediaStatusService;
     }
 
     // ── Read ──────────────────────────────────────────────────────────────────
@@ -223,6 +227,34 @@ public class MediaController : ControllerBase
             return NoContent();
         }
         catch (KeyNotFoundException) { return NotFound(); }
+    }
+
+    // ── User status tracking ──────────────────────────────────────────────────
+
+    // POST /api/media/{id}/status
+    [HttpPost("{id:guid}/status")]
+    [Authorize]
+    [IgnoreAntiforgeryToken]
+    public async Task<IActionResult> SetStatus(Guid id, [FromBody] SetUserMediaStatusDto dto)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userIdClaim))
+            return Unauthorized();
+
+        try
+        {
+            var result = await _userMediaStatusService.SetStatusAsync(Guid.Parse(userIdClaim), id, dto);
+            await _interactionService.TrackMediaStatusChangedAsync(Guid.Parse(userIdClaim), id);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     // ── Seasons (nested under media for intuitive routing) ────────────────────

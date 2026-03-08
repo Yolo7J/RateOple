@@ -12,10 +12,14 @@ namespace RateOple.Controllers;
 public class UserProfileController : ControllerBase
 {
     private readonly IUserProfileService _userProfileService;
+    private readonly IUserMediaStatusService _userMediaStatusService;
 
-    public UserProfileController(IUserProfileService userProfileService)
+    public UserProfileController(
+        IUserProfileService userProfileService,
+        IUserMediaStatusService userMediaStatusService)
     {
         _userProfileService = userProfileService;
+        _userMediaStatusService = userMediaStatusService;
     }
 
     [HttpGet("profile")]
@@ -37,6 +41,16 @@ public class UserProfileController : ControllerBase
 
         var profile = await _userProfileService.UpdateProfileAsync(userId.Value, dto);
         return Ok(profile);
+    }
+
+    [HttpGet("status")]
+    public async Task<ActionResult<IReadOnlyList<UserMediaStatusDto>>> GetMyStatuses([FromQuery] MediaStatusQueryDto query)
+    {
+        var userId = GetCurrentUserId();
+        if (!userId.HasValue) return Unauthorized();
+
+        var items = await _userMediaStatusService.GetUserStatusesAsync(userId.Value, query);
+        return Ok(items);
     }
 
     [HttpPost("change-password")]
