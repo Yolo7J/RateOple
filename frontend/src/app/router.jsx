@@ -15,6 +15,7 @@ import MediaListPage from '../features/media/pages/MediaListPage';
 import MediaDetailPage from '../features/media/pages/MediaDetailPage';
 import CollectionsPage from '../features/collections/pages/CollectionsPage';
 import CollectionDetailPage from '../features/collections/pages/CollectionDetailPage';
+import NotificationsPage from '../features/notifications/pages/NotificationsPage';
 import WatchlistPage from '../features/users/pages/WatchlistPage';
 import AccountPage from '../features/users/pages/AccountPage';
 import SeasonManagerPage from '../features/media/pages/SeasonManagerPage';
@@ -36,6 +37,7 @@ const Router = () => {
           <Route path="/cart" element={<CartPage />} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="/account/watchlist" element={<WatchlistPage />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
         </Route>
       </Route>
 

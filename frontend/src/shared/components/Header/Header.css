@@ -82,6 +82,19 @@
     font-family: inherit;
 }
 
+.header-notification-badge {
+    min-width: 20px;
+    height: 20px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: var(--primary-color);
+    color: #111;
+}
+
 .login-button,
 .account-button {
     background-color: transparent;

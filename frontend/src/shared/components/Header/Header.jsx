@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../../../hooks/useLanguage';
 import { useAuth } from '../../../context/AuthContext';
+import { useNotificationsQuery } from '../../../features/notifications/queries/useNotificationsQuery';
 import NavigationDropdown from './NavigationDropdown';
 import SearchBar from '../../ui/SearchBar/SearchBar';
 import ThemeToggle from '../../ui/ThemeToggle/ThemeToggle';
@@ -14,7 +15,9 @@ const Header = () => {
 
     const { t } = useLanguage();
     const { user, logout } = useAuth();
+    const { data: unreadData } = useNotificationsQuery({ unreadOnly: true, page: 1, pageSize: 1 }, Boolean(user));
     const navigate = useNavigate();
+    const unreadCount = unreadData?.totalCount ?? 0;
 
     const handleAuthAction = async (action) => {
         switch (action) {
@@ -57,6 +60,10 @@ const Header = () => {
                                     </button>
                                     <button onClick={() => navigate('/account/watchlist')}>
                                         Watchlist
+                                    </button>
+                                    <button onClick={() => navigate('/notifications')}>
+                                        Notifications
+                                        {unreadCount > 0 ? <span className="header-notification-badge">{unreadCount}</span> : null}
                                     </button>
                                     <button onClick={() => handleAuthAction('logout')}>
                                         {t('header.auth.logout')}
@@ -127,6 +134,13 @@ const Header = () => {
                                     onClick={() => navigate('/account/watchlist')}
                                 >
                                     Watchlist
+                                </button>
+                                <button
+                                    className="auth-button"
+                                    onClick={() => navigate('/notifications')}
+                                >
+                                    Notifications
+                                    {unreadCount > 0 ? <span className="header-notification-badge">{unreadCount}</span> : null}
                                 </button>
                                 <button
                                     className="auth-button logout-button"

@@ -7,6 +7,7 @@ import MediaListPage from '../features/media/pages/MediaListPage';
 import MediaDetailPage from '../features/media/pages/MediaDetailPage';
 import CollectionsPage from '../features/collections/pages/CollectionsPage';
 import CollectionDetailPage from '../features/collections/pages/CollectionDetailPage';
+import NotificationsPage from '../features/notifications/pages/NotificationsPage';
 import WatchlistPage from '../features/users/pages/WatchlistPage';
 import AccountPage from '../features/users/pages/AccountPage';
 import SeasonManagerPage from '../features/media/pages/SeasonManagerPage';
@@ -65,6 +66,10 @@ export const routes = [
     {
         path: '/account/watchlist',
         element: <WatchlistPage />,
+    },
+    {
+        path: '/notifications',
+        element: <NotificationsPage />,
     },
     {
         path: '/account',
