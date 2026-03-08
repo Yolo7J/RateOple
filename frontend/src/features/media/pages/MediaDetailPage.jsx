@@ -1,34 +1,14 @@
-import { useEffect, useState } from "react";
-import api from "../../../services/api"; 
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useMediaDetailsQuery } from "../queries/useMediaDetailsQuery";
 import "./MediaDetailPage.css";
 
 export default function MediaDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { data: media, loading, error } = useMediaDetailsQuery(id);
 
-    const [media, setMedia] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
     const [openSeason, setOpenSeason] = useState(null);
-
-    useEffect(() => {
-    async function loadMedia() {
-        try {
-            setLoading(true);
-
-            const res = await api.get(`/media/${id}`);
-
-            setMedia(res.data);
-        } catch (err) {
-            setError(err.response?.data || err.message);
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    loadMedia();
-}, [id]);
 
     function toggleSeason(seasonNumber) {
         setOpenSeason(prev => (prev === seasonNumber ? null : seasonNumber));
@@ -44,7 +24,7 @@ export default function MediaDetailPage() {
     if (error || !media)
         return (
             <div className="media-detail-error">
-                <p>{error || "Media not found."}</p>
+                <p>{error?.response?.data?.message || error?.message || "Media not found."}</p>
                 <button onClick={() => navigate("/media")}>Go Back</button>
             </div>
         );

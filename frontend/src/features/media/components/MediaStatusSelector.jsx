@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { STATUS_TYPES } from '../../../shared/constants/statusTypes';
 import './MediaStatusSelector.css';
 
-const WATCH_STATUSES = ['Plan', 'On it', 'Done', 'Dropped'];
+const WATCH_STATUSES = STATUS_TYPES;
 
 function MediaStatusSelector({ currentStatus, onSave, saving = false, disabled = false }) {
     const [status, setStatus] = useState(currentStatus || WATCH_STATUSES[0]);

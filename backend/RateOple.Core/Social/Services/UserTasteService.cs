@@ -38,18 +38,33 @@ public class UserTasteService : IUserTasteService
         var existingScores = await _context.UserGenreScores
             .Where(x => x.UserId == userId)
             .ToListAsync();
-        _context.UserGenreScores.RemoveRange(existingScores);
+        var existingByGenreId = existingScores.ToDictionary(x => x.GenreId);
+        var nextScores = scores
+            .Where(x => x.Value > 0)
+            .ToDictionary(x => x.Key, x => x.Value);
+        var now = DateTime.UtcNow;
 
-        foreach (var kv in scores.Where(x => x.Value > 0))
+        foreach (var (genreId, score) in nextScores)
         {
+            if (existingByGenreId.TryGetValue(genreId, out var existing))
+            {
+                existing.Score = score;
+                existing.UpdatedAt = now;
+                existingByGenreId.Remove(genreId);
+                continue;
+            }
+
             _context.UserGenreScores.Add(new UserGenreScore
             {
                 UserId = userId,
-                GenreId = kv.Key,
-                Score = kv.Value,
-                UpdatedAt = DateTime.UtcNow
+                GenreId = genreId,
+                Score = score,
+                UpdatedAt = now
             });
         }
+
+        if (existingByGenreId.Count > 0)
+            _context.UserGenreScores.RemoveRange(existingByGenreId.Values);
 
         await _context.SaveChangesAsync();
     }

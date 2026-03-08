@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMediaCart } from "../../../context/MediaCartContext";
-import { bulkCreateMedia } from "../services/mediaService";
+import { useMediaCommands } from "../queries/useMediaCommands";
 import "./CartPage.css";
 
 const TYPE_COLOURS = {
@@ -15,6 +15,7 @@ const STATUS = { idle: "idle", ok: "ok", error: "error" };
 export default function CartPage() {
   const { items, removeItem, editItem, clearCart } = useMediaCart();
   const navigate = useNavigate();
+  const { bulkCreateMedia } = useMediaCommands();
 
   const [statuses, setStatuses] = useState({});
   const [submitting, setSubmitting] = useState(false);

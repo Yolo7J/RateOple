@@ -1,4 +1,4 @@
-import api from './api';
+import api from '../shared/api/apiClient';
 
 const statusService = {
     setMediaStatus: async (mediaId, status) => {

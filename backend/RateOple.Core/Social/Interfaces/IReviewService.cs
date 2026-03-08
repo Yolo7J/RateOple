@@ -8,4 +8,5 @@ public interface IReviewService
     Task<ReviewDto> UpdateReviewAsync(Guid userId, Guid reviewId, UpdateReviewDto dto);
     Task DeleteReviewAsync(Guid userId, Guid reviewId, bool deleteRating);
     Task<IReadOnlyList<ReviewDto>> GetMediaReviewsAsync(Guid mediaId);
+    Task<IReadOnlyList<ReviewDto>> GetUserReviewsAsync(Guid userId);
 }

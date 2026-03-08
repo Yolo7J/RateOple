@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getMediaById } from '../features/media/services/mediaService';
-import ratingService from '../features/ratings/services/ratingService';
-import reviewService from '../features/reviews/services/reviewService';
-import discoveryService from '../features/discovery/services/discoveryService';
-import statusService from '../services/statusService';
+import { useMediaDetailsQuery } from '../features/media/queries/useMediaDetailsQuery';
+import { useMediaRatingSummaryQuery } from '../features/ratings/queries/useMediaRatingSummaryQuery';
+import { useRateMediaMutation } from '../features/ratings/queries/useRateMediaMutation';
+import { useReviewsQuery } from '../features/reviews/queries/useReviewsQuery';
+import { useReviewMutations } from '../features/reviews/queries/useReviewMutations';
+import { useSimilarMediaQuery } from '../features/discovery/queries/useSimilarMediaQuery';
+import { useMediaStatusMutation } from '../features/users/queries/useMediaStatusMutation';
 import UserRatingDisplay from '../features/ratings/components/UserRatingDisplay';
 import RatingSelector from '../features/ratings/components/RatingSelector';
 import ReviewEditor from '../features/reviews/components/ReviewEditor';
@@ -13,6 +15,7 @@ import ReviewFilters from '../features/reviews/components/ReviewFilters';
 import ReviewsList from '../features/reviews/components/ReviewsList';
 import MediaRow from '../features/discovery/components/MediaRow';
 import MediaStatusSelector from '../features/media/components/MediaStatusSelector';
+import { buildImageUrl } from '../shared/utils/buildImageUrl';
 import './pages.css';
 import '../features/ratings/components/ratings.css';
 import '../features/reviews/components/reviews.css';
@@ -20,225 +23,175 @@ import '../features/discovery/components/discovery.css';
 import '../features/media/components/MediaStatusSelector.css';
 
 function MediaDetailPage() {
-    const { id } = useParams();
-    const navigate = useNavigate();
-    const { user } = useAuth();
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
-    const [media, setMedia] = useState(null);
-    const [summary, setSummary] = useState(null);
-    const [reviews, setReviews] = useState([]);
-    const [similar, setSimilar] = useState([]);
+  const [sortBy, setSortBy] = useState('recent');
+  const [ratingDto, setRatingDto] = useState(null);
+  const [actionError, setActionError] = useState('');
 
-    const [sortBy, setSortBy] = useState('recent');
-    const [ratingDto, setRatingDto] = useState(null);
+  const { data: media, loading: mediaLoading, error: mediaError } = useMediaDetailsQuery(id);
+  const {
+    data: summary,
+    loading: summaryLoading,
+    error: summaryError,
+    refetch: refetchSummary,
+  } = useMediaRatingSummaryQuery(id);
+  const {
+    data: reviewsData,
+    loading: reviewLoading,
+    error: reviewError,
+    refetch: refetchReviews,
+  } = useReviewsQuery(id);
+  const { data: similarData } = useSimilarMediaQuery(id, 20);
 
-    const [loading, setLoading] = useState(true);
-    const [reviewLoading, setReviewLoading] = useState(true);
-    const [error, setError] = useState('');
-    const [reviewError, setReviewError] = useState('');
-    const [actionError, setActionError] = useState('');
+  const { mutate: rateMedia, loading: submittingRating } = useRateMediaMutation();
+  const { createReview, loading: submittingReview } = useReviewMutations();
+  const { mutate: saveMediaStatus, loading: savingStatus } = useMediaStatusMutation();
 
-    const [submittingRating, setSubmittingRating] = useState(false);
-    const [submittingReview, setSubmittingReview] = useState(false);
-    const [savingStatus, setSavingStatus] = useState(false);
+  const reviews = useMemo(() => (Array.isArray(reviewsData) ? reviewsData : []), [reviewsData]);
+  const similar = Array.isArray(similarData) ? similarData : [];
 
-    const loadDetail = useCallback(async () => {
-        const [mediaData, ratingSummary] = await Promise.all([
-            getMediaById(id),
-            ratingService.getMediaSummary(id),
-        ]);
-        setMedia(mediaData);
-        setSummary(ratingSummary);
-    }, [id]);
+  const loading = mediaLoading || summaryLoading;
+  const error = mediaError || summaryError;
+  const errorMessage = error?.response?.data?.message || 'Failed to load media details.';
+  const reviewErrorMessage = reviewError?.response?.data?.message || 'Failed to load reviews.';
 
-    const loadReviews = useCallback(async () => {
-        setReviewLoading(true);
-        setReviewError('');
-        try {
-            const data = await reviewService.getMediaReviews(id);
-            setReviews(Array.isArray(data) ? data : []);
-        } catch (e) {
-            setReviewError(e.response?.data?.message || 'Failed to load reviews.');
-            setReviews([]);
-        } finally {
-            setReviewLoading(false);
-        }
-    }, [id]);
+  const sortedReviews = useMemo(() => {
+    const copy = [...reviews];
 
-    const loadSimilar = useCallback(async () => {
-        try {
-            const data = await discoveryService.getSimilar(id, 20);
-            setSimilar(Array.isArray(data) ? data : []);
-        } catch {
-            setSimilar([]);
-        }
-    }, [id]);
+    if (sortBy === 'highest') {
+      copy.sort((a, b) => (b.ratingValue ?? 0) - (a.ratingValue ?? 0));
+      return copy;
+    }
 
-    useEffect(() => {
-        let mounted = true;
+    if (sortBy === 'lowest') {
+      copy.sort((a, b) => (a.ratingValue ?? 0) - (b.ratingValue ?? 0));
+      return copy;
+    }
 
-        const run = async () => {
-            setLoading(true);
-            setError('');
+    copy.sort((a, b) => new Date(b.updatedAt ?? b.createdAt) - new Date(a.updatedAt ?? a.createdAt));
+    return copy;
+  }, [reviews, sortBy]);
 
-            try {
-                await Promise.all([loadDetail(), loadReviews(), loadSimilar()]);
-            } catch (e) {
-                if (!mounted) return;
-                setError(e.response?.data?.message || 'Failed to load media details.');
-            } finally {
-                if (mounted) setLoading(false);
-            }
-        };
+  const handleRate = async (value) => {
+    setActionError('');
+    try {
+      const dto = await rateMedia(id, value);
+      setRatingDto(dto);
+      await refetchSummary();
+    } catch (e) {
+      setActionError(e.response?.data?.message || 'Could not save rating.');
+    }
+  };
 
-        run();
-        return () => { mounted = false; };
-    }, [id, loadDetail, loadReviews, loadSimilar]);
+  const ensureRatingId = async () => {
+    if (ratingDto?.id) return ratingDto.id;
+    if (!summary?.userRating) return null;
 
-    const sortedReviews = useMemo(() => {
-        const copy = [...reviews];
+    const dto = await rateMedia(id, summary.userRating);
+    setRatingDto(dto);
+    return dto.id;
+  };
 
-        if (sortBy === 'highest') {
-            copy.sort((a, b) => (b.ratingValue ?? 0) - (a.ratingValue ?? 0));
-            return copy;
-        }
+  const handleCreateReview = async (content) => {
+    setActionError('');
 
-        if (sortBy === 'lowest') {
-            copy.sort((a, b) => (a.ratingValue ?? 0) - (b.ratingValue ?? 0));
-            return copy;
-        }
+    try {
+      const ratingId = await ensureRatingId();
+      if (!ratingId) {
+        setActionError('Please rate this media first.');
+        return;
+      }
 
-        copy.sort((a, b) => new Date(b.updatedAt ?? b.createdAt) - new Date(a.updatedAt ?? a.createdAt));
-        return copy;
-    }, [reviews, sortBy]);
+      await createReview({
+        ratingId,
+        content,
+        containsSpoilers: false,
+      });
 
-    const handleRate = async (value) => {
-        setActionError('');
-        setSubmittingRating(true);
-        try {
-            const dto = await ratingService.rateMedia(id, value);
-            setRatingDto(dto);
-            const fresh = await ratingService.getMediaSummary(id);
-            setSummary(fresh);
-        } catch (e) {
-            setActionError(e.response?.data?.message || 'Could not save rating.');
-        } finally {
-            setSubmittingRating(false);
-        }
-    };
+      await refetchReviews();
+    } catch (e) {
+      setActionError(e.response?.data?.message || 'Could not post review.');
+    }
+  };
 
-    const ensureRatingId = async () => {
-        if (ratingDto?.id) return ratingDto.id;
-        if (!summary?.userRating) return null;
+  const handleSaveStatus = async (status) => {
+    setActionError('');
+    try {
+      await saveMediaStatus(id, status);
+    } catch (e) {
+      setActionError(e.response?.data?.message || 'Could not save status.');
+    }
+  };
 
-        const dto = await ratingService.rateMedia(id, summary.userRating);
-        setRatingDto(dto);
-        return dto.id;
-    };
+  if (loading) return <main className="ro-page"><p>Loading media...</p></main>;
+  if (error || !media) return <main className="ro-page"><p>{errorMessage || 'Media not found.'}</p></main>;
 
-    const handleCreateReview = async (content) => {
-        setActionError('');
-        setSubmittingReview(true);
+  return (
+    <main className="ro-page ro-detail-page">
+      <button className="ro-back" onClick={() => navigate('/media')}>Back to Media List</button>
 
-        try {
-            const ratingId = await ensureRatingId();
-            if (!ratingId) {
-                setActionError('Please rate this media first.');
-                return;
-            }
+      <section className="ro-detail-hero">
+        <img
+          src={buildImageUrl(media.coverUrl)}
+          alt={media.title}
+        />
+        <div>
+          <h1>{media.title}</h1>
+          <p className="ro-muted">{media.type} · {media.releaseYear ?? media.releaseDate?.slice?.(0, 4) ?? 'N/A'}</p>
+          <p>{media.description || 'No description available.'}</p>
+        </div>
+      </section>
 
-            await reviewService.createReview({
-                ratingId,
-                content,
-                containsSpoilers: false,
-            });
+      <UserRatingDisplay
+        averageRating={summary?.averageRating ?? 0}
+        ratingsCount={summary?.ratingsCount ?? 0}
+        userRating={summary?.userRating ?? null}
+      />
 
-            await loadReviews();
-        } catch (e) {
-            setActionError(e.response?.data?.message || 'Could not post review.');
-        } finally {
-            setSubmittingReview(false);
-        }
-    };
+      {user && (
+        <RatingSelector
+          initialValue={summary?.userRating ?? 10}
+          onSubmit={handleRate}
+          submitting={submittingRating}
+        />
+      )}
 
-    const handleSaveStatus = async (status) => {
-        setActionError('');
-        setSavingStatus(true);
-        try {
-            await statusService.setMediaStatus(id, status);
-        } catch (e) {
-            setActionError(e.response?.data?.message || 'Could not save status.');
-        } finally {
-            setSavingStatus(false);
-        }
-    };
+      {user && (
+        <MediaStatusSelector
+          currentStatus={media.userStatus || 'Plan'}
+          onSave={handleSaveStatus}
+          saving={savingStatus}
+        />
+      )}
 
-    if (loading) return <main className="ro-page"><p>Loading media...</p></main>;
-    if (error || !media) return <main className="ro-page"><p>{error || 'Media not found.'}</p></main>;
+      <section className="ro-review-section">
+        <h2>Reviews</h2>
+        <ReviewFilters value={sortBy} onChange={setSortBy} />
 
-    return (
-        <main className="ro-page ro-detail-page">
-            <button className="ro-back" onClick={() => navigate('/media')}>Back to Media List</button>
+        {user && (summary?.userRating || ratingDto?.id) && (
+          <ReviewEditor
+            onSubmit={handleCreateReview}
+            submitting={submittingReview}
+          />
+        )}
 
-            <section className="ro-detail-hero">
-                <img
-                    src={media.coverUrl || 'https://placehold.co/320x480?text=No+Image'}
-                    alt={media.title}
-                />
-                <div>
-                    <h1>{media.title}</h1>
-                    <p className="ro-muted">{media.type} · {media.releaseYear ?? media.releaseDate?.slice?.(0, 4) ?? 'N/A'}</p>
-                    <p>{media.description || 'No description available.'}</p>
-                </div>
-            </section>
+        {user && !summary?.userRating && !ratingDto?.id && (
+          <p className="ro-muted">Rate this media first to post a review.</p>
+        )}
 
-            <UserRatingDisplay
-                averageRating={summary?.averageRating ?? 0}
-                ratingsCount={summary?.ratingsCount ?? 0}
-                userRating={summary?.userRating ?? null}
-            />
+        {actionError && <p className="ro-error">{actionError}</p>}
+        <ReviewsList reviews={sortedReviews} loading={reviewLoading} error={reviewError ? reviewErrorMessage : ''} />
+      </section>
 
-            {user && (
-                <RatingSelector
-                    initialValue={summary?.userRating ?? 10}
-                    onSubmit={handleRate}
-                    submitting={submittingRating}
-                />
-            )}
-
-            {user && (
-                <MediaStatusSelector
-                    currentStatus={media.userStatus || 'Plan'}
-                    onSave={handleSaveStatus}
-                    saving={savingStatus}
-                />
-            )}
-
-            <section className="ro-review-section">
-                <h2>Reviews</h2>
-                <ReviewFilters value={sortBy} onChange={setSortBy} />
-
-                {user && (summary?.userRating || ratingDto?.id) && (
-                    <ReviewEditor
-                        onSubmit={handleCreateReview}
-                        submitting={submittingReview}
-                    />
-                )}
-
-                {user && !summary?.userRating && !ratingDto?.id && (
-                    <p className="ro-muted">Rate this media first to post a review.</p>
-                )}
-
-                {actionError && <p className="ro-error">{actionError}</p>}
-                <ReviewsList reviews={sortedReviews} loading={reviewLoading} error={reviewError} />
-            </section>
-
-            <section className="ro-review-section">
-                <h2>Similar Media</h2>
-                <MediaRow items={similar} />
-            </section>
-        </main>
-    );
+      <section className="ro-review-section">
+        <h2>Similar Media</h2>
+        <MediaRow items={similar} />
+      </section>
+    </main>
+  );
 }
 
 export default MediaDetailPage;

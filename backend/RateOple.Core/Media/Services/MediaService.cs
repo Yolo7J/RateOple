@@ -25,6 +25,14 @@ public class MediaService : IMediaService
     {
         try
         {
+            query ??= new MediaQueryDto();
+
+            var page = query.Page < 1 ? 1 : query.Page;
+            var pageSize = query.PageSize <= 0 ? 24 : Math.Min(query.PageSize, 100);
+            var sortBy = (query.SortBy ?? "rating").Trim().ToLowerInvariant();
+            var sortDir = (query.SortDir ?? "desc").Trim().ToLowerInvariant();
+            var search = query.Search?.Trim();
+
             var q = _db.Media
                 .Where(m => !m.IsDeleted)
                 .Include(m => m.MediaGenres).ThenInclude(mg => mg.Genre)
@@ -44,14 +52,26 @@ public class MediaService : IMediaService
             }
 
             if (query.GenreIds != null && query.GenreIds.Count > 0)
-                q = q.Where(m => m.MediaGenres.Any(mg => query.GenreIds.Contains(mg.GenreId)));
+            {
+                var genreIds = query.GenreIds.Where(id => id > 0).Distinct().ToList();
+                if (genreIds.Count > 0)
+                    q = q.Where(m => m.MediaGenres.Any(mg => genreIds.Contains(mg.GenreId)));
+            }
+
             if (query.TagIds != null && query.TagIds.Count > 0)
-                q = q.Where(m => m.MediaTags.Any(mt => query.TagIds.Contains(mt.TagId)));
+            {
+                var tagIds = query.TagIds.Where(id => id > 0).Distinct().ToList();
+                if (tagIds.Count > 0)
+                    q = q.Where(m => m.MediaTags.Any(mt => tagIds.Contains(mt.TagId)));
+            }
 
-            if (!string.IsNullOrWhiteSpace(query.Search))
-                q = q.Where(m => m.Title.ToLower().Contains(query.Search.ToLower()));
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var loweredSearch = search.ToLower();
+                q = q.Where(m => m.Title != null && m.Title.ToLower().Contains(loweredSearch));
+            }
 
-            q = (query.SortBy, query.SortDir) switch
+            q = (sortBy, sortDir) switch
             {
                 ("year",   "asc")  => q.OrderBy(m => m.ReleaseDate),
                 ("year",   "desc") => q.OrderByDescending(m => m.ReleaseDate),
@@ -64,8 +84,8 @@ public class MediaService : IMediaService
             var totalCount = await q.CountAsync();
 
             var items = await q
-                .Skip((query.Page - 1) * query.PageSize)
-                .Take(query.PageSize)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .Select(m => new MediaListItemDto
                 {
                     Id            = m.Id,
@@ -90,15 +110,15 @@ public class MediaService : IMediaService
             {
                 Items      = items,
                 TotalCount = totalCount,
-                Page       = query.Page,
-                PageSize   = query.PageSize,
+                Page       = page,
+                PageSize   = pageSize,
             };
         }
         catch (Exception ex)
         {
             // Log to console for now; in production use a logger
             Console.WriteLine($"[MediaService.GetAllAsync] ERROR: {ex.Message}\n{ex.StackTrace}");
-            throw new Exception("A server error occurred while fetching media. Please check the server logs for details.");
+            throw new Exception("A server error occurred while fetching media. Please check the server logs for details.", ex);
         }
     }
 

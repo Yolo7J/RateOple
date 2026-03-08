@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
-import discoveryService from '../features/discovery/services/discoveryService';
+import { useHomeDiscoveryQuery } from '../features/discovery/queries/useHomeDiscoveryQuery';
 import HeroBanner from '../features/discovery/components/HeroBanner';
 import DiscoverySection from '../features/discovery/components/DiscoverySection';
 import '../features/discovery/components/discovery.css';
@@ -8,54 +8,14 @@ import './pages.css';
 
 function HomePage() {
     const { user } = useAuth();
-    const [trending, setTrending] = useState([]);
-    const [popular, setPopular] = useState([]);
-    const [recommended, setRecommended] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
+    const { data, loading, error } = useHomeDiscoveryQuery(user);
+    const trending = Array.isArray(data?.trending) ? data.trending : [];
+    const recommended = Array.isArray(data?.recommended) ? data.recommended : [];
+    const errorMessage = error?.response?.data?.message || 'Failed to load discovery content.';
 
-    useEffect(() => {
-        let mounted = true;
-
-        const load = async () => {
-            setLoading(true);
-            setError('');
-
-            try {
-                const [trendingData, popularData] = await Promise.all([
-                    discoveryService.getTrending(24),
-                    discoveryService.getPopular(60),
-                ]);
-
-                if (!mounted) return;
-                setTrending(Array.isArray(trendingData) ? trendingData : []);
-                setPopular(Array.isArray(popularData) ? popularData : []);
-
-                if (user) {
-                    try {
-                        const rec = await discoveryService.getRecommended(24);
-                        if (mounted) setRecommended(Array.isArray(rec) ? rec : []);
-                    } catch {
-                        if (mounted) setRecommended([]);
-                    }
-                } else {
-                    setRecommended([]);
-                }
-            } catch (e) {
-                if (!mounted) return;
-                setError(e.response?.data?.message || 'Failed to load discovery content.');
-            } finally {
-                if (mounted) setLoading(false);
-            }
-        };
-
-        load();
-        return () => { mounted = false; };
-    }, [user]);
-
-    const popularMovies = useMemo(() => popular.filter((x) => x.type === 'Movie').slice(0, 20), [popular]);
-    const popularTv = useMemo(() => popular.filter((x) => x.type === 'TvSeries').slice(0, 20), [popular]);
-    const popularBooks = useMemo(() => popular.filter((x) => x.type === 'Book').slice(0, 20), [popular]);
+    const popularMovies = useMemo(() => (Array.isArray(data?.popular) ? data.popular : []).filter((x) => x.type === 'Movie').slice(0, 20), [data]);
+    const popularTv = useMemo(() => (Array.isArray(data?.popular) ? data.popular : []).filter((x) => x.type === 'TvSeries').slice(0, 20), [data]);
+    const popularBooks = useMemo(() => (Array.isArray(data?.popular) ? data.popular : []).filter((x) => x.type === 'Book').slice(0, 20), [data]);
 
     return (
         <main className="ro-page ro-home-page">
@@ -65,7 +25,7 @@ function HomePage() {
                 title="Trending Now"
                 items={trending}
                 loading={loading}
-                error={error}
+                error={error ? errorMessage : ''}
             />
 
             {user && (

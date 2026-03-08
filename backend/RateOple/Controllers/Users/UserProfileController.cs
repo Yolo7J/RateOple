@@ -1,8 +1,10 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using RateOple.Core.Contracts;
 using RateOple.Core.Users.DTOs;
+using RateOple.Infrastructure.Data;
 
 namespace RateOple.Controllers;
 
@@ -13,13 +15,22 @@ public class UserProfileController : ControllerBase
 {
     private readonly IUserProfileService _userProfileService;
     private readonly IUserMediaStatusService _userMediaStatusService;
+    private readonly IRatingService _ratingService;
+    private readonly IReviewService _reviewService;
+    private readonly ApplicationDbContext _context;
 
     public UserProfileController(
         IUserProfileService userProfileService,
-        IUserMediaStatusService userMediaStatusService)
+        IUserMediaStatusService userMediaStatusService,
+        IRatingService ratingService,
+        IReviewService reviewService,
+        ApplicationDbContext context)
     {
         _userProfileService = userProfileService;
         _userMediaStatusService = userMediaStatusService;
+        _ratingService = ratingService;
+        _reviewService = reviewService;
+        _context = context;
     }
 
     [HttpGet("profile")]
@@ -51,6 +62,48 @@ public class UserProfileController : ControllerBase
 
         var items = await _userMediaStatusService.GetUserStatusesAsync(userId.Value, query);
         return Ok(items);
+    }
+
+    [HttpGet("ratings")]
+    public async Task<IActionResult> GetMyRatings()
+    {
+        var userId = GetCurrentUserId();
+        if (!userId.HasValue) return Unauthorized();
+
+        var ratings = await _ratingService.GetUserRatingsAsync(userId.Value);
+        return Ok(ratings);
+    }
+
+    [HttpGet("reviews")]
+    public async Task<IActionResult> GetMyReviews()
+    {
+        var userId = GetCurrentUserId();
+        if (!userId.HasValue) return Unauthorized();
+
+        var reviews = await _reviewService.GetUserReviewsAsync(userId.Value);
+        return Ok(reviews);
+    }
+
+    [HttpGet("favorite-genres")]
+    public async Task<ActionResult<IReadOnlyList<UserFavoriteGenreDto>>> GetMyFavoriteGenres()
+    {
+        var userId = GetCurrentUserId();
+        if (!userId.HasValue) return Unauthorized();
+
+        var genres = await _context.UserGenreScores
+            .AsNoTracking()
+            .Where(x => x.UserId == userId.Value && x.Score > 0)
+            .OrderByDescending(x => x.Score)
+            .Take(20)
+            .Select(x => new UserFavoriteGenreDto
+            {
+                GenreId = x.GenreId,
+                Name = x.Genre.Name,
+                Score = x.Score
+            })
+            .ToListAsync();
+
+        return Ok(genres);
     }
 
     [HttpPost("change-password")]

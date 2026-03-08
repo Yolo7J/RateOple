@@ -1,15 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getMediaById, getTmdbSeriesDetails, searchTmdb } from "../services/mediaService";
-import {
-  getSeasons,
-  addSeason,
-  updateSeason,
-  deleteSeason,
-  addEpisode,
-  updateEpisode,
-  deleteEpisode,
-} from "../services/tvSeriesService";
+import { useMediaDetailsQuery } from "../queries/useMediaDetailsQuery";
+import { useTvSeriesSeasonsQuery } from "../queries/useTvSeriesSeasonsQuery";
+import { useMediaCommands } from "../queries/useMediaCommands";
 
 // ── Icons (inline SVG to avoid deps) ─────────────────────────────────────────
 const ChevronDown = ({ open }) => (
@@ -40,10 +33,26 @@ const emptySeasonForm = (nextNum) => ({
 export default function SeasonManagerPage() {
   const { id } = useParams();        // mediaId (Guid)
   const navigate = useNavigate();
+  const {
+    getTmdbSeriesDetails,
+    searchTmdb,
+    addSeason,
+    updateSeason,
+    deleteSeason,
+    addEpisode,
+    updateEpisode,
+    deleteEpisode,
+  } = useMediaCommands();
+  const { data: mediaData, loading: mediaLoading, error: mediaError } = useMediaDetailsQuery(id);
+  const {
+    data: seasonsData,
+    loading: seasonsLoading,
+    error: seasonsError,
+    refetch: refetchSeasons,
+  } = useTvSeriesSeasonsQuery(id);
 
   const [media, setMedia] = useState(null);
   const [seasons, setSeasons] = useState([]);   // from DB (authoritative)
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   // Which season accordion is open
@@ -79,37 +88,42 @@ export default function SeasonManagerPage() {
   // ── Load media + seasons ────────────────────────────────────────────────────
   const loadSeasons = useCallback(async () => {
     try {
-      const data = await getSeasons(id);
-      setSeasons(data);
+      await refetchSeasons();
     } catch {
       setError("Failed to load seasons.");
     }
-  }, [id]);
+  }, [refetchSeasons]);
 
   useEffect(() => {
-    async function init() {
-      try {
-        const [m, s] = await Promise.all([getMediaById(id), getSeasons(id)]);
-        if (m.type !== "TvSeries") {
-          navigate(`/media/${id}`);
-          return;
-        }
-        setMedia(m);
-        setSeasons(s);
-        setActiveTmdbId(m.tmdbId ?? null);
-
-        // Auto-load TMDB seasons if series has a tmdbId and no seasons yet
-        if (m.tmdbId && s.length === 0) {
-          autoLoadTmdb(m.tmdbId);
-        }
-      } catch {
-        setError("Failed to load series.");
-      } finally {
-        setLoading(false);
+    if (mediaData) {
+      if (mediaData.type !== "TvSeries") {
+        navigate(`/media/${id}`);
+        return;
       }
+
+      setMedia(mediaData);
+      setActiveTmdbId(mediaData.tmdbId ?? null);
     }
-    init();
-  }, [id, navigate]);
+  }, [id, mediaData, navigate]);
+
+  useEffect(() => {
+    if (Array.isArray(seasonsData)) {
+      setSeasons(seasonsData);
+    }
+  }, [seasonsData]);
+
+  useEffect(() => {
+    if (mediaError || seasonsError) {
+      setError("Failed to load series.");
+    }
+  }, [mediaError, seasonsError]);
+
+  useEffect(() => {
+    if (media?.tmdbId && seasons.length === 0) {
+      autoLoadTmdb(media.tmdbId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [media?.tmdbId, seasons.length]);
 
   // ── TMDB auto/manual load ───────────────────────────────────────────────────
   async function autoLoadTmdb(tmdbId) {
@@ -390,6 +404,8 @@ export default function SeasonManagerPage() {
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
+  const loading = mediaLoading || seasonsLoading;
+
   if (loading) {
     return (
       <div className="season-manager-loading">

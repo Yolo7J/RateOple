@@ -131,6 +131,17 @@ public class ReviewService : IReviewService
         return reviews.Select(Map).ToList();
     }
 
+    public async Task<IReadOnlyList<ReviewDto>> GetUserReviewsAsync(Guid userId)
+    {
+        var reviews = await _context.Reviews
+            .AsNoTracking()
+            .Where(r => r.UserId == userId)
+            .OrderByDescending(r => r.UpdatedAt)
+            .ToListAsync();
+
+        return reviews.Select(Map).ToList();
+    }
+
     private async Task<Guid> ResolveMediaIdFromRatingAsync(Rating rating)
     {
         if (rating.MediaId.HasValue)

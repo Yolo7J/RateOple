@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import * as mediaService from '../services/mediaService';
 import { useMediaCart } from '../../../context/MediaCartContext';
-import tmdbService from '../services/tmdbService';
+import { useMediaCommands } from '../queries/useMediaCommands';
 import './AddMediaPage.css';
 
 const STEPS = { SELECT_TYPE: 0, SEARCH: 1, FILL_FORM: 2 };
@@ -21,6 +20,14 @@ const mapTmdbSeasonsToForm = (seasons) =>
 const AddMediaPage = () => {
     const navigate = useNavigate();
     const { addItem } = useMediaCart();
+    const {
+        getGenres,
+        searchBooks,
+        getBookDetails,
+        getTmdbSeriesDetails,
+        searchTmdb,
+        getTmdbDetails,
+    } = useMediaCommands();
 
     const [step, setStep] = useState(STEPS.SELECT_TYPE);
     const [mediaType, setMediaType] = useState(null);   // 'Movie' | 'Book' | 'TvSeries'
@@ -57,8 +64,8 @@ const AddMediaPage = () => {
     const [justAddedSeries, setJustAddedSeries] = useState(false);
 
     useEffect(() => {
-        mediaService.getGenres().then(setGenres).catch(() => setGenres([]));
-    }, []);
+        getGenres().then(setGenres).catch(() => setGenres([]));
+    }, [getGenres]);
 
     // ── Debounced search ──────────────────────────────────────────────────────
     useEffect(() => {
@@ -75,7 +82,7 @@ const AddMediaPage = () => {
         searchTimeout.current = setTimeout(async () => {
             try {
                 if (mediaType === 'Book') {
-                    const results = await mediaService.searchBooks(searchQuery);
+                    const results = await searchBooks(searchQuery);
                     setSearchResults(results.map(r => ({
                         id:       r.olId,
                         title:    r.title,
@@ -86,7 +93,7 @@ const AddMediaPage = () => {
                     })));
                 } else {
                     const type = mediaType === 'TvSeries' ? 'tv' : 'movie';
-                    const r = await tmdbService.search(searchQuery, type);
+                    const r = await searchTmdb(searchQuery, type);
                     setSearchResults((r.data ?? []).map(r => ({
                         id:       r.tmdbId,
                         title:    r.title,
@@ -105,7 +112,7 @@ const AddMediaPage = () => {
         }, 400);
 
         return () => clearTimeout(searchTimeout.current);
-    }, [searchQuery, step, mediaType]);
+    }, [searchQuery, step, mediaType, searchBooks, searchTmdb]);
 
     const handleSelectType = (type) => {
         setMediaType(type);
@@ -120,7 +127,7 @@ const AddMediaPage = () => {
     const handleSelectResult = async (result) => {
         try {
             if (mediaType === 'Book') {
-                const details = await mediaService.getBookDetails(result._raw.olId);
+                const details = await getBookDetails(result._raw.olId);
                 setForm({
                     title:       details.title        ?? '',
                     description: details.description  ?? '',
@@ -139,13 +146,13 @@ const AddMediaPage = () => {
                 setSelectedTmdbSeries(null);
             } else {
                 const type = mediaType === 'TvSeries' ? 'tv' : 'movie';
-                const r = await tmdbService.getDetails(result._raw.tmdbId, type);
+                const r = await getTmdbDetails(result._raw.tmdbId, type);
                 const details = r.data;
                 let seriesSeasons = [];
 
                 if (mediaType === 'TvSeries') {
                     try {
-                        const tmdbSeries = await mediaService.getTmdbSeriesDetails(details.tmdbId);
+                        const tmdbSeries = await getTmdbSeriesDetails(details.tmdbId);
                         seriesSeasons = mapTmdbSeasonsToForm(tmdbSeries.seasons);
                     } catch {
                         seriesSeasons = [];

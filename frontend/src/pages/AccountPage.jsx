@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import userService from '../services/userService';
+import { useAccountQuery } from '../features/users/queries/useAccountQuery';
 import AccountSection from '../components/account/AccountSection';
 import '../components/account/account.css';
 import './pages.css';
@@ -8,53 +8,13 @@ import './pages.css';
 function AccountPage() {
     const navigate = useNavigate();
 
-    const [ratings, setRatings] = useState([]);
-    const [reviews, setReviews] = useState([]);
-    const [statuses, setStatuses] = useState([]);
-    const [genres, setGenres] = useState([]);
+    const { data, loading, error } = useAccountQuery();
+    const ratings = data?.ratings ?? [];
+    const reviews = data?.reviews ?? [];
+    const statuses = data?.statuses ?? [];
+    const errorMessage = error?.response?.data?.message || 'Failed to load account data.';
 
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
-
-    useEffect(() => {
-        let mounted = true;
-
-        const load = async () => {
-            setLoading(true);
-            setError('');
-
-            try {
-                const [r1, r2, r3] = await Promise.all([
-                    userService.getMyRatings(),
-                    userService.getMyReviews(),
-                    userService.getMyStatuses(),
-                ]);
-
-                if (!mounted) return;
-
-                setRatings(Array.isArray(r1) ? r1 : []);
-                setReviews(Array.isArray(r2) ? r2 : []);
-                setStatuses(Array.isArray(r3) ? r3 : []);
-
-                try {
-                    const g = await userService.getMyFavoriteGenres();
-                    if (mounted) setGenres(Array.isArray(g) ? g : []);
-                } catch {
-                    if (mounted) setGenres([]);
-                }
-            } catch (e) {
-                if (!mounted) return;
-                setError(e.response?.data?.message || 'Failed to load account data.');
-            } finally {
-                if (mounted) setLoading(false);
-            }
-        };
-
-        load();
-        return () => { mounted = false; };
-    }, []);
-
-    const topGenres = useMemo(() => genres.slice(0, 12), [genres]);
+    const topGenres = useMemo(() => (Array.isArray(data?.genres) ? data.genres.slice(0, 12) : []), [data]);
 
     return (
         <main className="ro-page ro-account-page">
@@ -64,7 +24,7 @@ function AccountPage() {
             </div>
 
             {loading && <p>Loading account...</p>}
-            {error && <p className="ro-error">{error}</p>}
+            {error && <p className="ro-error">{errorMessage}</p>}
 
             {!loading && !error && (
                 <div className="ro-account-grid">

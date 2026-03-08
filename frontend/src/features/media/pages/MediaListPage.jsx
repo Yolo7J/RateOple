@@ -1,11 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
-import * as mediaService from '../services/mediaService';
+import { MEDIA_TYPES } from '../../../shared/constants/mediaTypes';
+import { useMediaGenresQuery } from '../queries/useMediaGenresQuery';
+import { useMediaListQuery } from '../queries/useMediaListQuery';
 import MediaCard from '../components/MediaCard/MediaCard';
 import './MediaListPage.css';
 
-const MEDIA_TYPES = ['Movie', 'Book', 'TvSeries'];
 const SORT_OPTIONS = [
     { value: 'rating:desc', label: 'Top Rated' },
     { value: 'rating:asc', label: 'Lowest Rated' },
@@ -26,7 +27,10 @@ const MediaListPage = () => {
     const initialGenres = searchParams.get('genres')?.split(',').map(Number).filter(Boolean) ?? [];
     const initialSearch = searchParams.get('search') ?? '';
     const initialSort = searchParams.get('sort') ?? 'rating:desc';
-    const initialPage = Number(searchParams.get('page') ?? 1);
+    const parsedPage = Number(searchParams.get('page') ?? 1);
+    const initialPage = Number.isFinite(parsedPage) && parsedPage > 0
+        ? Math.floor(parsedPage)
+        : 1;
 
     const [selectedTypes, setSelectedTypes] = useState(initialTypes);
     const [selectedGenres, setSelectedGenres] = useState(initialGenres);
@@ -35,23 +39,28 @@ const MediaListPage = () => {
     const [sort, setSort] = useState(initialSort);
     const [page, setPage] = useState(initialPage);
 
-    const [genres, setGenres] = useState([]);
-    const [result, setResult] = useState({ items: [], totalCount: 0, totalPages: 1 });
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [sortBy, sortDir] = sort.split(':');
+    const { data: genresData, error: genresError } = useMediaGenresQuery();
+    const {
+        data: result,
+        loading,
+        error,
+    } = useMediaListQuery({
+        types: selectedTypes,
+        genreIds: selectedGenres,
+        search,
+        sortBy,
+        sortDir,
+        page,
+        pageSize: PAGE_SIZE,
+    });
+    const genres = Array.isArray(genresData) ? genresData : [];
 
-    // Load genres once
     useEffect(() => {
-        mediaService.getGenres()
-            .then(r => setGenres(Array.isArray(r.data) ? r.data : []))
-            .catch(err => {
-                setGenres([]);
-                // If unauthorized, redirect to login
-                if (err?.response?.status === 401) {
-                    navigate('/login');
-                }
-            });
-    }, [navigate]);
+        if (genresError?.response?.status === 401) {
+            navigate('/login');
+        }
+    }, [genresError, navigate]);
 
     // Sync state → URL
     useEffect(() => {
@@ -64,36 +73,9 @@ const MediaListPage = () => {
         setSearchParams(params, { replace: true });
     }, [selectedTypes, selectedGenres, search, sort, page, setSearchParams]);
 
-    // Fetch media
-    const fetchMedia = useCallback(async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const [sortBy, sortDir] = sort.split(':');
-            const params = {
-                types: selectedTypes,
-                genreIds: selectedGenres,
-                search,
-                sortBy,
-                sortDir,
-                page,
-                pageSize: PAGE_SIZE,
-            };
-            const r = await mediaService.getAll(params);
-            if (r && Array.isArray(r.items)) {
-                setResult(r);
-            } else {
-                setError('Media response format invalid.');
-            }
-        } catch (e) {
-            console.error('fetchMedia error:', e);
-            setError('Failed to load media.');
-        } finally {
-            setLoading(false);
-        }
-    }, [selectedTypes, selectedGenres, search, sort, page]);
-
-    useEffect(() => { fetchMedia(); }, [fetchMedia]);
+    const errorMessage = error
+        ? (error?.response?.data?.message || 'Failed to load media.')
+        : null;
 
     const toggleType = (type) => {
         setPage(1);
@@ -191,7 +173,7 @@ const MediaListPage = () => {
 
                 {/* Grid */}
                 <main className="media-grid-area">
-                    {error && <p className="media-error">{error}</p>}
+                    {errorMessage && <p className="media-error">{errorMessage}</p>}
 
                     {loading ? (
                         <div className="media-grid-skeleton">
@@ -199,20 +181,20 @@ const MediaListPage = () => {
                                 <div key={i} className="media-card-skeleton" />
                             ))}
                         </div>
-                    ) : result.items.length === 0 ? (
+                    ) : (result?.items?.length ?? 0) === 0 ? (
                         <div className="media-empty">
                             <p>No media found. Try adjusting your filters.</p>
                         </div>
                     ) : (
                         <div className="media-grid">
-                            {result.items.map(m => (
+                            {(result?.items ?? []).map(m => (
                                 <MediaCard key={m.id} media={m} />
                             ))}
                         </div>
                     )}
 
                     {/* Pagination */}
-                    {result.totalPages > 1 && (
+                    {(result?.totalPages ?? 1) > 1 && (
                         <div className="media-pagination">
                             <button
                                 className="page-btn"
@@ -222,11 +204,11 @@ const MediaListPage = () => {
                                 ← Prev
                             </button>
                             <span className="page-info">
-                                Page {page} of {result.totalPages}
+                                Page {page} of {result?.totalPages ?? 1}
                             </span>
                             <button
                                 className="page-btn"
-                                disabled={page >= result.totalPages}
+                                disabled={page >= (result?.totalPages ?? 1)}
                                 onClick={() => setPage(p => p + 1)}
                             >
                                 Next →

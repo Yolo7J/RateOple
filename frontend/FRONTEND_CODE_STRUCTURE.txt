@@ -1,0 +1,215 @@
+README.md - Frontend package documentation and setup notes.
+eslint.config.js - ESLint configuration for code quality rules.
+index.html - Vite HTML entry template that mounts the React app.
+package-lock.json - Exact dependency lockfile for reproducible installs.
+package.json - NPM scripts, dependencies, and project metadata.
+public/ - Static public assets served as-is by Vite.
+public/vite.svg - Static logo asset used in starter/branding UI.
+src/ - Frontend application source code.
+src/App.css - App-level styling rules.
+src/App.jsx - Main app shell component composition.
+src/app/ - App-level routing and composition setup.
+src/app/AppRouter.jsx - Router wrapper that renders configured routes.
+src/app/routes.jsx - Central route-to-page mapping configuration.
+src/assets/ - Bundled static assets imported by the app.
+src/assets/react.svg - Static logo asset used in starter/branding UI.
+src/components/ - Legacy shared components (pre-feature migration).
+src/components/account/ - Account/profile UI components.
+src/components/account/AccountSection.jsx - Reusable React UI component for this domain.
+src/components/account/account.css - Stylesheet for the related component(s).
+src/context/ - React context providers for global state.
+src/context/AuthContext.jsx - React context provider and hook for shared app state.
+src/context/LanguageContext.jsx - React context provider and hook for shared app state.
+src/context/MediaCartContext.jsx - React context provider and hook for shared app state.
+src/context/ThemeContext.jsx - React context provider and hook for shared app state.
+src/contexts/ - New contexts module placeholder folder.
+src/contexts/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/ - Feature-based domain modules.
+src/features/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/auth/ - Domain feature module container.
+src/features/auth/components/ - components layer for the auth feature.
+src/features/auth/components/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/auth/components/AuthCard.css - Stylesheet for the related component(s).
+src/features/auth/components/AuthCard.jsx - Reusable React UI component for this domain.
+src/features/auth/components/LoginForm.jsx - Reusable React UI component for this domain.
+src/features/auth/components/RegisterForm.jsx - Reusable React UI component for this domain.
+src/features/auth/hooks/ - hooks layer for the auth feature.
+src/features/auth/hooks/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/auth/pages/ - pages layer for the auth feature.
+src/features/auth/pages/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/auth/pages/LoginPage.jsx - Route page component for this screen.
+src/features/auth/pages/RegisterPage.jsx - Route page component for this screen.
+src/features/auth/services/ - services layer for the auth feature.
+src/features/auth/services/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/auth/services/authService.js - API service layer for this feature/domain.
+src/features/collections/ - Domain feature module container.
+src/features/collections/README.md - Frontend package documentation and setup notes.
+src/features/collections/components/ - components layer for the collections feature.
+src/features/collections/components/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/collections/hooks/ - hooks layer for the collections feature.
+src/features/collections/hooks/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/collections/pages/ - pages layer for the collections feature.
+src/features/collections/pages/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/collections/services/ - services layer for the collections feature.
+src/features/collections/services/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/discovery/ - Domain feature module container.
+src/features/discovery/components/ - components layer for the discovery feature.
+src/features/discovery/components/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/discovery/components/DiscoverySection.jsx - Reusable React UI component for this domain.
+src/features/discovery/components/HeroBanner.jsx - Reusable React UI component for this domain.
+src/features/discovery/components/MediaCard.jsx - Reusable React UI component for this domain.
+src/features/discovery/components/MediaRow.jsx - Reusable React UI component for this domain.
+src/features/discovery/components/discovery.css - Stylesheet for the related component(s).
+src/features/discovery/hooks/ - hooks layer for the discovery feature.
+src/features/discovery/hooks/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/discovery/pages/ - pages layer for the discovery feature.
+src/features/discovery/pages/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/discovery/services/ - services layer for the discovery feature.
+src/features/discovery/services/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/discovery/services/discoveryService.js - API service layer for this feature/domain.
+src/features/groups/ - Domain feature module container.
+src/features/groups/README.md - Frontend package documentation and setup notes.
+src/features/groups/components/ - components layer for the groups feature.
+src/features/groups/components/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/groups/hooks/ - hooks layer for the groups feature.
+src/features/groups/hooks/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/groups/pages/ - pages layer for the groups feature.
+src/features/groups/pages/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/groups/services/ - services layer for the groups feature.
+src/features/groups/services/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/media/ - Domain feature module container.
+src/features/media/components/ - components layer for the media feature.
+src/features/media/components/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/media/components/MediaCard/ - Project folder.
+src/features/media/components/MediaCard/MediaCard.css - Stylesheet for the related component(s).
+src/features/media/components/MediaCard/MediaCard.jsx - Reusable React UI component for this domain.
+src/features/media/components/MediaStatusSelector.css - Stylesheet for the related component(s).
+src/features/media/components/MediaStatusSelector.jsx - Reusable React UI component for this domain.
+src/features/media/hooks/ - hooks layer for the media feature.
+src/features/media/hooks/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/media/pages/ - pages layer for the media feature.
+src/features/media/pages/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/media/pages/AddMediaPage.css - Stylesheet scoped to the related page UI.
+src/features/media/pages/AddMediaPage.jsx - Route page component for this screen.
+src/features/media/pages/CartPage.css - Stylesheet scoped to the related page UI.
+src/features/media/pages/CartPage.jsx - Route page component for this screen.
+src/features/media/pages/MediaDetailPage.css - Stylesheet scoped to the related page UI.
+src/features/media/pages/MediaDetailPage.jsx - Route page component for this screen.
+src/features/media/pages/MediaListPage.css - Stylesheet scoped to the related page UI.
+src/features/media/pages/MediaListPage.jsx - Route page component for this screen.
+src/features/media/pages/SeasonManagerPage.css - Stylesheet scoped to the related page UI.
+src/features/media/pages/SeasonManagerPage.jsx - Route page component for this screen.
+src/features/media/services/ - services layer for the media feature.
+src/features/media/services/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/media/services/mediaService.js - API service layer for this feature/domain.
+src/features/media/services/tmdbService.js - API service layer for this feature/domain.
+src/features/media/services/tvSeriesService.js - API service layer for this feature/domain.
+src/features/moderation/ - Domain feature module container.
+src/features/moderation/README.md - Frontend package documentation and setup notes.
+src/features/moderation/components/ - components layer for the moderation feature.
+src/features/moderation/components/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/moderation/hooks/ - hooks layer for the moderation feature.
+src/features/moderation/hooks/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/moderation/pages/ - pages layer for the moderation feature.
+src/features/moderation/pages/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/moderation/services/ - services layer for the moderation feature.
+src/features/moderation/services/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/notifications/ - Domain feature module container.
+src/features/notifications/README.md - Frontend package documentation and setup notes.
+src/features/notifications/components/ - components layer for the notifications feature.
+src/features/notifications/components/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/notifications/hooks/ - hooks layer for the notifications feature.
+src/features/notifications/hooks/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/notifications/pages/ - pages layer for the notifications feature.
+src/features/notifications/pages/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/notifications/services/ - services layer for the notifications feature.
+src/features/notifications/services/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/ratings/ - Domain feature module container.
+src/features/ratings/components/ - components layer for the ratings feature.
+src/features/ratings/components/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/ratings/components/RatingSelector.jsx - Reusable React UI component for this domain.
+src/features/ratings/components/RatingStars.jsx - Reusable React UI component for this domain.
+src/features/ratings/components/UserRatingDisplay.jsx - Reusable React UI component for this domain.
+src/features/ratings/components/ratings.css - Stylesheet for the related component(s).
+src/features/ratings/hooks/ - hooks layer for the ratings feature.
+src/features/ratings/hooks/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/ratings/pages/ - pages layer for the ratings feature.
+src/features/ratings/pages/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/ratings/services/ - services layer for the ratings feature.
+src/features/ratings/services/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/ratings/services/ratingService.js - API service layer for this feature/domain.
+src/features/reviews/ - Domain feature module container.
+src/features/reviews/components/ - components layer for the reviews feature.
+src/features/reviews/components/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/reviews/components/ReviewCard.jsx - Reusable React UI component for this domain.
+src/features/reviews/components/ReviewEditor.jsx - Reusable React UI component for this domain.
+src/features/reviews/components/ReviewFilters.jsx - Reusable React UI component for this domain.
+src/features/reviews/components/ReviewsList.jsx - Reusable React UI component for this domain.
+src/features/reviews/components/reviews.css - Stylesheet for the related component(s).
+src/features/reviews/hooks/ - hooks layer for the reviews feature.
+src/features/reviews/hooks/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/reviews/pages/ - pages layer for the reviews feature.
+src/features/reviews/pages/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/reviews/services/ - services layer for the reviews feature.
+src/features/reviews/services/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/reviews/services/reviewService.js - API service layer for this feature/domain.
+src/features/users/ - Domain feature module container.
+src/features/users/components/ - components layer for the users feature.
+src/features/users/components/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/users/hooks/ - hooks layer for the users feature.
+src/features/users/hooks/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/users/pages/ - pages layer for the users feature.
+src/features/users/pages/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/users/services/ - services layer for the users feature.
+src/features/users/services/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/hooks/ - Reusable React hooks.
+src/hooks/useLanguage.js - Reusable custom React hook.
+src/hooks/useTheme.js - Reusable custom React hook.
+src/index.css - Global base styles loaded once at app start.
+src/layouts/ - Layout module placeholder folder.
+src/layouts/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/locales/ - i18n translation resources.
+src/locales/bg.json - Translation dictionary for UI localization.
+src/locales/en.json - Translation dictionary for UI localization.
+src/main.jsx - Application bootstrap that renders the root React tree.
+src/pages/ - Top-level route pages.
+src/pages/AccountPage.jsx - Route page component for this screen.
+src/pages/Home/ - Home page specific UI and styles.
+src/pages/Home/Home.css - Stylesheet scoped to the related page UI.
+src/pages/Home/Home.jsx - React component/module file.
+src/pages/HomePage.jsx - Route page component for this screen.
+src/pages/MediaDetailPage.jsx - Route page component for this screen.
+src/pages/WatchlistPage.jsx - Route page component for this screen.
+src/pages/pages.css - Stylesheet scoped to the related page UI.
+src/services/ - Legacy/shared API client services.
+src/services/api.js - Shared Axios/API client configuration.
+src/services/authMockService.js - API service layer for this feature/domain.
+src/services/statusService.js - API service layer for this feature/domain.
+src/services/userService.js - Reusable custom React hook.
+src/shared/ - Shared cross-feature modules.
+src/shared/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/shared/components/ - Global layout/shared components.
+src/shared/components/Footer/ - Footer component and styles.
+src/shared/components/Footer/Footer.css - Stylesheet for the related component(s).
+src/shared/components/Footer/Footer.jsx - Reusable React UI component for this domain.
+src/shared/components/Header/ - Header/navigation components and styles.
+src/shared/components/Header/Header.css - Stylesheet for the related component(s).
+src/shared/components/Header/Header.jsx - Reusable React UI component for this domain.
+src/shared/components/Header/NavigationDropdown.css - Stylesheet for the related component(s).
+src/shared/components/Header/NavigationDropdown.jsx - Reusable React UI component for this domain.
+src/shared/ui/ - Reusable UI primitives.
+src/shared/ui/LanguageToggle/ - Reusable UI component and its styles.
+src/shared/ui/LanguageToggle/LanguageToggle.css - Stylesheet file.
+src/shared/ui/LanguageToggle/LanguageToggle.jsx - React component/module file.
+src/shared/ui/RatingStars/ - Reusable UI component and its styles.
+src/shared/ui/RatingStars/RatingStars.css - Stylesheet file.
+src/shared/ui/RatingStars/RatingStars.jsx - React component/module file.
+src/shared/ui/SearchBar/ - Reusable UI component and its styles.
+src/shared/ui/SearchBar/SearchBar.css - Stylesheet file.
+src/shared/ui/SearchBar/SearchBar.jsx - React component/module file.
+src/shared/ui/ThemeToggle/ - Reusable UI component and its styles.
+src/shared/ui/ThemeToggle/ThemeToggle.css - Stylesheet file.
+src/shared/ui/ThemeToggle/ThemeToggle.jsx - React component/module file.
+src/styles/ - Global styles module placeholder folder.
+src/styles/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+vite.config.js - JavaScript module file.

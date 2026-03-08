@@ -1,0 +1,25 @@
+import { useQueryResource } from '../../../shared/utils/useQueryResource';
+import userService from '../../../services/userService';
+
+export const useAccountQuery = () => {
+  return useQueryResource({
+    queryKey: ['users', 'account'],
+    queryFn: async () => {
+      const [ratings, reviews, statuses, genres] = await Promise.all([
+        userService.getMyRatings().catch(() => []),
+        userService.getMyReviews().catch(() => []),
+        userService.getMyStatuses().catch(() => []),
+        userService.getMyFavoriteGenres().catch(() => []),
+      ]);
+
+      return {
+        ratings: Array.isArray(ratings) ? ratings : [],
+        reviews: Array.isArray(reviews) ? reviews : [],
+        statuses: Array.isArray(statuses) ? statuses : [],
+        genres: Array.isArray(genres) ? genres : [],
+      };
+    },
+    enabled: true,
+    initialData: { ratings: [], reviews: [], statuses: [], genres: [] },
+  });
+};

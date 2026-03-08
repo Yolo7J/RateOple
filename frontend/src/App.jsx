@@ -1,11 +1,11 @@
 
-import AppRouter from './app/AppRouter.jsx'
+import Router from './app/router.jsx'
 import './App.css'
 
 function App() {
   return (
     <div className="app">
-      <AppRouter />
+      <Router />
     </div>
   )
 }

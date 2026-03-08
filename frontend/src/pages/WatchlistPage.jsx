@@ -1,50 +1,29 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import statusService from '../services/statusService';
+import { STATUS_TYPES } from '../shared/constants/statusTypes';
+import { useWatchlistQuery } from '../features/users/queries/useWatchlistQuery';
 import './pages.css';
 
-const ORDER = ['Plan', 'On it', 'Done', 'Dropped'];
+const ORDER = STATUS_TYPES;
 
 function WatchlistPage() {
     const navigate = useNavigate();
-    const [items, setItems] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
-
-    useEffect(() => {
-        let mounted = true;
-
-        const load = async () => {
-            setLoading(true);
-            setError('');
-            try {
-                const data = await statusService.getMyStatuses();
-                if (!mounted) return;
-                setItems(Array.isArray(data) ? data : []);
-            } catch (e) {
-                if (!mounted) return;
-                setError(e.response?.data?.message || 'Failed to load watchlist.');
-            } finally {
-                if (mounted) setLoading(false);
-            }
-        };
-
-        load();
-        return () => { mounted = false; };
-    }, []);
+    const { data, loading, error } = useWatchlistQuery();
+    const errorMessage = error?.response?.data?.message || 'Failed to load watchlist.';
 
     const groups = useMemo(() => {
+        const items = Array.isArray(data) ? data : [];
         return ORDER.reduce((acc, key) => {
             acc[key] = items.filter((x) => (x.status || '').toLowerCase() === key.toLowerCase());
             return acc;
         }, {});
-    }, [items]);
+    }, [data]);
 
     return (
         <main className="ro-page ro-watchlist-page">
             <h1>Watchlist</h1>
             {loading && <p>Loading watchlist...</p>}
-            {error && <p className="ro-error">{error}</p>}
+            {error && <p className="ro-error">{errorMessage}</p>}
 
             {!loading && !error && ORDER.map((status) => (
                 <section key={status} className="ro-watch-status-group">

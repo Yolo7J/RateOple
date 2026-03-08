@@ -1,4 +1,4 @@
-import api from '../../../services/api';
+import api from '../../../shared/api/apiClient';
 
 const discoveryService = {
     getTrending: async (limit = 20) => {
