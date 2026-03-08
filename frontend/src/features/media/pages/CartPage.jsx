@@ -30,14 +30,25 @@ export default function CartPage() {
       const result = await bulkCreateMedia(items);
       const nextStatuses = {};
 
-      const createdTitles = new Set(result.created.map((c) => c.title?.toLowerCase()));
-      const errorTitles = new Set(result.errors.map((e) => e.title?.toLowerCase()));
+      const createdItems = Array.isArray(result?.created)
+        ? result.created
+        : Array.isArray(result?.Created)
+          ? result.Created
+          : [];
+      const errorItems = Array.isArray(result?.errors)
+        ? result.errors
+        : Array.isArray(result?.Errors)
+          ? result.Errors
+          : [];
+
+      const createdTitles = new Set(createdItems.map((c) => c.title?.toLowerCase()).filter(Boolean));
+      const errorTitles = new Set(errorItems.map((e) => e.title?.toLowerCase()).filter(Boolean));
 
       for (const item of items) {
         const key = item.data.title?.toLowerCase();
         if (createdTitles.has(key)) nextStatuses[item.id] = STATUS.ok;
         else if (errorTitles.has(key)) nextStatuses[item.id] = STATUS.error;
-        else nextStatuses[item.id] = STATUS.ok;
+        else nextStatuses[item.id] = STATUS.error;
       }
 
       setStatuses(nextStatuses);

@@ -6,10 +6,10 @@ export const useAccountQuery = () => {
     queryKey: ['users', 'account'],
     queryFn: async () => {
       const [ratings, reviews, statuses, genres] = await Promise.all([
-        userService.getMyRatings().catch(() => []),
-        userService.getMyReviews().catch(() => []),
-        userService.getMyStatuses().catch(() => []),
-        userService.getMyFavoriteGenres().catch(() => []),
+        userService.getMyRatings(),
+        userService.getMyReviews(),
+        userService.getMyStatuses(),
+        userService.getMyFavoriteGenres(),
       ]);
 
       return {
