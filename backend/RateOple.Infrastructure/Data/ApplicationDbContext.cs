@@ -40,6 +40,7 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, 
     // JWT
     public DbSet<RefreshToken> RefreshTokens { get; set; }
     public DbSet<UserProfile> UserProfiles { get; set; }
+    public DbSet<UserMediaStatus> UserMediaStatuses { get; set; }
     public DbSet<MediaInteraction> MediaInteractions { get; set; }
 
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }

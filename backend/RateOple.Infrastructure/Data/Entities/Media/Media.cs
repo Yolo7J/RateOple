@@ -24,4 +24,5 @@ public class Media
     public ICollection<CollectionItem> CollectionItems { get; set; } = new List<CollectionItem>();
     public ICollection<GroupMedia> GroupLinks { get; set; } = new List<GroupMedia>();
     public ICollection<MediaInteraction> Interactions { get; set; } = new List<MediaInteraction>();
+    public ICollection<UserMediaStatus> UserStatuses { get; set; } = new List<UserMediaStatus>();
 }
