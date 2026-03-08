@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import discoveryService from '../services/discoveryService';
-import HeroBanner from '../components/discovery/HeroBanner';
-import DiscoverySection from '../components/discovery/DiscoverySection';
-import '../components/discovery/discovery.css';
+import discoveryService from '../features/discovery/services/discoveryService';
+import HeroBanner from '../features/discovery/components/HeroBanner';
+import DiscoverySection from '../features/discovery/components/DiscoverySection';
+import '../features/discovery/components/discovery.css';
 import './pages.css';
 
 function HomePage() {

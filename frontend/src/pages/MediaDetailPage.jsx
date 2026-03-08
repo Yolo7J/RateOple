@@ -4,19 +4,19 @@ import { useAuth } from '../context/AuthContext';
 import { getMediaById } from '../features/media/services/mediaService';
 import ratingService from '../features/ratings/services/ratingService';
 import reviewService from '../features/reviews/services/reviewService';
-import discoveryService from '../services/discoveryService';
+import discoveryService from '../features/discovery/services/discoveryService';
 import statusService from '../services/statusService';
 import UserRatingDisplay from '../features/ratings/components/UserRatingDisplay';
 import RatingSelector from '../features/ratings/components/RatingSelector';
 import ReviewEditor from '../features/reviews/components/ReviewEditor';
 import ReviewFilters from '../features/reviews/components/ReviewFilters';
 import ReviewsList from '../features/reviews/components/ReviewsList';
-import MediaRow from '../components/discovery/MediaRow';
+import MediaRow from '../features/discovery/components/MediaRow';
 import MediaStatusSelector from '../features/media/components/MediaStatusSelector';
 import './pages.css';
 import '../features/ratings/components/ratings.css';
 import '../features/reviews/components/reviews.css';
-import '../components/discovery/discovery.css';
+import '../features/discovery/components/discovery.css';
 import '../features/media/components/MediaStatusSelector.css';
 
 function MediaDetailPage() {
