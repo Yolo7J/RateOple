@@ -1,8 +1,11 @@
 const CSRF_HEADER = 'X-CSRF-TOKEN';
 const MUTATING_METHODS = new Set(['post', 'put', 'patch', 'delete']);
+const REFRESH_PATH = '/auth/refresh';
+const ME_PATH = '/auth/me';
 
 let csrfToken = null;
 let csrfTokenPromise = null;
+let refreshPromise = null;
 
 const ensureCsrfToken = async () => {
   if (csrfToken) return csrfToken;
@@ -29,6 +32,18 @@ const ensureCsrfToken = async () => {
 };
 
 export const registerAuthInterceptor = (apiClient) => {
+  const ensureAccessToken = async () => {
+    if (refreshPromise) return refreshPromise;
+
+    refreshPromise = apiClient
+      .post(REFRESH_PATH)
+      .finally(() => {
+        refreshPromise = null;
+      });
+
+    return refreshPromise;
+  };
+
   apiClient.interceptors.request.use(
     async (config) => {
       const method = (config.method || 'get').toLowerCase();
@@ -48,6 +63,7 @@ export const registerAuthInterceptor = (apiClient) => {
     async (error) => {
       const originalRequest = error?.config;
       const status = error?.response?.status;
+      const requestUrl = String(originalRequest?.url || '');
       const serverMessage = typeof error?.response?.data === 'string'
         ? error.response.data
         : error?.response?.data?.message;
@@ -65,6 +81,23 @@ export const registerAuthInterceptor = (apiClient) => {
           originalRequest.headers[CSRF_HEADER] = token;
         }
         return apiClient(originalRequest);
+      }
+
+      const canAttemptRefresh =
+        status === 401 &&
+        originalRequest &&
+        !originalRequest._authRetried &&
+        !requestUrl.includes(REFRESH_PATH) &&
+        !requestUrl.includes(ME_PATH);
+
+      if (canAttemptRefresh) {
+        try {
+          await ensureAccessToken();
+          originalRequest._authRetried = true;
+          return apiClient(originalRequest);
+        } catch {
+          return Promise.reject(error);
+        }
       }
 
       if (status === 401) {
