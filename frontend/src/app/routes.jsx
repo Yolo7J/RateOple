@@ -1,4 +1,4 @@
-import HomePage from '../pages/HomePage';
+import DiscoveryPage from '../features/discovery/pages/DiscoveryPage';
 import LoginPage from '../features/auth/pages/LoginPage';
 import RegisterPage from '../features/auth/pages/RegisterPage';
 import MediaListPage from '../features/media/pages/MediaListPage';
@@ -12,7 +12,7 @@ import CartPage from '../features/media/pages/CartPage';
 export const routes = [
     {
         path: '/',
-        element: <HomePage />,
+        element: <DiscoveryPage />,
     },
     {
         path: '/login',
@@ -54,5 +54,5 @@ export const routes = [
 
 export const fallbackRoute = {
     path: '*',
-    element: <HomePage />,
+    element: <DiscoveryPage />,
 };

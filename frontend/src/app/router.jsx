@@ -6,7 +6,7 @@ import AdminLayout from '../layouts/AdminLayout';
 import RequireAuth from '../features/auth/components/RequireAuth';
 import RequireGuest from '../features/auth/components/RequireGuest';
 
-import HomePage from '../pages/HomePage';
+import DiscoveryPage from '../features/discovery/pages/DiscoveryPage';
 import LoginPage from '../features/auth/pages/LoginPage';
 import RegisterPage from '../features/auth/pages/RegisterPage';
 import MediaListPage from '../features/media/pages/MediaListPage';
@@ -21,7 +21,7 @@ const Router = () => {
   return (
     <Routes>
       <Route element={<MainLayout />}>
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<DiscoveryPage />} />
         <Route path="/media" element={<MediaListPage />} />
         <Route path="/media/:id" element={<MediaDetailPage />} />
         <Route element={<RequireAuth />}>
@@ -41,14 +41,14 @@ const Router = () => {
       </Route>
 
       <Route element={<GroupLayout />}>
-        <Route path="/groups" element={<HomePage />} />
+        <Route path="/groups" element={<DiscoveryPage />} />
       </Route>
 
       <Route element={<AdminLayout />}>
-        <Route path="/admin" element={<HomePage />} />
+        <Route path="/admin" element={<DiscoveryPage />} />
       </Route>
 
-      <Route path="*" element={<HomePage />} />
+      <Route path="*" element={<DiscoveryPage />} />
     </Routes>
   );
 };
