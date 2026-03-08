@@ -8,6 +8,8 @@ using RateOple.Infrastructure.Data;
 using RateOple.Infrastructure.Data.Entities;
 using RateOple.Infrastructure.Security;
 using Microsoft.AspNetCore.Authorization;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace RateOple.Controllers
 {
@@ -62,10 +64,17 @@ namespace RateOple.Controllers
         }
 
         [HttpGet("me")]
+        [Authorize]
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> Me()
         {
-            var user = await _userManager.GetUserAsync(User);
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+
+            if (string.IsNullOrWhiteSpace(userIdClaim))
+                return Unauthorized();
+
+            var user = await _userManager.FindByIdAsync(userIdClaim);
             if (user == null)
                 return Unauthorized();
         
