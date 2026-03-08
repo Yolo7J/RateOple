@@ -8,8 +8,8 @@ import { BrowserRouter } from 'react-router-dom'
 
 import { AuthProvider } from './context/AuthContext'
 import { MediaCartProvider } from './context/MediaCartContext'
-import Header from './components/layout/Header/Header.jsx'
-import Footer from './components/layout/Footer/Footer.jsx'
+import Header from './shared/components/Header/Header.jsx'
+import Footer from './shared/components/Footer/Footer.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
