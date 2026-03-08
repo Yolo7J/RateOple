@@ -1,163 +1,230 @@
-import { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { useMediaDetailsQuery } from "../queries/useMediaDetailsQuery";
-import "./MediaDetailPage.css";
+import { useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useAuth } from '../../../context/AuthContext';
+import { useMediaDetailsQuery } from '../queries/useMediaDetailsQuery';
+import { useMediaRatingSummaryQuery } from '../../ratings/queries/useMediaRatingSummaryQuery';
+import { useRateMediaMutation } from '../../ratings/queries/useRateMediaMutation';
+import { useReviewsQuery } from '../../reviews/queries/useReviewsQuery';
+import { useReviewMutations } from '../../reviews/queries/useReviewMutations';
+import { useSimilarMediaQuery } from '../../discovery/queries/useSimilarMediaQuery';
+import { useMediaStatusMutation } from '../../users/queries/useMediaStatusMutation';
+import UserRatingDisplay from '../../ratings/components/UserRatingDisplay';
+import RatingSelector from '../../ratings/components/RatingSelector';
+import ReviewEditor from '../../reviews/components/ReviewEditor';
+import ReviewFilters from '../../reviews/components/ReviewFilters';
+import ReviewsList from '../../reviews/components/ReviewsList';
+import MediaRow from '../../discovery/components/MediaRow';
+import MediaStatusSelector from '../components/MediaStatusSelector';
+import { buildImageUrl } from '../../../shared/utils/buildImageUrl';
+import '../../../pages/pages.css';
+import '../../ratings/components/ratings.css';
+import '../../reviews/components/reviews.css';
+import '../../discovery/components/discovery.css';
+import '../components/MediaStatusSelector.css';
 
-export default function MediaDetailPage() {
-    const { id } = useParams();
-    const navigate = useNavigate();
-    const { data: media, loading, error } = useMediaDetailsQuery(id);
+const MEDIA_TABS = ['Overview', 'Reviews', 'Collections', 'Similar'];
 
-    const [openSeason, setOpenSeason] = useState(null);
+function MediaDetailPage() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
-    function toggleSeason(seasonNumber) {
-        setOpenSeason(prev => (prev === seasonNumber ? null : seasonNumber));
+  const [activeTab, setActiveTab] = useState('Overview');
+  const [sortBy, setSortBy] = useState('recent');
+  const [ratingDto, setRatingDto] = useState(null);
+  const [actionError, setActionError] = useState('');
+
+  const { data: media, loading: mediaLoading, error: mediaError } = useMediaDetailsQuery(id);
+  const {
+    data: summary,
+    loading: summaryLoading,
+    error: summaryError,
+    refetch: refetchSummary,
+  } = useMediaRatingSummaryQuery(id);
+  const {
+    data: reviewsData,
+    loading: reviewLoading,
+    error: reviewError,
+    refetch: refetchReviews,
+  } = useReviewsQuery(id);
+  const { data: similarData } = useSimilarMediaQuery(id, 20);
+
+  const { mutate: rateMedia, loading: submittingRating } = useRateMediaMutation();
+  const { createReview, loading: submittingReview } = useReviewMutations();
+  const { mutate: saveMediaStatus, loading: savingStatus } = useMediaStatusMutation();
+
+  const reviews = useMemo(() => (Array.isArray(reviewsData) ? reviewsData : []), [reviewsData]);
+  const similar = Array.isArray(similarData) ? similarData : [];
+
+  const loading = mediaLoading || summaryLoading;
+  const error = mediaError || summaryError;
+  const errorMessage = error?.response?.data?.message || 'Failed to load media details.';
+  const reviewErrorMessage = reviewError?.response?.data?.message || 'Failed to load reviews.';
+
+  const sortedReviews = useMemo(() => {
+    const copy = [...reviews];
+
+    if (sortBy === 'highest') {
+      copy.sort((a, b) => (b.ratingValue ?? 0) - (a.ratingValue ?? 0));
+      return copy;
     }
 
-    if (loading)
-        return (
-            <div className="media-detail-loading">
-                <p>Loading media...</p>
-            </div>
-        );
+    if (sortBy === 'lowest') {
+      copy.sort((a, b) => (a.ratingValue ?? 0) - (b.ratingValue ?? 0));
+      return copy;
+    }
 
-    if (error || !media)
-        return (
-            <div className="media-detail-error">
-                <p>{error?.response?.data?.message || error?.message || "Media not found."}</p>
-                <button onClick={() => navigate("/media")}>Go Back</button>
-            </div>
-        );
+    copy.sort((a, b) => new Date(b.updatedAt ?? b.createdAt) - new Date(a.updatedAt ?? a.createdAt));
+    return copy;
+  }, [reviews, sortBy]);
 
-    const genres = media.genres ?? [];
-    const seasons = media.seasons ?? [];
+  const handleRate = async (value) => {
+    setActionError('');
+    try {
+      const dto = await rateMedia(id, value);
+      setRatingDto(dto);
+      await refetchSummary();
+    } catch (e) {
+      setActionError(e.response?.data?.message || 'Could not save rating.');
+    }
+  };
 
-    return (
-        <div className="media-detail-page">
-            <button
-                className="media-detail-back"
-                onClick={() => navigate("/media")}
-            >
-                ← Back
-            </button>
+  const ensureRatingId = async () => {
+    if (ratingDto?.id) return ratingDto.id;
+    if (!summary?.userRating) return null;
 
-            <div className="media-detail-hero">
-                <div className="media-detail-cover">
-                    <img
-                        src={
-                            media.coverUrl ||
-                            "https://placehold.co/300x450?text=No+Image"
-                        }
-                        alt={media.title}
-                    />
-                </div>
+    const dto = await rateMedia(id, summary.userRating);
+    setRatingDto(dto);
+    return dto.id;
+  };
 
-                <div className="media-detail-info">
-                    <span className="media-detail-type-badge">
-                        {media.type}
-                    </span>
+  const handleCreateReview = async (content) => {
+    setActionError('');
 
-                    <h1 className="media-detail-title">{media.title}</h1>
+    try {
+      const ratingId = await ensureRatingId();
+      if (!ratingId) {
+        setActionError('Please rate this media first.');
+        return;
+      }
 
-                    <div className="media-detail-meta">
-                        {media.releaseYear && <span>{media.releaseYear}</span>}
-                        {media.duration && (
-                            <span>{media.duration} min</span>
-                        )}
-                    </div>
+      await createReview({
+        ratingId,
+        content,
+        containsSpoilers: false,
+      });
 
-                    <div className="media-detail-rating">
-                        <span className="rating-star">★</span>
-                        <span className="rating-value">
-                            {media.averageRating?.toFixed(1) ?? "N/A"}
-                        </span>
-                        <span className="rating-count">
-                            ({media.reviewCount ?? 0} reviews)
-                        </span>
-                    </div>
+      await refetchReviews();
+    } catch (e) {
+      setActionError(e.response?.data?.message || 'Could not post review.');
+    }
+  };
 
-                    {genres.length > 0 && (
-                        <div className="media-detail-genres">
-                            {genres.map((g, i) => (
-                                <span key={i} className="genre-tag">
-                                    {g.name}
-                                </span>
-                            ))}
-                        </div>
-                    )}
+  const handleSaveStatus = async (status) => {
+    setActionError('');
+    try {
+      await saveMediaStatus(id, status);
+    } catch (e) {
+      setActionError(e.response?.data?.message || 'Could not save status.');
+    }
+  };
 
-                    {media.description && (
-                        <p className="media-detail-description">
-                            {media.description}
-                        </p>
-                    )}
-                    {media.type === "TvSeries" && (
-                    <button
-                        className="manage-seasons-btn"
-                        onClick={() => navigate(`/media/${media.id}/seasons`)}
-                    >
-                        ⚙ Manage Seasons
-                    </button>
-)}
-                </div>
-            </div>
+  if (loading) return <main className="ro-page"><p>Loading media...</p></main>;
+  if (error || !media) return <main className="ro-page"><p>{errorMessage || 'Media not found.'}</p></main>;
 
-            {seasons.length > 0 && (
-                <div className="media-seasons">
-                    <h2 className="seasons-heading">Seasons</h2>
+  return (
+    <main className="ro-page ro-detail-page">
+      <button className="ro-back" onClick={() => navigate('/media')}>Back to Media List</button>
 
-                    {seasons.map(season => (
-                        <div
-                            key={season.seasonNumber}
-                            className="season-block"
-                        >
-                            <button
-                                className="season-toggle"
-                                onClick={() =>
-                                    toggleSeason(season.seasonNumber)
-                                }
-                            >
-                                Season {season.seasonNumber}
-
-                                <span className="season-episode-count">
-                                    {season.episodes?.length ?? 0} episodes
-                                </span>
-
-                                <span className="season-chevron">
-                                    {openSeason === season.seasonNumber
-                                        ? "▲"
-                                        : "▼"}
-                                </span>
-                            </button>
-
-                            {openSeason === season.seasonNumber && (
-                                <div className="episodes-list">
-                                    {season.episodes?.map(ep => (
-                                        <div
-                                            key={ep.episodeNumber}
-                                            className="episode-row"
-                                        >
-                                            <span className="ep-number">
-                                                E{ep.episodeNumber}
-                                            </span>
-
-                                            <span className="ep-title">
-                                                {ep.title}
-                                            </span>
-
-                                            {ep.duration && (
-                                                <span className="ep-duration">
-                                                    {ep.duration} min
-                                                </span>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    ))}
-                </div>
-            )}
+      <section className="ro-detail-hero">
+        <img
+          src={buildImageUrl(media.coverUrl)}
+          alt={media.title}
+        />
+        <div>
+          <h1>{media.title}</h1>
+          <p className="ro-muted">{media.type} · {media.releaseYear ?? media.releaseDate?.slice?.(0, 4) ?? 'N/A'}</p>
+          <p>{media.description || 'No description available.'}</p>
         </div>
-    );
+      </section>
+
+      <div className="ro-tab-row" role="tablist" aria-label="Media Details Tabs">
+        {MEDIA_TABS.map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tab}
+            className={`ro-tab-btn${activeTab === tab ? ' is-active' : ''}`}
+            onClick={() => setActiveTab(tab)}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'Overview' ? (
+        <>
+          <UserRatingDisplay
+            averageRating={summary?.averageRating ?? 0}
+            ratingsCount={summary?.ratingsCount ?? 0}
+            userRating={summary?.userRating ?? null}
+          />
+
+          {user ? (
+            <RatingSelector
+              initialValue={summary?.userRating ?? 10}
+              onSubmit={handleRate}
+              submitting={submittingRating}
+            />
+          ) : null}
+
+          {user ? (
+            <MediaStatusSelector
+              currentStatus={media.userStatus || 'Plan'}
+              onSave={handleSaveStatus}
+              saving={savingStatus}
+            />
+          ) : null}
+        </>
+      ) : null}
+
+      {activeTab === 'Reviews' ? (
+        <section className="ro-review-section">
+          <h2>Reviews</h2>
+          <ReviewFilters value={sortBy} onChange={setSortBy} />
+
+          {user && (summary?.userRating || ratingDto?.id) ? (
+            <ReviewEditor
+              onSubmit={handleCreateReview}
+              submitting={submittingReview}
+            />
+          ) : null}
+
+          {user && !summary?.userRating && !ratingDto?.id ? (
+            <p className="ro-muted">Rate this media first to post a review.</p>
+          ) : null}
+
+          {actionError ? <p className="ro-error">{actionError}</p> : null}
+          <ReviewsList reviews={sortedReviews} loading={reviewLoading} error={reviewError ? reviewErrorMessage : ''} />
+        </section>
+      ) : null}
+
+      {activeTab === 'Collections' ? (
+        <section className="ro-review-section">
+          <h2>Collections</h2>
+          <p className="ro-muted">Collections integration for this media is coming soon.</p>
+        </section>
+      ) : null}
+
+      {activeTab === 'Similar' ? (
+        <section className="ro-review-section">
+          <h2>Similar Media</h2>
+          <MediaRow items={similar} />
+        </section>
+      ) : null}
+    </main>
+  );
 }
+
+export default MediaDetailPage;

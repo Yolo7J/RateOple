@@ -10,7 +10,7 @@ import DiscoveryPage from '../features/discovery/pages/DiscoveryPage';
 import LoginPage from '../features/auth/pages/LoginPage';
 import RegisterPage from '../features/auth/pages/RegisterPage';
 import MediaListPage from '../features/media/pages/MediaListPage';
-import MediaDetailPage from '../pages/MediaDetailPage';
+import MediaDetailPage from '../features/media/pages/MediaDetailPage';
 import WatchlistPage from '../pages/WatchlistPage';
 import AccountPage from '../pages/AccountPage';
 import SeasonManagerPage from '../features/media/pages/SeasonManagerPage';
