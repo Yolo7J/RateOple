@@ -32,6 +32,7 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, 
     public DbSet<Group> Groups { get; set; }
     public DbSet<GroupMembership> GroupMemberships { get; set; }
     public DbSet<GroupPost> GroupPosts { get; set; }
+    public DbSet<PostMedia> PostMediaLinks { get; set; }
     public DbSet<GroupMedia> GroupMediaLinks { get; set; }
 
     // Collections

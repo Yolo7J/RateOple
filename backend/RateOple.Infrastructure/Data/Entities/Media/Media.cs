@@ -24,6 +24,7 @@ public class Media
     public ICollection<Review> Reviews { get; set; } = new List<Review>();
     public ICollection<CollectionItem> CollectionItems { get; set; } = new List<CollectionItem>();
     public ICollection<GroupMedia> GroupLinks { get; set; } = new List<GroupMedia>();
+    public ICollection<PostMedia> PostLinks { get; set; } = new List<PostMedia>();
     public ICollection<MediaInteraction> Interactions { get; set; } = new List<MediaInteraction>();
     public ICollection<UserMediaStatus> UserStatuses { get; set; } = new List<UserMediaStatus>();
 }
