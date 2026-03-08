@@ -28,6 +28,10 @@ const NavigationDropdown = () => {
             label: 'Collections',
             path: '/collections',
         },
+        {
+            label: 'Groups',
+            path: '/groups',
+        },
     ];
 
     // Close dropdown when clicking outside

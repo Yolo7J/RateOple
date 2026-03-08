@@ -1,4 +1,6 @@
 import DiscoveryPage from '../features/discovery/pages/DiscoveryPage';
+import GroupsPage from '../features/groups/pages/GroupsPage';
+import GroupDetailPage from '../features/groups/pages/GroupDetailPage';
 import LoginPage from '../features/auth/pages/LoginPage';
 import RegisterPage from '../features/auth/pages/RegisterPage';
 import MediaListPage from '../features/media/pages/MediaListPage';
@@ -43,6 +45,14 @@ export const routes = [
     {
         path: '/collections/:id',
         element: <CollectionDetailPage />,
+    },
+    {
+        path: '/groups',
+        element: <GroupsPage />,
+    },
+    {
+        path: '/groups/:id',
+        element: <GroupDetailPage />,
     },
     {
         path: '/cart',

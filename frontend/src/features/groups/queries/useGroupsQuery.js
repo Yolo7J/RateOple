@@ -1,16 +1,18 @@
 import { useQueryResource } from '../../../shared/utils/useQueryResource';
 import groupService from '../services/groupService';
 
-export const useGroupPostsQuery = (groupId, params = {}) => {
+export const useGroupsQuery = (params = {}, enabled = true) => {
   const queryParams = {
     page: params.page ?? 1,
     pageSize: params.pageSize ?? 20,
+    ...(params.search ? { search: params.search } : {}),
+    ...(params.visibility ? { visibility: params.visibility } : {}),
   };
 
   return useQueryResource({
-    queryKey: ['groups', 'posts', groupId, queryParams],
-    queryFn: () => groupService.getPosts(groupId, queryParams),
-    enabled: Boolean(groupId),
+    queryKey: ['groups', 'list', queryParams],
+    queryFn: () => groupService.listGroups(queryParams),
+    enabled,
     initialData: { items: [], totalCount: 0, page: queryParams.page, pageSize: queryParams.pageSize },
   });
 };

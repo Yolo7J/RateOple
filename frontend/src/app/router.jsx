@@ -7,6 +7,8 @@ import RequireAuth from '../features/auth/components/RequireAuth';
 import RequireGuest from '../features/auth/components/RequireGuest';
 
 import DiscoveryPage from '../features/discovery/pages/DiscoveryPage';
+import GroupsPage from '../features/groups/pages/GroupsPage';
+import GroupDetailPage from '../features/groups/pages/GroupDetailPage';
 import LoginPage from '../features/auth/pages/LoginPage';
 import RegisterPage from '../features/auth/pages/RegisterPage';
 import MediaListPage from '../features/media/pages/MediaListPage';
@@ -45,7 +47,8 @@ const Router = () => {
       </Route>
 
       <Route element={<GroupLayout />}>
-        <Route path="/groups" element={<DiscoveryPage />} />
+        <Route path="/groups" element={<GroupsPage />} />
+        <Route path="/groups/:id" element={<GroupDetailPage />} />
       </Route>
 
       <Route element={<AdminLayout />}>

@@ -1,0 +1,115 @@
+.ro-groups-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.ro-group-card {
+  border: 1px solid var(--border, #313847);
+  border-radius: 12px;
+  background: var(--card-bg, #1b2029);
+}
+
+.ro-group-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  padding: 12px;
+}
+
+.ro-group-link h3 {
+  margin: 0 0 6px;
+}
+
+.ro-group-link p {
+  margin: 0;
+}
+
+.ro-group-meta {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+  color: var(--text-muted, #9ba0ab);
+  font-size: 0.88rem;
+}
+
+.ro-group-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ro-group-actions button,
+.ro-group-form button {
+  border: 1px solid var(--border, #313847);
+  background: var(--bg-secondary, #11151d);
+  color: var(--text-primary, #e5e7eb);
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.ro-group-form {
+  display: grid;
+  gap: 8px;
+  max-width: 620px;
+}
+
+.ro-group-form input,
+.ro-group-form textarea {
+  border: 1px solid var(--border, #313847);
+  background: var(--bg-secondary, #11151d);
+  color: var(--text-primary, #e5e7eb);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.ro-group-posts {
+  display: grid;
+  gap: 10px;
+}
+
+.ro-group-post-card {
+  border: 1px solid var(--border, #313847);
+  border-radius: 12px;
+  background: var(--card-bg, #1b2029);
+  padding: 12px;
+}
+
+.ro-group-post-card h3 {
+  margin: 0;
+}
+
+.ro-group-post-media {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.ro-group-post-media-item {
+  border: 1px solid var(--border, #313847);
+  border-radius: 8px;
+  padding: 6px;
+  background: var(--bg-secondary, #11151d);
+}
+
+.ro-group-post-media-item img {
+  width: 100%;
+  aspect-ratio: 2/3;
+  border-radius: 6px;
+  object-fit: cover;
+  margin-bottom: 4px;
+}
+
+.ro-pinned-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.ro-pinned-item {
+  border: 1px solid var(--border, #313847);
+  border-radius: 8px;
+  padding: 8px;
+  background: var(--bg-secondary, #11151d);
+}
