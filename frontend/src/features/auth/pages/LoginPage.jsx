@@ -1,6 +1,6 @@
-import AuthCard from "../../components/auth/AuthCard";
-import LoginForm from "../../components/auth/LoginForm";
-import { useLanguage } from "../../hooks/useLanguage";
+import AuthCard from "../components/AuthCard";
+import LoginForm from "../components/LoginForm";
+import { useLanguage } from "../../../hooks/useLanguage";
 
 const LoginPage = () => {
   const { t } = useLanguage();

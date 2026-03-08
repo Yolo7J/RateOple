@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { useLanguage } from "../../hooks/useLanguage";
-import { useAuth } from "../../context/AuthContext";
+import { useLanguage } from "../../../hooks/useLanguage";
+import { useAuth } from "../../../context/AuthContext";
 
 const LoginForm = () => {
     const { t } = useLanguage();
