@@ -1,6 +1,6 @@
 # RateOple Architecture (Current State)
 
-Last updated: **March 7, 2026**
+Last updated: **March 8, 2026**
 
 This document describes the architecture that is actually implemented in the repository right now.
 
@@ -91,7 +91,11 @@ After build:
 - `IMediaService -> MediaService`
 - `ITvSeriesService -> TvSeriesService`
 - `IRatingService -> RatingService`
+- `IReviewService -> ReviewService`
 - `IFollowService -> FollowService`
+- `IDiscoveryService -> DiscoveryService`
+- `IInteractionService -> InteractionService`
+- `IUserTasteService -> UserTasteService`
 - `IVisibilityService -> VisibilityService`
 - `IJwtService -> JwtService`
 - `ITmdbService -> TmdbService` (HttpClient)
@@ -303,6 +307,8 @@ Type-specific currently included:
 - `/media/:id` -> `MediaDetailPage`
 - `/media/:id/seasons` -> `SeasonManagerPage`
 - `/cart` -> `CartPage`
+- `/account` -> `AccountPage`
+- `/account/watchlist` -> `WatchlistPage`
 - `*` -> `Home`
 
 ### 8.3 Global State Contexts
@@ -421,28 +427,29 @@ These are present in code and should be considered architecture debt:
 - Both `/api/media/tmdb/*` and `/api/tmdb/*` exist.
 - Frontend uses both (`mediaService` and `tmdbService`).
 
-2. Route mismatches in frontend navigation
-- `CartPage` currently navigates to `/admin` in several places.
-- `/admin` route is not defined in `routes.jsx`.
+2. Frontend expects user profile APIs that are not exposed by controllers
+- `userService` and `ratingService.getMyRatings` call:
+  - `GET /api/users/me/ratings`
+  - `GET /api/users/me/reviews`
+  - `GET /api/users/me/status`
+  - `GET /api/users/me/favorite-genres`
+- No `UsersController` currently implements these routes, so account/watchlist flows can fail at runtime.
 
-3. Header links to non-existent routes
-- Header actions include `/account` and nav includes `/about`.
-- Neither route currently exists in router table.
+3. Media status write API is called by frontend but not implemented in backend
+- `statusService.setMediaStatus` calls `POST /api/media/{id}/status`.
+- `MediaController` has no corresponding endpoint.
 
-4. DTO/UI shape mismatch for genres in details page
-- `MediaDetailDto.Genres` is currently `List<string>`.
-- `MediaDetailPage` renders `g.name`, implying object shape.
-
-5. Ratings controller vs service contract mismatch
-- `ratingService.getUserRatings` calls `/users/{id}/ratings`, but that endpoint is not implemented in shown controllers.
+4. Duplicate/legacy frontend pages still exist
+- Routed detail page: `src/pages/MediaDetailPage.jsx`
+- Legacy duplicate not routed: `src/pages/media/MediaDetailPage.jsx`
+- Legacy home page not routed: `src/pages/Home/Home.jsx`
 
 ## 12. Practical Extension Points
 
 Most natural extension seams in current architecture:
 
-- Add missing route pages (`/about`, `/account`, optional `/admin`) or align existing navigations.
+- Implement missing account/status APIs consumed by frontend (`/api/users/me/*`, `POST /api/media/{id}/status`) or remove/degrade dependent UI flows.
 - Consolidate TMDB API surface to one route family and one frontend service abstraction.
 - Move more business invariants into service layer validation (season/episode numbering constraints, additional duplicate guards).
 - Add integration tests around TV season manager merge semantics (manual + TMDB sync).
 - Introduce stricter architectural boundaries (Core abstractions over persistence) if project complexity grows.
-

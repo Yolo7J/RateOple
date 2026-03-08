@@ -24,10 +24,6 @@ const NavigationDropdown = () => {
                 { label: t('header.navigation.tvShows'), path: '/media?types=TvSeries' },
             ],
         },
-        {
-            label: t('header.navigation.about'),
-            path: '/about',
-        },
     ];
 
     // Close dropdown when clicking outside

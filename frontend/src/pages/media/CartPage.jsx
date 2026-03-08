@@ -48,7 +48,7 @@ export default function CartPage() {
 
       if (failedIds.length === 0) {
         clearCart();
-        setTimeout(() => navigate("/admin"), 1500);
+        setTimeout(() => navigate("/media/add"), 1500);
       } else {
         for (const item of items) {
           if (!failedIds.includes(item.id)) removeItem(item.id);
@@ -73,7 +73,7 @@ export default function CartPage() {
     return (
       <div className="cart-empty-state">
         <p>Your cart is empty.</p>
-        <button onClick={() => navigate("/admin")} className="cart-empty-btn">
+        <button onClick={() => navigate("/media/add")} className="cart-empty-btn">
           Back to Add Media
         </button>
       </div>
@@ -89,7 +89,7 @@ export default function CartPage() {
             {items.length} item{items.length !== 1 ? "s" : ""}
           </span>
         </h1>
-        <button onClick={() => navigate("/admin")} className="cart-add-more-btn">
+        <button onClick={() => navigate("/media/add")} className="cart-add-more-btn">
           + Add more
         </button>
       </div>
