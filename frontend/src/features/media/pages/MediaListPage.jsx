@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import * as mediaService from '../../services/mediaService';
-import MediaCard from '../../components/media/MediaCard/MediaCard';
+import { useAuth } from '../../../context/AuthContext';
+import * as mediaService from '../services/mediaService';
+import MediaCard from '../components/MediaCard/MediaCard';
 import './MediaListPage.css';
 
 const MEDIA_TYPES = ['Movie', 'Book', 'TvSeries'];

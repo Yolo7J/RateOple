@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useMediaCart } from "../../context/MediaCartContext";
-import { bulkCreateMedia } from "../../services/mediaService";
+import { useMediaCart } from "../../../context/MediaCartContext";
+import { bulkCreateMedia } from "../services/mediaService";
 import "./CartPage.css";
 
 const TYPE_COLOURS = {

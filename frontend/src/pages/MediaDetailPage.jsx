@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getMediaById } from '../services/mediaService';
+import { getMediaById } from '../features/media/services/mediaService';
 import ratingService from '../services/ratingService';
 import reviewService from '../services/reviewService';
 import discoveryService from '../services/discoveryService';
@@ -12,12 +12,12 @@ import ReviewEditor from '../components/reviews/ReviewEditor';
 import ReviewFilters from '../components/reviews/ReviewFilters';
 import ReviewsList from '../components/reviews/ReviewsList';
 import MediaRow from '../components/discovery/MediaRow';
-import MediaStatusSelector from '../components/media/MediaStatusSelector';
+import MediaStatusSelector from '../features/media/components/MediaStatusSelector';
 import './pages.css';
 import '../components/ratings/ratings.css';
 import '../components/reviews/reviews.css';
 import '../components/discovery/discovery.css';
-import '../components/media/MediaStatusSelector.css';
+import '../features/media/components/MediaStatusSelector.css';
 
 function MediaDetailPage() {
     const { id } = useParams();

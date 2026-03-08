@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import * as mediaService from '../../services/mediaService';
-import { useMediaCart } from '../../context/MediaCartContext';
-import tmdbService from '../../services/tmdbService';
+import * as mediaService from '../services/mediaService';
+import { useMediaCart } from '../../../context/MediaCartContext';
+import tmdbService from '../services/tmdbService';
 import './AddMediaPage.css';
 
 const STEPS = { SELECT_TYPE: 0, SEARCH: 1, FILL_FORM: 2 };

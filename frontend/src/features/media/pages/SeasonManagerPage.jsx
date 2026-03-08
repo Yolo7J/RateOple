@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getMediaById, getTmdbSeriesDetails, searchTmdb } from "../../services/mediaService";
+import { getMediaById, getTmdbSeriesDetails, searchTmdb } from "../services/mediaService";
 import {
   getSeasons,
   addSeason,
@@ -9,7 +9,7 @@ import {
   addEpisode,
   updateEpisode,
   deleteEpisode,
-} from "../../services/tvSeriesService";
+} from "../services/tvSeriesService";
 
 // ── Icons (inline SVG to avoid deps) ─────────────────────────────────────────
 const ChevronDown = ({ open }) => (

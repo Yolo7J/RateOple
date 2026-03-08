@@ -1,4 +1,4 @@
-import api from './api';
+import api from '../../../services/api';
 
 // All calls go through our backend proxy — the TMDB key never touches the browser
 const tmdbService = {

@@ -1,13 +1,13 @@
 import HomePage from '../pages/HomePage';
 import LoginPage from '../features/auth/pages/LoginPage';
 import RegisterPage from '../features/auth/pages/RegisterPage';
-import MediaListPage from '../pages/media/MediaListPage';
+import MediaListPage from '../features/media/pages/MediaListPage';
 import MediaDetailPage from '../pages/MediaDetailPage';
 import WatchlistPage from '../pages/WatchlistPage';
 import AccountPage from '../pages/AccountPage';
-import SeasonManagerPage from '../pages/media/SeasonManagerPage';
-import AddMediaPage from '../pages/media/AddMediaPage';
-import CartPage from '../pages/media/CartPage';
+import SeasonManagerPage from '../features/media/pages/SeasonManagerPage';
+import AddMediaPage from '../features/media/pages/AddMediaPage';
+import CartPage from '../features/media/pages/CartPage';
 
 export const routes = [
     {
