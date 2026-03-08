@@ -1,22 +1,50 @@
-import { useCallback, useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import reviewService from '../services/reviewService';
 
 export const useReviewMutations = () => {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const queryClient = useQueryClient();
 
-  const createReview = useCallback(async (payload) => {
-    setLoading(true);
-    setError(null);
-    try {
-      return await reviewService.createReview(payload);
-    } catch (err) {
-      setError(err);
-      throw err;
-    } finally {
-      setLoading(false);
+  const invalidateReviewRelatedData = (mediaId) => {
+    if (mediaId) {
+      queryClient.invalidateQueries({ queryKey: ['reviews', 'media', mediaId], exact: true });
+      queryClient.invalidateQueries({ queryKey: ['media', 'detail', mediaId], exact: true });
+      queryClient.invalidateQueries({ queryKey: ['ratings', 'summary', mediaId], exact: true });
     }
-  }, []);
+    queryClient.invalidateQueries({ queryKey: ['users', 'account'], exact: true });
+    queryClient.invalidateQueries({ queryKey: ['discovery', 'home'] });
+  };
 
-  return { createReview, loading, error };
+  const createMutation = useMutation({
+    mutationFn: (payload) => reviewService.createReview(payload),
+    onSuccess: (reviewDto) => {
+      invalidateReviewRelatedData(reviewDto?.mediaId);
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ reviewId, payload }) => reviewService.updateReview(reviewId, payload),
+    onSuccess: (reviewDto) => {
+      invalidateReviewRelatedData(reviewDto?.mediaId);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: ({ reviewId, deleteRating }) => reviewService.deleteReview(reviewId, deleteRating),
+    onSuccess: (_result, variables) => {
+      invalidateReviewRelatedData(variables?.mediaId);
+    },
+  });
+
+  const createReview = async (payload) => createMutation.mutateAsync(payload);
+  const updateReview = async (reviewId, payload) => updateMutation.mutateAsync({ reviewId, payload });
+  const deleteReview = async (reviewId, mediaId, deleteRating = false) =>
+    deleteMutation.mutateAsync({ reviewId, mediaId, deleteRating });
+
+  return {
+    createReview,
+    updateReview,
+    deleteReview,
+    loading: createMutation.isPending || updateMutation.isPending || deleteMutation.isPending,
+    error: createMutation.error || updateMutation.error || deleteMutation.error,
+  };
 };
