@@ -1,4 +1,4 @@
-import RatingStars from '../ratings/RatingStars';
+import RatingStars from '../../ratings/components/RatingStars';
 import './reviews.css';
 
 function ReviewCard({ review }) {
