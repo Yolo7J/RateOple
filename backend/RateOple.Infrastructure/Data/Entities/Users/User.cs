@@ -39,6 +39,10 @@ namespace RateOple.Infrastructure.Data.Entities
         public ICollection<MediaInteraction> MediaInteractions { get; set; } = new List<MediaInteraction>();
         public ICollection<UserMediaStatus> MediaStatuses { get; set; } = new List<UserMediaStatus>();
         public ICollection<UserGenreScore> GenreScores { get; set; } = new List<UserGenreScore>();
+        public ICollection<Report> ReportsCreated { get; set; } = new List<Report>();
+        public ICollection<Report> ReportsReviewed { get; set; } = new List<Report>();
+        public ICollection<ModeratorAssignment> ModeratorAssignments { get; set; } = new List<ModeratorAssignment>();
+        public ICollection<ModeratorAssignment> AssignmentsCreated { get; set; } = new List<ModeratorAssignment>();
         public UserProfile? Profile { get; set; }
     }
 }
