@@ -3,6 +3,8 @@ import MainLayout from '../layouts/MainLayout';
 import AuthLayout from '../layouts/AuthLayout';
 import GroupLayout from '../layouts/GroupLayout';
 import AdminLayout from '../layouts/AdminLayout';
+import RequireAuth from '../features/auth/components/RequireAuth';
+import RequireGuest from '../features/auth/components/RequireGuest';
 
 import HomePage from '../pages/HomePage';
 import LoginPage from '../features/auth/pages/LoginPage';
@@ -21,17 +23,21 @@ const Router = () => {
       <Route element={<MainLayout />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/media" element={<MediaListPage />} />
-        <Route path="/media/add" element={<AddMediaPage />} />
         <Route path="/media/:id" element={<MediaDetailPage />} />
-        <Route path="/media/:id/seasons" element={<SeasonManagerPage />} />
-        <Route path="/cart" element={<CartPage />} />
-        <Route path="/account" element={<AccountPage />} />
-        <Route path="/account/watchlist" element={<WatchlistPage />} />
+        <Route element={<RequireAuth />}>
+          <Route path="/media/add" element={<AddMediaPage />} />
+          <Route path="/media/:id/seasons" element={<SeasonManagerPage />} />
+          <Route path="/cart" element={<CartPage />} />
+          <Route path="/account" element={<AccountPage />} />
+          <Route path="/account/watchlist" element={<WatchlistPage />} />
+        </Route>
       </Route>
 
-      <Route element={<AuthLayout />}>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
+      <Route element={<RequireGuest />}>
+        <Route element={<AuthLayout />}>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+        </Route>
       </Route>
 
       <Route element={<GroupLayout />}>

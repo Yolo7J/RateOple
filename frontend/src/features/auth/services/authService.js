@@ -1,6 +1,11 @@
 import api from "../../../shared/api/apiClient";
 
 export const authService = {
+  async me() {
+    const response = await api.get("/auth/me");
+    return response.data;
+  },
+
   async login(email, password) {
     const response = await api.post("/auth/login", { email, password });
     return response.data; // { id, userName, roles }
@@ -15,6 +20,7 @@ export const authService = {
   },
 
   async refresh() {
-    await api.post("/auth/refresh");
+    const response = await api.post("/auth/refresh");
+    return response.data;
   },
 };

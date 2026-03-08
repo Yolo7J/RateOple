@@ -1,68 +1,43 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useState, useEffect } from "react";
-import api from "../shared/api/apiClient";
+import { createContext, useContext, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { authService } from "../features/auth/services/authService";
+import { useAuthSessionQuery } from "../features/auth/queries/useAuthSessionQuery";
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
-    const [isLoading, setIsLoading] = useState(true); // blocks render until session is resolved
+    const queryClient = useQueryClient();
+    const { data: sessionData, loading: isLoading } = useAuthSessionQuery();
 
-    // On every app load: try /me with the existing accessToken cookie.
-    // If that 401s (token expired), silently try /refresh.
-    // If refresh also fails, the user is genuinely logged out.
-    useEffect(() => {
-        const restoreSession = async () => {
-            try {
-                const response = await api.get("/auth/me");
-                setUser({
-                    id: response.data.id,
-                    username: response.data.userName,
-                    roles: response.data.roles,
-                });
-            } catch {
-                try {
-                    const refreshResponse = await api.post("/auth/refresh");
-                    setUser({
-                        id: refreshResponse.data.id,
-                        username: refreshResponse.data.userName,
-                        roles: refreshResponse.data.roles,
-                    });
-                } catch {
-                    setUser(null); // both failed — not logged in
-                }
-            } finally {
-                setIsLoading(false);
-            }
+    const user = useMemo(() => {
+        if (!sessionData) return null;
+        return {
+            id: sessionData.id,
+            username: sessionData.userName,
+            roles: Array.isArray(sessionData.roles) ? sessionData.roles : [],
         };
-
-        restoreSession();
-    }, []);
+    }, [sessionData]);
 
     const login = async (email, password) => {
-        const response = await api.post("/auth/login", { email, password });
-        setUser({
-            id: response.data.id,
-            username: response.data.userName,
-            roles: response.data.roles,
-        });
+        const session = await authService.login(email, password);
+        queryClient.setQueryData(["auth", "session"], session);
+        return session;
     };
 
     const register = async ({ email, username, password }) => {
-        await api.post("/auth/register", { email, username, password });
+        await authService.register({ email, username, password });
     };
 
     const logout = async () => {
-        await api.post("/auth/logout");
-        setUser(null);
+        await authService.logout();
+        queryClient.setQueryData(["auth", "session"], null);
     };
 
-    // Don't render children until session check is done — prevents
-    // a flash where the header briefly shows Login/Register for a logged-in user
     if (isLoading) return null;
 
     return (
-        <AuthContext.Provider value={{ user, login, register, logout }}>
+        <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
             {children}
         </AuthContext.Provider>
     );

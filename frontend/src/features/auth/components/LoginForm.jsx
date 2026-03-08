@@ -20,7 +20,7 @@ const LoginForm = () => {
 
         try {
             await login(email, password);
-            navigate("/");
+            navigate(location.state?.from || "/");
         } catch (err) {
             setError(err.response?.data || "Invalid credentials");
         }
