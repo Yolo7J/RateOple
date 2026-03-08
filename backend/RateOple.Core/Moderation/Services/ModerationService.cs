@@ -10,10 +10,12 @@ namespace RateOple.Core.Moderation.Services;
 public class ModerationService : IModerationService
 {
     private readonly ApplicationDbContext _context;
+    private readonly INotificationService _notificationService;
 
-    public ModerationService(ApplicationDbContext context)
+    public ModerationService(ApplicationDbContext context, INotificationService notificationService)
     {
         _context = context;
+        _notificationService = notificationService;
     }
 
     public async Task<ReportDto> CreateReportAsync(Guid reporterId, CreateReportDto dto)
@@ -85,6 +87,7 @@ public class ModerationService : IModerationService
         report.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+        await _notificationService.CreateAsync(report.ReporterId, NotificationType.ReportStatusChanged, report.Id);
         return Map(report);
     }
 
@@ -117,6 +120,7 @@ public class ModerationService : IModerationService
             };
             _context.ModeratorAssignments.Add(assignment);
             await _context.SaveChangesAsync();
+            await _notificationService.CreateAsync(assignment.UserId, NotificationType.ModeratorAssignment, assignment.UserId);
         }
 
         return Map(assignment);

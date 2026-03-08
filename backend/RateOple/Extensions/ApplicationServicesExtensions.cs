@@ -19,6 +19,8 @@ public static class ApplicationServicesExtensions
         services.AddScoped<IVisibilityService, VisibilityService>();
         services.AddScoped<IUserProfileService, UserProfileService>();
         services.AddScoped<IUserMediaStatusService, UserMediaStatusService>();
+        services.AddScoped<INotificationService, NotificationService>();
+        services.AddSingleton<INotificationPublisher, NoopNotificationPublisher>();
         services.AddScoped<ICollectionService, CollectionService>();
         services.AddScoped<IGroupService, GroupService>();
         services.AddScoped<IModerationService, ModerationService>();
