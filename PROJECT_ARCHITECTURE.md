@@ -2,59 +2,62 @@
 
 Last updated: **March 8, 2026**
 
-This document describes the architecture that is actually implemented in the repository right now.
+This document reflects the code currently present in the repository.
 
 ## 1. System Summary
 
-RateOple is a full-stack media catalog/rating app with support for:
+RateOple is a full-stack media catalog and social platform with:
 
-- Movies
-- Books
-- TV series (including seasons/episodes)
+- Media catalog for Movies, Books, TV series (with seasons/episodes)
+- Ratings and reviews
+- User follows
+- Hierarchical collections with follow support
+- User media status tracking
+- Media tags
+- Group system with posts and pinned media
+- Moderation/reporting and moderator assignments
+- Database-backed notifications (with publisher abstraction for future realtime delivery)
 
 Core stack:
 
-- Frontend: React + Vite SPA (`frontend/`)
+- Frontend: React + Vite (`frontend/`)
 - Backend: ASP.NET Core Web API on .NET 9 (`backend/RateOple`)
 - Data: PostgreSQL via EF Core + Npgsql
-- Auth: ASP.NET Identity + JWT access token in HttpOnly cookie + refresh-token rotation
-- External data sources: TMDB + Open Library (server-to-server only)
+- Auth: ASP.NET Identity + JWT in HttpOnly cookies + refresh token rotation
+- External integrations: TMDB and Open Library (server-side)
 
-Runtime request graph:
+Runtime flow:
 
 ```text
-Browser (React, Vite)
-   -> Axios (withCredentials)
-      -> ASP.NET Core API
-         -> Core Services
-            -> EF Core / PostgreSQL
-            -> TMDB API
-            -> Open Library API
+Browser (React)
+  -> Axios (withCredentials)
+    -> ASP.NET Core API
+      -> Core Services
+        -> EF Core / PostgreSQL
+        -> TMDB API
+        -> Open Library API
 ```
 
 ## 2. Repository Layout
 
 ```text
 backend/
-  RateOple/                         # API host, controllers, DI extension setup
-  RateOple.Core/                    # service implementations + contracts/DTOs
-  RateOple.Infrastructure/          # DbContext, entities, EF configs/migrations, middleware
-  RateOple.Constants/               # enums/constants (roles/policies/etc.)
+  RateOple/                 # API host, controllers, middleware wiring, DI setup
+  RateOple.Core/            # domain services, interfaces, DTOs
+  RateOple.Infrastructure/  # DbContext, entities, EF configs, migrations, infra middleware
+  RateOple.Constants/       # enums and constants
 
 frontend/
-  src/app/                          # router table + router component
-  src/pages/                        # page-level screens
-  src/components/                   # layout + reusable UI components
-  src/services/                     # Axios client + endpoint wrappers
-  src/context/                      # auth/theme/language/cart global state
-  src/locales/                      # i18n JSON files (en/bg)
+  src/app/                  # routing table + router
+  src/pages/                # page components
+  src/components/           # UI and domain components
+  src/services/             # API service wrappers
+  src/context/              # global context providers
 ```
 
-## 3. Backend Architecture
+## 3. Backend Startup Composition
 
-### 3.1 Composition Root
-
-`backend/RateOple/Program.cs` composes the app in this order:
+`backend/RateOple/Program.cs` configures services in this order:
 
 1. `AddDatabase`
 2. `AddIdentityConfiguration`
@@ -65,56 +68,35 @@ frontend/
 7. `AddCorsConfiguration`
 8. `AddApi`
 
-After build:
+Then:
 
-- `SeedDatabaseAsync()` runs (roles/superadmin/genres seed flow lives in Infrastructure extensions).
-- Middleware pipeline is configured via `ConfigureMiddleware`.
+- `SeedDatabaseAsync()` runs (roles, super admin, genres)
+- middleware pipeline is configured via `ConfigureMiddleware`
 
-### 3.2 Middleware Pipeline
+## 4. Middleware, Auth, Security
 
-`Extensions/MiddlewareExtensions.cs` currently applies:
+### 4.1 Middleware Pipeline
 
-1. OpenAPI (development only)
-2. `UseHttpsRedirection`
-3. `UseSecurityHeaders`
-4. `UseCors("AllowFrontend")`
-5. `UseRouting`
-6. `UseAuthentication`
-7. Manual antiforgery validation for mutating verbs (`POST`, `PUT`, `DELETE`, `PATCH`) unless endpoint has `[IgnoreAntiforgeryToken]`
-8. `UseAuthorization`
-9. `MapControllers`
+Configured in `Extensions/MiddlewareExtensions.cs`:
 
-### 3.3 DI / Service Registration
+1. OpenAPI map in development
+2. HTTPS redirection
+3. security headers middleware
+4. CORS (`AllowFrontend`)
+5. routing
+6. authentication
+7. antiforgery validation for mutating verbs unless endpoint has `[IgnoreAntiforgeryToken]`
+8. authorization
+9. controller mapping
 
-`Extensions/ApplicationServicesExtensions.cs` registers:
+### 4.2 Authentication Model
 
-- `IMediaService -> MediaService`
-- `ITvSeriesService -> TvSeriesService`
-- `IRatingService -> RatingService`
-- `IReviewService -> ReviewService`
-- `IFollowService -> FollowService`
-- `IDiscoveryService -> DiscoveryService`
-- `IInteractionService -> InteractionService`
-- `IUserTasteService -> UserTasteService`
-- `IVisibilityService -> VisibilityService`
-- `IJwtService -> JwtService`
-- `ITmdbService -> TmdbService` (HttpClient)
-- `IOpenLibraryService -> OpenLibraryService` (HttpClient)
-- `ITmdbImportService -> TmdbImportService`
+- Identity user store + role model
+- JWT Bearer configured as default auth scheme
+- JWT is read from `accessToken` cookie
+- refresh token rotation with hashed refresh tokens in DB
 
-### 3.4 Layering Reality
-
-The solution is a pragmatic layered monolith.
-
-- API project depends on Core contracts/services.
-- Core currently references Infrastructure entities/DbContext.
-- This is not strict clean architecture inversion, but deliberate and functional for current scope.
-
-## 4. Security, Auth, and Session Model
-
-### 4.1 Authentication
-
-`AuthController` implements:
+Auth endpoints:
 
 - `POST /api/auth/register`
 - `POST /api/auth/login`
@@ -122,79 +104,164 @@ The solution is a pragmatic layered monolith.
 - `POST /api/auth/logout`
 - `GET /api/auth/me`
 
-Behavior:
+### 4.3 CSRF and CORS
 
-- On login/refresh, backend issues:
-  - `accessToken` cookie (HttpOnly, short-lived)
-  - `refreshToken` cookie (HttpOnly, longer-lived)
-- Refresh tokens are hashed before storage (`TokenHasher`).
-- Refresh endpoint revokes old refresh token and rotates to a new one.
+- CSRF endpoint: `GET /api/csrf`
+- Antiforgery header: `X-CSRF-TOKEN`
+- CORS policy allows local frontend origins with credentials
 
-### 4.2 JWT Bearer Strategy
+### 4.4 Authorization Policies
 
-JWT auth is configured to read token from cookie (`accessToken`) rather than Authorization header.
+Defined in `AuthorizationExtensions`:
 
-Identity cookie redirect behavior is overridden so unauthorized API calls return HTTP status (`401/403`) instead of redirecting to MVC login pages.
+- `RequireAdmin`
+- `RequireModerator`
+- `CanModerateContent`
+- `CanManageGroups`
 
-### 4.3 CSRF Strategy
+## 5. Layer Structure
 
-Antiforgery configured with:
+### 5.1 Core Layer (`RateOple.Core`)
 
-- Header: `X-CSRF-TOKEN`
-- Cookie: `X-CSRF-COOKIE`
+Domain folders:
 
-Global middleware enforces CSRF validation for mutating methods unless endpoint opts out using `[IgnoreAntiforgeryToken]`.
+- `Auth`
+- `Media`
+- `Collections`
+- `Users`
+- `Social`
+- `Groups`
+- `Moderation`
 
-Current API usage pattern:
+Each domain follows `DTOs`, `Interfaces`, `Services`.
 
-- Many mutating endpoints are explicitly marked with `[IgnoreAntiforgeryToken]`.
-- `GET /api/csrf` exists and returns a request token for clients that choose to use CSRF-protected mutations.
+### 5.2 Infrastructure Layer (`RateOple.Infrastructure`)
 
-### 4.4 CORS and Security Headers
+Entity folders:
 
-CORS policy `AllowFrontend` allows:
+- `Data/Entities/Media`
+- `Data/Entities/Collections`
+- `Data/Entities/Social`
+- `Data/Entities/Groups`
+- `Data/Entities/Users`
+- `Data/Entities/Moderation`
 
-- Origin: `http://localhost:5173`
-- Any method/header
-- Credentials
+Configuration folders mirror entity domains:
 
-Custom security middleware sets:
+- `Data/Configurations/Media`
+- `Data/Configurations/Collections`
+- `Data/Configurations/Social`
+- `Data/Configurations/Groups`
+- `Data/Configurations/Users`
+- `Data/Configurations/Moderation`
 
-- `X-Content-Type-Options`, `X-Frame-Options`, `Content-Security-Policy`, `Referrer-Policy`, `Permissions-Policy`, `COOP`, `CORP`, HSTS (HTTPS only)
-- Removes `Server` and `X-Powered-By` headers
+`ApplicationDbContext` applies all configurations via `ApplyConfigurationsFromAssembly`.
 
-## 5. Data Architecture
+Note: Entities are physically domain-grouped in folders but currently share namespace `RateOple.Infrastructure.Data.Entities`.
 
-### 5.1 DbContext
+### 5.3 Controllers by Domain
 
-`ApplicationDbContext` includes Identity + domain sets:
+`backend/RateOple/Controllers`:
 
-- Media domain: `Media`, `Movie`, `Book`, `TvSeries`, `Season`, `Episode`
-- Discovery: `Genre`, `MediaGenre`
-- Social/content: `Follow`, `Rating`, `Review`, `Comment`
-- Groups/community: `Group`, `GroupMembership`, `GroupPost`, `GroupMedia`
-- Collections: `Collection`, `CollectionItem`
-- Auth/session: `RefreshToken`
+- `Auth`
+- `Media`
+- `Discovery`
+- `Collections`
+- `Users`
+- `Groups`
+- `Moderation`
 
-### 5.2 Data Modeling Notes
+## 6. Database Model (Current)
 
-- Soft-delete is used for `Media`, `Season`, `Episode`.
-- `Media` stores denormalized rating aggregates (`AverageRating`, `RatingsCount`).
-- TV seasons/episodes are represented as child entities under `TvSeries`.
-- EF configurations are split by entity under `Infrastructure/Data/Configurations`.
-- Migrations are under `Infrastructure/Migrations`.
+### 6.1 Media Domain
 
-## 6. API Surface (Current)
+- `Media` (soft delete, aggregate ratings)
+- `Movie` (1:1 with `Media`)
+- `Book` (1:1)
+- `TvSeries` (1:1)
+- `Season` (TV child, soft delete)
+- `Episode` (Season child, soft delete)
+- `Genre`
+- `MediaGenre` (many-to-many)
+- `Tag`
+- `MediaTag` (many-to-many)
 
-### 6.1 Media (`/api/media`)
+### 6.2 Social Domain
 
-Read:
+- `Rating` (exactly one target: media/season/episode)
+- `Review` (1:1 with `Rating`)
+- `Comment` (polymorphic: review/group post/reply hierarchy)
+- `Follow` (user-to-user)
+- `MediaInteraction`
+- `UserGenreScore`
 
-- `GET /api/media` (paged query, filters/sort/search)
+### 6.3 Collections Domain
+
+- `Collection` (hierarchical parent/child, owner type, sort mode)
+- `CollectionItem` (ordered media in collection)
+- `FollowCollection`
+
+### 6.4 Groups Domain
+
+- `Group`
+- `GroupMembership`
+- `GroupPost`
+- `GroupMedia` (pinned media)
+- `PostMedia` (media attached to group posts)
+
+### 6.5 Users Domain
+
+- `User` (Identity)
+- `UserProfile`
+- `RefreshToken`
+- `UserMediaStatus`
+- `Notification`
+
+### 6.6 Moderation Domain
+
+- `Report`
+- `ModeratorAssignment`
+
+## 7. Service Registration (DI)
+
+`AddApplicationServices` currently registers:
+
+- Auth: `IJwtService`
+- Media: `IMediaService`, `ITvSeriesService`, `ITmdbService`, `IOpenLibraryService`, `ITmdbImportService`, `IDiscoveryService`
+- Social: `IRatingService`, `IReviewService`, `IFollowService`, `IInteractionService`, `IUserTasteService`, `IVisibilityService`
+- Collections: `ICollectionService`
+- Users: `IUserProfileService`, `IUserMediaStatusService`, `INotificationService`, `INotificationPublisher` (noop)
+- Groups: `IGroupService`
+- Moderation: `IModerationService`
+
+## 8. API Surface
+
+### 8.1 Auth and CSRF
+
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `POST /api/auth/refresh`
+- `POST /api/auth/logout`
+- `GET /api/auth/me`
+- `GET /api/csrf`
+
+### 8.2 Discovery
+
+- `GET /api/discovery/trending`
+- `GET /api/discovery/popular`
+- `GET /api/discovery/recommended`
+- `GET /api/media/{id}/similar`
+
+### 8.3 Media
+
+Read/query:
+
+- `GET /api/media`
 - `GET /api/media/{id}`
 - `GET /api/media/genres`
+- `GET /api/media/tags`
 
-External proxy (media namespace):
+External proxy endpoints (media namespace):
 
 - `GET /api/media/tmdb/search`
 - `GET /api/media/tmdb/details/{tmdbId}`
@@ -202,7 +269,7 @@ External proxy (media namespace):
 - `GET /api/media/books/search`
 - `GET /api/media/books/details`
 
-Create/update/delete:
+Mutation:
 
 - `POST /api/media/movies`
 - `POST /api/media/books`
@@ -211,9 +278,9 @@ Create/update/delete:
 - `PUT /api/media/{id}/movie`
 - `PUT /api/media/{id}/book`
 - `PUT /api/media/{id}/tvseries`
-- `DELETE /api/media/{id}` (soft delete)
+- `DELETE /api/media/{id}`
 
-TV season/episode management (nested):
+TV management:
 
 - `GET /api/media/{id}/seasons`
 - `POST /api/media/{id}/seasons`
@@ -223,233 +290,165 @@ TV season/episode management (nested):
 - `PUT /api/media/{id}/seasons/{seasonNumber}/episodes/{episodeNumber}`
 - `DELETE /api/media/{id}/seasons/{seasonNumber}/episodes/{episodeNumber}`
 
-### 6.2 Auth (`/api/auth`)
+Tags and status:
 
-- `POST /register`
-- `POST /login`
-- `POST /refresh`
-- `POST /logout`
-- `GET /me`
+- `POST /api/media/{id}/tags`
+- `DELETE /api/media/{id}/tags/{tagId}`
+- `POST /api/media/{id}/status`
 
-### 6.3 Ratings
+### 8.4 TMDB Alternate Controller
 
-`/api/media/{mediaId}/ratings`
-
-- `POST` rate/update rating
-- `DELETE` delete rating
-- `GET /summary` aggregate + optional user rating
-
-### 6.4 Follows
-
-`/api/follows` (authorized)
-
-- `POST /{userId}`
-- `DELETE /{userId}`
-- `GET /{userId}/status`
-
-### 6.5 TMDB Alternate Controller
-
-There is also a second TMDB controller under `/api/tmdb`:
+Separate controller still exists:
 
 - `GET /api/tmdb/search`
 - `GET /api/tmdb/details`
 - `POST /api/tmdb/import-series/{tmdbId}`
 
-This overlaps with `/api/media/tmdb/*` endpoints and both are currently used by frontend code.
+### 8.5 Ratings and Reviews
 
-## 7. DTO and Contract Shape
+Ratings:
 
-### 7.1 `MediaDetailDto`
+- `POST /api/media/{mediaId}/ratings`
+- `POST /api/seasons/{seasonId}/ratings`
+- `POST /api/episodes/{episodeId}/ratings`
+- `DELETE /api/media/{mediaId}/ratings`
+- `DELETE /api/seasons/{seasonId}/ratings`
+- `DELETE /api/episodes/{episodeId}/ratings`
+- `GET /api/media/{mediaId}/ratings/summary`
+- `GET /api/seasons/{seasonId}/ratings/summary`
+- `GET /api/episodes/{episodeId}/ratings/summary`
 
-Returns common fields plus media-type specifics.
+Reviews:
 
-Common:
+- `POST /api/reviews`
+- `PUT /api/reviews/{reviewId}`
+- `DELETE /api/reviews/{reviewId}`
+- `GET /api/media/{mediaId}/reviews`
 
-- `id`, `type`, `title`, `description`, `coverUrl`, `releaseYear`, `averageRating`, `ratingsCount`, `genres`
+### 8.6 Users
 
-Type-specific currently included:
+Follows:
 
-- Movie: `director`, `duration`, `tmdbId`
-- Book: `author`, `pages`, `isbn`, `olId`
-- TV: `seasonsCount`, `seasons[]`, `tmdbId`
+- `POST /api/follows/{userId}`
+- `DELETE /api/follows/{userId}`
+- `GET /api/follows/{userId}/status`
 
-### 7.2 TV DTOs
+Under `/api/users/me`:
 
-- Create TV series supports full season+episode tree:
-  - `CreateTvSeriesDto.Seasons -> List<CreateSeasonDto>`
-- Season update endpoint uses upsert style:
-  - `UpsertSeasonDto` with `SeasonNumber` and `Episodes` list
-- Episode upsert uses `EpisodeNumber` as match key.
+- `GET /profile`
+- `PUT /profile`
+- `POST /change-password`
+- `DELETE /`
+- `GET /status`
 
-## 8. Frontend Architecture
+Notifications:
 
-### 8.1 Root Composition
+- `GET /api/notifications`
+- `POST /api/notifications/{id}/read`
+- `POST /api/notifications/read-all`
 
-`frontend/src/main.jsx` wraps providers in this order:
+### 8.7 Collections
 
-1. `ThemeProvider`
-2. `LanguageProvider`
-3. `BrowserRouter`
-4. `AuthProvider`
-5. `MediaCartProvider`
+- `GET /api/collections`
+- `GET /api/collections/{id}`
+- `POST /api/collections`
+- `PUT /api/collections/{id}`
+- `DELETE /api/collections/{id}`
+- `POST /api/collections/{id}/items`
+- `DELETE /api/collections/{id}/items/{mediaId}`
+- `POST /api/collections/{id}/follow`
+- `DELETE /api/collections/{id}/follow`
 
-`Header` and `Footer` are mounted globally around `<App />`.
+### 8.8 Groups
 
-### 8.2 Routing
+- `GET /api/groups`
+- `GET /api/groups/{id}`
+- `POST /api/groups`
+- `POST /api/groups/{id}/join`
+- `DELETE /api/groups/{id}/leave`
+- `POST /api/groups/{id}/members/{userId}/role`
+- `POST /api/groups/{id}/posts`
+- `GET /api/groups/{id}/posts`
+- `POST /api/groups/{id}/pinned-media`
+- `GET /api/groups/{id}/pinned-media`
 
-`frontend/src/app/routes.jsx` currently defines:
+### 8.9 Moderation
 
-- `/` -> `Home`
-- `/login` -> `LoginPage`
-- `/register` -> `RegisterPage`
-- `/media` -> `MediaListPage`
-- `/media/add` -> `AddMediaPage`
-- `/media/:id` -> `MediaDetailPage`
-- `/media/:id/seasons` -> `SeasonManagerPage`
-- `/cart` -> `CartPage`
-- `/account` -> `AccountPage`
-- `/account/watchlist` -> `WatchlistPage`
-- `*` -> `Home`
+- `POST /api/moderation/reports`
+- `GET /api/moderation/reports`
+- `PUT /api/moderation/reports/{id}/status`
+- `POST /api/moderation/assignments`
+- `GET /api/moderation/assignments`
+- `DELETE /api/moderation/assignments`
 
-### 8.3 Global State Contexts
+## 9. Frontend Contract Snapshot
 
-- `AuthContext`
-  - On app load: tries `/auth/me`, then fallback `/auth/refresh`.
-  - Exposes `user`, `login`, `register`, `logout`.
-- `MediaCartContext`
-  - LocalStorage-backed staged creation payloads for bulk submit.
-- `ThemeContext`
-  - Stores theme in localStorage + `data-theme` on root.
-- `LanguageContext`
-  - Stores language in localStorage + `lang` attribute, supports `t()` key lookup with interpolation.
+- Routing is in `frontend/src/app/routes.jsx`.
+- Providers: Theme, Language, Router, Auth, MediaCart.
+- API access via `frontend/src/services/api.js` and domain service wrappers.
 
-### 8.4 Frontend Service Layer
+Frontend currently expects these user endpoints that are still not implemented on backend:
 
-Core API wrappers:
+- `GET /api/users/me/ratings`
+- `GET /api/users/me/reviews`
+- `GET /api/users/me/favorite-genres`
 
-- `services/api.js` -> Axios instance (`baseURL=http://localhost:5113/api`, `withCredentials: true`)
-- `services/mediaService.js`
-- `services/tvSeriesService.js`
-- `services/ratingService.js`
-- `services/tmdbService.js` (alternate TMDB route family)
+Implemented and aligned now:
 
-## 9. Implemented Product Flows
-
-### 9.1 Media Discovery
-
-`MediaListPage` supports:
-
-- Search
-- Type and genre filters
-- Sort options
-- Pagination
-- URL query-state synchronization
-
-### 9.2 Media Details
-
-`MediaDetailPage` supports:
-
-- Hero section with cover and metadata
-- Season accordion for TV content
-- Direct navigation to season manager
-- Back button route is hardcoded to `/media`
-
-### 9.3 Add Media + Cart + Bulk Submit
-
-`AddMediaPage` is a multistep wizard:
-
-1. Select type (Movie/Book/TV)
-2. Search external source (TMDB/Open Library) or skip
-3. Fill/edit form and add to cart
-
-TV-specific behavior:
-
-- Can include seasons/episodes at creation time
-- Can prefill TV seasons from TMDB series details
-
-`CartPage`:
-
-- Edits/removes staged items
-- Submits all via `POST /api/media/bulk`
-- Tracks per-item success/error state from bulk response
-
-### 9.4 TV Season Manager
-
-`SeasonManagerPage` provides:
-
-Manual management:
-
-- Add season with episodes
-- Rename season number
-- Delete season
-- Add episode
-- Edit episode title/duration
-- Delete episode
-
-TMDB-assisted management:
-
-- Load TMDB seasons preview from stored `tmdbId`
-- If no stored `tmdbId`, find candidate series by title and select one
-- Sync/import all previewed seasons
-- Sync/import a single season
-- Merge behavior updates existing seasons and inserts missing episodes
+- `GET /api/users/me/status`
+- `POST /api/media/{id}/status`
+- notifications endpoints under `/api/notifications`
 
 ## 10. External Integrations
 
 ### 10.1 TMDB
 
-`TmdbService` does:
+`TmdbService` provides:
 
-- Search (`movie`/`tv`)
-- Details for movie or TV
-- Full series graph retrieval with seasons+episodes
+- movie/tv search
+- details
+- full TV series data with seasons and episodes
 
-Implementation notes:
-
-- Uses read-access token from configuration (`Tmdb:ReadAccessToken`)
-- Keeps API key/token off the browser
-- Skips season 0 (specials)
-- Fetches each season in parallel for full series details
+`TmdbImportService` imports a TMDB series into local media records.
 
 ### 10.2 Open Library
 
-`OpenLibraryService` does:
+`OpenLibraryService` provides:
 
-- Search endpoint mapping to lightweight DTO
-- Details by work id (`/works/...`)
-- Normalizes optional fields and cover URLs
+- book search mapping to app DTOs
+- book details mapping from OL work endpoint
 
-## 11. Known Gaps / Inconsistencies (Current)
+## 11. Notification Design (Future Realtime Ready)
 
-These are present in code and should be considered architecture debt:
+Notifications are persisted first (DB is source of truth).
 
-1. Duplicate TMDB API families
-- Both `/api/media/tmdb/*` and `/api/tmdb/*` exist.
-- Frontend uses both (`mediaService` and `tmdbService`).
+Realtime extension point:
 
-2. Frontend expects user profile APIs that are not exposed by controllers
-- `userService` and `ratingService.getMyRatings` call:
-  - `GET /api/users/me/ratings`
-  - `GET /api/users/me/reviews`
-  - `GET /api/users/me/status`
-  - `GET /api/users/me/favorite-genres`
-- No `UsersController` currently implements these routes, so account/watchlist flows can fail at runtime.
+- `INotificationPublisher`
+- current implementation: `NoopNotificationPublisher`
+- future websocket/signalR delivery can replace noop publisher without changing notification service interface.
 
-3. Media status write API is called by frontend but not implemented in backend
-- `statusService.setMediaStatus` calls `POST /api/media/{id}/status`.
-- `MediaController` has no corresponding endpoint.
+Current notification hooks:
 
-4. Duplicate/legacy frontend pages still exist
-- Routed detail page: `src/pages/MediaDetailPage.jsx`
-- Legacy duplicate not routed: `src/pages/media/MediaDetailPage.jsx`
-- Legacy home page not routed: `src/pages/Home/Home.jsx`
+- moderation report status updates notify the report reporter
+- moderator assignments notify the assigned user
 
-## 12. Practical Extension Points
+## 12. Delivery Stage Status (8-Stage Plan)
 
-Most natural extension seams in current architecture:
+Completed:
 
-- Implement missing account/status APIs consumed by frontend (`/api/users/me/*`, `POST /api/media/{id}/status`) or remove/degrade dependent UI flows.
-- Consolidate TMDB API surface to one route family and one frontend service abstraction.
-- Move more business invariants into service layer validation (season/episode numbering constraints, additional duplicate guards).
-- Add integration tests around TV season manager merge semantics (manual + TMDB sync).
-- Introduce stricter architectural boundaries (Core abstractions over persistence) if project complexity grows.
+- Stage 1: Architecture refactor (domain folders for entities/configurations/core/controllers)
+- Stage 2: User profile system
+- Stage 3: Collection improvements (hierarchy, ownership, follow)
+- Stage 4: Media status tracking
+- Stage 5: Tag system
+- Stage 6: Groups
+- Stage 7: Moderation (reports + assignments)
+- Stage 8: Notifications
+
+Not yet implemented from larger long-form roadmap:
+
+- Unified comment target model redesign (current model is still legacy polymorphic shape)
+- Review voting
+- Additional moderation role expansion beyond current implementation details
+- websocket-based notification delivery (abstraction is in place)
