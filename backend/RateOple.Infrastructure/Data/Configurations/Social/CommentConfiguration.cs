@@ -24,7 +24,7 @@ public class CommentConfiguration : IEntityTypeConfiguration<Comment>
         builder.HasOne(c => c.User)
             .WithMany(u => u.Comments)
             .HasForeignKey(c => c.UserId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.SetNull);
 
         // Polymorphic relationships
         // One Review -> Many Comments

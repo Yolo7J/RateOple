@@ -13,8 +13,7 @@ public class GroupPost
     [Required]
     public string Content { get; set; } = null!;
 
-    [Required]
-    public Guid UserId { get; set; }
+    public Guid? UserId { get; set; }
 
     [Required]
     public Guid GroupId { get; set; }
@@ -22,7 +21,7 @@ public class GroupPost
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation Properties
-    public User User { get; set; } = null!;
+    public User? User { get; set; }
     public Group Group { get; set; } = null!;
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
 }

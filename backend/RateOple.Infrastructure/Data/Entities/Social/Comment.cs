@@ -10,8 +10,7 @@ public class Comment
     [Required]
     public string Content { get; set; } = null!;
 
-    [Required]
-    public Guid UserId { get; set; }
+    public Guid? UserId { get; set; }
 
     // Polymorphic parent relationship
     public CommentParentType ParentType { get; set; }
@@ -24,7 +23,7 @@ public class Comment
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation Properties
-    public User User { get; set; } = null!;
+    public User? User { get; set; }
     public Review? Review { get; set; }
     public GroupPost? GroupPost { get; set; }
     public Comment? ParentComment { get; set; }

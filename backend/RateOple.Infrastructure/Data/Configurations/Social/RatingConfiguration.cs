@@ -25,7 +25,7 @@ public class RatingConfiguration : IEntityTypeConfiguration<Rating>
         builder.HasOne(r => r.User)
             .WithMany(u => u.Ratings)
             .HasForeignKey(r => r.UserId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.SetNull);
 
         // One Media -> Many Ratings
         builder.HasOne(r => r.Media)

@@ -122,7 +122,7 @@ public class DiscoveryService : IDiscoveryService
         return ranked;
     }
 
-    private static MediaListItemDto Map(Infrastructure.Data.Models.Media media) => new()
+    private static MediaListItemDto Map(Infrastructure.Data.Entities.Media media) => new()
     {
         Id = media.Id,
         Type = media.Type.ToString(),

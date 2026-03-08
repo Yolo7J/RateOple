@@ -24,7 +24,7 @@ public class GroupPostConfiguration : IEntityTypeConfiguration<GroupPost>
         builder.HasOne(gp => gp.User)
             .WithMany(u => u.GroupPosts)
             .HasForeignKey(gp => gp.UserId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.SetNull);
 
         // One Group -> Many GroupPosts
         builder.HasOne(gp => gp.Group)

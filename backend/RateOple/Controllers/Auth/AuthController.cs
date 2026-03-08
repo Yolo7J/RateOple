@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RateOple.Core.Contracts;
 using RateOple.Core.Contracts.DTOs.Auth;
+using RateOple.Constants.Enums;
 using RateOple.Infrastructure.Data;
 using RateOple.Infrastructure.Data.Entities;
 using RateOple.Infrastructure.Security;
@@ -44,6 +45,18 @@ namespace RateOple.Controllers
                 return BadRequest(result.Errors);
         
             await _userManager.AddToRoleAsync(user, "User");
+
+            _db.UserProfiles.Add(new UserProfile
+            {
+                UserId = user.Id,
+                DisplayName = dto.Username,
+                AvatarUrl = user.AvatarUrl,
+                Bio = user.Bio,
+                PrivacySetting = user.Visibility == UserVisibility.Private
+                    ? PrivacySetting.Private
+                    : PrivacySetting.Public
+            });
+            await _db.SaveChangesAsync();
         
             return Ok();
         }

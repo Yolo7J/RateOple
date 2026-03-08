@@ -11,6 +11,7 @@ public static class ApplicationServicesExtensions
         services.AddScoped<IInteractionService, InteractionService>();
         services.AddScoped<IUserTasteService, UserTasteService>();
         services.AddScoped<IVisibilityService, VisibilityService>();
+        services.AddScoped<IUserProfileService, UserProfileService>();
         services.AddScoped<ITvSeriesService, TvSeriesService>();
         services.AddScoped<IMediaService, MediaService>();
         services.AddScoped<IDiscoveryService, DiscoveryService>();

@@ -37,5 +37,6 @@ namespace RateOple.Infrastructure.Data.Entities
         public ICollection<Comment> Comments { get; set; } = new List<Comment>();
         public ICollection<MediaInteraction> MediaInteractions { get; set; } = new List<MediaInteraction>();
         public ICollection<UserGenreScore> GenreScores { get; set; } = new List<UserGenreScore>();
+        public UserProfile? Profile { get; set; }
     }
 }
