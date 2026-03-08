@@ -13,6 +13,9 @@ public class CollectionItemConfiguration : IEntityTypeConfiguration<CollectionIt
         builder.Property(ci => ci.AddedAt)
             .IsRequired();
 
+        builder.Property(ci => ci.OrderIndex)
+            .IsRequired();
+
         // One Collection -> Many CollectionItems
         builder.HasOne(ci => ci.Collection)
             .WithMany(c => c.Items)
@@ -27,6 +30,9 @@ public class CollectionItemConfiguration : IEntityTypeConfiguration<CollectionIt
 
         // Unique constraint: one media per collection
         builder.HasIndex(ci => new { ci.CollectionId, ci.MediaId })
+            .IsUnique();
+
+        builder.HasIndex(ci => new { ci.CollectionId, ci.OrderIndex })
             .IsUnique();
     }
 }

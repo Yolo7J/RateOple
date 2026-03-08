@@ -29,6 +29,7 @@ namespace RateOple.Infrastructure.Data.Entities
         public ICollection<Rating> Ratings { get; set; } = new List<Rating>();
         public ICollection<Review> Reviews { get; set; } = new List<Review>();
         public ICollection<Collection> Collections { get; set; } = new List<Collection>();
+        public ICollection<FollowCollection> FollowedCollections { get; set; } = new List<FollowCollection>();
         public ICollection<Follow> Following { get; set; } = new List<Follow>();
         public ICollection<Follow> Followers { get; set; } = new List<Follow>();
         public ICollection<GroupMembership> GroupMemberships { get; set; } = new List<GroupMembership>();

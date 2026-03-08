@@ -35,6 +35,7 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, 
     // Collections
     public DbSet<Collection> Collections { get; set; }
     public DbSet<CollectionItem> CollectionItems { get; set; }
+    public DbSet<FollowCollection> FollowCollections { get; set; }
 
     // JWT
     public DbSet<RefreshToken> RefreshTokens { get; set; }

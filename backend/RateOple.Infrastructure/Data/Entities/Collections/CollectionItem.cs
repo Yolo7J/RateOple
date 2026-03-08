@@ -12,6 +12,9 @@ public class CollectionItem
     [Required]
     public Guid MediaId { get; set; }
 
+    [Required]
+    public int OrderIndex { get; set; }
+
     public DateTime AddedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation Properties

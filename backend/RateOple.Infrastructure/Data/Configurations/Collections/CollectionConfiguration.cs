@@ -14,9 +14,23 @@ public class CollectionConfiguration : IEntityTypeConfiguration<Collection>
             .IsRequired()
             .HasMaxLength(200);
 
+        builder.Property(c => c.Name)
+            .HasMaxLength(200);
+
         builder.Property(c => c.Visibility)
             .IsRequired()
             .HasConversion<int>();
+
+        builder.Property(c => c.OwnerType)
+            .IsRequired()
+            .HasConversion<int>();
+
+        builder.Property(c => c.SortMode)
+            .IsRequired()
+            .HasConversion<int>();
+
+        builder.Property(c => c.CoverImageUrl)
+            .HasMaxLength(512);
 
         builder.Property(c => c.CreatedAt)
             .IsRequired();
@@ -25,6 +39,15 @@ public class CollectionConfiguration : IEntityTypeConfiguration<Collection>
         builder.HasOne(c => c.Owner)
             .WithMany(u => u.Collections)
             .HasForeignKey(c => c.OwnerId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // Hierarchical parent-child
+        builder.HasOne(c => c.ParentCollection)
+            .WithMany(c => c.Children)
+            .HasForeignKey(c => c.ParentCollectionId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(c => c.ParentCollectionId);
+        builder.HasIndex(c => new { c.OwnerType, c.OwnerId });
     }
 }
