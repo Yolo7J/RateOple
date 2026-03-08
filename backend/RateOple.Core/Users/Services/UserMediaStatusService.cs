@@ -4,6 +4,7 @@ using RateOple.Core.Contracts;
 using RateOple.Core.Users.DTOs;
 using RateOple.Infrastructure.Data;
 using RateOple.Infrastructure.Data.Entities;
+using MediaEntity = RateOple.Infrastructure.Data.Entities.Media;
 
 namespace RateOple.Core.Users.Services;
 
@@ -118,7 +119,7 @@ public class UserMediaStatusService : IUserMediaStatusService
         };
     }
 
-    private static UserMediaStatusDto Map(UserMediaStatus status, Media media) => new()
+    private static UserMediaStatusDto Map(UserMediaStatus status, MediaEntity media) => new()
     {
         MediaId = status.MediaId,
         MediaType = media.Type.ToString(),

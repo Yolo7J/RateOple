@@ -4,6 +4,7 @@ using RateOple.Core.Contracts;
 using RateOple.Core.Media.DTOs;
 using RateOple.Infrastructure.Data;
 using RateOple.Infrastructure.Data.Entities;
+using MediaEntity = RateOple.Infrastructure.Data.Entities.Media;
 
 namespace RateOple.Core.Media.Services;
 
@@ -391,7 +392,7 @@ public class MediaService : IMediaService
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private static Media BuildBaseMedia(
+    private static MediaEntity BuildBaseMedia(
         MediaType type, string title, string? description,
         string? coverUrl, int? releaseYear) => new()
     {
@@ -407,7 +408,7 @@ public class MediaService : IMediaService
     };
 
     private static void PatchBaseMedia(
-        Media media, string? title, string? description,
+        MediaEntity media, string? title, string? description,
         string? coverUrl, int? releaseYear)
     {
         if (title != null) media.Title = title;
@@ -417,7 +418,7 @@ public class MediaService : IMediaService
             media.ReleaseDate = new DateTime(releaseYear.Value, 1, 1, 0, 0, 0, DateTimeKind.Utc);
     }
 
-    private async Task AttachGenres(Media media, List<int> genreIds)
+    private async Task AttachGenres(MediaEntity media, List<int> genreIds)
     {
         if (genreIds.Count == 0) return;
 
@@ -431,7 +432,7 @@ public class MediaService : IMediaService
             .ToList();
     }
 
-    private async Task ReplaceGenres(Media media, List<int> genreIds)
+    private async Task ReplaceGenres(MediaEntity media, List<int> genreIds)
     {
         // Remove existing genre links
         var existing = await _db.MediaGenres
@@ -449,7 +450,7 @@ public class MediaService : IMediaService
             _db.MediaGenres.Add(new MediaGenre { MediaId = media.Id, GenreId = gId });
     }
 
-    private async Task<Media> GetWithIncludes(Guid id, bool throwIfMissing = true)
+    private async Task<MediaEntity> GetWithIncludes(Guid id, bool throwIfMissing = true)
     {
         var m = await _db.Media
             .Where(m => !m.IsDeleted)                           // soft-delete filter
@@ -467,7 +468,7 @@ public class MediaService : IMediaService
         return m!;
     }
 
-    private static MediaDetailDto MapToDetail(Media m)
+    private static MediaDetailDto MapToDetail(MediaEntity m)
     {
         var dto = new MediaDetailDto
         {
