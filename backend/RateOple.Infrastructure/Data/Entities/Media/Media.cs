@@ -19,6 +19,7 @@ public class Media
     public Book? Book { get; set; }
     public TvSeries? TvSeries { get; set; }
     public ICollection<MediaGenre> MediaGenres { get; set; } = new List<MediaGenre>();
+    public ICollection<MediaTag> MediaTags { get; set; } = new List<MediaTag>();
     public ICollection<Rating> Ratings { get; set; } = new List<Rating>();
     public ICollection<Review> Reviews { get; set; } = new List<Review>();
     public ICollection<CollectionItem> CollectionItems { get; set; } = new List<CollectionItem>();
