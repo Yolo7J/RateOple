@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using RateOple.Infrastructure.Data;
-using RateOple.Infrastructure.Data.Models;
+using RateOple.Infrastructure.Data.Entities;
 
 namespace RateOple.Extensions;
 

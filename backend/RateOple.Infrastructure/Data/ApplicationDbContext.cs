@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using RateOple.Infrastructure.Data.Models;
+using RateOple.Infrastructure.Data.Entities;
 
 namespace RateOple.Infrastructure.Data;
 

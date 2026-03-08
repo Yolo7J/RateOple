@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using RateOple.Infrastructure.Data.Models;
+using RateOple.Infrastructure.Data.Entities;
 
 namespace RateOple.Infrastructure.Data.Seeding;
 

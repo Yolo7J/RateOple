@@ -155,7 +155,7 @@ namespace RateOple.Infrastructure.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.Book", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.Book", b =>
                 {
                     b.Property<Guid>("MediaId")
                         .HasColumnType("uuid");
@@ -174,7 +174,7 @@ namespace RateOple.Infrastructure.Migrations
                     b.ToTable("Books");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.Collection", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.Collection", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -204,7 +204,7 @@ namespace RateOple.Infrastructure.Migrations
                     b.ToTable("Collections");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.CollectionItem", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.CollectionItem", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -229,7 +229,7 @@ namespace RateOple.Infrastructure.Migrations
                     b.ToTable("CollectionItems");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.Comment", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.Comment", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -270,7 +270,7 @@ namespace RateOple.Infrastructure.Migrations
                     b.ToTable("Comments");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.Episode", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.Episode", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -298,7 +298,7 @@ namespace RateOple.Infrastructure.Migrations
                     b.ToTable("Episodes");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.Follow", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.Follow", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -323,7 +323,7 @@ namespace RateOple.Infrastructure.Migrations
                     b.ToTable("Follows");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.Group", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.Group", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -353,7 +353,7 @@ namespace RateOple.Infrastructure.Migrations
                     b.ToTable("Groups");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.GroupMedia", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.GroupMedia", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -378,7 +378,7 @@ namespace RateOple.Infrastructure.Migrations
                     b.ToTable("GroupMediaLinks");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.GroupMembership", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.GroupMembership", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -406,7 +406,7 @@ namespace RateOple.Infrastructure.Migrations
                     b.ToTable("GroupMemberships");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.GroupPost", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.GroupPost", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -439,7 +439,7 @@ namespace RateOple.Infrastructure.Migrations
                     b.ToTable("GroupPosts");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.Media", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.Media", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -485,7 +485,7 @@ namespace RateOple.Infrastructure.Migrations
                     b.ToTable("Media");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.Movie", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.Movie", b =>
                 {
                     b.Property<Guid>("MediaId")
                         .HasColumnType("uuid");
@@ -501,7 +501,7 @@ namespace RateOple.Infrastructure.Migrations
                     b.ToTable("Movies");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.Rating", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.Rating", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -532,7 +532,7 @@ namespace RateOple.Infrastructure.Migrations
                         });
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.RefreshToken", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -561,7 +561,7 @@ namespace RateOple.Infrastructure.Migrations
                     b.ToTable("RefreshTokens");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.Review", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.Review", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -592,7 +592,7 @@ namespace RateOple.Infrastructure.Migrations
                     b.ToTable("Reviews");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.Season", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.Season", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -612,7 +612,7 @@ namespace RateOple.Infrastructure.Migrations
                     b.ToTable("Seasons");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.TvSeries", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.TvSeries", b =>
                 {
                     b.Property<Guid>("MediaId")
                         .HasColumnType("uuid");
@@ -625,7 +625,7 @@ namespace RateOple.Infrastructure.Migrations
                     b.ToTable("TvSeries");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.User", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -721,7 +721,7 @@ namespace RateOple.Infrastructure.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
                 {
-                    b.HasOne("RateOple.Infrastructure.Data.Models.User", null)
+                    b.HasOne("RateOple.Infrastructure.Data.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -730,7 +730,7 @@ namespace RateOple.Infrastructure.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
                 {
-                    b.HasOne("RateOple.Infrastructure.Data.Models.User", null)
+                    b.HasOne("RateOple.Infrastructure.Data.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -745,7 +745,7 @@ namespace RateOple.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("RateOple.Infrastructure.Data.Models.User", null)
+                    b.HasOne("RateOple.Infrastructure.Data.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -754,27 +754,27 @@ namespace RateOple.Infrastructure.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
                 {
-                    b.HasOne("RateOple.Infrastructure.Data.Models.User", null)
+                    b.HasOne("RateOple.Infrastructure.Data.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.Book", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.Book", b =>
                 {
-                    b.HasOne("RateOple.Infrastructure.Data.Models.Media", "Media")
+                    b.HasOne("RateOple.Infrastructure.Data.Entities.Media", "Media")
                         .WithOne("Book")
-                        .HasForeignKey("RateOple.Infrastructure.Data.Models.Book", "MediaId")
+                        .HasForeignKey("RateOple.Infrastructure.Data.Entities.Book", "MediaId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Media");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.Collection", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.Collection", b =>
                 {
-                    b.HasOne("RateOple.Infrastructure.Data.Models.User", "Owner")
+                    b.HasOne("RateOple.Infrastructure.Data.Entities.User", "Owner")
                         .WithMany("Collections")
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -783,15 +783,15 @@ namespace RateOple.Infrastructure.Migrations
                     b.Navigation("Owner");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.CollectionItem", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.CollectionItem", b =>
                 {
-                    b.HasOne("RateOple.Infrastructure.Data.Models.Collection", "Collection")
+                    b.HasOne("RateOple.Infrastructure.Data.Entities.Collection", "Collection")
                         .WithMany("Items")
                         .HasForeignKey("CollectionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("RateOple.Infrastructure.Data.Models.Media", "Media")
+                    b.HasOne("RateOple.Infrastructure.Data.Entities.Media", "Media")
                         .WithMany("CollectionItems")
                         .HasForeignKey("MediaId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -802,24 +802,24 @@ namespace RateOple.Infrastructure.Migrations
                     b.Navigation("Media");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.Comment", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.Comment", b =>
                 {
-                    b.HasOne("RateOple.Infrastructure.Data.Models.GroupPost", "GroupPost")
+                    b.HasOne("RateOple.Infrastructure.Data.Entities.GroupPost", "GroupPost")
                         .WithMany("Comments")
                         .HasForeignKey("GroupPostId")
                         .OnDelete(DeleteBehavior.Cascade);
 
-                    b.HasOne("RateOple.Infrastructure.Data.Models.Comment", "ParentComment")
+                    b.HasOne("RateOple.Infrastructure.Data.Entities.Comment", "ParentComment")
                         .WithMany("Replies")
                         .HasForeignKey("ParentCommentId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("RateOple.Infrastructure.Data.Models.Review", "Review")
+                    b.HasOne("RateOple.Infrastructure.Data.Entities.Review", "Review")
                         .WithMany("Comments")
                         .HasForeignKey("ReviewId")
                         .OnDelete(DeleteBehavior.Cascade);
 
-                    b.HasOne("RateOple.Infrastructure.Data.Models.User", "User")
+                    b.HasOne("RateOple.Infrastructure.Data.Entities.User", "User")
                         .WithMany("Comments")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -834,9 +834,9 @@ namespace RateOple.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.Episode", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.Episode", b =>
                 {
-                    b.HasOne("RateOple.Infrastructure.Data.Models.Season", "Season")
+                    b.HasOne("RateOple.Infrastructure.Data.Entities.Season", "Season")
                         .WithMany("Episodes")
                         .HasForeignKey("SeasonId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -845,15 +845,15 @@ namespace RateOple.Infrastructure.Migrations
                     b.Navigation("Season");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.Follow", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.Follow", b =>
                 {
-                    b.HasOne("RateOple.Infrastructure.Data.Models.User", "Follower")
+                    b.HasOne("RateOple.Infrastructure.Data.Entities.User", "Follower")
                         .WithMany("Following")
                         .HasForeignKey("FollowerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("RateOple.Infrastructure.Data.Models.User", "Following")
+                    b.HasOne("RateOple.Infrastructure.Data.Entities.User", "Following")
                         .WithMany("Followers")
                         .HasForeignKey("FollowingId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -864,9 +864,9 @@ namespace RateOple.Infrastructure.Migrations
                     b.Navigation("Following");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.Group", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.Group", b =>
                 {
-                    b.HasOne("RateOple.Infrastructure.Data.Models.User", "Owner")
+                    b.HasOne("RateOple.Infrastructure.Data.Entities.User", "Owner")
                         .WithMany("OwnedGroups")
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -875,15 +875,15 @@ namespace RateOple.Infrastructure.Migrations
                     b.Navigation("Owner");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.GroupMedia", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.GroupMedia", b =>
                 {
-                    b.HasOne("RateOple.Infrastructure.Data.Models.Group", "Group")
+                    b.HasOne("RateOple.Infrastructure.Data.Entities.Group", "Group")
                         .WithMany("MediaLinks")
                         .HasForeignKey("GroupId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("RateOple.Infrastructure.Data.Models.Media", "Media")
+                    b.HasOne("RateOple.Infrastructure.Data.Entities.Media", "Media")
                         .WithMany("GroupLinks")
                         .HasForeignKey("MediaId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -894,15 +894,15 @@ namespace RateOple.Infrastructure.Migrations
                     b.Navigation("Media");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.GroupMembership", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.GroupMembership", b =>
                 {
-                    b.HasOne("RateOple.Infrastructure.Data.Models.Group", "Group")
+                    b.HasOne("RateOple.Infrastructure.Data.Entities.Group", "Group")
                         .WithMany("Members")
                         .HasForeignKey("GroupId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("RateOple.Infrastructure.Data.Models.User", "User")
+                    b.HasOne("RateOple.Infrastructure.Data.Entities.User", "User")
                         .WithMany("GroupMemberships")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -913,15 +913,15 @@ namespace RateOple.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.GroupPost", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.GroupPost", b =>
                 {
-                    b.HasOne("RateOple.Infrastructure.Data.Models.Group", "Group")
+                    b.HasOne("RateOple.Infrastructure.Data.Entities.Group", "Group")
                         .WithMany("Posts")
                         .HasForeignKey("GroupId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("RateOple.Infrastructure.Data.Models.User", "User")
+                    b.HasOne("RateOple.Infrastructure.Data.Entities.User", "User")
                         .WithMany("GroupPosts")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -932,26 +932,26 @@ namespace RateOple.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.Movie", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.Movie", b =>
                 {
-                    b.HasOne("RateOple.Infrastructure.Data.Models.Media", "Media")
+                    b.HasOne("RateOple.Infrastructure.Data.Entities.Media", "Media")
                         .WithOne("Movie")
-                        .HasForeignKey("RateOple.Infrastructure.Data.Models.Movie", "MediaId")
+                        .HasForeignKey("RateOple.Infrastructure.Data.Entities.Movie", "MediaId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Media");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.Rating", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.Rating", b =>
                 {
-                    b.HasOne("RateOple.Infrastructure.Data.Models.Media", "Media")
+                    b.HasOne("RateOple.Infrastructure.Data.Entities.Media", "Media")
                         .WithMany("Ratings")
                         .HasForeignKey("MediaId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("RateOple.Infrastructure.Data.Models.User", "User")
+                    b.HasOne("RateOple.Infrastructure.Data.Entities.User", "User")
                         .WithMany("Ratings")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -962,9 +962,9 @@ namespace RateOple.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.RefreshToken", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.RefreshToken", b =>
                 {
-                    b.HasOne("RateOple.Infrastructure.Data.Models.User", "User")
+                    b.HasOne("RateOple.Infrastructure.Data.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -973,15 +973,15 @@ namespace RateOple.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.Review", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.Review", b =>
                 {
-                    b.HasOne("RateOple.Infrastructure.Data.Models.Media", "Media")
+                    b.HasOne("RateOple.Infrastructure.Data.Entities.Media", "Media")
                         .WithMany("Reviews")
                         .HasForeignKey("MediaId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("RateOple.Infrastructure.Data.Models.User", "User")
+                    b.HasOne("RateOple.Infrastructure.Data.Entities.User", "User")
                         .WithMany("Reviews")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -992,9 +992,9 @@ namespace RateOple.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.Season", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.Season", b =>
                 {
-                    b.HasOne("RateOple.Infrastructure.Data.Models.TvSeries", "TvSeries")
+                    b.HasOne("RateOple.Infrastructure.Data.Entities.TvSeries", "TvSeries")
                         .WithMany("Seasons")
                         .HasForeignKey("TvSeriesId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1003,28 +1003,28 @@ namespace RateOple.Infrastructure.Migrations
                     b.Navigation("TvSeries");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.TvSeries", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.TvSeries", b =>
                 {
-                    b.HasOne("RateOple.Infrastructure.Data.Models.Media", "Media")
+                    b.HasOne("RateOple.Infrastructure.Data.Entities.Media", "Media")
                         .WithOne("TvSeries")
-                        .HasForeignKey("RateOple.Infrastructure.Data.Models.TvSeries", "MediaId")
+                        .HasForeignKey("RateOple.Infrastructure.Data.Entities.TvSeries", "MediaId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Media");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.Collection", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.Collection", b =>
                 {
                     b.Navigation("Items");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.Comment", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.Comment", b =>
                 {
                     b.Navigation("Replies");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.Group", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.Group", b =>
                 {
                     b.Navigation("MediaLinks");
 
@@ -1033,12 +1033,12 @@ namespace RateOple.Infrastructure.Migrations
                     b.Navigation("Posts");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.GroupPost", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.GroupPost", b =>
                 {
                     b.Navigation("Comments");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.Media", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.Media", b =>
                 {
                     b.Navigation("Book");
 
@@ -1055,22 +1055,22 @@ namespace RateOple.Infrastructure.Migrations
                     b.Navigation("TvSeries");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.Review", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.Review", b =>
                 {
                     b.Navigation("Comments");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.Season", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.Season", b =>
                 {
                     b.Navigation("Episodes");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.TvSeries", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.TvSeries", b =>
                 {
                     b.Navigation("Seasons");
                 });
 
-            modelBuilder.Entity("RateOple.Infrastructure.Data.Models.User", b =>
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.User", b =>
                 {
                     b.Navigation("Collections");
 

@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using RateOple.Constants.Constants;
-using RateOple.Infrastructure.Data.Models;
+using RateOple.Infrastructure.Data.Entities;
 
 namespace RateOple.Infrastructure.Data.Seeding
 {
