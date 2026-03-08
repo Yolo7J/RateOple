@@ -1,5 +1,5 @@
 import { useQueryResource } from '../../../shared/utils/useQueryResource';
-import userService from '../../../services/userService';
+import userService from '../services/userService';
 
 export const useAccountQuery = () => {
   return useQueryResource({

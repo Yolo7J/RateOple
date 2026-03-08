@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import statusService from '../../../services/statusService';
+import statusService from '../services/statusService';
 
 export const useMediaStatusMutation = () => {
   const [loading, setLoading] = useState(false);

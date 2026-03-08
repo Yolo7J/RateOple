@@ -1,5 +1,5 @@
 import { useQueryResource } from '../../../shared/utils/useQueryResource';
-import statusService from '../../../services/statusService';
+import statusService from '../services/statusService';
 
 export const useWatchlistQuery = () => {
   return useQueryResource({
