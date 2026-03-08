@@ -8,6 +8,7 @@ public interface IMediaService
     Task<PagedResultDto<MediaListItemDto>> GetAllAsync(MediaQueryDto query);
     Task<MediaDetailDto?> GetByIdAsync(Guid id);
     Task<List<GenreDto>> GetGenresAsync();
+    Task<List<TagDto>> GetTagsAsync();
 
     // ── Single create ─────────────────────────────────────────────────────────
     Task<MediaDetailDto> CreateMovieAsync(CreateMovieDto dto);
@@ -18,6 +19,8 @@ public interface IMediaService
     Task<MediaDetailDto> UpdateMovieAsync(Guid id, UpdateMovieDto dto);
     Task<MediaDetailDto> UpdateBookAsync(Guid id, UpdateBookDto dto);
     Task<MediaDetailDto> UpdateTvSeriesAsync(Guid id, UpdateTvSeriesDto dto);
+    Task<MediaDetailDto> AddTagsAsync(Guid id, UpsertMediaTagsDto dto);
+    Task<MediaDetailDto> RemoveTagAsync(Guid id, int tagId);
 
     // ── Soft delete ───────────────────────────────────────────────────────────
     Task SoftDeleteAsync(Guid id);

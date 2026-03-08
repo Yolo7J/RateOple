@@ -64,6 +64,13 @@ public class MediaController : ControllerBase
         return Ok(genres);
     }
 
+    [HttpGet("tags")]
+    public async Task<IActionResult> GetTags()
+    {
+        var tags = await _mediaService.GetTagsAsync();
+        return Ok(tags);
+    }
+
     // ── TMDB proxies ──────────────────────────────────────────────────────────
 
     // GET /api/media/tmdb/search?q=batman&type=movie
@@ -211,6 +218,32 @@ public class MediaController : ControllerBase
         }
         catch (KeyNotFoundException) { return NotFound(); }
         catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
+    }
+
+    [HttpPost("{id:guid}/tags")]
+    [Authorize]
+    [IgnoreAntiforgeryToken]
+    public async Task<IActionResult> AddTags(Guid id, [FromBody] UpsertMediaTagsDto dto)
+    {
+        try
+        {
+            var result = await _mediaService.AddTagsAsync(id, dto);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException) { return NotFound(); }
+    }
+
+    [HttpDelete("{id:guid}/tags/{tagId:int}")]
+    [Authorize]
+    [IgnoreAntiforgeryToken]
+    public async Task<IActionResult> RemoveTag(Guid id, int tagId)
+    {
+        try
+        {
+            var result = await _mediaService.RemoveTagAsync(id, tagId);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException) { return NotFound(); }
     }
 
     // ── Soft delete ───────────────────────────────────────────────────────────

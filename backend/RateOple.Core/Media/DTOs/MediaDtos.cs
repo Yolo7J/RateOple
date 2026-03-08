@@ -12,6 +12,7 @@ public class MediaListItemDto
     public double AverageRating { get; set; }
     public int RatingsCount { get; set; }
     public List<string> Genres { get; set; } = [];
+    public List<string> Tags { get; set; } = [];
 }
 
 // ── Detail view ───────────────────────────────────────────────────────────────
@@ -27,6 +28,7 @@ public class MediaDetailDto
     public double AverageRating { get; set; }
     public int RatingsCount { get; set; }
     public List<string> Genres { get; set; } = [];
+    public List<string> Tags { get; set; } = [];
 
     // Movie-specific
     public string? Director { get; set; }
@@ -143,6 +145,7 @@ public class MediaQueryDto
 {
     public List<string>? Types { get; set; }
     public List<int>? GenreIds { get; set; }
+    public List<int>? TagIds { get; set; }
     public string? Search { get; set; }
     public string SortBy { get; set; } = "rating";
     public string SortDir { get; set; } = "desc";

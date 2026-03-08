@@ -28,6 +28,7 @@ public class MediaService : IMediaService
             var q = _db.Media
                 .Where(m => !m.IsDeleted)
                 .Include(m => m.MediaGenres).ThenInclude(mg => mg.Genre)
+                .Include(m => m.MediaTags).ThenInclude(mt => mt.Tag)
                 .AsQueryable();
 
             if (query.Types != null && query.Types.Count > 0)
@@ -44,6 +45,8 @@ public class MediaService : IMediaService
 
             if (query.GenreIds != null && query.GenreIds.Count > 0)
                 q = q.Where(m => m.MediaGenres.Any(mg => query.GenreIds.Contains(mg.GenreId)));
+            if (query.TagIds != null && query.TagIds.Count > 0)
+                q = q.Where(m => m.MediaTags.Any(mt => query.TagIds.Contains(mt.TagId)));
 
             if (!string.IsNullOrWhiteSpace(query.Search))
                 q = q.Where(m => m.Title.ToLower().Contains(query.Search.ToLower()));
@@ -76,6 +79,10 @@ public class MediaService : IMediaService
                         .Where(mg => mg.Genre != null && mg.Genre.Name != null)
                         .Select(mg => mg.Genre.Name!)
                         .ToList(),
+                    Tags          = m.MediaTags
+                        .Where(mt => mt.Tag != null && mt.Tag.Name != null)
+                        .Select(mt => mt.Tag.Name)
+                        .ToList()
                 })
                 .ToListAsync();
 
@@ -106,6 +113,14 @@ public class MediaService : IMediaService
         return await _db.Genres
             .OrderBy(g => g.Name)
             .Select(g => new GenreDto { Id = g.Id, Name = g.Name })
+            .ToListAsync();
+    }
+
+    public async Task<List<TagDto>> GetTagsAsync()
+    {
+        return await _db.Tags
+            .OrderBy(t => t.Name)
+            .Select(t => new TagDto { Id = t.Id, Name = t.Name })
             .ToListAsync();
     }
 
@@ -319,6 +334,68 @@ public class MediaService : IMediaService
         return MapToDetail(await GetWithIncludes(id));
     }
 
+    public async Task<MediaDetailDto> AddTagsAsync(Guid id, UpsertMediaTagsDto dto)
+    {
+        var media = await GetWithIncludes(id);
+
+        var normalizedNames = dto.TagNames
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(x => x.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (normalizedNames.Count == 0)
+            return MapToDetail(media);
+
+        var existingTags = await _db.Tags
+            .Where(t => normalizedNames.Contains(t.Name))
+            .ToListAsync();
+
+        var existingNames = existingTags
+            .Select(t => t.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var newTags = normalizedNames
+            .Where(x => !existingNames.Contains(x))
+            .Select(x => new Tag { Name = x })
+            .ToList();
+
+        if (newTags.Count > 0)
+        {
+            _db.Tags.AddRange(newTags);
+            await _db.SaveChangesAsync();
+        }
+
+        var allTags = existingTags.Concat(newTags).ToList();
+        var alreadyLinked = media.MediaTags.Select(mt => mt.TagId).ToHashSet();
+        var linksToAdd = allTags
+            .Where(t => !alreadyLinked.Contains(t.Id))
+            .Select(t => new MediaTag { MediaId = media.Id, TagId = t.Id })
+            .ToList();
+
+        if (linksToAdd.Count > 0)
+            _db.MediaTags.AddRange(linksToAdd);
+
+        await _db.SaveChangesAsync();
+        return MapToDetail(await GetWithIncludes(id));
+    }
+
+    public async Task<MediaDetailDto> RemoveTagAsync(Guid id, int tagId)
+    {
+        var media = await GetWithIncludes(id);
+
+        var link = await _db.MediaTags
+            .FirstOrDefaultAsync(mt => mt.MediaId == media.Id && mt.TagId == tagId);
+
+        if (link != null)
+        {
+            _db.MediaTags.Remove(link);
+            await _db.SaveChangesAsync();
+        }
+
+        return MapToDetail(await GetWithIncludes(id));
+    }
+
     // ── Soft delete ───────────────────────────────────────────────────────────
 
     public async Task SoftDeleteAsync(Guid id)
@@ -455,6 +532,7 @@ public class MediaService : IMediaService
         var m = await _db.Media
             .Where(m => !m.IsDeleted)                           // soft-delete filter
             .Include(m => m.MediaGenres).ThenInclude(mg => mg.Genre)
+            .Include(m => m.MediaTags).ThenInclude(mt => mt.Tag)
             .Include(m => m.Movie)
             .Include(m => m.Book)
             .Include(m => m.TvSeries)
@@ -481,6 +559,7 @@ public class MediaService : IMediaService
             AverageRating = m.AverageRating,
             RatingsCount  = m.RatingsCount,
             Genres        = m.MediaGenres.Select(mg => mg.Genre.Name).ToList(),
+            Tags          = m.MediaTags.Select(mt => mt.Tag.Name).ToList(),
         };
 
         if (m.Movie != null)
