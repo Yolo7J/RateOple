@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getMediaById } from '../features/media/services/mediaService';
@@ -42,16 +42,16 @@ function MediaDetailPage() {
     const [submittingReview, setSubmittingReview] = useState(false);
     const [savingStatus, setSavingStatus] = useState(false);
 
-    const loadDetail = async () => {
+    const loadDetail = useCallback(async () => {
         const [mediaData, ratingSummary] = await Promise.all([
             getMediaById(id),
             ratingService.getMediaSummary(id),
         ]);
         setMedia(mediaData);
         setSummary(ratingSummary);
-    };
+    }, [id]);
 
-    const loadReviews = async () => {
+    const loadReviews = useCallback(async () => {
         setReviewLoading(true);
         setReviewError('');
         try {
@@ -63,16 +63,16 @@ function MediaDetailPage() {
         } finally {
             setReviewLoading(false);
         }
-    };
+    }, [id]);
 
-    const loadSimilar = async () => {
+    const loadSimilar = useCallback(async () => {
         try {
             const data = await discoveryService.getSimilar(id, 20);
             setSimilar(Array.isArray(data) ? data : []);
         } catch {
             setSimilar([]);
         }
-    };
+    }, [id]);
 
     useEffect(() => {
         let mounted = true;
@@ -93,7 +93,7 @@ function MediaDetailPage() {
 
         run();
         return () => { mounted = false; };
-    }, [id]);
+    }, [id, loadDetail, loadReviews, loadSimilar]);
 
     const sortedReviews = useMemo(() => {
         const copy = [...reviews];
