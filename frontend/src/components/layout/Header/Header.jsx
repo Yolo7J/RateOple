@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../../../hooks/useLanguage';
 import { useAuth } from '../../../context/AuthContext';
 import NavigationDropdown from './NavigationDropdown';
-import SearchBar from '../../ui/SearchBar/SearchBar';
-import ThemeToggle from '../../ui/ThemeToggle/ThemeToggle';
-import LanguageToggle from '../../ui/LanguageToggle/LanguageToggle';
+import SearchBar from '../../../shared/ui/SearchBar/SearchBar';
+import ThemeToggle from '../../../shared/ui/ThemeToggle/ThemeToggle';
+import LanguageToggle from '../../../shared/ui/LanguageToggle/LanguageToggle';
 
 import './Header.css';
 
