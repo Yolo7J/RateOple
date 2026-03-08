@@ -42,17 +42,34 @@ Browser (React)
 
 ```text
 backend/
-  RateOple/                 # API host, controllers, middleware wiring, DI setup
-  RateOple.Core/            # domain services, interfaces, DTOs
-  RateOple.Infrastructure/  # DbContext, entities, EF configs, migrations, infra middleware
-  RateOple.Constants/       # enums and constants
+  RateOple/                          # API host, controllers, middleware wiring, DI setup
+    Controllers/
+      Auth/ Collections/ Discovery/ Groups/ Media/ Moderation/ Users/
+    Extensions/                      # DI + middleware composition
+  RateOple.Core/                     # domain services, interfaces, DTOs
+    Auth/ Collections/ Groups/ Media/ Moderation/ Social/ Users/
+  RateOple.Infrastructure/           # DbContext, entities, EF configs, migrations, infra middleware
+    Data/Configurations/{Collections,Groups,Media,Moderation,Social,Users}
+    Data/Entities/{Collections,Groups,Media,Moderation,Social,Users}
+    Data/Seeding/
+    Migrations/
+  RateOple.Constants/                # enums and constants
 
 frontend/
-  src/app/                  # routing table + router
-  src/pages/                # page components
-  src/components/           # UI and domain components
-  src/services/             # API service wrappers
-  src/context/              # global context providers
+  src/app/                           # router + provider composition
+  src/layouts/                       # Main/Auth/Group/Admin layouts
+  src/context/                       # global contexts (auth/theme/language/cart)
+  src/features/
+    auth/ collections/ discovery/ groups/ media/ moderation/
+    notifications/ ratings/ reviews/ users/
+    # each feature uses pages/components/services/queries (+ hooks placeholders in some)
+  src/shared/
+    api/                             # axios client, query client, auth interceptor
+    components/                      # shared Header/Footer
+    ui/                              # reusable toggles/search/rating UI
+    constants/ utils/
+  src/components/ + src/services/ + src/pages/
+    # legacy modules still present and partly referenced
 ```
 
 ## 3. Backend Startup Composition
@@ -383,21 +400,32 @@ Notifications:
 
 ## 9. Frontend Contract Snapshot
 
-- Routing is in `frontend/src/app/routes.jsx`.
-- Providers: Theme, Language, Router, Auth, MediaCart.
-- API access via `frontend/src/services/api.js` and domain service wrappers.
+- Primary routing is in `frontend/src/app/router.jsx` (rendered by `AppRouter.jsx`).
+- `frontend/src/app/routes.jsx` exists as a route map artifact but is not the active router.
+- Providers are composed in `frontend/src/app/providers.jsx`:
+  Theme -> Language -> React Query -> BrowserRouter -> Auth -> MediaCart.
+- API access goes through `frontend/src/shared/api/apiClient.js` with:
+  - auth/csrf interceptors (`authInterceptor.js`)
+  - credentials-enabled cookie auth
+- Server state is fetched through feature query hooks (React Query), commonly wrapped by
+  `frontend/src/shared/utils/useQueryResource.js`.
 
-Frontend currently expects these user endpoints that are still not implemented on backend:
+Current frontend/backend user contract is aligned for:
 
+- `GET /api/users/me/profile`
+- `PUT /api/users/me/profile`
+- `POST /api/users/me/change-password`
+- `DELETE /api/users/me`
+- `GET /api/users/me/status`
 - `GET /api/users/me/ratings`
 - `GET /api/users/me/reviews`
 - `GET /api/users/me/favorite-genres`
 
-Implemented and aligned now:
+Related contracts currently in use:
 
-- `GET /api/users/me/status`
 - `POST /api/media/{id}/status`
 - notifications endpoints under `/api/notifications`
+- moderation endpoints under `/api/moderation/*`
 
 ## 10. External Integrations
 
