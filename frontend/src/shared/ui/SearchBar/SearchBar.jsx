@@ -4,14 +4,14 @@ import { useLanguage } from '../../../hooks/useLanguage';
 const styles = {
   form: [
     'flex items-center gap-2 rounded-lg border border-[var(--search-border)]',
-    'bg-[var(--search-bg)] px-3 py-2 transition',
-    'min-w-[120px] sm:min-w-[150px] md:min-w-[200px]',
+    'bg-[var(--search-bg)] px-3 py-2 transition lg:px-4 lg:py-2.5',
+    'min-w-[160px] sm:min-w-[200px] md:min-w-[240px] lg:min-w-[280px]',
     'focus-within:border-[var(--primary-color)]',
     'focus-within:shadow-[0_0_0_3px_var(--primary-color-alpha)]',
   ].join(' '),
   icon: 'text-[var(--text-secondary)] transition group-focus-within:text-[var(--primary-color)]',
   input: [
-    'flex-1 border-0 bg-transparent text-sm text-[var(--text-primary)] outline-none',
+    'flex-1 border-0 bg-transparent text-sm text-[var(--text-primary)] outline-none lg:text-base',
     'placeholder:text-[var(--text-secondary)]',
   ].join(' '),
 };
