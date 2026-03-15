@@ -57,19 +57,22 @@ backend/
 
 frontend/
   src/app/                           # router + provider composition
-  src/layouts/                       # Main/Auth/Group/Admin layouts
-  src/context/                       # global contexts (auth/theme/language/cart)
+    AppRouter.jsx router.jsx routes.jsx providers.jsx
+  src/layouts/                       # Admin/Auth/Group/Main/Page/Sidebar layouts
+  src/context/                       # global contexts (auth/theme/language/media cart)
   src/hooks/                         # shared hooks (useTheme/useLanguage/useQueryResource)
   src/features/
     auth/ collections/ discovery/ groups/ media/ moderation/
     notifications/ ratings/ reviews/ users/
     # each feature uses pages/components/services/queries (+ hooks placeholders in some)
   src/shared/
-    api/                             # axios client, query client, auth interceptor
-    components/                      # shared Header/Footer
-    ui/                              # reusable toggles/search/rating UI
+    api/                             # axios client, auth interceptor, React Query client
+    components/                      # shared Header/Footer/MediaCard
+    ui/                              # layout primitives + toggles/search/rating UI
     constants/ utils/
-  # feature pages/styles are localized within src/features/*/pages
+  src/locales/                       # i18n dictionaries
+  src/assets/                        # bundled static assets
+  src/styles/                        # placeholder for global styles
 ```
 
 ## 3. Backend Startup Composition
