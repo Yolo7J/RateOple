@@ -7,7 +7,7 @@ import { useGroupPinnedMediaQuery } from '../queries/useGroupPinnedMediaQuery';
 import { useGroupMutations } from '../queries/useGroupMutations';
 import GroupPostCard from '../components/GroupPostCard';
 import '../components/groups.css';
-import '../../../pages/pages.css';
+import './GroupDetailPage.css';
 
 function GroupDetailPage() {
   const { id } = useParams();

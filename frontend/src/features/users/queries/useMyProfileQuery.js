@@ -1,4 +1,4 @@
-import { useQueryResource } from '../../../shared/utils/useQueryResource';
+import { useQueryResource } from '../../../hooks/useQueryResource';
 import userProfileService from '../services/userProfileService';
 
 export const useMyProfileQuery = (enabled = true) => {

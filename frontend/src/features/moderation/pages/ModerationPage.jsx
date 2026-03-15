@@ -6,7 +6,7 @@ import { useModerationMutations } from '../queries/useModerationMutations';
 import ModerationReportRow from '../components/ModerationReportRow';
 import ModeratorAssignmentList from '../components/ModeratorAssignmentList';
 import '../components/moderation.css';
-import '../../../pages/pages.css';
+import './ModerationPage.css';
 
 const REPORT_STATUS_OPTIONS = [
   { value: '', label: 'All statuses' },

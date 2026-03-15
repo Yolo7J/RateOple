@@ -1,4 +1,4 @@
-import { useQueryResource } from '../../../shared/utils/useQueryResource';
+import { useQueryResource } from '../../../hooks/useQueryResource';
 import discoveryService from '../services/discoveryService';
 
 export const useSimilarMediaQuery = (mediaId, limit = 20) => {

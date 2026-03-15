@@ -16,7 +16,7 @@ import ReviewsList from '../../reviews/components/ReviewsList';
 import MediaRow from '../../discovery/components/MediaRow';
 import MediaStatusSelector from '../components/MediaStatusSelector';
 import { buildImageUrl } from '../../../shared/utils/buildImageUrl';
-import '../../../pages/pages.css';
+import './MediaDetailPage.css';
 import '../../ratings/components/ratings.css';
 import '../../reviews/components/reviews.css';
 import '../../discovery/components/discovery.css';

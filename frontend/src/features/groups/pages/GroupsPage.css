@@ -1,0 +1,18 @@
+.ro-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 14px 40px;
+}
+
+.ro-review-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border, #313847);
+  border-radius: 12px;
+  background: var(--card-bg, #1b2029);
+}
+
+.ro-muted { color: var(--text-muted, #9ba0ab); }
+.ro-error { color: #ff7f7f; }

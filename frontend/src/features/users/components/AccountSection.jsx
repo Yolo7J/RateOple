@@ -1,4 +1,4 @@
-import './account.css';
+import './AccountSection.css';
 
 function AccountSection({ title, children }) {
     return (

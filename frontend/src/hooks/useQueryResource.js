@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { queryClient } from '../api/queryClient';
+import { queryClient } from '../shared/api/queryClient';
 
 export const invalidateQuery = (queryKey) => {
   queryClient.removeQueries({ queryKey, exact: true });

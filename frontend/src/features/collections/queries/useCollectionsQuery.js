@@ -1,4 +1,4 @@
-import { useQueryResource } from '../../../shared/utils/useQueryResource';
+import { useQueryResource } from '../../../hooks/useQueryResource';
 import collectionService from '../services/collectionService';
 
 export const useCollectionsQuery = (params = {}, enabled = true) => {

@@ -1,4 +1,4 @@
-import { useQueryResource } from '../../../shared/utils/useQueryResource';
+import { useQueryResource } from '../../../hooks/useQueryResource';
 import { getSeasons } from '../services/tvSeriesService';
 
 export const useTvSeriesSeasonsQuery = (mediaId) => {

@@ -1,4 +1,4 @@
-import { useQueryResource } from '../../../shared/utils/useQueryResource';
+import { useQueryResource } from '../../../hooks/useQueryResource';
 import { authService } from '../services/authService';
 
 export const useAuthSessionQuery = () => {

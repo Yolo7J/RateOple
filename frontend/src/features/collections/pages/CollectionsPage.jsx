@@ -5,7 +5,7 @@ import { useCollectionsQuery } from '../queries/useCollectionsQuery';
 import { useCollectionMutations } from '../queries/useCollectionMutations';
 import CollectionCard from '../components/CollectionCard';
 import '../components/collections.css';
-import '../../../pages/pages.css';
+import './CollectionsPage.css';
 
 const USER_OWNER_TYPE = 2;
 

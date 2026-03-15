@@ -1,4 +1,4 @@
-import { useQueryResource } from '../../../shared/utils/useQueryResource';
+import { useQueryResource } from '../../../hooks/useQueryResource';
 import { getMediaById } from '../services/mediaService';
 
 export const useMediaDetailsQuery = (mediaId) => {

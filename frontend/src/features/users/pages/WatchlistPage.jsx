@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { STATUS_TYPES } from '../../../shared/constants/statusTypes';
 import { useWatchlistQuery } from '../queries/useWatchlistQuery';
-import '../../../pages/pages.css';
+import './WatchlistPage.css';
 
 const ORDER = STATUS_TYPES;
 

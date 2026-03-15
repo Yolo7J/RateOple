@@ -1,6 +1,6 @@
 # RateOple Architecture (Current State)
 
-Last updated: **March 8, 2026**
+Last updated: **March 15, 2026**
 
 This document reflects the code currently present in the repository.
 
@@ -59,6 +59,7 @@ frontend/
   src/app/                           # router + provider composition
   src/layouts/                       # Main/Auth/Group/Admin layouts
   src/context/                       # global contexts (auth/theme/language/cart)
+  src/hooks/                         # shared hooks (useTheme/useLanguage/useQueryResource)
   src/features/
     auth/ collections/ discovery/ groups/ media/ moderation/
     notifications/ ratings/ reviews/ users/
@@ -68,8 +69,7 @@ frontend/
     components/                      # shared Header/Footer
     ui/                              # reusable toggles/search/rating UI
     constants/ utils/
-  src/components/ + src/services/ + src/pages/
-    # legacy modules still present and partly referenced
+  # feature pages/styles are localized within src/features/*/pages
 ```
 
 ## 3. Backend Startup Composition

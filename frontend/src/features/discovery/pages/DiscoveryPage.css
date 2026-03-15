@@ -1,0 +1,11 @@
+.ro-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 14px 40px;
+}
+
+.ro-home-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}

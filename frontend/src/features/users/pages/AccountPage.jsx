@@ -4,9 +4,8 @@ import { useAuth } from '../../../context/AuthContext';
 import { useAccountQuery } from '../queries/useAccountQuery';
 import { useMyProfileQuery } from '../queries/useMyProfileQuery';
 import { useProfileMutations } from '../queries/useProfileMutations';
-import AccountSection from '../../../components/account/AccountSection';
-import '../../../components/account/account.css';
-import '../../../pages/pages.css';
+import AccountSection from '../components/AccountSection';
+import './AccountPage.css';
 
 function AccountPage() {
   const navigate = useNavigate();

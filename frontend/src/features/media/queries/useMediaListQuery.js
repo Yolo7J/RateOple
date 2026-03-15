@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useQueryResource } from '../../../shared/utils/useQueryResource';
+import { useQueryResource } from '../../../hooks/useQueryResource';
 import * as mediaService from '../services/mediaService';
 
 export const useMediaListQuery = ({ types, genreIds, search, sortBy, sortDir, page, pageSize }) => {

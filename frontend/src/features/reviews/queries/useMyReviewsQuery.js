@@ -1,4 +1,4 @@
-import { useQueryResource } from '../../../shared/utils/useQueryResource';
+import { useQueryResource } from '../../../hooks/useQueryResource';
 import reviewService from '../services/reviewService';
 
 export const useMyReviewsQuery = (enabled = true) => {

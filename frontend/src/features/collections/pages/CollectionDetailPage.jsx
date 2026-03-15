@@ -6,7 +6,7 @@ import { useCollectionsQuery } from '../queries/useCollectionsQuery';
 import { useCollectionMutations } from '../queries/useCollectionMutations';
 import CollectionTree from '../components/CollectionTree';
 import '../components/collections.css';
-import '../../../pages/pages.css';
+import './CollectionDetailPage.css';
 
 function CollectionDetailPage() {
   const { id } = useParams();

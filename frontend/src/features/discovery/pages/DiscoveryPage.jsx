@@ -4,7 +4,7 @@ import { useHomeDiscoveryQuery } from '../queries/useHomeDiscoveryQuery';
 import HeroBanner from '../components/HeroBanner';
 import DiscoverySection from '../components/DiscoverySection';
 import '../components/discovery.css';
-import '../../../pages/pages.css';
+import './DiscoveryPage.css';
 
 function DiscoveryPage() {
   const { user } = useAuth();

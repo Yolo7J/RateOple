@@ -4,7 +4,7 @@ import { useGroupsQuery } from '../queries/useGroupsQuery';
 import { useGroupMutations } from '../queries/useGroupMutations';
 import GroupCard from '../components/GroupCard';
 import '../components/groups.css';
-import '../../../pages/pages.css';
+import './GroupsPage.css';
 
 const VISIBILITY = {
   Public: 1,

@@ -1,4 +1,4 @@
-import { useQueryResource } from '../../../shared/utils/useQueryResource';
+import { useQueryResource } from '../../../hooks/useQueryResource';
 import groupService from '../services/groupService';
 
 export const useGroupPostsQuery = (groupId, params = {}) => {

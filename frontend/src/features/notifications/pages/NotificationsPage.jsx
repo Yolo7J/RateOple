@@ -3,7 +3,7 @@ import { useNotificationsQuery } from '../queries/useNotificationsQuery';
 import { useNotificationMutations } from '../queries/useNotificationMutations';
 import NotificationItem from '../components/NotificationItem';
 import '../components/notifications.css';
-import '../../../pages/pages.css';
+import './NotificationsPage.css';
 
 function NotificationsPage() {
   const [unreadOnly, setUnreadOnly] = useState(false);

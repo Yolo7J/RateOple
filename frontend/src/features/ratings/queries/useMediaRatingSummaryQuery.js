@@ -1,4 +1,4 @@
-import { useQueryResource } from '../../../shared/utils/useQueryResource';
+import { useQueryResource } from '../../../hooks/useQueryResource';
 import ratingService from '../services/ratingService';
 
 export const useMediaRatingSummaryQuery = (mediaId) => {

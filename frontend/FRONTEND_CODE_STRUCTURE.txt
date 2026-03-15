@@ -13,17 +13,11 @@ src/app/AppRouter.jsx - Router wrapper that renders configured routes.
 src/app/routes.jsx - Central route-to-page mapping configuration.
 src/assets/ - Bundled static assets imported by the app.
 src/assets/react.svg - Static logo asset used in starter/branding UI.
-src/components/ - Legacy shared components (pre-feature migration).
-src/components/account/ - Account/profile UI components.
-src/components/account/AccountSection.jsx - Reusable React UI component for this domain.
-src/components/account/account.css - Stylesheet for the related component(s).
 src/context/ - React context providers for global state.
 src/context/AuthContext.jsx - React context provider and hook for shared app state.
 src/context/LanguageContext.jsx - React context provider and hook for shared app state.
 src/context/MediaCartContext.jsx - React context provider and hook for shared app state.
 src/context/ThemeContext.jsx - React context provider and hook for shared app state.
-src/contexts/ - New contexts module placeholder folder.
-src/contexts/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
 src/features/ - Feature-based domain modules.
 src/features/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
 src/features/auth/ - Domain feature module container.
@@ -50,6 +44,10 @@ src/features/collections/hooks/ - hooks layer for the collections feature.
 src/features/collections/hooks/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
 src/features/collections/pages/ - pages layer for the collections feature.
 src/features/collections/pages/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/collections/pages/CollectionsPage.jsx - Route page component for this screen.
+src/features/collections/pages/CollectionsPage.css - Stylesheet scoped to the related page UI.
+src/features/collections/pages/CollectionDetailPage.jsx - Route page component for this screen.
+src/features/collections/pages/CollectionDetailPage.css - Stylesheet scoped to the related page UI.
 src/features/collections/services/ - services layer for the collections feature.
 src/features/collections/services/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
 src/features/discovery/ - Domain feature module container.
@@ -64,6 +62,8 @@ src/features/discovery/hooks/ - hooks layer for the discovery feature.
 src/features/discovery/hooks/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
 src/features/discovery/pages/ - pages layer for the discovery feature.
 src/features/discovery/pages/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/discovery/pages/DiscoveryPage.jsx - Route page component for this screen.
+src/features/discovery/pages/DiscoveryPage.css - Stylesheet scoped to the related page UI.
 src/features/discovery/services/ - services layer for the discovery feature.
 src/features/discovery/services/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
 src/features/discovery/services/discoveryService.js - API service layer for this feature/domain.
@@ -75,6 +75,10 @@ src/features/groups/hooks/ - hooks layer for the groups feature.
 src/features/groups/hooks/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
 src/features/groups/pages/ - pages layer for the groups feature.
 src/features/groups/pages/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/groups/pages/GroupsPage.jsx - Route page component for this screen.
+src/features/groups/pages/GroupsPage.css - Stylesheet scoped to the related page UI.
+src/features/groups/pages/GroupDetailPage.jsx - Route page component for this screen.
+src/features/groups/pages/GroupDetailPage.css - Stylesheet scoped to the related page UI.
 src/features/groups/services/ - services layer for the groups feature.
 src/features/groups/services/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
 src/features/media/ - Domain feature module container.
@@ -112,6 +116,8 @@ src/features/moderation/hooks/ - hooks layer for the moderation feature.
 src/features/moderation/hooks/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
 src/features/moderation/pages/ - pages layer for the moderation feature.
 src/features/moderation/pages/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/moderation/pages/ModerationPage.jsx - Route page component for this screen.
+src/features/moderation/pages/ModerationPage.css - Stylesheet scoped to the related page UI.
 src/features/moderation/services/ - services layer for the moderation feature.
 src/features/moderation/services/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
 src/features/notifications/ - Domain feature module container.
@@ -122,6 +128,8 @@ src/features/notifications/hooks/ - hooks layer for the notifications feature.
 src/features/notifications/hooks/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
 src/features/notifications/pages/ - pages layer for the notifications feature.
 src/features/notifications/pages/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/notifications/pages/NotificationsPage.jsx - Route page component for this screen.
+src/features/notifications/pages/NotificationsPage.css - Stylesheet scoped to the related page UI.
 src/features/notifications/services/ - services layer for the notifications feature.
 src/features/notifications/services/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
 src/features/ratings/ - Domain feature module container.
@@ -156,14 +164,21 @@ src/features/reviews/services/reviewService.js - API service layer for this feat
 src/features/users/ - Domain feature module container.
 src/features/users/components/ - components layer for the users feature.
 src/features/users/components/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/users/components/AccountSection.jsx - Reusable React UI component for this domain.
+src/features/users/components/AccountSection.css - Stylesheet for the related component(s).
 src/features/users/hooks/ - hooks layer for the users feature.
 src/features/users/hooks/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
 src/features/users/pages/ - pages layer for the users feature.
 src/features/users/pages/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/users/pages/AccountPage.jsx - Route page component for this screen.
+src/features/users/pages/AccountPage.css - Stylesheet scoped to the related page UI.
+src/features/users/pages/WatchlistPage.jsx - Route page component for this screen.
+src/features/users/pages/WatchlistPage.css - Stylesheet scoped to the related page UI.
 src/features/users/services/ - services layer for the users feature.
 src/features/users/services/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
 src/hooks/ - Reusable React hooks.
 src/hooks/useLanguage.js - Reusable custom React hook.
+src/hooks/useQueryResource.js - Shared React Query helper hook.
 src/hooks/useTheme.js - Reusable custom React hook.
 src/index.css - Global base styles loaded once at app start.
 src/layouts/ - Layout module placeholder folder.
@@ -172,20 +187,6 @@ src/locales/ - i18n translation resources.
 src/locales/bg.json - Translation dictionary for UI localization.
 src/locales/en.json - Translation dictionary for UI localization.
 src/main.jsx - Application bootstrap that renders the root React tree.
-src/pages/ - Top-level route pages.
-src/pages/AccountPage.jsx - Route page component for this screen.
-src/pages/Home/ - Home page specific UI and styles.
-src/pages/Home/Home.css - Stylesheet scoped to the related page UI.
-src/pages/Home/Home.jsx - React component/module file.
-src/pages/HomePage.jsx - Route page component for this screen.
-src/pages/MediaDetailPage.jsx - Route page component for this screen.
-src/pages/WatchlistPage.jsx - Route page component for this screen.
-src/pages/pages.css - Stylesheet scoped to the related page UI.
-src/services/ - Legacy/shared API client services.
-src/services/api.js - Shared Axios/API client configuration.
-src/services/authMockService.js - API service layer for this feature/domain.
-src/services/statusService.js - API service layer for this feature/domain.
-src/services/userService.js - Reusable custom React hook.
 src/shared/ - Shared cross-feature modules.
 src/shared/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
 src/shared/components/ - Global layout/shared components.
