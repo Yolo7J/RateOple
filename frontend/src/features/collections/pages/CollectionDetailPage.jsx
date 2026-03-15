@@ -5,8 +5,32 @@ import { useCollectionDetailsQuery } from '../queries/useCollectionDetailsQuery'
 import { useCollectionsQuery } from '../queries/useCollectionsQuery';
 import { useCollectionMutations } from '../queries/useCollectionMutations';
 import CollectionTree from '../components/CollectionTree';
-import '../components/collections.css';
-import './CollectionDetailPage.css';
+import PageLayout from '../../../layouts/PageLayout';
+import Container from '../../../shared/ui/Container';
+import Grid from '../../../shared/ui/Grid';
+import Stack from '../../../shared/ui/Stack';
+
+const styles = {
+  pageStack: 'gap-6',
+  title: 'text-3xl font-semibold text-[var(--text-primary)]',
+  description: 'text-[var(--text-secondary)]',
+  muted: 'text-[var(--text-muted)]',
+  error: 'text-[#ff7f7f]',
+  controls: 'flex flex-wrap gap-2',
+  button: [
+    'inline-flex items-center justify-center rounded-lg border border-[var(--border)]',
+    'bg-[var(--button-bg)] px-4 py-2 text-sm font-medium text-[var(--text-primary)]',
+    'transition hover:bg-[var(--button-hover-bg)] disabled:opacity-60',
+  ].join(' '),
+  section: [
+    'rounded-2xl border border-[var(--border)] bg-[var(--card-bg)]',
+    'p-4 sm:p-6',
+  ].join(' '),
+  sectionTitle: 'text-xl font-semibold',
+  itemsGrid: 'gap-3',
+  itemCard: 'rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] p-3',
+  itemImage: 'mb-2 w-full rounded-md object-cover aspect-[2/3]',
+};
 
 function CollectionDetailPage() {
   const { id } = useParams();
@@ -36,45 +60,78 @@ function CollectionDetailPage() {
     await unfollowCollection(id);
   };
 
-  if (loading) return <main className="ro-page"><p>Loading collection...</p></main>;
-  if (error || !collection) return <main className="ro-page"><p className="ro-error">Collection not found.</p></main>;
+  if (loading) {
+    return (
+      <PageLayout>
+        <Container>
+          <p className={styles.muted}>Loading collection...</p>
+        </Container>
+      </PageLayout>
+    );
+  }
+
+  if (error || !collection) {
+    return (
+      <PageLayout>
+        <Container>
+          <p className={styles.error}>Collection not found.</p>
+        </Container>
+      </PageLayout>
+    );
+  }
 
   return (
-    <main className="ro-page">
-      <h1>{collection.name}</h1>
-      {collection.description ? <p>{collection.description}</p> : null}
-      <p className="ro-muted">{collection.followersCount ?? 0} followers · {items.length} items</p>
+    <PageLayout>
+      <Container>
+        <Stack className={styles.pageStack}>
+          <Stack className="gap-2">
+            <h1 className={styles.title}>{collection.name}</h1>
+            {collection.description ? <p className={styles.description}>{collection.description}</p> : null}
+            <p className={styles.muted}>
+              {collection.followersCount ?? 0} followers · {items.length} items
+            </p>
+          </Stack>
 
-      {user ? (
-        <div className="ro-collection-controls">
-          <button type="button" onClick={handleFollow} disabled={mutating}>Follow</button>
-          <button type="button" onClick={handleUnfollow} disabled={mutating}>Unfollow</button>
-          {mediaId ? (
-            <button type="button" onClick={handleAddMedia} disabled={mutating}>
-              {mutating ? 'Saving...' : 'Add Current Media'}
-            </button>
+          {user ? (
+            <div className={styles.controls}>
+              <button className={styles.button} type="button" onClick={handleFollow} disabled={mutating}>
+                Follow
+              </button>
+              <button className={styles.button} type="button" onClick={handleUnfollow} disabled={mutating}>
+                Unfollow
+              </button>
+              {mediaId ? (
+                <button className={styles.button} type="button" onClick={handleAddMedia} disabled={mutating}>
+                  {mutating ? 'Saving...' : 'Add Current Media'}
+                </button>
+              ) : null}
+            </div>
           ) : null}
-        </div>
-      ) : null}
 
-      <section className="ro-review-section">
-        <h2>Items</h2>
-        <div className="ro-collection-items">
-          {items.map((item) => (
-            <article key={item.mediaId} className="ro-collection-item">
-              <img src={buildImageUrl(item.coverUrl)} alt={item.mediaTitle} />
-              <p>{item.mediaTitle}</p>
-            </article>
-          ))}
-          {items.length === 0 ? <p className="ro-muted">No media items yet.</p> : null}
-        </div>
-      </section>
+          <section className={styles.section}>
+            <Stack className="gap-4">
+              <h2 className={styles.sectionTitle}>Items</h2>
+              <Grid variant="cards" className={styles.itemsGrid}>
+                {items.map((item) => (
+                  <article key={item.mediaId} className={styles.itemCard}>
+                    <img className={styles.itemImage} src={buildImageUrl(item.coverUrl)} alt={item.mediaTitle} />
+                    <p className="text-sm text-[var(--text-primary)]">{item.mediaTitle}</p>
+                  </article>
+                ))}
+                {items.length === 0 ? <p className={styles.muted}>No media items yet.</p> : null}
+              </Grid>
+            </Stack>
+          </section>
 
-      <section className="ro-review-section">
-        <h2>Nested Collections</h2>
-        <CollectionTree collections={childCollections} />
-      </section>
-    </main>
+          <section className={styles.section}>
+            <Stack className="gap-4">
+              <h2 className={styles.sectionTitle}>Nested Collections</h2>
+              <CollectionTree collections={childCollections} />
+            </Stack>
+          </section>
+        </Stack>
+      </Container>
+    </PageLayout>
   );
 }
 

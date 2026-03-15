@@ -6,8 +6,37 @@ import { useGroupPostsQuery } from '../queries/useGroupPostsQuery';
 import { useGroupPinnedMediaQuery } from '../queries/useGroupPinnedMediaQuery';
 import { useGroupMutations } from '../queries/useGroupMutations';
 import GroupPostCard from '../components/GroupPostCard';
-import '../components/groups.css';
-import './GroupDetailPage.css';
+import PageLayout from '../../../layouts/PageLayout';
+import Container from '../../../shared/ui/Container';
+import Grid from '../../../shared/ui/Grid';
+import Stack from '../../../shared/ui/Stack';
+
+const styles = {
+  pageStack: 'gap-6',
+  title: 'text-3xl font-semibold text-[var(--text-primary)]',
+  description: 'text-[var(--text-secondary)]',
+  muted: 'text-[var(--text-muted)]',
+  error: 'text-[#ff7f7f]',
+  controls: 'flex flex-wrap gap-2',
+  button: [
+    'inline-flex items-center justify-center rounded-lg border border-[var(--border)]',
+    'bg-[var(--button-bg)] px-4 py-2 text-sm font-medium text-[var(--text-primary)]',
+    'transition hover:bg-[var(--button-hover-bg)] disabled:opacity-60',
+  ].join(' '),
+  section: [
+    'rounded-2xl border border-[var(--border)] bg-[var(--card-bg)]',
+    'p-4 sm:p-6',
+  ].join(' '),
+  sectionTitle: 'text-xl font-semibold',
+  form: 'grid gap-3 max-w-2xl',
+  input: [
+    'w-full rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2',
+    'text-[var(--text-primary)] placeholder:text-[var(--text-muted)]',
+  ].join(' '),
+  pinnedGrid: 'gap-3',
+  pinnedItem: 'rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] p-3',
+  posts: 'grid gap-4',
+};
 
 function GroupDetailPage() {
   const { id } = useParams();
@@ -78,90 +107,133 @@ function GroupDetailPage() {
     }
   };
 
-  if (loading) return <main className="ro-page"><p>Loading group...</p></main>;
-  if (error || !group) return <main className="ro-page"><p className="ro-error">Group not found.</p></main>;
+  if (loading) {
+    return (
+      <PageLayout>
+        <Container>
+          <p className={styles.muted}>Loading group...</p>
+        </Container>
+      </PageLayout>
+    );
+  }
+
+  if (error || !group) {
+    return (
+      <PageLayout>
+        <Container>
+          <p className={styles.error}>Group not found.</p>
+        </Container>
+      </PageLayout>
+    );
+  }
 
   return (
-    <main className="ro-page">
-      <h1>{group.name}</h1>
-      {group.description ? <p>{group.description}</p> : null}
-      <p className="ro-muted">{group.membersCount ?? 0} members · {group.postsCount ?? 0} posts</p>
+    <PageLayout>
+      <Container>
+        <Stack className={styles.pageStack}>
+          <Stack className="gap-2">
+            <h1 className={styles.title}>{group.name}</h1>
+            {group.description ? <p className={styles.description}>{group.description}</p> : null}
+            <p className={styles.muted}>
+              {group.membersCount ?? 0} members · {group.postsCount ?? 0} posts
+            </p>
+          </Stack>
 
-      {user ? (
-        <div className="ro-group-actions">
-          <button type="button" onClick={handleJoin} disabled={mutating}>Join Group</button>
-          <button type="button" onClick={handleLeave} disabled={mutating}>Leave Group</button>
-        </div>
-      ) : null}
+          {user ? (
+            <div className={styles.controls}>
+              <button className={styles.button} type="button" onClick={handleJoin} disabled={mutating}>
+                Join Group
+              </button>
+              <button className={styles.button} type="button" onClick={handleLeave} disabled={mutating}>
+                Leave Group
+              </button>
+            </div>
+          ) : null}
 
-      {actionError ? <p className="ro-error">{actionError}</p> : null}
+          {actionError ? <p className={styles.error}>{actionError}</p> : null}
 
-      <section className="ro-review-section">
-        <h2>Pinned Media</h2>
-        {user ? (
-          <form className="ro-group-form" onSubmit={handlePinMedia}>
-            <input
-              placeholder="Media ID to pin"
-              value={pinMediaId}
-              onChange={(e) => setPinMediaId(e.target.value)}
-            />
-            <button type="submit" disabled={mutating}>Pin Media</button>
-          </form>
-        ) : null}
-        <div className="ro-pinned-grid">
-          {pinned.map((item) => (
-            <article key={item.mediaId} className="ro-pinned-item">
-              <p>{item.title}</p>
-              <p className="ro-muted">{new Date(item.addedAt).toLocaleDateString()}</p>
-            </article>
-          ))}
-          {pinned.length === 0 ? <p className="ro-muted">No pinned media yet.</p> : null}
-        </div>
-      </section>
+          <section className={styles.section}>
+            <Stack className="gap-4">
+              <h2 className={styles.sectionTitle}>Pinned Media</h2>
+              {user ? (
+                <form className={styles.form} onSubmit={handlePinMedia}>
+                  <input
+                    className={styles.input}
+                    placeholder="Media ID to pin"
+                    value={pinMediaId}
+                    onChange={(e) => setPinMediaId(e.target.value)}
+                  />
+                  <button className={styles.button} type="submit" disabled={mutating}>
+                    Pin Media
+                  </button>
+                </form>
+              ) : null}
+              <Grid cols="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" className={styles.pinnedGrid}>
+                {pinned.map((item) => (
+                  <article key={item.mediaId} className={styles.pinnedItem}>
+                    <p className="text-sm font-medium text-[var(--text-primary)]">{item.title}</p>
+                    <p className={styles.muted}>{new Date(item.addedAt).toLocaleDateString()}</p>
+                  </article>
+                ))}
+                {pinned.length === 0 ? <p className={styles.muted}>No pinned media yet.</p> : null}
+              </Grid>
+            </Stack>
+          </section>
 
-      <section className="ro-review-section">
-        <h2>Create Post</h2>
-        {user ? (
-          <form className="ro-group-form" onSubmit={handleCreatePost}>
-            <input
-              placeholder="Post title"
-              value={postForm.title}
-              onChange={(e) => setPostForm((prev) => ({ ...prev, title: e.target.value }))}
-              required
-            />
-            <textarea
-              rows={4}
-              placeholder="Post content"
-              value={postForm.content}
-              onChange={(e) => setPostForm((prev) => ({ ...prev, content: e.target.value }))}
-              required
-            />
-            <input
-              placeholder="Media IDs (comma separated, optional)"
-              value={postForm.mediaIds}
-              onChange={(e) => setPostForm((prev) => ({ ...prev, mediaIds: e.target.value }))}
-            />
-            <button type="submit" disabled={mutating}>Publish Post</button>
-          </form>
-        ) : (
-          <p className="ro-muted">Join and sign in to create posts.</p>
-        )}
-      </section>
+          <section className={styles.section}>
+            <Stack className="gap-4">
+              <h2 className={styles.sectionTitle}>Create Post</h2>
+              {user ? (
+                <form className={styles.form} onSubmit={handleCreatePost}>
+                  <input
+                    className={styles.input}
+                    placeholder="Post title"
+                    value={postForm.title}
+                    onChange={(e) => setPostForm((prev) => ({ ...prev, title: e.target.value }))}
+                    required
+                  />
+                  <textarea
+                    className={styles.input}
+                    rows={4}
+                    placeholder="Post content"
+                    value={postForm.content}
+                    onChange={(e) => setPostForm((prev) => ({ ...prev, content: e.target.value }))}
+                    required
+                  />
+                  <input
+                    className={styles.input}
+                    placeholder="Media IDs (comma separated, optional)"
+                    value={postForm.mediaIds}
+                    onChange={(e) => setPostForm((prev) => ({ ...prev, mediaIds: e.target.value }))}
+                  />
+                  <button className={styles.button} type="submit" disabled={mutating}>
+                    Publish Post
+                  </button>
+                </form>
+              ) : (
+                <p className={styles.muted}>Join and sign in to create posts.</p>
+              )}
+            </Stack>
+          </section>
 
-      <section className="ro-review-section">
-        <h2>Feed</h2>
-        {postsLoading ? <p>Loading posts...</p> : null}
-        {postsError ? <p className="ro-error">Failed to load posts.</p> : null}
-        {!postsLoading && !postsError ? (
-          <div className="ro-group-posts">
-            {posts.map((post) => (
-              <GroupPostCard key={post.id} post={post} />
-            ))}
-            {posts.length === 0 ? <p className="ro-muted">No posts yet.</p> : null}
-          </div>
-        ) : null}
-      </section>
-    </main>
+          <section className={styles.section}>
+            <Stack className="gap-4">
+              <h2 className={styles.sectionTitle}>Feed</h2>
+              {postsLoading ? <p className={styles.muted}>Loading posts...</p> : null}
+              {postsError ? <p className={styles.error}>Failed to load posts.</p> : null}
+              {!postsLoading && !postsError ? (
+                <div className={styles.posts}>
+                  {posts.map((post) => (
+                    <GroupPostCard key={post.id} post={post} />
+                  ))}
+                  {posts.length === 0 ? <p className={styles.muted}>No posts yet.</p> : null}
+                </div>
+              ) : null}
+            </Stack>
+          </section>
+        </Stack>
+      </Container>
+    </PageLayout>
   );
 }
 

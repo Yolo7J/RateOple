@@ -1,13 +1,20 @@
 import { Link } from 'react-router-dom';
-import './groups.css';
+
+const styles = {
+  card: 'rounded-xl border border-[var(--border)] bg-[var(--card-bg)]',
+  link: 'block p-3 text-inherit no-underline',
+  title: 'mb-1 text-base font-semibold text-[var(--text-primary)]',
+  description: 'text-sm text-[var(--text-secondary)]',
+  meta: 'mt-3 flex gap-3 text-xs text-[var(--text-muted)]',
+};
 
 function GroupCard({ group }) {
   return (
-    <article className="ro-group-card">
-      <Link to={`/groups/${group.id}`} className="ro-group-link">
-        <h3>{group.name}</h3>
-        {group.description ? <p>{group.description}</p> : null}
-        <div className="ro-group-meta">
+    <article className={styles.card}>
+      <Link to={`/groups/${group.id}`} className={styles.link}>
+        <h3 className={styles.title}>{group.name}</h3>
+        {group.description ? <p className={styles.description}>{group.description}</p> : null}
+        <div className={styles.meta}>
           <span>{group.membersCount ?? 0} members</span>
           <span>{group.postsCount ?? 0} posts</span>
         </div>

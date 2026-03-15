@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
+import clsx from 'clsx';
 import { useNavigate } from 'react-router-dom';
 import { useMediaCart } from '../../../context/MediaCartContext';
 import { useMediaCommands } from '../queries/useMediaCommands';
-import './AddMediaPage.css';
 
 const STEPS = { SELECT_TYPE: 0, SEARCH: 1, FILL_FORM: 2 };
 const emptyEpisode = (episodeNumber) => ({ episodeNumber, title: '', duration: '' });
@@ -16,6 +16,124 @@ const mapTmdbSeasonsToForm = (seasons) =>
             duration: episode.duration != null ? String(episode.duration) : '',
         })),
     }));
+
+const styles = {
+    page: [
+        'mx-auto w-[min(1160px,calc(100vw-32px))] max-sm:w-[min(1160px,calc(100vw-22px))]',
+        'py-7 pb-14 flex flex-col gap-4',
+    ].join(' '),
+    backBtn: [
+        'self-start rounded-xl border border-[var(--border)] bg-[var(--btn-bg)] px-4 py-2 text-sm',
+        'text-[var(--text-primary)] transition hover:bg-[var(--btn-hover)]',
+    ].join(' '),
+    heading: 'text-[clamp(1.6rem,2vw,2rem)] font-extrabold tracking-tight text-[var(--text-primary)]',
+    sub: 'text-[var(--text-muted)]',
+    seriesNotice: [
+        'rounded-xl border border-[var(--accent)] bg-[var(--primary-color-alpha)] p-3 text-sm',
+        'text-[var(--text-primary)]',
+    ].join(' '),
+    addedBanner: [
+        'mx-auto w-full max-w-[680px] rounded-2xl border border-[var(--border)]',
+        'bg-[var(--card-bg)] p-8 text-center',
+    ].join(' '),
+    addedIcon: 'mb-3 inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--accent)]/20 text-2xl',
+    addedTitle: 'text-xl font-semibold text-[var(--text-primary)]',
+    addedSub: 'mx-auto mt-3 max-w-[56ch] text-sm text-[var(--text-muted)]',
+    addedActions: 'mb-4 mt-5 flex flex-wrap justify-center gap-3',
+    addedBtn: 'rounded-xl px-4 py-2 text-sm font-semibold',
+    addedPrimary: 'bg-[var(--accent)] text-[#121212] transition hover:bg-[var(--accent-strong)]',
+    addedGhost: [
+        'border border-[var(--border)] bg-[var(--btn-bg)] text-[var(--text-primary)]',
+        'transition hover:bg-[var(--btn-hover)]',
+    ].join(' '),
+    addedNote: [
+        'mx-auto max-w-[60ch] rounded-xl border border-dashed border-[var(--border)]',
+        'p-3 text-xs text-[var(--text-muted)]',
+    ].join(' '),
+    typeSelectGrid: 'mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3',
+    typeSelectCard: [
+        'flex min-h-[148px] flex-col items-center justify-center gap-3 rounded-2xl',
+        'border border-[var(--border)] bg-[var(--card-bg)] text-[var(--text-primary)] transition',
+        'hover:border-[var(--accent)]/50 hover:bg-[var(--accent)]/10',
+    ].join(' '),
+    typeIcon: 'text-3xl',
+    typeLabel: 'font-bold',
+    searchInput: [
+        'w-full rounded-xl border border-[var(--border)] bg-[var(--input-bg)] px-4 py-3 text-base',
+        'text-[var(--text-primary)]',
+    ].join(' '),
+    searchStatus: 'text-sm text-[var(--text-muted)]',
+    searchError: 'text-[#ff6d75]',
+    results: 'flex flex-col gap-2',
+    resultCard: [
+        'flex w-full items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--card-bg)]',
+        'px-3 py-2 text-left text-[var(--text-primary)] transition hover:border-[var(--accent)]/50',
+    ].join(' '),
+    resultImage: 'h-[76px] w-[52px] flex-shrink-0 rounded-lg object-cover',
+    noCover: 'flex h-[76px] w-[52px] items-center justify-center rounded-lg bg-[var(--card-cover-bg)] text-[var(--text-muted)]',
+    resultInfo: 'flex flex-col gap-1',
+    resultTitle: 'text-sm font-semibold',
+    resultYear: 'text-xs text-[var(--text-muted)]',
+    skipBtn: [
+        'self-start rounded-xl border border-dashed border-[var(--border)] px-3 py-2 text-sm',
+        'text-[var(--text-muted)] transition hover:text-[var(--text-primary)] hover:border-[var(--accent)]',
+    ].join(' '),
+    form: 'flex flex-col gap-4 rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] p-5',
+    formRow: 'grid grid-cols-1 gap-4 md:grid-cols-[minmax(130px,180px)_minmax(0,1fr)] items-start',
+    cover: [
+        'w-full max-w-[180px] aspect-[2/3] overflow-hidden rounded-xl border border-[var(--border)]',
+        'bg-[var(--card-cover-bg)]',
+    ].join(' '),
+    coverImage: 'h-full w-full object-cover',
+    formFields: 'flex flex-col gap-4',
+    formRow2: 'grid grid-cols-1 gap-3 sm:grid-cols-2',
+    formLabel: 'flex flex-col gap-1 text-xs font-semibold text-[var(--text-secondary)]',
+    formInput: [
+        'w-full rounded-xl border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-sm',
+        'text-[var(--text-primary)] outline-none focus:border-[var(--accent)]',
+    ].join(' '),
+    formTextarea: 'min-h-[92px] resize-y',
+    genrePicker: 'flex flex-wrap gap-2',
+    genreItem: [
+        'inline-flex items-center rounded-full border border-[var(--border)] px-3 py-1 text-xs',
+        'text-[var(--text-muted)] transition cursor-pointer',
+    ].join(' '),
+    genreItemActive: 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--text-primary)]',
+    genreInput: 'sr-only',
+    saveError: 'text-sm text-[#ff6d75]',
+    seasonBuilder: [
+        'flex flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-4',
+    ].join(' '),
+    seasonHeader: 'flex items-center justify-between gap-3',
+    seasonAdd: [
+        'rounded-lg border border-[var(--border)] bg-[var(--btn-bg)] px-3 py-1.5 text-xs',
+        'text-[var(--text-primary)] transition hover:bg-[var(--btn-hover)]',
+    ].join(' '),
+    seasonEmpty: 'text-xs text-[var(--text-muted)]',
+    seasonBlock: 'flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-3',
+    seasonBlockHeader: 'flex items-center justify-between gap-2 text-sm font-bold',
+    seasonRemove: [
+        'rounded-lg border border-[var(--border)] bg-[var(--btn-bg)] px-3 py-1.5 text-xs',
+        'text-[var(--text-primary)] transition hover:bg-[var(--btn-hover)] disabled:opacity-50',
+    ].join(' '),
+    episodeList: 'flex flex-col gap-2',
+    episodeRow: 'grid grid-cols-[auto_1fr] gap-2 items-center sm:grid-cols-[auto_1fr_90px_auto]',
+    episodeNum: 'min-w-[24px] text-xs font-bold text-[var(--text-muted)]',
+    episodeDuration: 'sm:w-[90px]',
+    episodeAdd: [
+        'rounded-lg border border-[var(--border)] bg-[var(--btn-bg)] px-3 py-1.5 text-xs',
+        'text-[var(--text-primary)] transition hover:bg-[var(--btn-hover)]',
+    ].join(' '),
+    formActions: 'flex flex-wrap gap-3',
+    saveBtn: [
+        'rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[#151515]',
+        'transition hover:bg-[var(--accent-strong)] disabled:opacity-60 disabled:cursor-not-allowed',
+    ].join(' '),
+    cancelBtn: [
+        'rounded-xl border border-[var(--border)] bg-[var(--btn-bg)] px-4 py-2 text-sm font-semibold',
+        'text-[var(--text-primary)] transition hover:bg-[var(--btn-hover)]',
+    ].join(' '),
+};
 
 const AddMediaPage = () => {
     const navigate = useNavigate();
@@ -321,26 +439,30 @@ const AddMediaPage = () => {
     // ── Step 0: Select type ───────────────────────────────────────────────────
     if (step === STEPS.SELECT_TYPE) {
         return (
-            <div className="add-media-page">
-                <h1 className="add-media-heading">Add Media</h1>
-                <p className="add-media-sub">What type of media are you adding?</p>
-                <div className="type-select-grid">
-                    {[
-                        { type: 'Movie',    icon: '🎬', label: 'Movie'     },
-                        { type: 'Book',     icon: '📚', label: 'Book'      },
-                        { type: 'TvSeries', icon: '📺', label: 'TV Series' },
-                    ].map(({ type, icon, label }) => (
-                        <button
-                            key={type}
-                            className="type-select-card"
-                            onClick={() => handleSelectType(type)}
-                        >
-                            <span className="type-icon">{icon}</span>
-                            <span className="type-label">{label}</span>
-                        </button>
-                    ))}
-                </div>
-            </div>
+            <PageLayout>
+                <Container size="full">
+                    <div className={styles.page}>
+                        <h1 className={styles.heading}>Add Media</h1>
+                        <p className={styles.sub}>What type of media are you adding?</p>
+                        <div className={styles.typeSelectGrid}>
+                            {[
+                                { type: 'Movie',    icon: '🎬', label: 'Movie'     },
+                                { type: 'Book',     icon: '📚', label: 'Book'      },
+                                { type: 'TvSeries', icon: '📺', label: 'TV Series' },
+                            ].map(({ type, icon, label }) => (
+                                <button
+                                    key={type}
+                                    className={styles.typeSelectCard}
+                                    onClick={() => handleSelectType(type)}
+                                >
+                                    <span className={styles.typeIcon}>{icon}</span>
+                                    <span className={styles.typeLabel}>{label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </Container>
+            </PageLayout>
         );
     }
 
@@ -352,90 +474,98 @@ const AddMediaPage = () => {
             : mediaType === 'TvSeries' ? 'Search TV series…' : 'Search movies…';
 
         return (
-            <div className="add-media-page">
-                <button className="add-back-btn" onClick={() => setStep(STEPS.SELECT_TYPE)}>← Back</button>
-                <h1 className="add-media-heading">
-                    {isBook ? 'Search Open Library' : 'Search TMDB'}
-                </h1>
-                <p className="add-media-sub">
-                    Find the title to auto-fill details, or skip to fill manually.
-                </p>
+            <PageLayout>
+                <Container size="full">
+                    <div className={styles.page}>
+                        <button className={styles.backBtn} onClick={() => setStep(STEPS.SELECT_TYPE)}>← Back</button>
+                        <h1 className={styles.heading}>
+                            {isBook ? 'Search Open Library' : 'Search TMDB'}
+                        </h1>
+                        <p className={styles.sub}>
+                            Find the title to auto-fill details, or skip to fill manually.
+                        </p>
 
-                <input
-                    className="tmdb-search-input"
-                    type="text"
-                    placeholder={placeholder}
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    autoFocus
-                />
+                        <input
+                            className={styles.searchInput}
+                            type="text"
+                            placeholder={placeholder}
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            autoFocus
+                        />
 
-                {searchLoading && <p className="tmdb-status">Searching…</p>}
-                {searchError  && <p className="tmdb-status tmdb-error">{searchError}</p>}
+                        {searchLoading && <p className={styles.searchStatus}>Searching…</p>}
+                        {searchError && <p className={`${styles.searchStatus} ${styles.searchError}`}>{searchError}</p>}
 
-                <div className="tmdb-results">
-                    {searchResults.map(r => (
-                        <button
-                            key={r.id}
-                            className="tmdb-result-card"
-                            onClick={() => handleSelectResult(r)}
-                        >
-                            {r.coverUrl
-                                ? <img src={r.coverUrl} alt={r.title} />
-                                : <div className="tmdb-no-cover">?</div>
-                            }
-                            <div className="tmdb-result-info">
-                                <span className="tmdb-result-title">{r.title}</span>
-                                {r.subtitle && <span className="tmdb-result-year">{r.subtitle}</span>}
-                            </div>
+                        <div className={styles.results}>
+                            {searchResults.map(r => (
+                                <button
+                                    key={r.id}
+                                    className={styles.resultCard}
+                                    onClick={() => handleSelectResult(r)}
+                                >
+                                    {r.coverUrl
+                                        ? <img src={r.coverUrl} alt={r.title} className={styles.resultImage} />
+                                        : <div className={styles.noCover}>?</div>
+                                    }
+                                    <div className={styles.resultInfo}>
+                                        <span className={styles.resultTitle}>{r.title}</span>
+                                        {r.subtitle && <span className={styles.resultYear}>{r.subtitle}</span>}
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+
+                        <button className={styles.skipBtn} onClick={handleSkipSearch}>
+                            Skip and fill manually →
                         </button>
-                    ))}
-                </div>
-
-                <button className="add-skip-btn" onClick={handleSkipSearch}>
-                    Skip and fill manually →
-                </button>
-            </div>
+                    </div>
+                </Container>
+            </PageLayout>
         );
     }
 
     // ── Post-add TvSeries prompt ───────────────────────────────────────────────
     if (justAddedSeries) {
         return (
-            <div className="add-media-page">
-                <div className="tv-added-banner">
-                    <span className="tv-added-icon">📺</span>
-                    <h2 className="tv-added-title">"{form.title}" added to cart</h2>
-                    <p className="tv-added-sub">
-                        The series is in your cart. You can submit it now, or first
-                        go to your cart and confirm the submission — then manage its
-                        seasons and episodes from the media detail page.
-                    </p>
-                    <div className="tv-added-actions">
-                        <button
-                            className="tv-added-btn tv-added-btn--primary"
-                            onClick={() => navigate('/cart')}
-                        >
-                            Go to Cart & Submit →
-                        </button>
-                        <button
-                            className="tv-added-btn tv-added-btn--ghost"
-                            onClick={() => {
-                                setStep(STEPS.SELECT_TYPE);
-                                setJustAddedSeries(false);
-                                setMediaType(null);
-                            }}
-                        >
-                            Add another title
-                        </button>
+            <PageLayout>
+                <Container size="full">
+                    <div className={styles.page}>
+                        <div className={styles.addedBanner}>
+                            <span className={styles.addedIcon}>📺</span>
+                            <h2 className={styles.addedTitle}>"{form.title}" added to cart</h2>
+                            <p className={styles.addedSub}>
+                                The series is in your cart. You can submit it now, or first
+                                go to your cart and confirm the submission — then manage its
+                                seasons and episodes from the media detail page.
+                            </p>
+                            <div className={styles.addedActions}>
+                                <button
+                                    className={`${styles.addedBtn} ${styles.addedPrimary}`}
+                                    onClick={() => navigate('/cart')}
+                                >
+                                    Go to Cart & Submit →
+                                </button>
+                                <button
+                                    className={`${styles.addedBtn} ${styles.addedGhost}`}
+                                    onClick={() => {
+                                        setStep(STEPS.SELECT_TYPE);
+                                        setJustAddedSeries(false);
+                                        setMediaType(null);
+                                    }}
+                                >
+                                    Add another title
+                                </button>
+                            </div>
+                            <p className={styles.addedNote}>
+                                💡 After submitting, open the series page and click
+                                <strong> "Manage Seasons"</strong> to import or edit seasons and episodes.
+                                {selectedTmdbSeries && " TMDB data will auto-load."}
+                            </p>
+                        </div>
                     </div>
-                    <p className="tv-added-note">
-                        💡 After submitting, open the series page and click
-                        <strong> "Manage Seasons"</strong> to import or edit seasons and episodes.
-                        {selectedTmdbSeries && " TMDB data will auto-load."}
-                    </p>
-                </div>
-            </div>
+                </Container>
+            </PageLayout>
         );
     }
 
@@ -444,204 +574,213 @@ const AddMediaPage = () => {
     const set = (field) => (e) => setForm(prev => ({ ...prev, [field]: e.target.value }));
 
     return (
-        <div className="add-media-page">
-            <button className="add-back-btn" onClick={() => setStep(STEPS.SEARCH)}>← Back</button>
-            <h1 className="add-media-heading">
-                {mediaType === 'TvSeries' ? 'Add TV Series' : `Add ${mediaType}`}
-            </h1>
+        <PageLayout>
+            <Container size="full">
+                <div className={styles.page}>
+                    <button className={styles.backBtn} onClick={() => setStep(STEPS.SEARCH)}>← Back</button>
+                    <h1 className={styles.heading}>
+                        {mediaType === 'TvSeries' ? 'Add TV Series' : `Add ${mediaType}`}
+                    </h1>
 
-            {mediaType === 'TvSeries' && (
-                <div className="tv-series-notice">
-                    📺 After adding to cart and submitting, you'll be able to manage
-                    seasons &amp; episodes from the series page.
-                    {selectedTmdbSeries && ' TMDB seasons will auto-load.'}
-                </div>
-            )}
-
-            <form className="add-media-form" onSubmit={handleSubmit}>
-                <div className="form-row">
-                    {f('coverUrl') && (
-                        <div className="cover-preview">
-                            <img
-                                src={f('coverUrl')}
-                                alt="Cover preview"
-                                onError={e => { e.target.style.display = 'none'; }}
-                            />
+                    {mediaType === 'TvSeries' && (
+                        <div className={styles.seriesNotice}>
+                            📺 After adding to cart and submitting, you'll be able to manage
+                            seasons &amp; episodes from the series page.
+                            {selectedTmdbSeries && ' TMDB seasons will auto-load.'}
                         </div>
                     )}
-                    <div className="form-fields">
-                        <label className="form-label">
-                            Title *
-                            <input className="form-input" required value={f('title')} onChange={set('title')} />
-                        </label>
-                        <label className="form-label">
-                            Cover Image URL
-                            <input className="form-input" value={f('coverUrl')} onChange={set('coverUrl')} placeholder="https://…" />
-                        </label>
-                        <div className="form-row-2">
-                            <label className="form-label">
-                                Release Year
-                                <input className="form-input" type="number" min="1800" max="2100"
-                                    value={f('releaseYear')} onChange={set('releaseYear')} />
-                            </label>
-                            {mediaType === 'Movie' && (
-                                <label className="form-label">
-                                    Duration (min)
-                                    <input className="form-input" type="number" min="1"
-                                        value={f('duration')} onChange={set('duration')} />
-                                </label>
-                            )}
-                            {mediaType === 'Book' && (
-                                <label className="form-label">
-                                    Pages
-                                    <input className="form-input" type="number" min="1"
-                                        value={f('pages')} onChange={set('pages')} />
-                                </label>
-                            )}
-                        </div>
 
-                        {mediaType === 'Movie' && (
-                            <label className="form-label">
-                                Director
-                                <input className="form-input" value={f('director')} onChange={set('director')} />
-                            </label>
-                        )}
-                        {mediaType === 'Book' && (
-                            <>
-                                <label className="form-label">
-                                    Author
-                                    <input className="form-input" value={f('author')} onChange={set('author')} />
+                    <form className={styles.form} onSubmit={handleSubmit}>
+                        <div className={styles.formRow}>
+                            {f('coverUrl') && (
+                                <div className={styles.cover}>
+                                    <img
+                                        className={styles.coverImage}
+                                        src={f('coverUrl')}
+                                        alt="Cover preview"
+                                        onError={e => { e.target.style.display = 'none'; }}
+                                    />
+                                </div>
+                            )}
+                            <div className={styles.formFields}>
+                                <label className={styles.formLabel}>
+                                    Title *
+                                    <input className={styles.formInput} required value={f('title')} onChange={set('title')} />
                                 </label>
-                                <label className="form-label">
-                                    ISBN
-                                    <input className="form-input" value={f('isbn')} onChange={set('isbn')} />
+                                <label className={styles.formLabel}>
+                                    Cover Image URL
+                                    <input className={styles.formInput} value={f('coverUrl')} onChange={set('coverUrl')} placeholder="https://…" />
                                 </label>
-                                {f('subjects') && (
-                                    <label className="form-label">
-                                        Subjects
-                                        <input className="form-input" value={f('subjects')} onChange={set('subjects')}
-                                            placeholder="From Open Library" />
+                                <div className={styles.formRow2}>
+                                    <label className={styles.formLabel}>
+                                        Release Year
+                                        <input className={styles.formInput} type="number" min="1800" max="2100"
+                                            value={f('releaseYear')} onChange={set('releaseYear')} />
+                                    </label>
+                                    {mediaType === 'Movie' && (
+                                        <label className={styles.formLabel}>
+                                            Duration (min)
+                                            <input className={styles.formInput} type="number" min="1"
+                                                value={f('duration')} onChange={set('duration')} />
+                                        </label>
+                                    )}
+                                    {mediaType === 'Book' && (
+                                        <label className={styles.formLabel}>
+                                            Pages
+                                            <input className={styles.formInput} type="number" min="1"
+                                                value={f('pages')} onChange={set('pages')} />
+                                        </label>
+                                    )}
+                                </div>
+
+                                {mediaType === 'Movie' && (
+                                    <label className={styles.formLabel}>
+                                        Director
+                                        <input className={styles.formInput} value={f('director')} onChange={set('director')} />
                                     </label>
                                 )}
-                            </>
-                        )}
-                    </div>
-                </div>
-
-                <label className="form-label">
-                    Description
-                    <textarea className="form-textarea" rows={4}
-                        value={f('description')} onChange={set('description')} />
-                </label>
-
-                {Array.isArray(genres) && genres.length > 0 && (
-                    <div className="form-label">
-                        Genres
-                        <div className="genre-picker">
-                            {genres.map(g => (
-                                <label key={g.id} className="genre-pick-item">
-                                    <input
-                                        type="checkbox"
-                                        checked={form.genreIds.includes(g.id)}
-                                        onChange={() => toggleGenre(g.id)}
-                                    />
-                                    {g.name}
-                                </label>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {mediaType === 'TvSeries' && (
-                    <div className="series-seasons-builder">
-                        <div className="series-seasons-builder__header">
-                            <h3>Seasons & Episodes</h3>
-                            <button
-                                type="button"
-                                className="series-seasons-builder__add-season"
-                                onClick={addSeasonToSeries}
-                            >
-                                + Add Season
-                            </button>
+                                {mediaType === 'Book' && (
+                                    <>
+                                        <label className={styles.formLabel}>
+                                            Author
+                                            <input className={styles.formInput} value={f('author')} onChange={set('author')} />
+                                        </label>
+                                        <label className={styles.formLabel}>
+                                            ISBN
+                                            <input className={styles.formInput} value={f('isbn')} onChange={set('isbn')} />
+                                        </label>
+                                        {f('subjects') && (
+                                            <label className={styles.formLabel}>
+                                                Subjects
+                                                <input className={styles.formInput} value={f('subjects')} onChange={set('subjects')}
+                                                    placeholder="From Open Library" />
+                                            </label>
+                                        )}
+                                    </>
+                                )}
+                            </div>
                         </div>
 
-                        {(form.seasons ?? []).length === 0 && (
-                            <p className="series-seasons-builder__empty">
-                                No seasons yet. Add a season with episodes.
-                            </p>
+                        <label className={styles.formLabel}>
+                            Description
+                            <textarea className={`${styles.formInput} ${styles.formTextarea}`} rows={4}
+                                value={f('description')} onChange={set('description')} />
+                        </label>
+
+                        {Array.isArray(genres) && genres.length > 0 && (
+                            <div className={styles.formLabel}>
+                                Genres
+                                <div className={styles.genrePicker}>
+                                    {genres.map(g => (
+                                        <label
+                                            key={g.id}
+                                            className={clsx(styles.genreItem, form.genreIds.includes(g.id) && styles.genreItemActive)}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                className={styles.genreInput}
+                                                checked={form.genreIds.includes(g.id)}
+                                                onChange={() => toggleGenre(g.id)}
+                                            />
+                                            {g.name}
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
                         )}
 
-                        {(form.seasons ?? []).map((season, seasonIdx) => (
-                            <div key={seasonIdx} className="series-season-block">
-                                <div className="series-season-block__header">
-                                    <span>Season {seasonIdx + 1}</span>
+                        {mediaType === 'TvSeries' && (
+                            <div className={styles.seasonBuilder}>
+                                <div className={styles.seasonHeader}>
+                                    <h3>Seasons & Episodes</h3>
                                     <button
                                         type="button"
-                                        className="series-season-block__remove"
-                                        onClick={() => removeSeasonFromSeries(seasonIdx)}
+                                        className={styles.seasonAdd}
+                                        onClick={addSeasonToSeries}
                                     >
-                                        Remove season
+                                        + Add Season
                                     </button>
                                 </div>
 
-                                <div className="series-season-episodes">
-                                    {(season.episodes ?? []).map((episode, episodeIdx) => (
-                                        <div key={episodeIdx} className="series-episode-row">
-                                            <span className="series-episode-row__num">E{episodeIdx + 1}</span>
-                                            <input
-                                                className="form-input"
-                                                placeholder="Episode title"
-                                                value={episode.title}
-                                                onChange={(e) =>
-                                                    setSeasonEpisodeField(seasonIdx, episodeIdx, 'title', e.target.value)
-                                                }
-                                            />
-                                            <input
-                                                className="form-input series-episode-row__duration"
-                                                type="number"
-                                                min="1"
-                                                placeholder="min"
-                                                value={episode.duration}
-                                                onChange={(e) =>
-                                                    setSeasonEpisodeField(seasonIdx, episodeIdx, 'duration', e.target.value)
-                                                }
-                                            />
+                                {(form.seasons ?? []).length === 0 && (
+                                    <p className={styles.seasonEmpty}>
+                                        No seasons yet. Add a season with episodes.
+                                    </p>
+                                )}
+
+                                {(form.seasons ?? []).map((season, seasonIdx) => (
+                                    <div key={seasonIdx} className={styles.seasonBlock}>
+                                        <div className={styles.seasonBlockHeader}>
+                                            <span>Season {seasonIdx + 1}</span>
                                             <button
                                                 type="button"
-                                                className="series-season-block__remove"
-                                                onClick={() => removeEpisodeFromSeason(seasonIdx, episodeIdx)}
-                                                disabled={(season.episodes?.length ?? 0) === 1}
+                                                className={styles.seasonRemove}
+                                                onClick={() => removeSeasonFromSeries(seasonIdx)}
                                             >
-                                                Remove
+                                                Remove season
                                             </button>
                                         </div>
-                                    ))}
-                                </div>
 
-                                <button
-                                    type="button"
-                                    className="series-season-block__add-episode"
-                                    onClick={() => addEpisodeToSeason(seasonIdx)}
-                                >
-                                    + Add Episode
-                                </button>
+                                        <div className={styles.episodeList}>
+                                            {(season.episodes ?? []).map((episode, episodeIdx) => (
+                                                <div key={episodeIdx} className={styles.episodeRow}>
+                                                    <span className={styles.episodeNum}>E{episodeIdx + 1}</span>
+                                                    <input
+                                                        className={styles.formInput}
+                                                        placeholder="Episode title"
+                                                        value={episode.title}
+                                                        onChange={(e) =>
+                                                            setSeasonEpisodeField(seasonIdx, episodeIdx, 'title', e.target.value)
+                                                        }
+                                                    />
+                                                    <input
+                                                        className={`${styles.formInput} ${styles.episodeDuration}`}
+                                                        type="number"
+                                                        min="1"
+                                                        placeholder="min"
+                                                        value={episode.duration}
+                                                        onChange={(e) =>
+                                                            setSeasonEpisodeField(seasonIdx, episodeIdx, 'duration', e.target.value)
+                                                        }
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        className={styles.seasonRemove}
+                                                        onClick={() => removeEpisodeFromSeason(seasonIdx, episodeIdx)}
+                                                        disabled={(season.episodes?.length ?? 0) === 1}
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            className={styles.episodeAdd}
+                                            onClick={() => addEpisodeToSeason(seasonIdx)}
+                                        >
+                                            + Add Episode
+                                        </button>
+                                    </div>
+                                ))}
                             </div>
-                        ))}
-                    </div>
-                )}
+                        )}
 
-                {saveError && <p className="save-error">{saveError}</p>}
+                        {saveError && <p className={styles.saveError}>{saveError}</p>}
 
-                <div className="form-actions">
-                    <button type="submit" className="save-btn" disabled={saving}>
-                        {saving ? 'Saving…' : 'Add to Cart'}
-                    </button>
-                    <button type="button" className="cancel-btn" onClick={() => navigate('/media')}>
-                        Cancel
-                    </button>
+                        <div className={styles.formActions}>
+                            <button type="submit" className={styles.saveBtn} disabled={saving}>
+                                {saving ? 'Saving…' : 'Add to Cart'}
+                            </button>
+                            <button type="button" className={styles.cancelBtn} onClick={() => navigate('/media')}>
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
                 </div>
-            </form>
-        </div>
+            </Container>
+        </PageLayout>
     );
 };
 

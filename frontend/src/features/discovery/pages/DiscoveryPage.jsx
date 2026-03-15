@@ -3,8 +3,13 @@ import { useAuth } from '../../../context/AuthContext';
 import { useHomeDiscoveryQuery } from '../queries/useHomeDiscoveryQuery';
 import HeroBanner from '../components/HeroBanner';
 import DiscoverySection from '../components/DiscoverySection';
-import '../components/discovery.css';
-import './DiscoveryPage.css';
+import PageLayout from '../../../layouts/PageLayout';
+import Container from '../../../shared/ui/Container';
+import Stack from '../../../shared/ui/Stack';
+
+const styles = {
+  stack: 'gap-6',
+};
 
 function DiscoveryPage() {
   const { user } = useAuth();
@@ -31,46 +36,50 @@ function DiscoveryPage() {
   );
 
   return (
-    <main className="ro-page ro-home-page">
-      <HeroBanner item={trending[0]} />
+    <PageLayout>
+      <Container>
+        <Stack className={styles.stack}>
+          <HeroBanner item={trending[0]} />
 
-      <DiscoverySection
-        title="Trending Now"
-        items={trending}
-        loading={loading}
-        error={error ? errorMessage : ''}
-      />
+          <DiscoverySection
+            title="Trending Now"
+            items={trending}
+            loading={loading}
+            error={error ? errorMessage : ''}
+          />
 
-      {user ? (
-        <DiscoverySection
-          title="Recommended For You"
-          items={recommended}
-          loading={loading}
-          error=""
-        />
-      ) : null}
+          {user ? (
+            <DiscoverySection
+              title="Recommended For You"
+              items={recommended}
+              loading={loading}
+              error=""
+            />
+          ) : null}
 
-      <DiscoverySection
-        title="Popular Movies"
-        items={popularMovies}
-        loading={loading}
-        error=""
-      />
+          <DiscoverySection
+            title="Popular Movies"
+            items={popularMovies}
+            loading={loading}
+            error=""
+          />
 
-      <DiscoverySection
-        title="Popular TV Series"
-        items={popularTv}
-        loading={loading}
-        error=""
-      />
+          <DiscoverySection
+            title="Popular TV Series"
+            items={popularTv}
+            loading={loading}
+            error=""
+          />
 
-      <DiscoverySection
-        title="Popular Books"
-        items={popularBooks}
-        loading={loading}
-        error=""
-      />
-    </main>
+          <DiscoverySection
+            title="Popular Books"
+            items={popularBooks}
+            loading={loading}
+            error=""
+          />
+        </Stack>
+      </Container>
+    </PageLayout>
   );
 }
 

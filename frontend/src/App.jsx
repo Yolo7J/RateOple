@@ -1,10 +1,9 @@
 
 import Router from './app/router.jsx'
-import './App.css'
 
 function App() {
   return (
-    <div className="app">
+    <div className="min-h-screen flex flex-col">
       <Router />
     </div>
   )

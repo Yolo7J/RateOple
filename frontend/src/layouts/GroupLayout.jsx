@@ -4,11 +4,13 @@ import Footer from '../shared/components/Footer/Footer';
 
 const GroupLayout = () => {
   return (
-    <>
+    <div className="flex min-h-screen flex-col">
       <Header />
-      <Outlet />
+      <div className="flex-1">
+        <Outlet />
+      </div>
       <Footer />
-    </>
+    </div>
   );
 };
 

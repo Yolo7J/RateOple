@@ -1,6 +1,22 @@
 import { useState } from 'react';
 import { STATUS_TYPES } from '../../../shared/constants/statusTypes';
-import './MediaStatusSelector.css';
+
+const styles = {
+  form: [
+    'flex flex-wrap items-center gap-3 rounded-xl border border-[var(--border)]',
+    'bg-[var(--card-bg)] p-4',
+  ].join(' '),
+  label: 'text-sm text-[var(--text-secondary)]',
+  select: [
+    'rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2',
+    'text-sm text-[var(--text-primary)]',
+  ].join(' '),
+  button: [
+    'inline-flex items-center justify-center rounded-lg border border-[var(--border)]',
+    'bg-[var(--button-bg)] px-4 py-2 text-sm font-medium text-[var(--text-primary)]',
+    'transition hover:bg-[var(--button-hover-bg)] disabled:opacity-60',
+  ].join(' '),
+};
 
 const WATCH_STATUSES = STATUS_TYPES;
 
@@ -13,9 +29,10 @@ function MediaStatusSelector({ currentStatus, onSave, saving = false, disabled =
     };
 
     return (
-        <form className="ro-status-selector" onSubmit={submit}>
-            <label htmlFor="media-status">Watch status</label>
+        <form className={styles.form} onSubmit={submit}>
+            <label className={styles.label} htmlFor="media-status">Watch status</label>
             <select
+                className={styles.select}
                 id="media-status"
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
@@ -25,7 +42,7 @@ function MediaStatusSelector({ currentStatus, onSave, saving = false, disabled =
                     <option key={item} value={item}>{item}</option>
                 ))}
             </select>
-            <button type="submit" disabled={disabled || saving}>
+            <button className={styles.button} type="submit" disabled={disabled || saving}>
                 {saving ? 'Saving...' : 'Save status'}
             </button>
         </form>

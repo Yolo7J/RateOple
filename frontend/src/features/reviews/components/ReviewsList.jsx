@@ -1,13 +1,18 @@
 import ReviewCard from './ReviewCard';
-import './reviews.css';
+
+const styles = {
+  list: 'flex flex-col gap-3',
+  state: 'text-sm text-[var(--text-muted)]',
+  error: 'text-sm text-[#ff7f7f]',
+};
 
 function ReviewsList({ reviews, loading, error }) {
-    if (loading) return <p className="ro-review-state">Loading reviews...</p>;
-    if (error) return <p className="ro-review-state ro-error">{error}</p>;
-    if (!reviews.length) return <p className="ro-review-state">No reviews yet.</p>;
+    if (loading) return <p className={styles.state}>Loading reviews...</p>;
+    if (error) return <p className={styles.error}>{error}</p>;
+    if (!reviews.length) return <p className={styles.state}>No reviews yet.</p>;
 
     return (
-        <div className="ro-reviews-list">
+        <div className={styles.list}>
             {reviews.map((review) => (
                 <ReviewCard key={review.id} review={review} />
             ))}

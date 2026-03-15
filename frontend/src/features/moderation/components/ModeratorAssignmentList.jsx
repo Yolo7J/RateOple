@@ -1,4 +1,14 @@
-import './moderation.css';
+const styles = {
+  list: 'grid gap-3',
+  card: 'flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-4',
+  muted: 'text-[var(--text-muted)]',
+  button: [
+    'inline-flex items-center justify-center rounded-lg border border-[var(--border)]',
+    'bg-[var(--button-bg)] px-3 py-2 text-sm font-medium text-[var(--text-primary)]',
+    'transition hover:bg-[var(--button-hover-bg)] disabled:opacity-60',
+  ].join(' '),
+  meta: 'text-sm text-[var(--text-muted)]',
+};
 
 const SCOPE_LABELS = {
   1: 'Global',
@@ -9,15 +19,15 @@ const SCOPE_LABELS = {
 
 function ModeratorAssignmentList({ assignments, onRemove, disabled = false }) {
   if (!assignments.length) {
-    return <p className="ro-muted">No assignments.</p>;
+    return <p className={styles.muted}>No assignments.</p>;
   }
 
   return (
-    <div className="ro-assignment-list">
+    <div className={styles.list}>
       {assignments.map((assignment) => (
         <article
           key={`${assignment.userId}-${assignment.scopeType}-${assignment.scopeId ?? 'global'}`}
-          className="ro-moderation-card"
+          className={styles.card}
         >
           <p>
             <strong>User:</strong> <code>{assignment.userId}</code>
@@ -26,8 +36,9 @@ function ModeratorAssignmentList({ assignments, onRemove, disabled = false }) {
             <strong>Scope:</strong> {SCOPE_LABELS[assignment.scopeType] || assignment.scopeType}
             {assignment.scopeId ? ` (${assignment.scopeId})` : ''}
           </p>
-          <p className="ro-moderation-meta">Assigned at: {new Date(assignment.assignedAt).toLocaleString()}</p>
+          <p className={styles.meta}>Assigned at: {new Date(assignment.assignedAt).toLocaleString()}</p>
           <button
+            className={styles.button}
             type="button"
             disabled={disabled}
             onClick={() =>

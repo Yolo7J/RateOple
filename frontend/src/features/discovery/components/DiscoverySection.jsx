@@ -1,12 +1,17 @@
 import MediaRow from './MediaRow';
-import './discovery.css';
+
+const styles = {
+  section: 'space-y-3',
+  title: 'text-xl font-semibold text-[var(--text-primary)]',
+  error: 'text-[#ff7f7f]',
+};
 
 function DiscoverySection({ title, items, loading, error }) {
     return (
-        <section className="ro-discovery-section">
-            <h2>{title}</h2>
+        <section className={styles.section}>
+            <h2 className={styles.title}>{title}</h2>
             {loading && <p>Loading...</p>}
-            {error && <p className="ro-error">{error}</p>}
+            {error && <p className={styles.error}>{error}</p>}
             {!loading && !error && <MediaRow items={items} />}
         </section>
     );

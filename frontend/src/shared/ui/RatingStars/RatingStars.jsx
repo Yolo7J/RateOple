@@ -1,5 +1,18 @@
 import React, { useState } from 'react';
-import './RatingStars.css';
+import clsx from 'clsx';
+
+const styles = {
+    container: 'flex items-center gap-1',
+    starBase: 'leading-none transition',
+    starFilled: 'text-[#ffc107]',
+    starEmpty: 'text-[#ccc]',
+    starReadonly: 'cursor-default',
+    starInteractive: 'cursor-pointer hover:scale-110',
+    sizeSmall: 'text-[14px]',
+    sizeMedium: 'text-[20px]',
+    sizeLarge: 'text-[32px]',
+    value: 'ml-2 text-sm text-[var(--text-secondary)]',
+};
 
 const RatingStars = ({
     initialRating = 0,
@@ -30,7 +43,14 @@ const RatingStars = ({
             stars.push(
                 <span
                     key={i}
-                    className={`star ${isFilled ? 'filled' : ''} ${readOnly ? 'readonly' : 'interactive'} ${size}`}
+                    className={clsx(
+                        styles.starBase,
+                        isFilled ? styles.starFilled : styles.starEmpty,
+                        readOnly ? styles.starReadonly : styles.starInteractive,
+                        size === 'small' && styles.sizeSmall,
+                        size === 'medium' && styles.sizeMedium,
+                        size === 'large' && styles.sizeLarge,
+                    )}
                     onClick={() => handleClick(i)}
                     onMouseEnter={() => !readOnly && setHoverValue(i)}
                     onMouseLeave={() => !readOnly && setHoverValue(0)}
@@ -44,9 +64,9 @@ const RatingStars = ({
     };
 
     return (
-        <div className="rating-stars-container">
+        <div className={styles.container}>
             {renderStars()}
-            <span className="rating-value">{rating > 0 ? `${rating}/10` : 'Not rated'}</span>
+            <span className={styles.value}>{rating > 0 ? `${rating}/10` : 'Not rated'}</span>
         </div>
     );
 };

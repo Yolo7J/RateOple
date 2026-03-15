@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
+import clsx from "clsx";
 import { useParams, useNavigate } from "react-router-dom";
 import { useMediaDetailsQuery } from "../queries/useMediaDetailsQuery";
 import { useTvSeriesSeasonsQuery } from "../queries/useTvSeriesSeasonsQuery";
 import { useMediaCommands } from "../queries/useMediaCommands";
+import PageLayout from "../../../layouts/PageLayout";
+import Container from "../../../shared/ui/Container";
 
 // ── Icons (inline SVG to avoid deps) ─────────────────────────────────────────
 const ChevronDown = ({ open }) => (
@@ -29,6 +32,82 @@ const emptySeasonForm = (nextNum) => ({
   seasonNumber: nextNum,
   episodes: [emptyEpisode(1)],
 });
+
+const styles = {
+  page: "mx-auto max-w-[1120px] px-4 py-6 pb-16 text-[var(--text-primary)]",
+  header: "mb-6 rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] p-5",
+  back: "mb-3 text-sm text-indigo-500 hover:underline",
+  titleRow: "flex items-center gap-4",
+  cover: "h-[126px] w-[90px] rounded-xl object-cover shadow-[0_10px_28px_rgba(0,0,0,0.2)]",
+  title: "text-3xl font-extrabold",
+  meta: "text-base text-[var(--text-muted)]",
+  tmdbBanner: "mb-6 rounded-2xl border border-indigo-200/60 bg-indigo-50 p-5",
+  tmdbBannerHeader: "mb-2 flex items-center justify-between gap-3",
+  tmdbLabel: "text-sm font-semibold text-indigo-700",
+  tmdbReload: "inline-flex items-center gap-2 rounded-md border border-indigo-200 px-3 py-1 text-xs text-indigo-700 hover:bg-indigo-100",
+  tmdbSub: "text-sm text-[var(--text-muted)]",
+  tmdbError: "text-sm text-red-600",
+  tmdbSuccess: "text-sm text-green-700",
+  tmdbSeasons: "mt-2 flex flex-wrap gap-2",
+  tmdbSeason: "rounded-lg border border-indigo-100 bg-[var(--bg-secondary)] px-3 py-2 text-xs",
+  tmdbSeasonExists: "opacity-50",
+  tmdbSeasonHeader: "flex items-center gap-2",
+  tmdbSeasonName: "font-semibold",
+  tmdbEpCount: "text-[10px] text-[var(--text-muted)]",
+  tmdbSeasonActions: "mt-2 flex items-center gap-2",
+  tmdbDismiss: "text-xs text-[var(--text-muted)] hover:text-red-500",
+  badge: "rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700",
+  tmdbTrigger: "mb-6",
+  tmdbCandidates: "mt-3 flex flex-wrap gap-2",
+  seasons: "mb-6 flex flex-col gap-3",
+  empty: "rounded-xl border border-dashed border-[var(--border)] p-10 text-center text-sm text-[var(--text-muted)]",
+  season: "rounded-xl border border-[var(--border)] bg-[var(--card-bg)]",
+  seasonOpen: "border-indigo-200 shadow-[0_4px_16px_rgba(99,102,241,0.1)]",
+  seasonHeader: "flex w-full items-center gap-3 px-4 py-3 text-left",
+  seasonNum: "flex-1 text-base font-semibold",
+  seasonEpCount: "text-sm text-[var(--text-muted)]",
+  seasonActions: "flex gap-1",
+  seasonEdit: "flex flex-1 items-center gap-2",
+  seasonEditInput: "w-[90px]",
+  episodes: "border-t border-[var(--border)] px-3 py-3",
+  noEpisodes: "text-sm text-[var(--text-muted)]",
+  episode: "flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition hover:bg-[var(--card-hover)]",
+  episodeEditing: "bg-indigo-50",
+  epNum: "min-w-[28px] text-xs font-bold text-[var(--text-muted)]",
+  epTitle: "flex-1",
+  epDuration: "text-xs text-[var(--text-muted)]",
+  epActions: "flex gap-1 opacity-0 transition group-hover:opacity-100",
+  epEdit: "flex flex-1 flex-wrap items-center gap-2",
+  epInput: "flex-1 min-w-[120px] rounded-md border border-[var(--border)] bg-[var(--bg-secondary)] px-2 py-1 text-xs text-[var(--text-primary)]",
+  epInputShort: "w-[64px]",
+  addEpBtn: "w-full rounded-lg border border-dashed border-[var(--border)] px-3 py-2 text-xs text-[var(--text-muted)] hover:border-indigo-400 hover:text-indigo-500 hover:bg-indigo-50",
+  addEpForm: "mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-[var(--bg-secondary)] p-2",
+  addSeasonRow: "mt-2",
+  addSeasonForm: "rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] p-5",
+  addSeasonFormHeader: "mb-4 flex items-center justify-between",
+  newEpisodes: "my-4",
+  newEpLabel: "mb-2 text-xs font-semibold text-[var(--text-muted)]",
+  newEpRow: "mb-2 flex items-center gap-2",
+  formLabel: "mb-3 flex flex-col gap-1 text-xs font-medium text-[var(--text-muted)]",
+  formInput: "w-[120px] rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2 text-sm text-[var(--text-primary)]",
+  formError: "text-xs text-red-600",
+  formActions: "mt-4 flex gap-3",
+  btn: "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold",
+  btnPrimary: "bg-indigo-500 text-white hover:bg-indigo-600",
+  btnSecondary: "border border-[var(--border)] bg-[var(--button-bg)] text-[var(--text-primary)] hover:bg-[var(--button-hover-bg)]",
+  btnGhost: "border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--button-hover-bg)]",
+  btnDanger: "bg-red-500 text-white hover:bg-red-600",
+  btnXs: "px-2.5 py-1 text-xs",
+  iconBtn: "rounded-md p-1 text-sm text-[var(--text-muted)] hover:bg-[var(--button-hover-bg)]",
+  iconBtnDanger: "text-red-500 hover:bg-red-100",
+  loading: "flex min-h-[40vh] flex-col items-center justify-center gap-4 text-[var(--text-muted)]",
+  modalOverlay: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4",
+  modal: "w-full max-w-[420px] rounded-2xl bg-[var(--card-bg)] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.2)]",
+  modalTitle: "mb-3 text-lg font-semibold",
+  modalBody: "mb-4 text-sm text-[var(--text-secondary)]",
+  modalNote: "text-xs text-[var(--text-muted)]",
+  modalActions: "flex gap-3",
+};
 
 export default function SeasonManagerPage() {
   const { id } = useParams();        // mediaId (Guid)
@@ -408,37 +487,48 @@ export default function SeasonManagerPage() {
 
   if (loading) {
     return (
-      <div className="season-manager-loading">
-        <Spinner />
-        <span>Loading series…</span>
-      </div>
+      <PageLayout>
+        <Container>
+          <div className={styles.loading}>
+            <Spinner />
+            <span>Loading series…</span>
+          </div>
+        </Container>
+      </PageLayout>
     );
   }
 
   if (error) {
     return (
-      <div className="season-manager-error">
-        <p>{error}</p>
-        <button onClick={() => navigate(-1)}>← Go back</button>
-      </div>
+      <PageLayout>
+        <Container>
+          <div className={styles.loading}>
+            <p>{error}</p>
+            <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => navigate(-1)}>
+              ← Go back
+            </button>
+          </div>
+        </Container>
+      </PageLayout>
     );
   }
 
   return (
-    <>
-      <div className="sm-page">
+    <PageLayout>
+      <Container>
+        <div className={styles.page}>
         {/* Header */}
-        <div className="sm-header">
-          <button className="sm-back" onClick={() => navigate(`/media/${id}`)}>
+        <div className={styles.header}>
+          <button className={styles.back} onClick={() => navigate(`/media/${id}`)}>
             ← Back to series
           </button>
-          <div className="sm-title-row">
+          <div className={styles.titleRow}>
             {media?.coverUrl && (
-              <img src={media.coverUrl} alt={media.title} className="sm-cover" />
+              <img src={media.coverUrl} alt={media.title} className={styles.cover} />
             )}
             <div>
-              <h1 className="sm-title">{media?.title}</h1>
-              <p className="sm-meta">
+              <h1 className={styles.title}>{media?.title}</h1>
+              <p className={styles.meta}>
                 {seasons.length} season{seasons.length !== 1 ? "s" : ""} ·{" "}
                 {seasons.reduce((a, s) => a + s.episodes.length, 0)} episodes in database
               </p>
@@ -448,12 +538,12 @@ export default function SeasonManagerPage() {
 
         {/* TMDB banner */}
         {(tmdbPreview || tmdbLoading || tmdbError) && (
-          <div className="sm-tmdb-banner">
-            <div className="sm-tmdb-banner-header">
-              <span className="sm-tmdb-label">🎬 TMDB Import</span>
+          <div className={styles.tmdbBanner}>
+            <div className={styles.tmdbBannerHeader}>
+              <span className={styles.tmdbLabel}>🎬 TMDB Import</span>
               {media?.tmdbId && (
                 <button
-                  className="sm-tmdb-reload"
+                  className={styles.tmdbReload}
                   onClick={handleReloadTmdb}
                   disabled={tmdbLoading}
                 >
@@ -462,9 +552,9 @@ export default function SeasonManagerPage() {
               )}
             </div>
 
-            {tmdbError && <p className="sm-tmdb-error">{tmdbError}</p>}
+            {tmdbError && <p className={styles.tmdbError}>{tmdbError}</p>}
             {tmdbImportResult && (
-              <p className="sm-tmdb-success">
+              <p className={styles.tmdbSuccess}>
                 Synced {tmdbImportResult.createdSeasons} new season{tmdbImportResult.createdSeasons !== 1 ? "s" : ""},{" "}
                 updated {tmdbImportResult.updatedSeasons} existing season{tmdbImportResult.updatedSeasons !== 1 ? "s" : ""},{" "}
                 and added {tmdbImportResult.addedEpisodes} new episode{tmdbImportResult.addedEpisodes !== 1 ? "s" : ""}.
@@ -473,33 +563,33 @@ export default function SeasonManagerPage() {
 
             {tmdbPreview && tmdbPreview.length > 0 && (
               <>
-                <p className="sm-tmdb-sub">
+                <p className={styles.tmdbSub}>
                   {tmdbPreview.length} season{tmdbPreview.length !== 1 ? "s" : ""} found.
                   Remove any you don't want, then import.
                 </p>
-                <div className="sm-tmdb-seasons">
+                <div className={styles.tmdbSeasons}>
                   {tmdbPreview.map((s) => {
                     const alreadyInDb = seasons.some((db) => db.seasonNumber === s.seasonNumber);
                     const isSyncing = tmdbSyncingSeason === s.seasonNumber;
                     return (
-                      <div key={s.seasonNumber} className={`sm-tmdb-season ${alreadyInDb ? "sm-tmdb-season--exists" : ""}`}>
-                        <div className="sm-tmdb-season-header">
-                          <span className="sm-tmdb-season-name">
+                      <div key={s.seasonNumber} className={clsx(styles.tmdbSeason, alreadyInDb && styles.tmdbSeasonExists)}>
+                        <div className={styles.tmdbSeasonHeader}>
+                          <span className={styles.tmdbSeasonName}>
                             Season {s.seasonNumber}
-                            {alreadyInDb && <span className="sm-badge sm-badge--exists">already saved</span>}
+                            {alreadyInDb && <span className={styles.badge}>already saved</span>}
                           </span>
-                          <span className="sm-tmdb-ep-count">{s.episodes?.length ?? 0} eps</span>
+                          <span className={styles.tmdbEpCount}>{s.episodes?.length ?? 0} eps</span>
                         </div>
-                        <div className="sm-tmdb-season-actions">
+                        <div className={styles.tmdbSeasonActions}>
                           <button
-                            className="sm-btn sm-btn--xs sm-btn--secondary"
+                            className={`${styles.btn} ${styles.btnXs} ${styles.btnSecondary}`}
                             onClick={() => handleSyncTmdbSeason(s)}
                             disabled={isSyncing || tmdbLoading}
                           >
                             {isSyncing ? <><Spinner /> Syncing…</> : alreadyInDb ? "Update from TMDB" : "Import from TMDB"}
                           </button>
                           <button
-                            className="sm-tmdb-dismiss"
+                            className={styles.tmdbDismiss}
                             onClick={() => dismissTmdbSeason(s.seasonNumber)}
                             title="Remove from list"
                           >
@@ -511,7 +601,7 @@ export default function SeasonManagerPage() {
                   })}
                 </div>
                 <button
-                  className="sm-btn sm-btn--primary"
+                  className={`${styles.btn} ${styles.btnPrimary}`}
                   onClick={handleImportTmdb}
                   disabled={tmdbLoading}
                 >
@@ -521,36 +611,36 @@ export default function SeasonManagerPage() {
             )}
 
             {tmdbPreview && tmdbPreview.length === 0 && (
-              <p className="sm-tmdb-sub">No seasons returned from TMDB.</p>
+              <p className={styles.tmdbSub}>No seasons returned from TMDB.</p>
             )}
           </div>
         )}
 
         {/* TMDB reload button when no preview shown */}
         {!tmdbPreview && !tmdbLoading && (media?.tmdbId || activeTmdbId) && (
-          <div className="sm-tmdb-trigger">
-            <button className="sm-btn sm-btn--ghost" onClick={handleReloadTmdb}>
+          <div className={styles.tmdbTrigger}>
+            <button className={`${styles.btn} ${styles.btnGhost}`} onClick={handleReloadTmdb}>
               🎬 Load seasons from TMDB
             </button>
           </div>
         )}
 
         {!tmdbPreview && !tmdbLoading && !media?.tmdbId && !activeTmdbId && (
-          <div className="sm-tmdb-trigger">
+          <div className={styles.tmdbTrigger}>
             <button
-              className="sm-btn sm-btn--ghost"
+              className={`${styles.btn} ${styles.btnGhost}`}
               onClick={handleLookupTmdbByTitle}
               disabled={tmdbLookupLoading}
             >
               {tmdbLookupLoading ? <><Spinner /> Searching TMDB…</> : "🎬 Find on TMDB by title"}
             </button>
-            {tmdbLookupError && <p className="sm-tmdb-error">{tmdbLookupError}</p>}
+            {tmdbLookupError && <p className={styles.tmdbError}>{tmdbLookupError}</p>}
             {tmdbCandidates.length > 0 && (
-              <div className="sm-tmdb-candidates">
+              <div className={styles.tmdbCandidates}>
                 {tmdbCandidates.map((candidate) => (
                   <button
                     key={candidate.tmdbId}
-                    className="sm-btn sm-btn--secondary sm-btn--xs"
+                    className={`${styles.btn} ${styles.btnSecondary} ${styles.btnXs}`}
                     onClick={() => autoLoadTmdb(candidate.tmdbId)}
                   >
                     {candidate.title}
@@ -563,9 +653,9 @@ export default function SeasonManagerPage() {
         )}
 
         {/* Seasons accordion */}
-        <div className="sm-seasons">
+        <div className={styles.seasons}>
           {seasons.length === 0 && !tmdbPreview && (
-            <div className="sm-empty">
+            <div className={styles.empty}>
               No seasons yet. Import from TMDB or add one manually.
             </div>
           )}
@@ -574,16 +664,16 @@ export default function SeasonManagerPage() {
             const isOpen = openSeasonId === season.id;
             const isEditingSeason = seasonEdit?.seasonId === season.id;
             return (
-              <div key={season.id} className={`sm-season ${isOpen ? "sm-season--open" : ""}`}>
+              <div key={season.id} className={clsx(styles.season, isOpen && styles.seasonOpen)}>
                 {/* Season header */}
                 <button
-                  className="sm-season-header"
+                  className={styles.seasonHeader}
                   onClick={() => setOpenSeasonId(isOpen ? null : season.id)}
                 >
                   {isEditingSeason ? (
-                    <div className="sm-season-edit" onClick={(e) => e.stopPropagation()}>
+                    <div className={styles.seasonEdit} onClick={(e) => e.stopPropagation()}>
                       <input
-                        className="sm-form-input sm-season-edit-input"
+                        className={`${styles.formInput} ${styles.seasonEditInput}`}
                         type="number"
                         min="1"
                         value={seasonEdit.newSeasonNumber}
@@ -592,14 +682,14 @@ export default function SeasonManagerPage() {
                         }
                       />
                       <button
-                        className="sm-btn sm-btn--xs sm-btn--primary"
+                        className={`${styles.btn} ${styles.btnXs} ${styles.btnPrimary}`}
                         onClick={() => saveSeasonNumberEdit(season)}
                         disabled={seasonEdit.saving}
                       >
                         {seasonEdit.saving ? <Spinner /> : "Save"}
                       </button>
                       <button
-                        className="sm-btn sm-btn--xs sm-btn--ghost"
+                        className={`${styles.btn} ${styles.btnXs} ${styles.btnGhost}`}
                         onClick={() => setSeasonEdit(null)}
                         disabled={seasonEdit.saving}
                       >
@@ -607,21 +697,21 @@ export default function SeasonManagerPage() {
                       </button>
                     </div>
                   ) : (
-                    <span className="sm-season-num">Season {season.seasonNumber}</span>
+                    <span className={styles.seasonNum}>Season {season.seasonNumber}</span>
                   )}
-                  <span className="sm-season-ep-count">
+                  <span className={styles.seasonEpCount}>
                     {season.episodes.length} episode{season.episodes.length !== 1 ? "s" : ""}
                   </span>
-                  <div className="sm-season-actions" onClick={(e) => e.stopPropagation()}>
+                  <div className={styles.seasonActions} onClick={(e) => e.stopPropagation()}>
                     <button
-                      className="sm-icon-btn"
+                      className={styles.iconBtn}
                       title="Edit season number"
                       onClick={() => startSeasonNumberEdit(season)}
                     >
                       ✏️
                     </button>
                     <button
-                      className="sm-icon-btn sm-icon-btn--danger"
+                      className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
                       title="Delete season"
                       onClick={() => setConfirmDelete({ type: "season", seasonNumber: season.seasonNumber })}
                     >
@@ -633,12 +723,12 @@ export default function SeasonManagerPage() {
 
                 {/* Episodes */}
                 {isOpen && (
-                  <div className="sm-episodes">
+                  <div className={styles.episodes}>
                     {isEditingSeason && seasonEdit?.error && (
-                      <p className="sm-form-error">{seasonEdit.error}</p>
+                      <p className={styles.formError}>{seasonEdit.error}</p>
                     )}
                     {season.episodes.length === 0 && (
-                      <p className="sm-no-episodes">No episodes in this season.</p>
+                      <p className={styles.noEpisodes}>No episodes in this season.</p>
                     )}
 
                     {season.episodes.map((ep) => {
@@ -647,33 +737,33 @@ export default function SeasonManagerPage() {
                         editingEpisode?.episodeNumber === ep.episodeNumber;
 
                       return (
-                        <div key={ep.id} className={`sm-episode ${isEditing ? "sm-episode--editing" : ""}`}>
-                          <span className="sm-ep-num">E{ep.episodeNumber}</span>
+                        <div key={ep.id} className={clsx("group", styles.episode, isEditing && styles.episodeEditing)}>
+                          <span className={styles.epNum}>E{ep.episodeNumber}</span>
 
                           {isEditing ? (
-                            <div className="sm-ep-edit">
+                            <div className={styles.epEdit}>
                               <input
-                                className="sm-ep-input"
+                                className={styles.epInput}
                                 value={editEpForm.title}
                                 onChange={(e) => setEditEpForm((p) => ({ ...p, title: e.target.value }))}
                                 placeholder="Title"
                               />
                               <input
-                                className="sm-ep-input sm-ep-input--short"
+                                className={`${styles.epInput} ${styles.epInputShort}`}
                                 type="number"
                                 value={editEpForm.duration}
                                 onChange={(e) => setEditEpForm((p) => ({ ...p, duration: e.target.value }))}
                                 placeholder="min"
                               />
                               <button
-                                className="sm-btn sm-btn--xs sm-btn--primary"
+                                className={`${styles.btn} ${styles.btnXs} ${styles.btnPrimary}`}
                                 onClick={() => saveEditEpisode(season, ep)}
                                 disabled={editEpSaving}
                               >
                                 {editEpSaving ? <Spinner /> : "Save"}
                               </button>
                               <button
-                                className="sm-btn sm-btn--xs sm-btn--ghost"
+                                className={`${styles.btn} ${styles.btnXs} ${styles.btnGhost}`}
                                 onClick={() => setEditingEpisode(null)}
                               >
                                 Cancel
@@ -681,20 +771,20 @@ export default function SeasonManagerPage() {
                             </div>
                           ) : (
                             <>
-                              <span className="sm-ep-title">{ep.title}</span>
+                              <span className={styles.epTitle}>{ep.title}</span>
                               {ep.duration && (
-                                <span className="sm-ep-duration">{ep.duration}m</span>
+                                <span className={styles.epDuration}>{ep.duration}m</span>
                               )}
-                              <div className="sm-ep-actions">
+                              <div className={styles.epActions}>
                                 <button
-                                  className="sm-icon-btn"
+                                  className={styles.iconBtn}
                                   title="Edit episode"
                                   onClick={() => startEditEpisode(season, ep)}
                                 >
                                   ✏️
                                 </button>
                                 <button
-                                  className="sm-icon-btn sm-icon-btn--danger"
+                                  className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
                                   title="Delete episode"
                                   onClick={() =>
                                     setConfirmDelete({
@@ -733,22 +823,22 @@ export default function SeasonManagerPage() {
         </div>
 
         {/* Add season button */}
-        <div className="sm-add-season-row">
+        <div className={styles.addSeasonRow}>
           {!showAddSeason ? (
-            <button className="sm-btn sm-btn--secondary" onClick={openAddSeason}>
+            <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={openAddSeason}>
               + Add Season Manually
             </button>
           ) : (
-            <div className="sm-add-season-form">
-              <div className="sm-add-season-form-header">
+            <div className={styles.addSeasonForm}>
+              <div className={styles.addSeasonFormHeader}>
                 <h3>New Season</h3>
-                <button className="sm-icon-btn" onClick={() => setShowAddSeason(false)}>✕</button>
+                <button className={styles.iconBtn} onClick={() => setShowAddSeason(false)}>✕</button>
               </div>
 
-              <label className="sm-form-label">
+              <label className={styles.formLabel}>
                 Season Number
                 <input
-                  className="sm-form-input"
+                  className={styles.formInput}
                   type="number"
                   min="1"
                   value={addSeasonForm?.seasonNumber ?? ""}
@@ -758,26 +848,26 @@ export default function SeasonManagerPage() {
                 />
               </label>
 
-              <div className="sm-new-episodes">
-                <p className="sm-new-ep-label">Episodes</p>
+              <div className={styles.newEpisodes}>
+                <p className={styles.newEpLabel}>Episodes</p>
                 {addSeasonForm?.episodes.map((ep, idx) => (
-                  <div key={idx} className="sm-new-ep-row">
-                    <span className="sm-ep-num">E{ep.episodeNumber}</span>
+                  <div key={idx} className={styles.newEpRow}>
+                    <span className={styles.epNum}>E{ep.episodeNumber}</span>
                     <input
-                      className="sm-ep-input"
+                      className={styles.epInput}
                       placeholder="Title"
                       value={ep.title}
                       onChange={(e) => updateAddSeasonEpisode(idx, "title", e.target.value)}
                     />
                     <input
-                      className="sm-ep-input sm-ep-input--short"
+                      className={`${styles.epInput} ${styles.epInputShort}`}
                       type="number"
                       placeholder="min"
                       value={ep.duration}
                       onChange={(e) => updateAddSeasonEpisode(idx, "duration", e.target.value)}
                     />
                     <button
-                      className="sm-icon-btn sm-icon-btn--danger"
+                      className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
                       onClick={() => removeEpisodeFromForm(idx)}
                       disabled={addSeasonForm.episodes.length === 1}
                     >
@@ -785,23 +875,23 @@ export default function SeasonManagerPage() {
                     </button>
                   </div>
                 ))}
-                <button className="sm-btn sm-btn--ghost sm-btn--xs" onClick={addEpisodeToForm}>
+                <button className={`${styles.btn} ${styles.btnGhost} ${styles.btnXs}`} onClick={addEpisodeToForm}>
                   + Add episode
                 </button>
               </div>
 
-              {addSeasonError && <p className="sm-form-error">{addSeasonError}</p>}
+              {addSeasonError && <p className={styles.formError}>{addSeasonError}</p>}
 
-              <div className="sm-form-actions">
+              <div className={styles.formActions}>
                 <button
-                  className="sm-btn sm-btn--primary"
+                  className={`${styles.btn} ${styles.btnPrimary}`}
                   onClick={handleSaveNewSeason}
                   disabled={addSeasonSaving}
                 >
                   {addSeasonSaving ? <><Spinner /> Saving…</> : "Save Season"}
                 </button>
                 <button
-                  className="sm-btn sm-btn--ghost"
+                  className={`${styles.btn} ${styles.btnGhost}`}
                   onClick={() => setShowAddSeason(false)}
                 >
                   Cancel
@@ -813,26 +903,26 @@ export default function SeasonManagerPage() {
 
         {/* Delete confirmation modal */}
         {confirmDelete && (
-          <div className="sm-modal-overlay">
-            <div className="sm-modal">
-              <h3 className="sm-modal-title">Confirm Delete</h3>
-              <p className="sm-modal-body">
+          <div className={styles.modalOverlay}>
+            <div className={styles.modal}>
+              <h3 className={styles.modalTitle}>Confirm Delete</h3>
+              <p className={styles.modalBody}>
                 {confirmDelete.type === "season"
                   ? `Delete Season ${confirmDelete.seasonNumber} and all its episodes?`
                   : `Delete Episode ${confirmDelete.episodeNumber} from Season ${confirmDelete.seasonNumber}?`}
                 <br />
-                <span className="sm-modal-note">This is a soft delete — data is kept in the database.</span>
+                <span className={styles.modalNote}>This is a soft delete — data is kept in the database.</span>
               </p>
-              <div className="sm-modal-actions">
+              <div className={styles.modalActions}>
                 <button
-                  className="sm-btn sm-btn--danger"
+                  className={`${styles.btn} ${styles.btnDanger}`}
                   onClick={handleConfirmDelete}
                   disabled={deleting}
                 >
                   {deleting ? <Spinner /> : "Delete"}
                 </button>
                 <button
-                  className="sm-btn sm-btn--ghost"
+                  className={`${styles.btn} ${styles.btnGhost}`}
                   onClick={() => setConfirmDelete(null)}
                 >
                   Cancel
@@ -841,8 +931,9 @@ export default function SeasonManagerPage() {
             </div>
           </div>
         )}
-      </div>
-    </>
+        </div>
+      </Container>
+    </PageLayout>
   );
 }
 
@@ -874,34 +965,34 @@ function AddEpisodeInline({ nextEpisodeNumber, onAdd }) {
 
   if (!open) {
     return (
-      <button className="sm-add-ep-btn" onClick={() => setOpen(true)}>
+      <button className={styles.addEpBtn} onClick={() => setOpen(true)}>
         + Add episode
       </button>
     );
   }
 
   return (
-    <div className="sm-add-ep-form">
-      <span className="sm-ep-num">E{nextEpisodeNumber}</span>
+    <div className={styles.addEpForm}>
+      <span className={styles.epNum}>E{nextEpisodeNumber}</span>
       <input
-        className="sm-ep-input"
+        className={styles.epInput}
         placeholder="Episode title"
         value={form.title}
         onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
         autoFocus
       />
       <input
-        className="sm-ep-input sm-ep-input--short"
+        className={`${styles.epInput} ${styles.epInputShort}`}
         type="number"
         placeholder="min"
         value={form.duration}
         onChange={(e) => setForm((p) => ({ ...p, duration: e.target.value }))}
       />
-      {error && <span className="sm-form-error">{error}</span>}
-      <button className="sm-btn sm-btn--xs sm-btn--primary" onClick={handleSave} disabled={saving}>
+      {error && <span className={styles.formError}>{error}</span>}
+      <button className={`${styles.btn} ${styles.btnXs} ${styles.btnPrimary}`} onClick={handleSave} disabled={saving}>
         {saving ? <Spinner /> : "Add"}
       </button>
-      <button className="sm-btn sm-btn--xs sm-btn--ghost" onClick={() => setOpen(false)}>
+      <button className={`${styles.btn} ${styles.btnXs} ${styles.btnGhost}`} onClick={() => setOpen(false)}>
         Cancel
       </button>
     </div>

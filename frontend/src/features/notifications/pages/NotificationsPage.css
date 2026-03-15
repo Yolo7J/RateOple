@@ -1,8 +1,0 @@
-.ro-page {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px 14px 40px;
-}
-
-.ro-muted { color: var(--text-muted, #9ba0ab); }
-.ro-error { color: #ff7f7f; }
