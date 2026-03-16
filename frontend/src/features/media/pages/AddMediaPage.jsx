@@ -3,6 +3,8 @@ import clsx from 'clsx';
 import { useNavigate } from 'react-router-dom';
 import { useMediaCart } from '../../../context/MediaCartContext';
 import { useMediaCommands } from '../queries/useMediaCommands';
+import PageLayout from '../../../layouts/PageLayout';
+import Container from '../../../shared/ui/Container';
 
 const STEPS = { SELECT_TYPE: 0, SEARCH: 1, FILL_FORM: 2 };
 const emptyEpisode = (episodeNumber) => ({ episodeNumber, title: '', duration: '' });
@@ -185,7 +187,7 @@ const AddMediaPage = () => {
         getGenres().then(setGenres).catch(() => setGenres([]));
     }, [getGenres]);
 
-    // ── Debounced search ──────────────────────────────────────────────────────
+    // -- Debounced search --------------------------------------------------------
     useEffect(() => {
         if (step !== STEPS.SEARCH || !searchQuery.trim()) {
             setSearchResults([]);
@@ -241,7 +243,7 @@ const AddMediaPage = () => {
         setStep(STEPS.SEARCH);
     };
 
-    // ── Result selected — fetch details then go to form ───────────────────────
+    // -- Result selected - fetch details then go to form -------------------------
     const handleSelectResult = async (result) => {
         try {
             if (mediaType === 'Book') {
@@ -436,7 +438,7 @@ const AddMediaPage = () => {
         }
     };
 
-    // ── Step 0: Select type ───────────────────────────────────────────────────
+    // -- Step 0: Select type -----------------------------------------------------
     if (step === STEPS.SELECT_TYPE) {
         return (
             <PageLayout>
@@ -446,9 +448,9 @@ const AddMediaPage = () => {
                         <p className={styles.sub}>What type of media are you adding?</p>
                         <div className={styles.typeSelectGrid}>
                             {[
-                                { type: 'Movie',    icon: '🎬', label: 'Movie'     },
-                                { type: 'Book',     icon: '📚', label: 'Book'      },
-                                { type: 'TvSeries', icon: '📺', label: 'TV Series' },
+                                { type: 'Movie',    icon: 'M', label: 'Movie'     },
+                                { type: 'Book',     icon: 'B', label: 'Book'      },
+                                { type: 'TvSeries', icon: 'TV', label: 'TV Series' },
                             ].map(({ type, icon, label }) => (
                                 <button
                                     key={type}
@@ -466,18 +468,18 @@ const AddMediaPage = () => {
         );
     }
 
-    // ── Step 1: Search ────────────────────────────────────────────────────────
+    // -- Step 1: Search ----------------------------------------------------------
     if (step === STEPS.SEARCH) {
         const isBook = mediaType === 'Book';
         const placeholder = isBook
-            ? 'Search by title, author, ISBN…'
-            : mediaType === 'TvSeries' ? 'Search TV series…' : 'Search movies…';
+            ? 'Search by title, author, ISBN...'
+            : mediaType === 'TvSeries' ? 'Search TV series...' : 'Search movies...';
 
         return (
             <PageLayout>
                 <Container size="full">
                     <div className={styles.page}>
-                        <button className={styles.backBtn} onClick={() => setStep(STEPS.SELECT_TYPE)}>← Back</button>
+                        <button className={styles.backBtn} onClick={() => setStep(STEPS.SELECT_TYPE)}>&lt;- Back</button>
                         <h1 className={styles.heading}>
                             {isBook ? 'Search Open Library' : 'Search TMDB'}
                         </h1>
@@ -494,7 +496,7 @@ const AddMediaPage = () => {
                             autoFocus
                         />
 
-                        {searchLoading && <p className={styles.searchStatus}>Searching…</p>}
+                        {searchLoading && <p className={styles.searchStatus}>Searching...</p>}
                         {searchError && <p className={`${styles.searchStatus} ${styles.searchError}`}>{searchError}</p>}
 
                         <div className={styles.results}>
@@ -517,7 +519,7 @@ const AddMediaPage = () => {
                         </div>
 
                         <button className={styles.skipBtn} onClick={handleSkipSearch}>
-                            Skip and fill manually →
+                            Skip and fill manually -&gt;
                         </button>
                     </div>
                 </Container>
@@ -525,18 +527,18 @@ const AddMediaPage = () => {
         );
     }
 
-    // ── Post-add TvSeries prompt ───────────────────────────────────────────────
+    // -- Post-add TvSeries prompt ------------------------------------------------
     if (justAddedSeries) {
         return (
             <PageLayout>
                 <Container size="full">
                     <div className={styles.page}>
                         <div className={styles.addedBanner}>
-                            <span className={styles.addedIcon}>📺</span>
+                            <span className={styles.addedIcon}>TV</span>
                             <h2 className={styles.addedTitle}>"{form.title}" added to cart</h2>
                             <p className={styles.addedSub}>
                                 The series is in your cart. You can submit it now, or first
-                                go to your cart and confirm the submission — then manage its
+                                go to your cart and confirm the submission - then manage its
                                 seasons and episodes from the media detail page.
                             </p>
                             <div className={styles.addedActions}>
@@ -544,7 +546,7 @@ const AddMediaPage = () => {
                                     className={`${styles.addedBtn} ${styles.addedPrimary}`}
                                     onClick={() => navigate('/cart')}
                                 >
-                                    Go to Cart & Submit →
+                                    Go to Cart & Submit -&gt;
                                 </button>
                                 <button
                                     className={`${styles.addedBtn} ${styles.addedGhost}`}
@@ -558,7 +560,7 @@ const AddMediaPage = () => {
                                 </button>
                             </div>
                             <p className={styles.addedNote}>
-                                💡 After submitting, open the series page and click
+                                Tip: After submitting, open the series page and click
                                 <strong> "Manage Seasons"</strong> to import or edit seasons and episodes.
                                 {selectedTmdbSeries && " TMDB data will auto-load."}
                             </p>
@@ -569,7 +571,7 @@ const AddMediaPage = () => {
         );
     }
 
-    // ── Step 2: Fill form ─────────────────────────────────────────────────────
+    // -- Step 2: Fill form -------------------------------------------------------
     const f   = (field) => form[field];
     const set = (field) => (e) => setForm(prev => ({ ...prev, [field]: e.target.value }));
 
@@ -577,14 +579,14 @@ const AddMediaPage = () => {
         <PageLayout>
             <Container size="full">
                 <div className={styles.page}>
-                    <button className={styles.backBtn} onClick={() => setStep(STEPS.SEARCH)}>← Back</button>
+                    <button className={styles.backBtn} onClick={() => setStep(STEPS.SEARCH)}>&lt;- Back</button>
                     <h1 className={styles.heading}>
                         {mediaType === 'TvSeries' ? 'Add TV Series' : `Add ${mediaType}`}
                     </h1>
 
                     {mediaType === 'TvSeries' && (
                         <div className={styles.seriesNotice}>
-                            📺 After adding to cart and submitting, you'll be able to manage
+                            TV After adding to cart and submitting, you'll be able to manage
                             seasons &amp; episodes from the series page.
                             {selectedTmdbSeries && ' TMDB seasons will auto-load.'}
                         </div>
@@ -609,7 +611,7 @@ const AddMediaPage = () => {
                                 </label>
                                 <label className={styles.formLabel}>
                                     Cover Image URL
-                                    <input className={styles.formInput} value={f('coverUrl')} onChange={set('coverUrl')} placeholder="https://…" />
+                                    <input className={styles.formInput} value={f('coverUrl')} onChange={set('coverUrl')} placeholder="https://..." />
                                 </label>
                                 <div className={styles.formRow2}>
                                     <label className={styles.formLabel}>
@@ -771,7 +773,7 @@ const AddMediaPage = () => {
 
                         <div className={styles.formActions}>
                             <button type="submit" className={styles.saveBtn} disabled={saving}>
-                                {saving ? 'Saving…' : 'Add to Cart'}
+                                {saving ? 'Saving...' : 'Add to Cart'}
                             </button>
                             <button type="button" className={styles.cancelBtn} onClick={() => navigate('/media')}>
                                 Cancel
