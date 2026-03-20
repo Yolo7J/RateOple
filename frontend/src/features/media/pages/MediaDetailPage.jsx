@@ -3,8 +3,13 @@ import clsx from 'clsx';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { useMediaDetailsQuery } from '../queries/useMediaDetailsQuery';
+import { useTvSeriesSeasonsQuery } from '../queries/useTvSeriesSeasonsQuery';
 import { useMediaRatingSummaryQuery } from '../../ratings/queries/useMediaRatingSummaryQuery';
 import { useRateMediaMutation } from '../../ratings/queries/useRateMediaMutation';
+import { useSeasonRatingSummaryQuery } from '../../ratings/queries/useSeasonRatingSummaryQuery';
+import { useEpisodeRatingSummaryQuery } from '../../ratings/queries/useEpisodeRatingSummaryQuery';
+import { useRateSeasonMutation } from '../../ratings/queries/useRateSeasonMutation';
+import { useRateEpisodeMutation } from '../../ratings/queries/useRateEpisodeMutation';
 import { useReviewsQuery } from '../../reviews/queries/useReviewsQuery';
 import { useReviewMutations } from '../../reviews/queries/useReviewMutations';
 import { useSimilarMediaQuery } from '../../discovery/queries/useSimilarMediaQuery';
@@ -52,7 +57,184 @@ const styles = {
   title: 'text-3xl font-semibold text-[var(--text-primary)]',
   description: 'text-[var(--text-secondary)]',
   sectionTitle: 'text-xl font-semibold',
+  seasonsCard: [
+    'rounded-2xl border border-[var(--border)] bg-[var(--card-bg)]',
+    'p-4 sm:p-6',
+  ].join(' '),
+  seasonCard: [
+    'rounded-2xl border border-[var(--border)] bg-[var(--bg-secondary)]',
+    'p-4 shadow-[0_12px_22px_-22px_var(--shadow-color)]',
+  ].join(' '),
+  seasonHeader: 'flex flex-wrap items-center justify-between gap-3',
+  seasonTitle: 'text-lg font-semibold text-[var(--text-primary)]',
+  seasonMeta: 'text-xs text-[var(--text-muted)]',
+  seasonToggle: [
+    'rounded-full border border-[var(--button-border)] bg-[var(--button-bg)] px-3 py-1.5 text-sm font-medium',
+    'text-[var(--text-primary)] transition hover:bg-[var(--button-hover-bg)]',
+  ].join(' '),
+  episodeList: 'mt-4 grid gap-3',
+  episodeCard: [
+    'rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)]',
+    'p-3 sm:p-4',
+  ].join(' '),
+  episodeTitle: 'text-sm font-semibold text-[var(--text-primary)]',
+  episodeMeta: 'text-xs text-[var(--text-muted)]',
+  ratingBlock: 'mt-3 rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-3 sm:p-4',
 };
+
+function SeasonRatingReview({ seasonId, user }) {
+  const [ratingDto, setRatingDto] = useState(null);
+  const [actionError, setActionError] = useState('');
+  const { data: summary, refetch } = useSeasonRatingSummaryQuery(seasonId);
+  const { mutate: rateSeason, loading: submittingRating } = useRateSeasonMutation();
+  const { createReview, loading: submittingReview } = useReviewMutations();
+
+  const handleRate = async (value) => {
+    setActionError('');
+    try {
+      const dto = await rateSeason(seasonId, value);
+      setRatingDto(dto);
+      await refetch();
+    } catch (e) {
+      setActionError(e.response?.data?.message || 'Could not save rating.');
+    }
+  };
+
+  const ensureRatingId = async () => {
+    if (ratingDto?.id) return ratingDto.id;
+    if (!summary?.userRating) return null;
+    const dto = await rateSeason(seasonId, summary.userRating);
+    setRatingDto(dto);
+    return dto.id;
+  };
+
+  const handleCreateReview = async (content) => {
+    setActionError('');
+    try {
+      const ratingId = await ensureRatingId();
+      if (!ratingId) {
+        setActionError('Please rate this season first.');
+        return;
+      }
+      await createReview({
+        ratingId,
+        content,
+        containsSpoilers: false,
+      });
+    } catch (e) {
+      setActionError(e.response?.data?.message || 'Could not post review.');
+    }
+  };
+
+  return (
+    <div className={styles.ratingBlock}>
+      <UserRatingDisplay
+        averageRating={summary?.averageRating ?? 0}
+        ratingsCount={summary?.ratingsCount ?? 0}
+        userRating={summary?.userRating ?? null}
+      />
+
+      {user ? (
+        <RatingSelector
+          key={`season-rating-${summary?.userRating ?? 'none'}`}
+          initialValue={summary?.userRating ?? 10}
+          onSubmit={handleRate}
+          submitting={submittingRating}
+        />
+      ) : null}
+
+      {user && (summary?.userRating || ratingDto?.id) ? (
+        <ReviewEditor
+          onSubmit={handleCreateReview}
+          submitting={submittingReview}
+        />
+      ) : null}
+
+      {user && !summary?.userRating && !ratingDto?.id ? (
+        <p className={styles.muted}>Rate this season first to post a review.</p>
+      ) : null}
+
+      {actionError ? <p className={styles.error}>{actionError}</p> : null}
+    </div>
+  );
+}
+
+function EpisodeRatingReview({ episodeId, user }) {
+  const [ratingDto, setRatingDto] = useState(null);
+  const [actionError, setActionError] = useState('');
+  const { data: summary, refetch } = useEpisodeRatingSummaryQuery(episodeId);
+  const { mutate: rateEpisode, loading: submittingRating } = useRateEpisodeMutation();
+  const { createReview, loading: submittingReview } = useReviewMutations();
+
+  const handleRate = async (value) => {
+    setActionError('');
+    try {
+      const dto = await rateEpisode(episodeId, value);
+      setRatingDto(dto);
+      await refetch();
+    } catch (e) {
+      setActionError(e.response?.data?.message || 'Could not save rating.');
+    }
+  };
+
+  const ensureRatingId = async () => {
+    if (ratingDto?.id) return ratingDto.id;
+    if (!summary?.userRating) return null;
+    const dto = await rateEpisode(episodeId, summary.userRating);
+    setRatingDto(dto);
+    return dto.id;
+  };
+
+  const handleCreateReview = async (content) => {
+    setActionError('');
+    try {
+      const ratingId = await ensureRatingId();
+      if (!ratingId) {
+        setActionError('Please rate this episode first.');
+        return;
+      }
+      await createReview({
+        ratingId,
+        content,
+        containsSpoilers: false,
+      });
+    } catch (e) {
+      setActionError(e.response?.data?.message || 'Could not post review.');
+    }
+  };
+
+  return (
+    <div className={styles.ratingBlock}>
+      <UserRatingDisplay
+        averageRating={summary?.averageRating ?? 0}
+        ratingsCount={summary?.ratingsCount ?? 0}
+        userRating={summary?.userRating ?? null}
+      />
+
+      {user ? (
+        <RatingSelector
+          key={`episode-rating-${summary?.userRating ?? 'none'}`}
+          initialValue={summary?.userRating ?? 10}
+          onSubmit={handleRate}
+          submitting={submittingRating}
+        />
+      ) : null}
+
+      {user && (summary?.userRating || ratingDto?.id) ? (
+        <ReviewEditor
+          onSubmit={handleCreateReview}
+          submitting={submittingReview}
+        />
+      ) : null}
+
+      {user && !summary?.userRating && !ratingDto?.id ? (
+        <p className={styles.muted}>Rate this episode first to post a review.</p>
+      ) : null}
+
+      {actionError ? <p className={styles.error}>{actionError}</p> : null}
+    </div>
+  );
+}
 
 function MediaDetailPage() {
   const { id } = useParams();
@@ -63,8 +245,15 @@ function MediaDetailPage() {
   const [sortBy, setSortBy] = useState('recent');
   const [ratingDto, setRatingDto] = useState(null);
   const [actionError, setActionError] = useState('');
+  const [openSeasonId, setOpenSeasonId] = useState(null);
 
   const { data: media, loading: mediaLoading, error: mediaError } = useMediaDetailsQuery(id);
+  const shouldFetchSeasons = media?.type === 'TvSeries';
+  const {
+    data: seasonsData,
+    loading: seasonsLoading,
+    error: seasonsError,
+  } = useTvSeriesSeasonsQuery(shouldFetchSeasons ? id : null);
   const {
     data: summary,
     loading: summaryLoading,
@@ -85,6 +274,7 @@ function MediaDetailPage() {
 
   const reviews = useMemo(() => (Array.isArray(reviewsData) ? reviewsData : []), [reviewsData]);
   const similar = Array.isArray(similarData) ? similarData : [];
+  const seasons = Array.isArray(seasonsData) ? seasonsData : [];
 
   const loading = mediaLoading || summaryLoading;
   const error = mediaError || summaryError;
@@ -242,6 +432,72 @@ function MediaDetailPage() {
                   onSave={handleSaveStatus}
                   saving={savingStatus}
                 />
+              ) : null}
+
+              {shouldFetchSeasons ? (
+                <section className={styles.seasonsCard}>
+                  <Stack className={styles.sectionStack}>
+                    <h2 className={styles.sectionTitle}>Seasons</h2>
+
+                    {seasonsLoading ? (
+                      <p className={styles.muted}>Loading seasons...</p>
+                    ) : seasonsError ? (
+                      <p className={styles.error}>Failed to load seasons.</p>
+                    ) : seasons.length === 0 ? (
+                      <p className={styles.muted}>No seasons found.</p>
+                    ) : (
+                      <Stack className={styles.sectionStack}>
+                        {seasons.map((season) => {
+                          const isOpen = openSeasonId === season.id;
+                          return (
+                            <div key={season.id} className={styles.seasonCard}>
+                              <div className={styles.seasonHeader}>
+                                <div>
+                                  <p className={styles.seasonTitle}>Season {season.seasonNumber}</p>
+                                  <p className={styles.seasonMeta}>
+                                    {(season.episodes ?? []).length} episodes
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  className={styles.seasonToggle}
+                                  onClick={() => setOpenSeasonId(isOpen ? null : season.id)}
+                                >
+                                  {isOpen ? 'Hide' : 'View'}
+                                </button>
+                              </div>
+
+                              {isOpen ? (
+                                <div className="mt-4">
+                                  <SeasonRatingReview seasonId={season.id} user={user} />
+
+                                  <div className={styles.episodeList}>
+                                    {(season.episodes ?? []).map((ep) => (
+                                      <div key={ep.id} className={styles.episodeCard}>
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                          <div>
+                                            <p className={styles.episodeTitle}>
+                                              E{ep.episodeNumber} · {ep.title || `Episode ${ep.episodeNumber}`}
+                                            </p>
+                                            {ep.duration ? (
+                                              <p className={styles.episodeMeta}>{ep.duration} min</p>
+                                            ) : null}
+                                          </div>
+                                        </div>
+
+                                        <EpisodeRatingReview episodeId={ep.id} user={user} />
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : null}
+                            </div>
+                          );
+                        })}
+                      </Stack>
+                    )}
+                  </Stack>
+                </section>
               ) : null}
             </Stack>
           ) : null}
