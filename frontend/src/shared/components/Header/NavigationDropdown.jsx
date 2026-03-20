@@ -41,13 +41,13 @@ const NavigationDropdown = ({ className, label, path, items }) => {
   return (
     <div className={clsx('relative flex items-center gap-1', className)} ref={dropdownRef}>
       <button
-        className="text-sm font-medium text-[var(--text-secondary)] transition hover:text-[var(--text-primary)]"
+        className="rounded-full px-2 py-1 text-sm font-medium text-[var(--text-secondary)] transition hover:bg-[var(--button-hover-bg)] hover:text-[var(--text-primary)]"
         onClick={() => handleNavigate(resolvedPath)}
       >
         {resolvedLabel}
       </button>
       <button
-        className="flex items-center justify-center rounded-md border border-transparent p-1 text-[var(--text-secondary)] transition hover:border-[var(--button-border)] hover:bg-[var(--button-hover-bg)] hover:text-[var(--text-primary)]"
+        className="flex items-center justify-center rounded-full border border-transparent p-1 text-[var(--text-secondary)] transition hover:border-[var(--button-border)] hover:bg-[var(--button-hover-bg)] hover:text-[var(--text-primary)]"
         onClick={() => setIsOpen((prev) => !prev)}
         aria-label={resolvedLabel}
         aria-expanded={isOpen}
@@ -58,7 +58,7 @@ const NavigationDropdown = ({ className, label, path, items }) => {
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          strokeWidth="2"
+          strokeWidth="2.2"
         >
           <polyline points="6 9 12 15 18 9" />
         </svg>
@@ -66,13 +66,13 @@ const NavigationDropdown = ({ className, label, path, items }) => {
 
       {isOpen ? (
         <div
-          className="absolute left-0 top-full z-50 mt-2 w-48 overflow-hidden rounded-lg border border-[var(--dropdown-border)] bg-[var(--dropdown-bg)] shadow-lg"
+          className="absolute left-0 top-full z-50 mt-3 w-60 overflow-hidden rounded-2xl border border-[var(--dropdown-border)] bg-[var(--dropdown-bg)] shadow-[0_18px_40px_-24px_var(--shadow-color)]"
           role="menu"
         >
           {resolvedItems.map((item) => (
             <button
               key={item.path}
-              className="flex w-full items-center justify-between px-4 py-2 text-left text-sm text-[var(--text-primary)] transition hover:bg-[var(--dropdown-hover-bg)]"
+              className="flex w-full items-center justify-between px-5 py-3 text-left text-base text-[var(--text-primary)] transition hover:bg-[var(--dropdown-hover-bg)]"
               onClick={() => handleNavigate(item.path)}
               role="menuitem"
             >

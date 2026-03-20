@@ -5,9 +5,10 @@ import { useLanguage } from '../../../hooks/useLanguage';
 const styles = {
   wrapper: 'relative',
   button: [
-    'flex items-center gap-2 rounded-lg border border-[var(--button-border)]',
-    'bg-[var(--button-bg)] px-3 py-2 text-sm font-medium text-[var(--text-primary)]',
-    'transition hover:bg-[var(--button-hover-bg)] hover:border-[var(--primary-color)] hover:-translate-y-0.5',
+    'flex h-10 items-center gap-1.5 rounded-lg border border-[var(--button-border)]',
+    'bg-[var(--button-bg)] px-3 text-sm font-medium text-[var(--text-primary)]',
+    'transition duration-200 hover:bg-[var(--button-hover-bg)] hover:border-[var(--primary-color)] hover:-translate-y-0.5',
+    'lg:h-11',
   ].join(' '),
   icon: 'transition group-hover:rotate-12',
   dropdown: [
@@ -65,9 +66,7 @@ const LanguageToggle = () => {
         aria-expanded={isOpen}
       >
         <svg
-          className={styles.icon}
-          width="20"
-          height="20"
+          className="h-5 w-5 lg:h-6 lg:w-6 transition duration-200"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"

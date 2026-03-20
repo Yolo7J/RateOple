@@ -2,11 +2,12 @@ import { useTheme } from '../../../hooks/useTheme';
 
 const styles = {
   button: [
-    'flex items-center justify-center rounded-lg border border-[var(--button-border)]',
-    'bg-[var(--button-bg)] p-2 text-[var(--text-primary)] transition',
+    'flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--button-border)]',
+    'bg-[var(--button-bg)] text-[var(--text-primary)] transition duration-200',
     'hover:bg-[var(--button-hover-bg)] hover:border-[var(--primary-color)] hover:-translate-y-0.5',
+    'lg:h-11 lg:w-11',
   ].join(' '),
-  icon: 'transition group-hover:rotate-12',
+  icon: 'h-5 w-5 lg:h-6 lg:w-6 transition duration-200 group-hover:rotate-12',
 };
 
 const ThemeToggle = () => {
@@ -22,8 +23,6 @@ const ThemeToggle = () => {
       {theme === 'light' ? (
         <svg
           className={styles.icon}
-          width="20"
-          height="20"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -34,8 +33,6 @@ const ThemeToggle = () => {
       ) : (
         <svg
           className={styles.icon}
-          width="20"
-          height="20"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"

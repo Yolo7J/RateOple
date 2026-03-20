@@ -1,8 +1,23 @@
 import api from "../../../shared/api/apiClient";
 
+const serializeParams = (params) => {
+  const search = new URLSearchParams();
+  Object.entries(params ?? {}).forEach(([key, value]) => {
+    if (value === undefined || value === null) return;
+    if (Array.isArray(value)) {
+      value.forEach((v) => {
+        if (v !== undefined && v !== null) search.append(key, String(v));
+      });
+      return;
+    }
+    search.append(key, String(value));
+  });
+  return search.toString();
+};
+
 // ── Read ──────────────────────────────────────────────────────────────────────
 export const getAll = (params) =>
-  api.get("/media", { params }).then((r) => r.data);
+  api.get("/media", { params, paramsSerializer: serializeParams }).then((r) => r.data);
 
 export const getMediaById = (id) =>
   api.get(`/media/${id}`).then((r) => r.data);
