@@ -4,6 +4,8 @@ import { useAuth } from '../../../context/AuthContext';
 import { useGroupDetailsQuery } from '../queries/useGroupDetailsQuery';
 import { useGroupPostsQuery } from '../queries/useGroupPostsQuery';
 import { useGroupPinnedMediaQuery } from '../queries/useGroupPinnedMediaQuery';
+import { useGroupMembersQuery } from '../queries/useGroupMembersQuery';
+import { useGroupStaffMessagesQuery } from '../queries/useGroupStaffMessagesQuery';
 import { useGroupMutations } from '../queries/useGroupMutations';
 import GroupPostCard from '../components/GroupPostCard';
 import PageLayout from '../../../layouts/PageLayout';
@@ -36,6 +38,26 @@ const styles = {
   pinnedGrid: 'gap-3',
   pinnedItem: 'rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] p-3',
   posts: 'grid gap-4',
+  staffGrid: 'grid gap-3',
+  staffMessage: 'rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] p-3',
+  staffHeader: 'flex flex-wrap items-center justify-between gap-2',
+  memberRow: 'flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] p-3',
+  roleBadge: 'rounded-full bg-[var(--bg-secondary)] px-2 py-1 text-xs text-[var(--text-muted)]',
+  actionRow: 'flex flex-wrap gap-2',
+};
+
+const GROUP_ROLE = {
+  Member: 1,
+  Moderator: 2,
+  Admin: 3,
+  Owner: 4,
+};
+
+const ROLE_LABELS = {
+  1: 'Member',
+  2: 'Moderator',
+  3: 'Admin',
+  4: 'Owner',
 };
 
 function GroupDetailPage() {
@@ -44,13 +66,23 @@ function GroupDetailPage() {
   const { data: group, loading, error } = useGroupDetailsQuery(id);
   const { data: postsData, loading: postsLoading, error: postsError } = useGroupPostsQuery(id, { page: 1, pageSize: 30 });
   const { data: pinnedData } = useGroupPinnedMediaQuery(id);
-  const { joinGroup, leaveGroup, createPost, addPinnedMedia, loading: mutating } = useGroupMutations();
+  const { joinGroup, leaveGroup, createPost, addPinnedMedia, setMemberRole, banUser, createStaffMessage, loading: mutating } = useGroupMutations();
 
   const posts = useMemo(() => (Array.isArray(postsData?.items) ? postsData.items : []), [postsData]);
   const pinned = Array.isArray(pinnedData) ? pinnedData : [];
+  const viewerRole = group?.viewerRole ?? null;
+  const isMember = Boolean(viewerRole);
+  const canManageRoles = viewerRole === GROUP_ROLE.Owner || viewerRole === GROUP_ROLE.Admin;
+  const canModerate = viewerRole === GROUP_ROLE.Owner || viewerRole === GROUP_ROLE.Admin || viewerRole === GROUP_ROLE.Moderator;
+
+  const { data: membersData } = useGroupMembersQuery(id, canManageRoles);
+  const { data: staffData } = useGroupStaffMessagesQuery(id, canModerate);
+  const members = Array.isArray(membersData) ? membersData : [];
+  const staffMessages = Array.isArray(staffData) ? staffData : [];
 
   const [postForm, setPostForm] = useState({ title: '', content: '', mediaIds: '' });
   const [pinMediaId, setPinMediaId] = useState('');
+  const [staffMessage, setStaffMessage] = useState('');
   const [actionError, setActionError] = useState('');
 
   const handleJoin = async () => {
@@ -107,6 +139,26 @@ function GroupDetailPage() {
     }
   };
 
+  const handleRoleChange = async (userId, role) => {
+    if (!id) return;
+    setActionError('');
+    try {
+      await setMemberRole(id, userId, role);
+    } catch (err) {
+      setActionError(err?.response?.data?.message || 'Could not update role.');
+    }
+  };
+
+  const handleBanUser = async (userId) => {
+    if (!id) return;
+    setActionError('');
+    try {
+      await banUser(id, { userId });
+    } catch (err) {
+      setActionError(err?.response?.data?.message || 'Could not ban user.');
+    }
+  };
+
   if (loading) {
     return (
       <PageLayout>
@@ -141,12 +193,16 @@ function GroupDetailPage() {
 
           {user ? (
             <div className={styles.controls}>
-              <button className={styles.button} type="button" onClick={handleJoin} disabled={mutating}>
-                Join Group
-              </button>
-              <button className={styles.button} type="button" onClick={handleLeave} disabled={mutating}>
-                Leave Group
-              </button>
+              {!isMember ? (
+                <button className={styles.button} type="button" onClick={handleJoin} disabled={mutating}>
+                  Join Group
+                </button>
+              ) : null}
+              {isMember && viewerRole !== GROUP_ROLE.Owner ? (
+                <button className={styles.button} type="button" onClick={handleLeave} disabled={mutating}>
+                  Leave Group
+                </button>
+              ) : null}
             </div>
           ) : null}
 
@@ -155,7 +211,7 @@ function GroupDetailPage() {
           <section className={styles.section}>
             <Stack className="gap-4">
               <h2 className={styles.sectionTitle}>Pinned Media</h2>
-              {user ? (
+              {canModerate ? (
                 <form className={styles.form} onSubmit={handlePinMedia}>
                   <input
                     className={styles.input}
@@ -183,7 +239,7 @@ function GroupDetailPage() {
           <section className={styles.section}>
             <Stack className="gap-4">
               <h2 className={styles.sectionTitle}>Create Post</h2>
-              {user ? (
+              {user && isMember ? (
                 <form className={styles.form} onSubmit={handleCreatePost}>
                   <input
                     className={styles.input}
@@ -211,10 +267,134 @@ function GroupDetailPage() {
                   </button>
                 </form>
               ) : (
-                <p className={styles.muted}>Join and sign in to create posts.</p>
+                <p className={styles.muted}>Join the group to create posts.</p>
               )}
             </Stack>
           </section>
+
+          {canManageRoles ? (
+            <section className={styles.section}>
+              <Stack className="gap-4">
+                <h2 className={styles.sectionTitle}>Members</h2>
+                <div className={styles.staffGrid}>
+                  {members.map((member) => {
+                    const canSetAdmin = viewerRole === GROUP_ROLE.Owner && member.role !== GROUP_ROLE.Owner;
+                    const canSetModerator =
+                      member.role !== GROUP_ROLE.Owner &&
+                      (viewerRole === GROUP_ROLE.Owner || viewerRole === GROUP_ROLE.Admin);
+                    const canDemote =
+                      member.role !== GROUP_ROLE.Owner &&
+                      (viewerRole === GROUP_ROLE.Owner || viewerRole === GROUP_ROLE.Admin);
+                    const canBan =
+                      member.role !== GROUP_ROLE.Owner &&
+                      (viewerRole === GROUP_ROLE.Owner ||
+                        (viewerRole === GROUP_ROLE.Admin && member.role !== GROUP_ROLE.Admin));
+
+                    return (
+                      <div key={member.userId} className={styles.memberRow}>
+                        <div>
+                          <p className="text-sm font-semibold text-[var(--text-primary)]">
+                            {member.userName || member.userId}
+                          </p>
+                          <span className={styles.roleBadge}>Role: {ROLE_LABELS[member.role] || member.role}</span>
+                        </div>
+                        <div className={styles.actionRow}>
+                          {canSetAdmin ? (
+                            <button
+                              className={styles.button}
+                              type="button"
+                              onClick={() => handleRoleChange(member.userId, GROUP_ROLE.Admin)}
+                              disabled={mutating}
+                            >
+                              Make admin
+                            </button>
+                          ) : null}
+                          {canSetModerator ? (
+                            <button
+                              className={styles.button}
+                              type="button"
+                              onClick={() => handleRoleChange(member.userId, GROUP_ROLE.Moderator)}
+                              disabled={mutating}
+                            >
+                              Make mod
+                            </button>
+                          ) : null}
+                          {canDemote ? (
+                            <button
+                              className={styles.button}
+                              type="button"
+                              onClick={() => handleRoleChange(member.userId, GROUP_ROLE.Member)}
+                              disabled={mutating}
+                            >
+                              Make member
+                            </button>
+                          ) : null}
+                          {canBan ? (
+                            <button
+                              className={styles.button}
+                              type="button"
+                              onClick={() => handleBanUser(member.userId)}
+                              disabled={mutating}
+                            >
+                              Ban
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {members.length === 0 ? <p className={styles.muted}>No members loaded.</p> : null}
+                </div>
+              </Stack>
+            </section>
+          ) : null}
+
+          {canModerate ? (
+            <section className={styles.section}>
+              <Stack className="gap-4">
+                <h2 className={styles.sectionTitle}>Staff Chat</h2>
+                <form
+                  className={styles.form}
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!staffMessage.trim() || !id) return;
+                    setActionError('');
+                    try {
+                      await createStaffMessage(id, { content: staffMessage.trim() });
+                      setStaffMessage('');
+                    } catch (err) {
+                      setActionError(err?.response?.data?.message || 'Could not send staff message.');
+                    }
+                  }}
+                >
+                  <textarea
+                    className={styles.input}
+                    rows={3}
+                    placeholder="Share a note with admins/mods..."
+                    value={staffMessage}
+                    onChange={(e) => setStaffMessage(e.target.value)}
+                  />
+                  <button className={styles.button} type="submit" disabled={mutating}>
+                    Send
+                  </button>
+                </form>
+                <div className={styles.staffGrid}>
+                  {staffMessages.map((message) => (
+                    <article key={message.id} className={styles.staffMessage}>
+                      <div className={styles.staffHeader}>
+                        <p className="text-sm font-semibold text-[var(--text-primary)]">
+                          {message.authorName || message.authorId}
+                        </p>
+                        <p className={styles.muted}>{new Date(message.createdAt).toLocaleString()}</p>
+                      </div>
+                      <p className="text-sm text-[var(--text-secondary)]">{message.content}</p>
+                    </article>
+                  ))}
+                  {staffMessages.length === 0 ? <p className={styles.muted}>No staff messages yet.</p> : null}
+                </div>
+              </Stack>
+            </section>
+          ) : null}
 
           <section className={styles.section}>
             <Stack className="gap-4">

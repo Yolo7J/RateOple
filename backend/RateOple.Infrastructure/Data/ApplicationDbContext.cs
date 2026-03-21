@@ -34,6 +34,9 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, 
     public DbSet<GroupPost> GroupPosts { get; set; }
     public DbSet<PostMedia> PostMediaLinks { get; set; }
     public DbSet<GroupMedia> GroupMediaLinks { get; set; }
+    public DbSet<GroupPostVote> GroupPostVotes { get; set; }
+    public DbSet<GroupBan> GroupBans { get; set; }
+    public DbSet<GroupStaffMessage> GroupStaffMessages { get; set; }
 
     // Moderation
     public DbSet<Report> Reports { get; set; }

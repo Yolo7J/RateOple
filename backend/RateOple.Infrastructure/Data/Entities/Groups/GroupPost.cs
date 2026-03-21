@@ -25,4 +25,5 @@ public class GroupPost
     public Group Group { get; set; } = null!;
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
     public ICollection<PostMedia> MediaLinks { get; set; } = new List<PostMedia>();
+    public ICollection<GroupPostVote> Votes { get; set; } = new List<GroupPostVote>();
 }

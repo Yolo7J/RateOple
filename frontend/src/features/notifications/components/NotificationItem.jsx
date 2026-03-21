@@ -19,6 +19,9 @@ const NOTIFICATION_LABELS = {
   1: 'System notification',
   2: 'Report status updated',
   3: 'Moderator assignment',
+  4: 'You were banned from a group',
+  5: 'You were unbanned from a group',
+  6: 'Your comment was removed',
 };
 
 function NotificationItem({ notification, onMarkRead, disabled = false }) {

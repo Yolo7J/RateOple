@@ -20,15 +20,37 @@ public class GroupsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<PagedGroupsDto>> GetGroups([FromQuery] GroupQueryDto query)
     {
-        var result = await _groupService.GetGroupsAsync(query);
+        var result = await _groupService.GetGroupsAsync(query, GetOptionalUserId());
         return Ok(result);
     }
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<GroupSummaryDto>> GetById(Guid id)
     {
-        var group = await _groupService.GetGroupByIdAsync(id);
+        var group = await _groupService.GetGroupByIdAsync(id, GetOptionalUserId());
         return group == null ? NotFound() : Ok(group);
+    }
+
+    [HttpGet("{id:guid}/members")]
+    [Authorize]
+    public async Task<ActionResult<IReadOnlyList<GroupMemberDto>>> GetMembers(Guid id)
+    {
+        var userId = GetRequiredUserId();
+        if (!userId.HasValue) return Unauthorized();
+
+        try
+        {
+            var members = await _groupService.GetMembersAsync(id, userId.Value);
+            return Ok(members);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
     }
 
     [HttpPost]
@@ -158,12 +180,237 @@ public class GroupsController : ControllerBase
     {
         try
         {
-            var posts = await _groupService.GetPostsAsync(id, page, pageSize);
+            var posts = await _groupService.GetPostsAsync(id, page, pageSize, GetOptionalUserId());
             return Ok(posts);
         }
         catch (KeyNotFoundException)
         {
             return NotFound();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+    }
+
+    [HttpGet("{id:guid}/posts/{postId:guid}")]
+    public async Task<ActionResult<GroupPostDto>> GetPostById(Guid id, Guid postId)
+    {
+        try
+        {
+            var post = await _groupService.GetPostByIdAsync(id, postId, GetOptionalUserId());
+            return Ok(post);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+    }
+
+    [HttpPost("{id:guid}/posts/{postId:guid}/vote")]
+    [Authorize]
+    [IgnoreAntiforgeryToken]
+    public async Task<ActionResult<GroupPostDto>> VotePost(Guid id, Guid postId, [FromBody] GroupPostVoteDto dto)
+    {
+        var userId = GetRequiredUserId();
+        if (!userId.HasValue) return Unauthorized();
+
+        try
+        {
+            var post = await _groupService.VotePostAsync(userId.Value, id, postId, dto.Value);
+            return Ok(post);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    [HttpGet("{id:guid}/posts/{postId:guid}/comments")]
+    public async Task<ActionResult<IReadOnlyList<GroupPostCommentDto>>> GetPostComments(Guid id, Guid postId)
+    {
+        try
+        {
+            var comments = await _groupService.GetPostCommentsAsync(id, postId, GetOptionalUserId());
+            return Ok(comments);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+    }
+
+    [HttpPost("{id:guid}/posts/{postId:guid}/comments")]
+    [Authorize]
+    [IgnoreAntiforgeryToken]
+    public async Task<ActionResult<GroupPostCommentDto>> CreatePostComment(
+        Guid id,
+        Guid postId,
+        [FromBody] CreateGroupPostCommentDto dto)
+    {
+        var userId = GetRequiredUserId();
+        if (!userId.HasValue) return Unauthorized();
+
+        try
+        {
+            var comment = await _groupService.CreatePostCommentAsync(userId.Value, id, postId, dto);
+            return Ok(comment);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    [HttpDelete("{id:guid}/posts/{postId:guid}/comments/{commentId:guid}")]
+    [Authorize]
+    [IgnoreAntiforgeryToken]
+    public async Task<IActionResult> DeletePostComment(Guid id, Guid postId, Guid commentId)
+    {
+        var userId = GetRequiredUserId();
+        if (!userId.HasValue) return Unauthorized();
+
+        try
+        {
+            await _groupService.DeletePostCommentAsync(userId.Value, id, postId, commentId);
+            return NoContent();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+    }
+
+    [HttpPost("{id:guid}/bans")]
+    [Authorize]
+    [IgnoreAntiforgeryToken]
+    public async Task<ActionResult<GroupBanDto>> BanUser(Guid id, [FromBody] CreateGroupBanDto dto)
+    {
+        var userId = GetRequiredUserId();
+        if (!userId.HasValue) return Unauthorized();
+
+        try
+        {
+            var ban = await _groupService.BanUserAsync(userId.Value, id, dto);
+            return Ok(ban);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    [HttpDelete("{id:guid}/bans/{userId:guid}")]
+    [Authorize]
+    [IgnoreAntiforgeryToken]
+    public async Task<IActionResult> UnbanUser(Guid id, Guid userId)
+    {
+        var actorId = GetRequiredUserId();
+        if (!actorId.HasValue) return Unauthorized();
+
+        try
+        {
+            await _groupService.UnbanUserAsync(actorId.Value, id, userId);
+            return NoContent();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+    }
+
+    [HttpGet("{id:guid}/staff/messages")]
+    [Authorize]
+    public async Task<ActionResult<IReadOnlyList<GroupStaffMessageDto>>> GetStaffMessages(Guid id)
+    {
+        var userId = GetRequiredUserId();
+        if (!userId.HasValue) return Unauthorized();
+
+        try
+        {
+            var messages = await _groupService.GetStaffMessagesAsync(id, userId.Value);
+            return Ok(messages);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+    }
+
+    [HttpPost("{id:guid}/staff/messages")]
+    [Authorize]
+    [IgnoreAntiforgeryToken]
+    public async Task<ActionResult<GroupStaffMessageDto>> CreateStaffMessage(
+        Guid id,
+        [FromBody] CreateGroupStaffMessageDto dto)
+    {
+        var userId = GetRequiredUserId();
+        if (!userId.HasValue) return Unauthorized();
+
+        try
+        {
+            var message = await _groupService.CreateStaffMessageAsync(userId.Value, id, dto);
+            return Ok(message);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
         }
     }
 
@@ -205,6 +452,12 @@ public class GroupsController : ControllerBase
     }
 
     private Guid? GetRequiredUserId()
+    {
+        var claim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return string.IsNullOrWhiteSpace(claim) ? null : Guid.Parse(claim);
+    }
+
+    private Guid? GetOptionalUserId()
     {
         var claim = User.FindFirstValue(ClaimTypes.NameIdentifier);
         return string.IsNullOrWhiteSpace(claim) ? null : Guid.Parse(claim);

@@ -29,8 +29,60 @@ const groupService = {
     return response.data;
   },
 
+  getPostById: async (groupId, postId) => {
+    const response = await api.get(`/groups/${groupId}/posts/${postId}`);
+    return response.data;
+  },
+
   createPost: async (groupId, payload) => {
     const response = await api.post(`/groups/${groupId}/posts`, payload);
+    return response.data;
+  },
+
+  votePost: async (groupId, postId, value) => {
+    const response = await api.post(`/groups/${groupId}/posts/${postId}/vote`, { value });
+    return response.data;
+  },
+
+  getPostComments: async (groupId, postId) => {
+    const response = await api.get(`/groups/${groupId}/posts/${postId}/comments`);
+    return response.data;
+  },
+
+  createPostComment: async (groupId, postId, payload) => {
+    const response = await api.post(`/groups/${groupId}/posts/${postId}/comments`, payload);
+    return response.data;
+  },
+
+  deletePostComment: async (groupId, postId, commentId) => {
+    await api.delete(`/groups/${groupId}/posts/${postId}/comments/${commentId}`);
+  },
+
+  getMembers: async (groupId) => {
+    const response = await api.get(`/groups/${groupId}/members`);
+    return response.data;
+  },
+
+  setMemberRole: async (groupId, userId, role) => {
+    await api.post(`/groups/${groupId}/members/${userId}/role`, { role });
+  },
+
+  banUser: async (groupId, payload) => {
+    const response = await api.post(`/groups/${groupId}/bans`, payload);
+    return response.data;
+  },
+
+  unbanUser: async (groupId, userId) => {
+    await api.delete(`/groups/${groupId}/bans/${userId}`);
+  },
+
+  getStaffMessages: async (groupId) => {
+    const response = await api.get(`/groups/${groupId}/staff/messages`);
+    return response.data;
+  },
+
+  createStaffMessage: async (groupId, payload) => {
+    const response = await api.post(`/groups/${groupId}/staff/messages`, payload);
     return response.data;
   },
 

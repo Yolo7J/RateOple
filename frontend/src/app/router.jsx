@@ -10,6 +10,8 @@ import RequireRole from '../features/auth/components/RequireRole';
 import DiscoveryPage from '../features/discovery/pages/DiscoveryPage';
 import GroupsPage from '../features/groups/pages/GroupsPage';
 import GroupDetailPage from '../features/groups/pages/GroupDetailPage';
+import CreateGroupPage from '../features/groups/pages/CreateGroupPage';
+import GroupPostDetailPage from '../features/groups/pages/GroupPostDetailPage';
 import LoginPage from '../features/auth/pages/LoginPage';
 import RegisterPage from '../features/auth/pages/RegisterPage';
 import MediaListPage from '../features/media/pages/MediaListPage';
@@ -53,6 +55,10 @@ const Router = () => {
       <Route element={<GroupLayout />}>
         <Route path="/groups" element={<GroupsPage />} />
         <Route path="/groups/:id" element={<GroupDetailPage />} />
+        <Route path="/groups/:groupId/posts/:postId" element={<GroupPostDetailPage />} />
+        <Route element={<RequireAuth />}>
+          <Route path="/groups/new" element={<CreateGroupPage />} />
+        </Route>
       </Route>
 
       <Route element={<RequireAuth />}>

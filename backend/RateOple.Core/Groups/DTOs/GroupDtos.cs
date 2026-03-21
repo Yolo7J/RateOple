@@ -24,8 +24,18 @@ public class GroupSummaryDto
     public string? Description { get; set; }
     public GroupVisibility Visibility { get; set; }
     public Guid OwnerId { get; set; }
+    public GroupRole? ViewerRole { get; set; }
+    public DateTime CreatedAt { get; set; }
     public int MembersCount { get; set; }
     public int PostsCount { get; set; }
+}
+
+public class GroupMemberDto
+{
+    public Guid UserId { get; set; }
+    public string? UserName { get; set; }
+    public GroupRole Role { get; set; }
+    public DateTime JoinedAt { get; set; }
 }
 
 public class PagedGroupsDto
@@ -63,6 +73,10 @@ public class GroupPostDto
     public string Title { get; set; } = string.Empty;
     public string Content { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
+    public int Upvotes { get; set; }
+    public int Downvotes { get; set; }
+    public int CommentCount { get; set; }
+    public int? UserVote { get; set; }
     public List<GroupPostMediaDto> Media { get; set; } = [];
 }
 
@@ -72,6 +86,58 @@ public class PagedGroupPostsDto
     public int TotalCount { get; set; }
     public int Page { get; set; }
     public int PageSize { get; set; }
+}
+
+public class CreateGroupPostCommentDto
+{
+    public string Content { get; set; } = string.Empty;
+    public Guid? ParentCommentId { get; set; }
+}
+
+public class GroupPostCommentDto
+{
+    public Guid Id { get; set; }
+    public Guid PostId { get; set; }
+    public Guid? AuthorId { get; set; }
+    public string? AuthorName { get; set; }
+    public string Content { get; set; } = string.Empty;
+    public Guid? ParentCommentId { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+public class GroupPostVoteDto
+{
+    public int Value { get; set; }
+}
+
+public class GroupBanDto
+{
+    public Guid UserId { get; set; }
+    public Guid BannedById { get; set; }
+    public string? Reason { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? RevokedAt { get; set; }
+}
+
+public class CreateGroupBanDto
+{
+    public Guid UserId { get; set; }
+    public string? Reason { get; set; }
+}
+
+public class GroupStaffMessageDto
+{
+    public Guid Id { get; set; }
+    public Guid GroupId { get; set; }
+    public Guid AuthorId { get; set; }
+    public string? AuthorName { get; set; }
+    public string Content { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+}
+
+public class CreateGroupStaffMessageDto
+{
+    public string Content { get; set; } = string.Empty;
 }
 
 public class AddPinnedMediaDto

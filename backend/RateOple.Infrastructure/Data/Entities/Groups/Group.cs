@@ -26,4 +26,7 @@ public class Group
     public ICollection<GroupMembership> Members { get; set; } = new List<GroupMembership>();
     public ICollection<GroupPost> Posts { get; set; } = new List<GroupPost>();
     public ICollection<GroupMedia> MediaLinks { get; set; } = new List<GroupMedia>();
+    public ICollection<GroupPostVote> PostVotes { get; set; } = new List<GroupPostVote>();
+    public ICollection<GroupBan> Bans { get; set; } = new List<GroupBan>();
+    public ICollection<GroupStaffMessage> StaffMessages { get; set; } = new List<GroupStaffMessage>();
 }
