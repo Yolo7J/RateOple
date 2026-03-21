@@ -26,6 +26,27 @@ export const useCollectionMutations = () => {
     },
   });
 
+  const removeItemMutation = useMutation({
+    mutationFn: ({ collectionId, mediaId }) => collectionService.removeItem(collectionId, mediaId),
+    onSuccess: (collection) => {
+      invalidateCollections(collection?.id ?? null);
+    },
+  });
+
+  const reorderItemsMutation = useMutation({
+    mutationFn: ({ collectionId, mediaIds }) => collectionService.reorderItems(collectionId, mediaIds),
+    onSuccess: (collection) => {
+      invalidateCollections(collection?.id ?? null);
+    },
+  });
+
+  const updateCollectionMutation = useMutation({
+    mutationFn: ({ collectionId, payload }) => collectionService.update(collectionId, payload),
+    onSuccess: (collection) => {
+      invalidateCollections(collection?.id ?? null);
+    },
+  });
+
   const followMutation = useMutation({
     mutationFn: (collectionId) => collectionService.follow(collectionId),
     onSuccess: (_data, collectionId) => {
@@ -44,16 +65,28 @@ export const useCollectionMutations = () => {
     createCollection: createMutation.mutateAsync,
     addItemToCollection: (collectionId, mediaId, orderIndex = null) =>
       addItemMutation.mutateAsync({ collectionId, mediaId, orderIndex }),
+    removeItemFromCollection: (collectionId, mediaId) =>
+      removeItemMutation.mutateAsync({ collectionId, mediaId }),
+    reorderCollectionItems: (collectionId, mediaIds) =>
+      reorderItemsMutation.mutateAsync({ collectionId, mediaIds }),
+    updateCollection: (collectionId, payload) =>
+      updateCollectionMutation.mutateAsync({ collectionId, payload }),
     followCollection: followMutation.mutateAsync,
     unfollowCollection: unfollowMutation.mutateAsync,
     loading:
       createMutation.isPending ||
       addItemMutation.isPending ||
+      removeItemMutation.isPending ||
+      reorderItemsMutation.isPending ||
+      updateCollectionMutation.isPending ||
       followMutation.isPending ||
       unfollowMutation.isPending,
     error:
       createMutation.error ||
       addItemMutation.error ||
+      removeItemMutation.error ||
+      reorderItemsMutation.error ||
+      updateCollectionMutation.error ||
       followMutation.error ||
       unfollowMutation.error,
   };

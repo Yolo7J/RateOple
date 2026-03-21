@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using RateOple.Constants.Enums;
 using RateOple.Core.Contracts;
 using RateOple.Core.Collections.DTOs;
@@ -100,7 +101,7 @@ public class CollectionService : ICollectionService
             IEnumerable<CollectionItem> ordered = c.SortMode switch
             {
                 CollectionSortMode.Rating => currentItems.OrderByDescending(i => i.Media.AverageRating).ThenBy(i => i.OrderIndex),
-                CollectionSortMode.ReleaseYear => currentItems.OrderByDescending(i => i.Media.ReleaseDate).ThenBy(i => i.OrderIndex),
+                CollectionSortMode.ReleaseYear => currentItems.OrderBy(i => i.Media.ReleaseDate).ThenBy(i => i.OrderIndex),
                 CollectionSortMode.Duration => currentItems.OrderBy(i => i.Media.Movie != null ? i.Media.Movie.Duration : null).ThenBy(i => i.OrderIndex),
                 CollectionSortMode.Alphabetical => currentItems.OrderBy(i => i.Media.Title).ThenBy(i => i.OrderIndex),
                 _ => currentItems.OrderBy(i => i.OrderIndex)
@@ -141,7 +142,7 @@ public class CollectionService : ICollectionService
     {
         var collection = await _context.Collections.FirstOrDefaultAsync(c => c.Id == id)
             ?? throw new KeyNotFoundException("Collection not found.");
-        EnsureCanModify(userId, collection);
+        await EnsureCanModifyAsync(userId, collection);
 
         if (dto.Name != null)
         {
@@ -165,7 +166,7 @@ public class CollectionService : ICollectionService
     {
         var collection = await _context.Collections.FirstOrDefaultAsync(c => c.Id == id)
             ?? throw new KeyNotFoundException("Collection not found.");
-        EnsureCanModify(userId, collection);
+        await EnsureCanModifyAsync(userId, collection);
 
         _context.Collections.Remove(collection);
         await _context.SaveChangesAsync();
@@ -174,30 +175,64 @@ public class CollectionService : ICollectionService
     public async Task<CollectionDto> AddItemAsync(Guid userId, Guid collectionId, AddCollectionItemDto dto)
     {
         var collection = await _context.Collections
-            .Include(c => c.Items)
             .FirstOrDefaultAsync(c => c.Id == collectionId)
             ?? throw new KeyNotFoundException("Collection not found.");
-        EnsureCanModify(userId, collection);
+        await EnsureCanModifyAsync(userId, collection);
 
-        var mediaExists = await _context.Media.AnyAsync(m => m.Id == dto.MediaId && !m.IsDeleted);
-        if (!mediaExists)
+        var mediaInfo = await _context.Media
+            .AsNoTracking()
+            .Where(m => m.Id == dto.MediaId && !m.IsDeleted)
+            .Select(m => new { m.Id, m.CoverUrl })
+            .FirstOrDefaultAsync();
+        if (mediaInfo == null)
             throw new KeyNotFoundException("Media not found.");
 
-        var exists = collection.Items.Any(i => i.MediaId == dto.MediaId);
+        var shouldSetCover = string.IsNullOrWhiteSpace(collection.CoverImageUrl) &&
+            !await _context.CollectionItems.AnyAsync(i => i.CollectionId == collectionId);
+
+        var exists = await _context.CollectionItems
+            .AnyAsync(i => i.CollectionId == collectionId && i.MediaId == dto.MediaId);
         if (exists)
             return await GetRequiredDtoAsync(collectionId);
 
-        var nextOrder = dto.OrderIndex ?? (collection.Items.Count == 0 ? 1 : collection.Items.Max(i => i.OrderIndex) + 1);
-        collection.Items.Add(new CollectionItem
+        const int maxAttempts = 3;
+        for (var attempt = 0; attempt < maxAttempts; attempt++)
         {
-            Id = Guid.NewGuid(),
-            CollectionId = collectionId,
-            MediaId = dto.MediaId,
-            OrderIndex = nextOrder,
-            AddedAt = DateTime.UtcNow
-        });
+            var nextOrder = dto.OrderIndex ?? (await _context.CollectionItems
+                .Where(i => i.CollectionId == collectionId)
+                .MaxAsync(i => (int?)i.OrderIndex) ?? 0) + 1;
+            var itemId = Guid.NewGuid();
+            try
+            {
+                var inserted = await _context.Database.ExecuteSqlRawAsync(
+                    @"INSERT INTO ""CollectionItems"" (""Id"", ""CollectionId"", ""MediaId"", ""OrderIndex"", ""AddedAt"")
+                      VALUES ({0}, {1}, {2}, {3}, {4})
+                      ON CONFLICT (""CollectionId"", ""MediaId"") DO NOTHING;",
+                    itemId, collectionId, dto.MediaId, nextOrder, DateTime.UtcNow);
 
-        await _context.SaveChangesAsync();
+                if (inserted > 0)
+                {
+                    if (shouldSetCover && !string.IsNullOrWhiteSpace(mediaInfo.CoverUrl))
+                    {
+                        collection.CoverImageUrl = mediaInfo.CoverUrl;
+                        await _context.SaveChangesAsync();
+                    }
+
+                    return await GetRequiredDtoAsync(collectionId);
+                }
+            }
+            catch (PostgresException ex) when (ex.SqlState == "23505")
+            {
+                // OrderIndex conflict; retry with a new order number.
+            }
+
+            var nowExists = await _context.CollectionItems
+                .AnyAsync(i => i.CollectionId == collectionId && i.MediaId == dto.MediaId);
+            if (nowExists)
+                return await GetRequiredDtoAsync(collectionId);
+        }
+
+        throw new DbUpdateException("Could not add media to collection due to concurrent updates.");
         return await GetRequiredDtoAsync(collectionId);
     }
 
@@ -205,7 +240,7 @@ public class CollectionService : ICollectionService
     {
         var collection = await _context.Collections.FirstOrDefaultAsync(c => c.Id == collectionId)
             ?? throw new KeyNotFoundException("Collection not found.");
-        EnsureCanModify(userId, collection);
+        await EnsureCanModifyAsync(userId, collection);
 
         var item = await _context.CollectionItems
             .FirstOrDefaultAsync(i => i.CollectionId == collectionId && i.MediaId == mediaId);
@@ -214,6 +249,55 @@ public class CollectionService : ICollectionService
             _context.CollectionItems.Remove(item);
             await _context.SaveChangesAsync();
         }
+
+        return await GetRequiredDtoAsync(collectionId);
+    }
+
+    public async Task<CollectionDto> ReorderItemsAsync(Guid userId, Guid collectionId, ReorderCollectionItemsDto dto)
+    {
+        var collection = await _context.Collections.FirstOrDefaultAsync(c => c.Id == collectionId)
+            ?? throw new KeyNotFoundException("Collection not found.");
+        await EnsureCanModifyAsync(userId, collection);
+
+        if (dto.MediaIds == null || dto.MediaIds.Count == 0)
+            return await GetRequiredDtoAsync(collectionId);
+
+        if (dto.MediaIds.Count != dto.MediaIds.Distinct().Count())
+            throw new ArgumentException("Duplicate media ids are not allowed.");
+
+        var items = await _context.CollectionItems
+            .Where(i => i.CollectionId == collectionId)
+            .ToListAsync();
+
+        if (items.Count != dto.MediaIds.Count)
+            throw new ArgumentException("All collection items must be provided for reordering.");
+
+        var itemsByMedia = items.ToDictionary(i => i.MediaId, i => i);
+        foreach (var mediaId in dto.MediaIds)
+        {
+            if (!itemsByMedia.ContainsKey(mediaId))
+                throw new ArgumentException("One or more media items are not part of this collection.");
+        }
+
+        await using var tx = await _context.Database.BeginTransactionAsync();
+
+        var tempIndex = -1;
+        foreach (var mediaId in dto.MediaIds)
+        {
+            itemsByMedia[mediaId].OrderIndex = tempIndex;
+            tempIndex--;
+        }
+
+        await _context.SaveChangesAsync();
+
+        for (var i = 0; i < dto.MediaIds.Count; i++)
+        {
+            itemsByMedia[dto.MediaIds[i]].OrderIndex = i + 1;
+        }
+
+        collection.SortMode = CollectionSortMode.Manual;
+        await _context.SaveChangesAsync();
+        await tx.CommitAsync();
 
         return await GetRequiredDtoAsync(collectionId);
     }
@@ -265,12 +349,25 @@ public class CollectionService : ICollectionService
         if (!exists) throw new KeyNotFoundException("Parent collection not found.");
     }
 
-    private static void EnsureCanModify(Guid userId, Collection collection)
+    private async Task EnsureCanModifyAsync(Guid userId, Collection collection)
     {
         if (collection.OwnerType == CollectionOwnerType.System)
             throw new UnauthorizedAccessException("System collections are read-only.");
         if (collection.OwnerType == CollectionOwnerType.User && collection.OwnerId != userId)
             throw new UnauthorizedAccessException("You cannot modify this collection.");
+        if (collection.OwnerType == CollectionOwnerType.Group)
+        {
+            if (!collection.OwnerId.HasValue)
+                throw new UnauthorizedAccessException("Group collection has no owner id.");
+
+            var role = await _context.GroupMemberships
+                .Where(m => m.GroupId == collection.OwnerId.Value && m.UserId == userId)
+                .Select(m => (GroupRole?)m.Role)
+                .FirstOrDefaultAsync();
+
+            if (role is null || (role != GroupRole.Owner && role != GroupRole.Admin && role != GroupRole.Moderator))
+                throw new UnauthorizedAccessException("You cannot modify this group collection.");
+        }
     }
 
     private async Task<CollectionDto> GetRequiredDtoAsync(Guid collectionId)
@@ -292,7 +389,7 @@ public class CollectionService : ICollectionService
         itemQuery = collection.SortMode switch
         {
             CollectionSortMode.Rating => itemQuery.OrderByDescending(i => i.Media.AverageRating).ThenBy(i => i.OrderIndex),
-            CollectionSortMode.ReleaseYear => itemQuery.OrderByDescending(i => i.Media.ReleaseDate).ThenBy(i => i.OrderIndex),
+            CollectionSortMode.ReleaseYear => itemQuery.OrderBy(i => i.Media.ReleaseDate).ThenBy(i => i.OrderIndex),
             CollectionSortMode.Duration => itemQuery.OrderBy(i => i.Media.Movie != null ? i.Media.Movie.Duration : null).ThenBy(i => i.OrderIndex),
             CollectionSortMode.Alphabetical => itemQuery.OrderBy(i => i.Media.Title).ThenBy(i => i.OrderIndex),
             _ => itemQuery.OrderBy(i => i.OrderIndex)

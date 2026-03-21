@@ -142,6 +142,33 @@ public class CollectionsController : ControllerBase
         }
     }
 
+    [HttpPut("{id:guid}/items/reorder")]
+    [Authorize]
+    [IgnoreAntiforgeryToken]
+    public async Task<ActionResult<CollectionDto>> ReorderItems(Guid id, [FromBody] ReorderCollectionItemsDto dto)
+    {
+        var userId = GetRequiredUserId();
+        if (!userId.HasValue) return Unauthorized();
+
+        try
+        {
+            var updated = await _collectionService.ReorderItemsAsync(userId.Value, id, dto);
+            return Ok(updated);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
     [HttpPost("{id:guid}/follow")]
     [Authorize]
     [IgnoreAntiforgeryToken]

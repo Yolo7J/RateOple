@@ -32,7 +32,7 @@ public class CreateCollectionDto
     public Guid? ParentCollectionId { get; set; }
     public CollectionOwnerType OwnerType { get; set; } = CollectionOwnerType.User;
     public Guid? OwnerId { get; set; }
-    public CollectionSortMode SortMode { get; set; } = CollectionSortMode.Manual;
+    public CollectionSortMode SortMode { get; set; } = CollectionSortMode.ReleaseYear;
     public string? CoverImageUrl { get; set; }
 }
 
@@ -49,6 +49,11 @@ public class AddCollectionItemDto
 {
     public Guid MediaId { get; set; }
     public int? OrderIndex { get; set; }
+}
+
+public class ReorderCollectionItemsDto
+{
+    public List<Guid> MediaIds { get; set; } = [];
 }
 
 public class CollectionQueryDto

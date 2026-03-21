@@ -12,11 +12,13 @@ const styles = {
 };
 
 function CollectionCard({ collection }) {
+  const coverUrl = collection.coverImageUrl || collection.items?.[0]?.coverUrl;
+
   return (
     <article className={styles.card}>
       <Link to={`/collections/${collection.id}`} className={styles.link}>
         <img
-          src={buildImageUrl(collection.coverImageUrl)}
+          src={buildImageUrl(coverUrl)}
           alt={collection.name}
           className={styles.cover}
         />

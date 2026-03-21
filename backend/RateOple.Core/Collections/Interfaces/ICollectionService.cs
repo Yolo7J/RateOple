@@ -11,6 +11,7 @@ public interface ICollectionService
     Task DeleteAsync(Guid userId, Guid id);
     Task<CollectionDto> AddItemAsync(Guid userId, Guid collectionId, AddCollectionItemDto dto);
     Task<CollectionDto> RemoveItemAsync(Guid userId, Guid collectionId, Guid mediaId);
+    Task<CollectionDto> ReorderItemsAsync(Guid userId, Guid collectionId, ReorderCollectionItemsDto dto);
     Task FollowAsync(Guid userId, Guid collectionId);
     Task UnfollowAsync(Guid userId, Guid collectionId);
 }

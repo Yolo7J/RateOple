@@ -2,7 +2,16 @@ import { useMemo } from 'react';
 import { useQueryResource } from '../../../hooks/useQueryResource';
 import * as mediaService from '../services/mediaService';
 
-export const useMediaListQuery = ({ types, genreIds, search, sortBy, sortDir, page, pageSize }) => {
+export const useMediaListQuery = ({
+  types,
+  genreIds,
+  search,
+  sortBy,
+  sortDir,
+  page,
+  pageSize,
+  enabled = true,
+}) => {
   const params = useMemo(() => ({
     types,
     genreIds,
@@ -16,7 +25,7 @@ export const useMediaListQuery = ({ types, genreIds, search, sortBy, sortDir, pa
   return useQueryResource({
     queryKey: ['media', 'list', params],
     queryFn: () => mediaService.getAll(params),
-    enabled: true,
+    enabled,
     initialData: { items: [], totalCount: 0, totalPages: 1 },
   });
 };
