@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using RateOple.Constants.Enums;
 using RateOple.Core.Contracts;
 using RateOple.Core.Groups.DTOs;
-using RateOple.Core.Users.Interfaces;
 using RateOple.Infrastructure.Data;
 using RateOple.Infrastructure.Data.Entities;
 
