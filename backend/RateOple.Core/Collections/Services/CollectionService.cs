@@ -11,6 +11,7 @@ namespace RateOple.Core.Collections.Services;
 public class CollectionService : ICollectionService
 {
     private readonly ApplicationDbContext _context;
+    private const int MaxCollectionNameLength = 40;
 
     public CollectionService(ApplicationDbContext context)
     {
@@ -19,6 +20,7 @@ public class CollectionService : ICollectionService
 
     public async Task<CollectionDto> CreateAsync(Guid userId, CreateCollectionDto dto)
     {
+        var validatedName = ValidateCollectionName(dto.Name);
         var ownerType = dto.OwnerType;
         var ownerId = ResolveOwnerId(userId, dto.OwnerType, dto.OwnerId);
 
@@ -28,8 +30,8 @@ public class CollectionService : ICollectionService
         var collection = new Collection
         {
             Id = Guid.NewGuid(),
-            Name = dto.Name.Trim(),
-            Title = dto.Name.Trim(),
+            Name = validatedName,
+            Title = validatedName,
             Description = dto.Description?.Trim(),
             ParentCollectionId = dto.ParentCollectionId,
             OwnerType = ownerType,
@@ -146,8 +148,9 @@ public class CollectionService : ICollectionService
 
         if (dto.Name != null)
         {
-            collection.Name = dto.Name.Trim();
-            collection.Title = collection.Name;
+            var validatedName = ValidateCollectionName(dto.Name);
+            collection.Name = validatedName;
+            collection.Title = validatedName;
         }
         if (dto.Description != null) collection.Description = dto.Description.Trim();
         if (dto.ParentCollectionId.HasValue && dto.ParentCollectionId != id)
@@ -160,6 +163,17 @@ public class CollectionService : ICollectionService
 
         await _context.SaveChangesAsync();
         return await GetRequiredDtoAsync(id);
+    }
+
+    private static string ValidateCollectionName(string? name)
+    {
+        var trimmed = name?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(trimmed))
+            throw new ArgumentException("Collection name is required.");
+        if (trimmed.Length > MaxCollectionNameLength)
+            throw new ArgumentException($"Collection name must be {MaxCollectionNameLength} characters or fewer.");
+
+        return trimmed;
     }
 
     public async Task DeleteAsync(Guid userId, Guid id)

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useSearchParams, useParams } from 'react-router-dom';
+import { useSearchParams, useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { buildImageUrl } from '../../../shared/utils/buildImageUrl';
 import { useCollectionDetailsQuery } from '../queries/useCollectionDetailsQuery';
@@ -16,9 +16,11 @@ import Stack from '../../../shared/ui/Stack';
 const styles = {
   pageStack: 'gap-6',
   title: 'text-3xl font-semibold text-[var(--text-primary)]',
+  titleRow: 'flex flex-wrap items-center gap-2',
   description: 'text-[var(--text-secondary)]',
   muted: 'text-[var(--text-muted)]',
   error: 'text-[#ff7f7f]',
+  inputError: 'text-sm text-[#ff7f7f]',
   controls: 'flex flex-wrap gap-2',
   sectionHeader: 'flex flex-wrap items-center justify-between gap-2',
   button: [
@@ -41,8 +43,12 @@ const styles = {
   ].join(' '),
   sectionTitle: 'text-xl font-semibold',
   itemsGrid: 'gap-3',
-  itemCard: 'rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] p-3',
+  itemCard: 'rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] p-3 transition hover:border-[var(--text-muted)] cursor-pointer',
   itemImage: 'mb-2 w-full rounded-md object-cover aspect-[2/3]',
+  titleInput: [
+    'w-full rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2',
+    'text-2xl font-semibold text-[var(--text-primary)]',
+  ].join(' '),
   itemActions: 'mt-2 flex flex-wrap gap-2',
   searchForm: 'flex flex-wrap gap-2',
   searchInput: [
@@ -62,6 +68,7 @@ const SORT_MODES = {
 
 function CollectionDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const mediaId = searchParams.get('mediaId');
@@ -70,6 +77,9 @@ function CollectionDetailPage() {
   const [childName, setChildName] = useState('');
   const [childDescription, setChildDescription] = useState('');
   const [childError, setChildError] = useState('');
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
+  const [nameError, setNameError] = useState('');
   const [orderError, setOrderError] = useState('');
   const [sortError, setSortError] = useState('');
 
@@ -187,6 +197,44 @@ function CollectionDetailPage() {
     }
   };
 
+  const handleStartRename = () => {
+    setNameDraft(collection?.name ?? '');
+    setNameError('');
+    setIsEditingName(true);
+  };
+
+  const handleCancelRename = () => {
+    setIsEditingName(false);
+    setNameDraft('');
+    setNameError('');
+  };
+
+  const handleSaveRename = async () => {
+    if (!id) return;
+    const trimmed = nameDraft.trim();
+    if (!trimmed) {
+      setNameError('Collection name is required.');
+      return;
+    }
+    if (trimmed.length > 40) {
+      setNameError('Collection name must be 40 characters or fewer.');
+      return;
+    }
+
+    try {
+      setNameError('');
+      await updateCollection(id, { name: trimmed });
+      setIsEditingName(false);
+    } catch (err) {
+      setNameError(err?.response?.data?.message || 'Could not rename collection.');
+    }
+  };
+
+  const handleItemNavigate = (mediaIdToOpen) => {
+    if (!mediaIdToOpen) return;
+    navigate(`/media/${mediaIdToOpen}`);
+  };
+
   if (loading) {
     return (
       <PageLayout>
@@ -212,7 +260,57 @@ function CollectionDetailPage() {
       <Container>
         <Stack className={styles.pageStack}>
           <Stack className="gap-2">
-            <h1 className={styles.title}>{collection.name}</h1>
+            <div className={styles.titleRow}>
+              {isEditingName ? (
+                <div className="flex flex-1 flex-col gap-2">
+                  <input
+                    className={styles.titleInput}
+                    value={nameDraft}
+                    onChange={(e) => setNameDraft(e.target.value)}
+                    maxLength={40}
+                    aria-label="Collection name"
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      className={styles.button}
+                      type="button"
+                      onClick={handleSaveRename}
+                      disabled={mutating}
+                    >
+                      {mutating ? 'Saving...' : 'Save'}
+                    </button>
+                    <button className={styles.button} type="button" onClick={handleCancelRename}>
+                      Cancel
+                    </button>
+                  </div>
+                  {nameError ? <p className={styles.inputError}>{nameError}</p> : null}
+                </div>
+              ) : (
+                <>
+                  <h1 className={styles.title}>{collection.name}</h1>
+                  {canManageCollection ? (
+                    <button
+                      className={styles.iconButton}
+                      type="button"
+                      onClick={handleStartRename}
+                      aria-label="Rename collection"
+                    >
+                      <svg
+                        viewBox="0 0 20 20"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        className="h-4 w-4"
+                        aria-hidden="true"
+                      >
+                        <path d="M4 13.5V16h2.5L15.6 6.9l-2.5-2.5L4 13.5Z" />
+                        <path d="M12.3 4.3 14.8 6.8" />
+                      </svg>
+                    </button>
+                  ) : null}
+                </>
+              )}
+            </div>
             {collection.description ? <p className={styles.description}>{collection.description}</p> : null}
             <p className={styles.muted}>
               {collection.followersCount ?? 0} followers · {items.length} items
@@ -324,7 +422,19 @@ function CollectionDetailPage() {
               </div>
               <Grid variant="cards" className={styles.itemsGrid}>
                 {items.map((item, index) => (
-                  <article key={item.mediaId} className={styles.itemCard}>
+                  <article
+                    key={item.mediaId}
+                    className={styles.itemCard}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => handleItemNavigate(item.mediaId)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleItemNavigate(item.mediaId);
+                      }
+                    }}
+                  >
                     <img className={styles.itemImage} src={buildImageUrl(item.coverUrl)} alt={item.mediaTitle} />
                     <p className="text-sm text-[var(--text-primary)]">{item.mediaTitle}</p>
                     {canManageCollection ? (
@@ -333,7 +443,10 @@ function CollectionDetailPage() {
                           className={styles.iconButton}
                           type="button"
                           disabled={mutating || index === 0}
-                          onClick={() => handleMoveItem(index, index - 1)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMoveItem(index, index - 1);
+                          }}
                         >
                           Move up
                         </button>
@@ -341,7 +454,10 @@ function CollectionDetailPage() {
                           className={styles.iconButton}
                           type="button"
                           disabled={mutating || index === items.length - 1}
-                          onClick={() => handleMoveItem(index, index + 1)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMoveItem(index, index + 1);
+                          }}
                         >
                           Move down
                         </button>
@@ -349,7 +465,10 @@ function CollectionDetailPage() {
                           className={styles.iconButton}
                           type="button"
                           disabled={mutating}
-                          onClick={() => handleRemoveItem(item.mediaId)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveItem(item.mediaId);
+                          }}
                         >
                           Remove
                         </button>
@@ -374,7 +493,7 @@ function CollectionDetailPage() {
                     value={childName}
                     onChange={(e) => setChildName(e.target.value)}
                     placeholder="New nested collection name"
-                    maxLength={80}
+                    maxLength={40}
                     required
                   />
                   <input

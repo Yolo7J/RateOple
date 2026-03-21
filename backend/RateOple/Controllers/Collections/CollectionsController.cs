@@ -71,6 +71,10 @@ public class CollectionsController : ControllerBase
         {
             return Forbid();
         }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     [HttpDelete("{id:guid}")]

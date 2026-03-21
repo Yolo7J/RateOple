@@ -93,7 +93,7 @@ function CollectionsPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Collection name"
-                maxLength={80}
+                maxLength={40}
                 required
               />
               <textarea
