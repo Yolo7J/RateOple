@@ -50,6 +50,7 @@ const styles = {
   modal: 'w-full max-w-[520px] rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] p-5',
   modalTitle: 'text-lg font-semibold text-[var(--text-primary)]',
   modalBody: 'mt-2 text-sm text-[var(--text-muted)]',
+  modalError: 'mt-3 text-sm text-[#ff6d75]',
   modalActions: 'mt-5 flex flex-wrap justify-end gap-2',
   modalCancel: [
     'rounded-xl border border-[var(--border)] bg-[var(--btn-bg)] px-4 py-2 text-sm font-semibold',
@@ -89,6 +90,7 @@ const AdminMediaPage = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const deletingId = deleting && deleteTarget ? deleteTarget.id : null;
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -157,7 +159,11 @@ const AdminMediaPage = () => {
                         <button
                           className={styles.deleteBtn}
                           type="button"
-                          onClick={() => setDeleteTarget(item)}
+                          onClick={() => {
+                            setDeleteError('');
+                            setDeleteTarget(item);
+                          }}
+                          disabled={Boolean(deletingId)}
                         >
                           Delete
                         </button>
@@ -181,11 +187,15 @@ const AdminMediaPage = () => {
               You are about to delete <strong>{deleteTarget.title || 'this media item'}</strong>. This action cannot be
               undone.
             </p>
+            {deleteError ? <p className={styles.modalError}>{deleteError}</p> : null}
             <div className={styles.modalActions}>
               <button
                 type="button"
                 className={styles.modalCancel}
-                onClick={() => setDeleteTarget(null)}
+                onClick={() => {
+                  setDeleteTarget(null);
+                  setDeleteError('');
+                }}
                 disabled={deleting}
               >
                 Cancel

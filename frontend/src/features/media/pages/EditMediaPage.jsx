@@ -211,6 +211,19 @@ const EditMediaPage = () => {
             </div>
           ) : null}
 
+          {!loading && !error && !media ? (
+            <div className={`${styles.banner} ${styles.bannerError}`}>
+              Media item not found.{' '}
+              <button
+                type="button"
+                className="underline"
+                onClick={() => navigate('/admin/media')}
+              >
+                Back to list
+              </button>
+            </div>
+          ) : null}
+
           {!loading && media ? (
             <form className={styles.form} onSubmit={handleSubmit}>
               <div className={styles.formRow}>
