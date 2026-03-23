@@ -80,7 +80,7 @@ const AdminMediaPage = () => {
               <h1 className={styles.title}>Media Management</h1>
               <p className={styles.subtitle}>Review and manage the media catalog.</p>
             </div>
-            <button className={styles.addButton} onClick={() => navigate('/media/add')}>
+            <button className={styles.addButton} onClick={() => navigate('/media/add?from=admin')}>
               + Add Media
             </button>
           </div>

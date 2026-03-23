@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import clsx from 'clsx';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMediaCart } from '../../../context/MediaCartContext';
 import { useMediaCommands } from '../queries/useMediaCommands';
 import PageLayout from '../../../layouts/PageLayout';
@@ -139,6 +139,10 @@ const styles = {
 
 const AddMediaPage = () => {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const isAdminFlow = searchParams.get('from') === 'admin';
+    const cartPath = isAdminFlow ? '/cart?from=admin' : '/cart';
+    const cancelPath = isAdminFlow ? '/admin/media' : '/media';
     const { addItem } = useMediaCart();
     const {
         getGenres,
@@ -429,7 +433,7 @@ const AddMediaPage = () => {
             if (mediaType === 'TvSeries') {
                 setJustAddedSeries(true);
             } else {
-                navigate('/cart');
+                navigate(cartPath);
             }
         } catch {
             setSaveError('Failed to add to cart.');
@@ -544,7 +548,7 @@ const AddMediaPage = () => {
                             <div className={styles.addedActions}>
                                 <button
                                     className={`${styles.addedBtn} ${styles.addedPrimary}`}
-                                    onClick={() => navigate('/cart')}
+                                    onClick={() => navigate(cartPath)}
                                 >
                                     Go to Cart & Submit -&gt;
                                 </button>
@@ -775,7 +779,7 @@ const AddMediaPage = () => {
                             <button type="submit" className={styles.saveBtn} disabled={saving}>
                                 {saving ? 'Saving...' : 'Add to Cart'}
                             </button>
-                            <button type="button" className={styles.cancelBtn} onClick={() => navigate('/media')}>
+                            <button type="button" className={styles.cancelBtn} onClick={() => navigate(cancelPath)}>
                                 Cancel
                             </button>
                         </div>

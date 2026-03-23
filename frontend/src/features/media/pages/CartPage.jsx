@@ -1,6 +1,6 @@
 import { useState } from "react";
 import clsx from "clsx";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMediaCart } from "../../../context/MediaCartContext";
 import { useMediaCommands } from "../queries/useMediaCommands";
 import PageLayout from "../../../layouts/PageLayout";
@@ -83,12 +83,18 @@ const styles = {
 export default function CartPage() {
   const { items, removeItem, editItem, clearCart } = useMediaCart();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isAdminFlow = searchParams.get("from") === "admin";
+  const addMediaPath = isAdminFlow ? "/media/add?from=admin" : "/media/add";
+  const postSuccessPath = isAdminFlow ? "/admin/media" : addMediaPath;
   const { bulkCreateMedia } = useMediaCommands();
 
   const [statuses, setStatuses] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
+  const allSucceeded = submitted && Object.values(statuses).length > 0
+    && Object.values(statuses).every((status) => status === STATUS.ok);
 
   async function handleConfirmAll() {
     if (items.length === 0) return;
@@ -128,7 +134,7 @@ export default function CartPage() {
 
       if (failedIds.length === 0) {
         clearCart();
-        setTimeout(() => navigate("/media/add"), 1500);
+        setTimeout(() => navigate(postSuccessPath), 1500);
       } else {
         for (const item of items) {
           if (!failedIds.includes(item.id)) removeItem(item.id);
@@ -155,7 +161,7 @@ export default function CartPage() {
         <Container>
           <div className={styles.emptyState}>
             <p>Your cart is empty.</p>
-            <button onClick={() => navigate("/media/add")} className={styles.emptyBtn}>
+            <button onClick={() => navigate(addMediaPath)} className={styles.emptyBtn}>
               Back to Add Media
             </button>
           </div>
@@ -175,7 +181,7 @@ export default function CartPage() {
                 {items.length} item{items.length !== 1 ? "s" : ""}
               </span>
             </h1>
-            <button onClick={() => navigate("/media/add")} className={styles.addMore}>
+            <button onClick={() => navigate(addMediaPath)} className={styles.addMore}>
               + Add more
             </button>
           </div>
@@ -268,7 +274,12 @@ export default function CartPage() {
                 {Object.values(statuses).filter((status) => status === STATUS.error).length > 0 &&
                   ` · ${Object.values(statuses).filter((status) => status === STATUS.error).length} failed`}
               </p>
-              {Object.values(statuses).some((status) => status === STATUS.error) ? (
+              {allSucceeded ? (
+                <span className={styles.summaryNote}>
+                  All items saved. Redirecting to {isAdminFlow ? "Media Management" : "Add Media"}...
+                </span>
+              ) : null}
+              {!allSucceeded && Object.values(statuses).some((status) => status === STATUS.error) ? (
                 <span className={styles.summaryNote}>Failed items remain in the cart. Fix and retry.</span>
               ) : null}
             </div>

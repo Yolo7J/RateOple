@@ -17,6 +17,9 @@ const AdminLayout = () => {
             <NavLink to="/admin" end className={navLinkClass}>
               Dashboard
             </NavLink>
+            <NavLink to="/media/add?from=admin" className={navLinkClass}>
+              Add Media
+            </NavLink>
             <NavLink to="/admin/media" className={navLinkClass}>
               Media Management
             </NavLink>
