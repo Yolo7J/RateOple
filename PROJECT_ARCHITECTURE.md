@@ -1,6 +1,6 @@
 # RateOple Architecture (Current State)
 
-Last updated: **March 15, 2026**
+Last updated: **March 23, 2026**
 
 This document reflects the code currently present in the repository.
 
@@ -9,12 +9,12 @@ This document reflects the code currently present in the repository.
 RateOple is a full-stack media catalog and social platform with:
 
 - Media catalog for Movies, Books, TV series (with seasons/episodes)
-- Ratings and reviews
+- Ratings and reviews (media, seasons, episodes)
 - User follows
 - Hierarchical collections with follow support
 - User media status tracking
 - Media tags
-- Group system with posts and pinned media
+- Group system with posts, comments, votes, staff messages, bans, and pinned media
 - Moderation/reporting and moderator assignments
 - Database-backed notifications (with publisher abstraction for future realtime delivery)
 
@@ -52,7 +52,9 @@ backend/
     Data/Configurations/{Collections,Groups,Media,Moderation,Social,Users}
     Data/Entities/{Collections,Groups,Media,Moderation,Social,Users}
     Data/Seeding/
+    Middleware/
     Migrations/
+    Security/
   RateOple.Constants/                # enums and constants
 
 frontend/
@@ -90,7 +92,7 @@ frontend/
 
 Then:
 
-- `SeedDatabaseAsync()` runs (roles, super admin, genres)
+- `SeedDatabaseAsync()` runs (roles, super admin, test users + profiles, genres)
 - middleware pipeline is configured via `ConfigureMiddleware`
 
 ## 4. Middleware, Auth, Security
@@ -138,6 +140,11 @@ Defined in `AuthorizationExtensions`:
 - `RequireModerator`
 - `CanModerateContent`
 - `CanManageGroups`
+
+Roles:
+
+- Global (Identity): `SuperAdmin`, `Admin`, `Moderator`, `User`
+- GroupMembership: `Owner`, `GroupAdmin`, `GroupModerator`, `Member`
 
 ## 5. Layer Structure
 
@@ -224,9 +231,12 @@ Note: Entities are physically domain-grouped in folders but currently share name
 ### 6.4 Groups Domain
 
 - `Group`
+- `GroupBan`
 - `GroupMembership`
 - `GroupPost`
+- `GroupPostVote`
 - `GroupMedia` (pinned media)
+- `GroupStaffMessage`
 - `PostMedia` (media attached to group posts)
 
 ### 6.5 Users Domain
@@ -299,6 +309,8 @@ Mutation:
 - `PUT /api/media/{id}/book`
 - `PUT /api/media/{id}/tvseries`
 - `DELETE /api/media/{id}`
+  
+Catalog mutations require the `RequireAdmin` policy; user status updates require authentication.
 
 TV management:
 
@@ -323,6 +335,8 @@ Separate controller still exists:
 - `GET /api/tmdb/search`
 - `GET /api/tmdb/details`
 - `POST /api/tmdb/import-series/{tmdbId}`
+
+`POST /api/tmdb/import-series/{tmdbId}` requires the `RequireAdmin` policy.
 
 ### 8.5 Ratings and Reviews
 
@@ -376,6 +390,7 @@ Notifications:
 - `DELETE /api/collections/{id}`
 - `POST /api/collections/{id}/items`
 - `DELETE /api/collections/{id}/items/{mediaId}`
+- `PUT /api/collections/{id}/items/reorder`
 - `POST /api/collections/{id}/follow`
 - `DELETE /api/collections/{id}/follow`
 
@@ -383,12 +398,22 @@ Notifications:
 
 - `GET /api/groups`
 - `GET /api/groups/{id}`
+- `GET /api/groups/{id}/members`
 - `POST /api/groups`
 - `POST /api/groups/{id}/join`
 - `DELETE /api/groups/{id}/leave`
 - `POST /api/groups/{id}/members/{userId}/role`
 - `POST /api/groups/{id}/posts`
 - `GET /api/groups/{id}/posts`
+- `GET /api/groups/{id}/posts/{postId}`
+- `POST /api/groups/{id}/posts/{postId}/vote`
+- `GET /api/groups/{id}/posts/{postId}/comments`
+- `POST /api/groups/{id}/posts/{postId}/comments`
+- `DELETE /api/groups/{id}/posts/{postId}/comments/{commentId}`
+- `POST /api/groups/{id}/bans`
+- `DELETE /api/groups/{id}/bans/{userId}`
+- `GET /api/groups/{id}/staff/messages`
+- `POST /api/groups/{id}/staff/messages`
 - `POST /api/groups/{id}/pinned-media`
 - `GET /api/groups/{id}/pinned-media`
 
@@ -423,12 +448,33 @@ Current frontend/backend user contract is aligned for:
 - `GET /api/users/me/ratings`
 - `GET /api/users/me/reviews`
 - `GET /api/users/me/favorite-genres`
+- `GET /api/groups`
+- `GET /api/groups/{id}`
+- `POST /api/groups`
+- `POST /api/groups/{id}/join`
+- `DELETE /api/groups/{id}/leave`
+- `GET /api/groups/{id}/members`
+- `POST /api/groups/{id}/members/{userId}/role`
+- `GET /api/groups/{id}/posts`
+- `POST /api/groups/{id}/posts`
+- `GET /api/groups/{id}/posts/{postId}`
+- `POST /api/groups/{id}/posts/{postId}/vote`
+- `GET /api/groups/{id}/posts/{postId}/comments`
+- `POST /api/groups/{id}/posts/{postId}/comments`
+- `DELETE /api/groups/{id}/posts/{postId}/comments/{commentId}`
+- `POST /api/groups/{id}/bans`
+- `DELETE /api/groups/{id}/bans/{userId}`
+- `GET /api/groups/{id}/staff/messages`
+- `POST /api/groups/{id}/staff/messages`
+- `GET /api/groups/{id}/pinned-media`
+- `POST /api/groups/{id}/pinned-media`
 
 Related contracts currently in use:
 
 - `POST /api/media/{id}/status`
 - notifications endpoints under `/api/notifications`
 - moderation endpoints under `/api/moderation/*`
+- collection reordering under `/api/collections/{id}/items/reorder`
 
 ## 10. External Integrations
 

@@ -127,7 +127,7 @@ public class MediaController : ControllerBase
 
     // POST /api/media/movies
     [HttpPost("movies")]
-    [Authorize]
+    [Authorize(Policy = "RequireAdmin")]
     [IgnoreAntiforgeryToken]
     public async Task<IActionResult> CreateMovie([FromBody] CreateMovieDto dto)
     {
@@ -137,7 +137,7 @@ public class MediaController : ControllerBase
 
     // POST /api/media/books
     [HttpPost("books")]
-    [Authorize]
+    [Authorize(Policy = "RequireAdmin")]
     [IgnoreAntiforgeryToken]
     public async Task<IActionResult> CreateBook([FromBody] CreateBookDto dto)
     {
@@ -147,7 +147,7 @@ public class MediaController : ControllerBase
 
     // POST /api/media/tvseries
     [HttpPost("tvseries")]
-    [Authorize]
+    [Authorize(Policy = "RequireAdmin")]
     [IgnoreAntiforgeryToken]
     public async Task<IActionResult> CreateTvSeries([FromBody] CreateTvSeriesDto dto)
     {
@@ -159,7 +159,7 @@ public class MediaController : ControllerBase
 
     // POST /api/media/bulk
     [HttpPost("bulk")]
-    [Authorize]
+    [Authorize(Policy = "RequireAdmin")]
     [IgnoreAntiforgeryToken]
     public async Task<IActionResult> BulkCreate([FromBody] BulkCreateDto dto)
     {
@@ -174,7 +174,7 @@ public class MediaController : ControllerBase
 
     // PUT /api/media/{id}/movie
     [HttpPut("{id:guid}/movie")]
-    [Authorize]
+    [Authorize(Policy = "RequireAdmin")]
     [IgnoreAntiforgeryToken]
     public async Task<IActionResult> UpdateMovie(Guid id, [FromBody] UpdateMovieDto dto)
     {
@@ -190,7 +190,7 @@ public class MediaController : ControllerBase
 
     // PUT /api/media/{id}/book
     [HttpPut("{id:guid}/book")]
-    [Authorize]
+    [Authorize(Policy = "RequireAdmin")]
     [IgnoreAntiforgeryToken]
     public async Task<IActionResult> UpdateBook(Guid id, [FromBody] UpdateBookDto dto)
     {
@@ -206,7 +206,7 @@ public class MediaController : ControllerBase
 
     // PUT /api/media/{id}/tvseries
     [HttpPut("{id:guid}/tvseries")]
-    [Authorize]
+    [Authorize(Policy = "RequireAdmin")]
     [IgnoreAntiforgeryToken]
     public async Task<IActionResult> UpdateTvSeries(Guid id, [FromBody] UpdateTvSeriesDto dto)
     {
@@ -221,7 +221,7 @@ public class MediaController : ControllerBase
     }
 
     [HttpPost("{id:guid}/tags")]
-    [Authorize]
+    [Authorize(Policy = "RequireAdmin")]
     [IgnoreAntiforgeryToken]
     public async Task<IActionResult> AddTags(Guid id, [FromBody] UpsertMediaTagsDto dto)
     {
@@ -234,7 +234,7 @@ public class MediaController : ControllerBase
     }
 
     [HttpDelete("{id:guid}/tags/{tagId:int}")]
-    [Authorize]
+    [Authorize(Policy = "RequireAdmin")]
     [IgnoreAntiforgeryToken]
     public async Task<IActionResult> RemoveTag(Guid id, int tagId)
     {
@@ -250,7 +250,7 @@ public class MediaController : ControllerBase
 
     // DELETE /api/media/{id}
     [HttpDelete("{id:guid}")]
-    [Authorize]
+    [Authorize(Policy = "RequireAdmin")]
     [IgnoreAntiforgeryToken]
     public async Task<IActionResult> SoftDelete(Guid id)
     {
@@ -306,7 +306,7 @@ public class MediaController : ControllerBase
 
     // POST /api/media/{id}/seasons
     [HttpPost("{id:guid}/seasons")]
-    [Authorize]
+    [Authorize(Policy = "RequireAdmin")]
     [IgnoreAntiforgeryToken]
     public async Task<IActionResult> AddSeason(Guid id, [FromBody] UpsertSeasonDto dto)
     {
@@ -321,7 +321,7 @@ public class MediaController : ControllerBase
 
     // PUT /api/media/{id}/seasons/{seasonNumber}
     [HttpPut("{id:guid}/seasons/{seasonNumber:int}")]
-    [Authorize]
+    [Authorize(Policy = "RequireAdmin")]
     [IgnoreAntiforgeryToken]
     public async Task<IActionResult> UpdateSeason(Guid id, int seasonNumber, [FromBody] UpsertSeasonDto dto)
     {
@@ -336,7 +336,7 @@ public class MediaController : ControllerBase
 
     // DELETE /api/media/{id}/seasons/{seasonNumber}
     [HttpDelete("{id:guid}/seasons/{seasonNumber:int}")]
-    [Authorize]
+    [Authorize(Policy = "RequireAdmin")]
     [IgnoreAntiforgeryToken]
     public async Task<IActionResult> DeleteSeason(Guid id, int seasonNumber)
     {
@@ -352,7 +352,7 @@ public class MediaController : ControllerBase
 
     // POST /api/media/{id}/seasons/{seasonNumber}/episodes
     [HttpPost("{id:guid}/seasons/{seasonNumber:int}/episodes")]
-    [Authorize]
+    [Authorize(Policy = "RequireAdmin")]
     [IgnoreAntiforgeryToken]
     public async Task<IActionResult> AddEpisode(Guid id, int seasonNumber, [FromBody] UpsertEpisodeDto dto)
     {
@@ -367,7 +367,7 @@ public class MediaController : ControllerBase
 
     // PUT /api/media/{id}/seasons/{seasonNumber}/episodes/{episodeNumber}
     [HttpPut("{id:guid}/seasons/{seasonNumber:int}/episodes/{episodeNumber:int}")]
-    [Authorize]
+    [Authorize(Policy = "RequireAdmin")]
     [IgnoreAntiforgeryToken]
     public async Task<IActionResult> UpdateEpisode(
         Guid id, int seasonNumber, int episodeNumber, [FromBody] UpsertEpisodeDto dto)
@@ -382,7 +382,7 @@ public class MediaController : ControllerBase
 
     // DELETE /api/media/{id}/seasons/{seasonNumber}/episodes/{episodeNumber}
     [HttpDelete("{id:guid}/seasons/{seasonNumber:int}/episodes/{episodeNumber:int}")]
-    [Authorize]
+    [Authorize(Policy = "RequireAdmin")]
     [IgnoreAntiforgeryToken]
     public async Task<IActionResult> DeleteEpisode(Guid id, int seasonNumber, int episodeNumber)
     {

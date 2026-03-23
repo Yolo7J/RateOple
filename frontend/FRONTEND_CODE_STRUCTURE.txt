@@ -92,13 +92,19 @@ src/features/groups/hooks/ - Hooks layer for the groups feature.
 src/features/groups/hooks/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
 src/features/groups/pages/ - Pages layer for the groups feature.
 src/features/groups/pages/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/groups/pages/CreateGroupPage.jsx - Group creation route page.
 src/features/groups/pages/GroupDetailPage.jsx - Group detail route page.
+src/features/groups/pages/GroupPostDetailPage.jsx - Group post detail route page.
 src/features/groups/pages/GroupsPage.jsx - Groups index route page.
 src/features/groups/queries/ - React Query hooks for groups feature.
 src/features/groups/queries/useGroupDetailsQuery.js - Query for group details.
+src/features/groups/queries/useGroupMembersQuery.js - Query for group members.
 src/features/groups/queries/useGroupMutations.js - Mutations for group operations.
+src/features/groups/queries/useGroupPostCommentsQuery.js - Query for group post comments.
+src/features/groups/queries/useGroupPostQuery.js - Query for a single group post.
 src/features/groups/queries/useGroupPinnedMediaQuery.js - Query for pinned media.
 src/features/groups/queries/useGroupPostsQuery.js - Query for group posts.
+src/features/groups/queries/useGroupStaffMessagesQuery.js - Query for group staff messages.
 src/features/groups/queries/useGroupsQuery.js - Query for groups lists.
 src/features/groups/services/ - Services layer for the groups feature.
 src/features/groups/services/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
@@ -177,9 +183,13 @@ src/features/ratings/pages/ - Pages layer for the ratings feature.
 src/features/ratings/pages/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
 src/features/ratings/queries/ - React Query hooks for ratings feature.
 src/features/ratings/queries/useDeleteMediaRatingMutation.js - Mutation to delete a rating.
+src/features/ratings/queries/useEpisodeRatingSummaryQuery.js - Query for episode rating summaries.
 src/features/ratings/queries/useMediaRatingSummaryQuery.js - Query for rating summaries.
 src/features/ratings/queries/useMyRatingsQuery.js - Query for the current user's ratings.
+src/features/ratings/queries/useRateEpisodeMutation.js - Mutation to rate an episode.
 src/features/ratings/queries/useRateMediaMutation.js - Mutation to rate a media item.
+src/features/ratings/queries/useRateSeasonMutation.js - Mutation to rate a season.
+src/features/ratings/queries/useSeasonRatingSummaryQuery.js - Query for season rating summaries.
 src/features/ratings/services/ - Services layer for the ratings feature.
 src/features/ratings/services/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
 src/features/ratings/services/ratingService.js - Ratings API service module.

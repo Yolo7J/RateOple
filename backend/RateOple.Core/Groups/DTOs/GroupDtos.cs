@@ -32,7 +32,7 @@ public class GroupSummaryDto
 
 public class GroupMemberDto
 {
-    public Guid UserId { get; set; }
+    public Guid? UserId { get; set; }
     public string? UserName { get; set; }
     public GroupRole Role { get; set; }
     public DateTime JoinedAt { get; set; }
@@ -100,7 +100,7 @@ public class GroupPostCommentDto
     public Guid PostId { get; set; }
     public Guid? AuthorId { get; set; }
     public string? AuthorName { get; set; }
-    public Guid UserId { get; set; }
+    public Guid? UserId { get; set; }
     public string? Username { get; set; }
     public string? DisplayName { get; set; }
     public string? AvatarUrl { get; set; }
