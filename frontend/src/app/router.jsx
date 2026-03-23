@@ -27,6 +27,7 @@ import CartPage from '../features/media/pages/CartPage';
 import ModerationPage from '../features/moderation/pages/ModerationPage';
 import AdminDashboardPage from '../features/admin/pages/AdminDashboardPage';
 import AdminMediaPage from '../features/media/pages/AdminMediaPage';
+import EditMediaPage from '../features/media/pages/EditMediaPage';
 
 const Router = () => {
   return (
@@ -70,6 +71,7 @@ const Router = () => {
           <Route element={<AdminLayout />}>
             <Route path="/admin" element={<AdminDashboardPage />} />
             <Route path="/admin/media" element={<AdminMediaPage />} />
+            <Route path="/admin/media/:id/edit" element={<EditMediaPage />} />
             <Route path="/admin/moderation" element={<ModerationPage />} />
           </Route>
         </Route>
