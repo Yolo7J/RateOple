@@ -20,6 +20,7 @@ public static class SeedingExtensions
 
             await RoleSeeder.SeedAsync(roleManager);
             await SuperAdminSeeder.SeedAsync(userManager);
+            await TestUsersSeeder.SeedAsync(userManager, db);
             await GenreSeeder.SeedAsync(db);
         }
         catch (Exception ex)
