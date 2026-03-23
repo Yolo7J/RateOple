@@ -1,5 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { useMediaListQuery } from '../queries/useMediaListQuery';
+import * as mediaService from '../services/mediaService';
 import PageLayout from '../../../layouts/PageLayout';
 import Container from '../../../shared/ui/Container';
 import Stack from '../../../shared/ui/Stack';
@@ -44,6 +46,19 @@ const styles = {
     'px-6 py-10 text-center text-sm text-[var(--text-muted)]',
   ].join(' '),
   responsiveHint: 'text-xs text-[var(--text-muted)] md:hidden',
+  modalOverlay: 'fixed inset-0 z-[200] grid place-items-center bg-black/60 p-4',
+  modal: 'w-full max-w-[520px] rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] p-5',
+  modalTitle: 'text-lg font-semibold text-[var(--text-primary)]',
+  modalBody: 'mt-2 text-sm text-[var(--text-muted)]',
+  modalActions: 'mt-5 flex flex-wrap justify-end gap-2',
+  modalCancel: [
+    'rounded-xl border border-[var(--border)] bg-[var(--btn-bg)] px-4 py-2 text-sm font-semibold',
+    'text-[var(--text-primary)] transition hover:bg-[var(--btn-hover)]',
+  ].join(' '),
+  modalDelete: [
+    'rounded-xl bg-[#ff7d7d] px-4 py-2 text-sm font-semibold text-[#101010]',
+    'transition hover:bg-[#ff6d75] disabled:opacity-60 disabled:cursor-not-allowed',
+  ].join(' '),
 };
 
 const formatMediaType = (type) => {
@@ -67,9 +82,29 @@ const AdminMediaPage = () => {
     data,
     loading,
     error,
+    refetch,
   } = useMediaListQuery({ page: 1, pageSize: 50 });
 
   const items = Array.isArray(data?.items) ? data.items : [];
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      await mediaService.deleteMedia(deleteTarget.id);
+      await refetch();
+      setDeleteTarget(null);
+    } catch (err) {
+      const message = err?.response?.data?.message || 'Failed to delete media.';
+      setDeleteError(message);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <PageLayout>
@@ -93,6 +128,7 @@ const AdminMediaPage = () => {
               {error?.response?.data?.message || 'Failed to load media list.'}
             </p>
           ) : null}
+          {deleteError ? <p className={styles.error}>{deleteError}</p> : null}
 
           {!loading && !error ? (
             items.length > 0 ? (
@@ -118,7 +154,11 @@ const AdminMediaPage = () => {
                         >
                           Edit
                         </Link>
-                        <button className={styles.deleteBtn} type="button" disabled>
+                        <button
+                          className={styles.deleteBtn}
+                          type="button"
+                          onClick={() => setDeleteTarget(item)}
+                        >
                           Delete
                         </button>
                       </div>
@@ -132,6 +172,36 @@ const AdminMediaPage = () => {
           ) : null}
         </Stack>
       </Container>
+
+      {deleteTarget ? (
+        <div className={styles.modalOverlay} role="dialog" aria-modal="true">
+          <div className={styles.modal}>
+            <h2 className={styles.modalTitle}>Delete media?</h2>
+            <p className={styles.modalBody}>
+              You are about to delete <strong>{deleteTarget.title || 'this media item'}</strong>. This action cannot be
+              undone.
+            </p>
+            <div className={styles.modalActions}>
+              <button
+                type="button"
+                className={styles.modalCancel}
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={styles.modalDelete}
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </PageLayout>
   );
 };
