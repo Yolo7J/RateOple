@@ -75,6 +75,9 @@ const MediaListPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const canAddMedia = Array.isArray(user?.roles)
+    ? user.roles.some((role) => ['Admin', 'SuperAdmin'].includes(role))
+    : false;
 
   const initialTypes = searchParams.get('types')?.split(',').filter(Boolean) ?? MEDIA_TYPES;
   const initialGenres = searchParams.get('genres')?.split(',').map(Number).filter(Boolean) ?? [];
@@ -165,7 +168,7 @@ const MediaListPage = () => {
               ))}
             </select>
 
-            {user ? (
+            {canAddMedia ? (
               <button className={styles.addButton} onClick={() => navigate('/media/add')}>
                 + Add Media
               </button>

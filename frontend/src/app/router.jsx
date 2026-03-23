@@ -36,7 +36,9 @@ const Router = () => {
         <Route path="/collections" element={<CollectionsPage />} />
         <Route path="/collections/:id" element={<CollectionDetailPage />} />
         <Route element={<RequireAuth />}>
-          <Route path="/media/add" element={<AddMediaPage />} />
+          <Route element={<RequireRole allow={['Admin', 'SuperAdmin']} />}>
+            <Route path="/media/add" element={<AddMediaPage />} />
+          </Route>
           <Route path="/media/:id/seasons" element={<SeasonManagerPage />} />
           <Route path="/cart" element={<CartPage />} />
           <Route path="/account" element={<AccountPage />} />
