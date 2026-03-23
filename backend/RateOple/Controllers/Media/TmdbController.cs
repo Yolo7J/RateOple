@@ -47,7 +47,7 @@ public class TmdbController : ControllerBase
 
     // POST /api/tmdb/import-series/{tmdbId}
     [HttpPost("import-series/{tmdbId:int}")]
-    [Authorize]
+    [Authorize(Policy = "RequireAdmin")]
     [IgnoreAntiforgeryToken]
     public async Task<IActionResult> ImportSeries(int tmdbId)
     {
