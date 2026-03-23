@@ -17,8 +17,8 @@ const REPORT_TARGET = {
 
 const GROUP_ROLE = {
   Member: 1,
-  Moderator: 2,
-  Admin: 3,
+  GroupModerator: 2,
+  GroupAdmin: 3,
   Owner: 4,
 };
 
@@ -70,7 +70,7 @@ function GroupPostDetailPage() {
   const [replyTo, setReplyTo] = useState(null);
   const [actionError, setActionError] = useState('');
   const viewerRole = group?.viewerRole ?? null;
-  const canModerate = viewerRole === GROUP_ROLE.Owner || viewerRole === GROUP_ROLE.Admin || viewerRole === GROUP_ROLE.Moderator;
+  const canModerate = viewerRole === GROUP_ROLE.Owner || viewerRole === GROUP_ROLE.GroupAdmin || viewerRole === GROUP_ROLE.GroupModerator;
 
   const comments = Array.isArray(commentsData) ? commentsData : [];
 

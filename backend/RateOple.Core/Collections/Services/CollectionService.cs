@@ -379,7 +379,7 @@ public class CollectionService : ICollectionService
                 .Select(m => (GroupRole?)m.Role)
                 .FirstOrDefaultAsync();
 
-            if (role is null || (role != GroupRole.Owner && role != GroupRole.Admin && role != GroupRole.Moderator))
+            if (role is null || (role != GroupRole.Owner && role != GroupRole.GroupAdmin && role != GroupRole.GroupModerator))
                 throw new UnauthorizedAccessException("You cannot modify this group collection.");
         }
     }

@@ -3,7 +3,7 @@ namespace RateOple.Constants.Enums;
 public enum GroupRole
 {
     Member = 1,
-    Moderator = 2,
-    Admin = 3,
+    GroupModerator = 2,
+    GroupAdmin = 3,
     Owner = 4
 }

@@ -158,7 +158,7 @@ public class GroupService : IGroupService
     public async Task<IReadOnlyList<GroupMemberDto>> GetMembersAsync(Guid groupId, Guid actorId)
     {
         var actorRole = await GetMembershipRoleAsync(actorId, groupId);
-        if (actorRole != GroupRole.Owner && actorRole != GroupRole.Admin)
+        if (actorRole != GroupRole.Owner && actorRole != GroupRole.GroupAdmin)
             throw new UnauthorizedAccessException("Insufficient permission to view members.");
 
         var exists = await _context.Groups.AnyAsync(g => g.Id == groupId);
@@ -229,7 +229,7 @@ public class GroupService : IGroupService
             throw new ArgumentException("Owner role is reserved.");
 
         var actorRole = await GetMembershipRoleAsync(actorUserId, groupId);
-        if (actorRole != GroupRole.Owner && actorRole != GroupRole.Admin)
+        if (actorRole != GroupRole.Owner && actorRole != GroupRole.GroupAdmin)
             throw new UnauthorizedAccessException("Insufficient permission to manage roles.");
 
         var targetMembership = await _context.GroupMemberships
@@ -239,11 +239,11 @@ public class GroupService : IGroupService
         if (targetMembership.Role == GroupRole.Owner)
             throw new InvalidOperationException("Owner role cannot be changed.");
 
-        if (actorRole == GroupRole.Admin)
+        if (actorRole == GroupRole.GroupAdmin)
         {
-            if (targetMembership.Role == GroupRole.Admin)
-                throw new UnauthorizedAccessException("Admins cannot modify other admins.");
-            if (dto.Role == GroupRole.Admin)
+            if (targetMembership.Role == GroupRole.GroupAdmin)
+                throw new UnauthorizedAccessException("Group admins cannot modify other group admins.");
+            if (dto.Role == GroupRole.GroupAdmin)
                 throw new UnauthorizedAccessException("Only the owner can assign admins.");
         }
 
@@ -579,7 +579,7 @@ public class GroupService : IGroupService
         if (comment.UserId != actorId)
         {
             var role = await GetMembershipRoleAsync(actorId, groupId);
-            if (role != GroupRole.Owner && role != GroupRole.Admin && role != GroupRole.Moderator)
+            if (role != GroupRole.Owner && role != GroupRole.GroupAdmin && role != GroupRole.GroupModerator)
                 throw new UnauthorizedAccessException("Insufficient permission to delete comment.");
 
             if (comment.UserId.HasValue && comment.UserId.Value != actorId)
@@ -653,7 +653,7 @@ public class GroupService : IGroupService
             throw new ArgumentException("Target user is required.");
 
         var actorRole = await GetMembershipRoleAsync(actorId, groupId);
-        if (actorRole != GroupRole.Owner && actorRole != GroupRole.Admin)
+        if (actorRole != GroupRole.Owner && actorRole != GroupRole.GroupAdmin)
             throw new UnauthorizedAccessException("Insufficient permission to ban users.");
 
         var targetMembership = await _context.GroupMemberships
@@ -664,8 +664,8 @@ public class GroupService : IGroupService
             if (targetMembership.Role == GroupRole.Owner)
                 throw new InvalidOperationException("Owner cannot be banned.");
 
-            if (actorRole == GroupRole.Admin && targetMembership.Role == GroupRole.Admin)
-                throw new UnauthorizedAccessException("Admins cannot ban other admins.");
+            if (actorRole == GroupRole.GroupAdmin && targetMembership.Role == GroupRole.GroupAdmin)
+                throw new UnauthorizedAccessException("Group admins cannot ban other group admins.");
 
             _context.GroupMemberships.Remove(targetMembership);
         }
@@ -697,7 +697,7 @@ public class GroupService : IGroupService
     public async Task UnbanUserAsync(Guid actorId, Guid groupId, Guid userId)
     {
         var actorRole = await GetMembershipRoleAsync(actorId, groupId);
-        if (actorRole != GroupRole.Owner && actorRole != GroupRole.Admin)
+        if (actorRole != GroupRole.Owner && actorRole != GroupRole.GroupAdmin)
             throw new UnauthorizedAccessException("Insufficient permission to unban users.");
 
         var ban = await _context.GroupBans
@@ -714,7 +714,7 @@ public class GroupService : IGroupService
     public async Task<IReadOnlyList<GroupStaffMessageDto>> GetStaffMessagesAsync(Guid groupId, Guid actorId)
     {
         var role = await GetMembershipRoleAsync(actorId, groupId);
-        if (role != GroupRole.Owner && role != GroupRole.Admin && role != GroupRole.Moderator)
+        if (role != GroupRole.Owner && role != GroupRole.GroupAdmin && role != GroupRole.GroupModerator)
             throw new UnauthorizedAccessException("Insufficient permission to view staff messages.");
 
         var exists = await _context.Groups.AnyAsync(g => g.Id == groupId);
@@ -743,7 +743,7 @@ public class GroupService : IGroupService
             throw new ArgumentException("Message content is required.");
 
         var role = await GetMembershipRoleAsync(userId, groupId);
-        if (role != GroupRole.Owner && role != GroupRole.Admin && role != GroupRole.Moderator)
+        if (role != GroupRole.Owner && role != GroupRole.GroupAdmin && role != GroupRole.GroupModerator)
             throw new UnauthorizedAccessException("Insufficient permission to send staff messages.");
 
         var exists = await _context.Groups.AnyAsync(g => g.Id == groupId);
@@ -776,7 +776,7 @@ public class GroupService : IGroupService
     public async Task AddPinnedMediaAsync(Guid userId, Guid groupId, Guid mediaId)
     {
         var role = await GetMembershipRoleAsync(userId, groupId);
-        if (role != GroupRole.Owner && role != GroupRole.Admin && role != GroupRole.Moderator)
+        if (role != GroupRole.Owner && role != GroupRole.GroupAdmin && role != GroupRole.GroupModerator)
             throw new UnauthorizedAccessException("Insufficient permission to pin media.");
 
         var mediaExists = await _context.Media.AnyAsync(m => m.Id == mediaId && !m.IsDeleted);

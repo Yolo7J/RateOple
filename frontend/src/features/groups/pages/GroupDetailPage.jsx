@@ -48,15 +48,15 @@ const styles = {
 
 const GROUP_ROLE = {
   Member: 1,
-  Moderator: 2,
-  Admin: 3,
+  GroupModerator: 2,
+  GroupAdmin: 3,
   Owner: 4,
 };
 
 const ROLE_LABELS = {
   1: 'Member',
-  2: 'Moderator',
-  3: 'Admin',
+  2: 'Group Moderator',
+  3: 'Group Admin',
   4: 'Owner',
 };
 
@@ -72,8 +72,8 @@ function GroupDetailPage() {
   const pinned = Array.isArray(pinnedData) ? pinnedData : [];
   const viewerRole = group?.viewerRole ?? null;
   const isMember = Boolean(viewerRole);
-  const canManageRoles = viewerRole === GROUP_ROLE.Owner || viewerRole === GROUP_ROLE.Admin;
-  const canModerate = viewerRole === GROUP_ROLE.Owner || viewerRole === GROUP_ROLE.Admin || viewerRole === GROUP_ROLE.Moderator;
+  const canManageRoles = viewerRole === GROUP_ROLE.Owner || viewerRole === GROUP_ROLE.GroupAdmin;
+  const canModerate = viewerRole === GROUP_ROLE.Owner || viewerRole === GROUP_ROLE.GroupAdmin || viewerRole === GROUP_ROLE.GroupModerator;
 
   const { data: membersData } = useGroupMembersQuery(id, canManageRoles);
   const { data: staffData } = useGroupStaffMessagesQuery(id, canModerate);
@@ -278,17 +278,17 @@ function GroupDetailPage() {
                 <h2 className={styles.sectionTitle}>Members</h2>
                 <div className={styles.staffGrid}>
                   {members.map((member) => {
-                    const canSetAdmin = viewerRole === GROUP_ROLE.Owner && member.role !== GROUP_ROLE.Owner;
-                    const canSetModerator =
+                    const canSetGroupAdmin = viewerRole === GROUP_ROLE.Owner && member.role !== GROUP_ROLE.Owner;
+                    const canSetGroupModerator =
                       member.role !== GROUP_ROLE.Owner &&
-                      (viewerRole === GROUP_ROLE.Owner || viewerRole === GROUP_ROLE.Admin);
+                      (viewerRole === GROUP_ROLE.Owner || viewerRole === GROUP_ROLE.GroupAdmin);
                     const canDemote =
                       member.role !== GROUP_ROLE.Owner &&
-                      (viewerRole === GROUP_ROLE.Owner || viewerRole === GROUP_ROLE.Admin);
+                      (viewerRole === GROUP_ROLE.Owner || viewerRole === GROUP_ROLE.GroupAdmin);
                     const canBan =
                       member.role !== GROUP_ROLE.Owner &&
                       (viewerRole === GROUP_ROLE.Owner ||
-                        (viewerRole === GROUP_ROLE.Admin && member.role !== GROUP_ROLE.Admin));
+                        (viewerRole === GROUP_ROLE.GroupAdmin && member.role !== GROUP_ROLE.GroupAdmin));
 
                     return (
                       <div key={member.userId} className={styles.memberRow}>
@@ -299,24 +299,24 @@ function GroupDetailPage() {
                           <span className={styles.roleBadge}>Role: {ROLE_LABELS[member.role] || member.role}</span>
                         </div>
                         <div className={styles.actionRow}>
-                          {canSetAdmin ? (
+                          {canSetGroupAdmin ? (
                             <button
                               className={styles.button}
                               type="button"
-                              onClick={() => handleRoleChange(member.userId, GROUP_ROLE.Admin)}
+                              onClick={() => handleRoleChange(member.userId, GROUP_ROLE.GroupAdmin)}
                               disabled={mutating}
                             >
-                              Make admin
+                              Make group admin
                             </button>
                           ) : null}
-                          {canSetModerator ? (
+                          {canSetGroupModerator ? (
                             <button
                               className={styles.button}
                               type="button"
-                              onClick={() => handleRoleChange(member.userId, GROUP_ROLE.Moderator)}
+                              onClick={() => handleRoleChange(member.userId, GROUP_ROLE.GroupModerator)}
                               disabled={mutating}
                             >
-                              Make mod
+                              Make group moderator
                             </button>
                           ) : null}
                           {canDemote ? (
