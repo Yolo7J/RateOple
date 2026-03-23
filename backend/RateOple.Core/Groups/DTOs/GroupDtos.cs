@@ -100,6 +100,10 @@ public class GroupPostCommentDto
     public Guid PostId { get; set; }
     public Guid? AuthorId { get; set; }
     public string? AuthorName { get; set; }
+    public Guid UserId { get; set; }
+    public string? Username { get; set; }
+    public string? DisplayName { get; set; }
+    public string? AvatarUrl { get; set; }
     public string Content { get; set; } = string.Empty;
     public Guid? ParentCommentId { get; set; }
     public DateTime CreatedAt { get; set; }

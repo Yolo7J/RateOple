@@ -479,6 +479,10 @@ public class GroupService : IGroupService
                 PostId = postId,
                 AuthorId = c.UserId,
                 AuthorName = c.User != null ? c.User.UserName : null,
+                UserId = c.UserId,
+                Username = c.User != null ? c.User.UserName : null,
+                DisplayName = c.User != null && c.User.Profile != null ? c.User.Profile.DisplayName : null,
+                AvatarUrl = c.User != null && c.User.Profile != null ? c.User.Profile.AvatarUrl : null,
                 Content = c.Content,
                 ParentCommentId = c.ParentCommentId,
                 CreatedAt = c.CreatedAt
@@ -538,12 +542,28 @@ public class GroupService : IGroupService
         _context.Comments.Add(comment);
         await _context.SaveChangesAsync();
 
+        var author = await _context.Users
+            .AsNoTracking()
+            .Where(u => u.Id == userId)
+            .Select(u => new
+            {
+                u.Id,
+                u.UserName,
+                DisplayName = u.Profile != null ? u.Profile.DisplayName : null,
+                AvatarUrl = u.Profile != null ? u.Profile.AvatarUrl : null
+            })
+            .FirstOrDefaultAsync();
+
         return new GroupPostCommentDto
         {
             Id = comment.Id,
             PostId = postId,
             AuthorId = userId,
-            AuthorName = await _context.Users.Where(u => u.Id == userId).Select(u => u.UserName).FirstOrDefaultAsync(),
+            AuthorName = author?.UserName,
+            UserId = userId,
+            Username = author?.UserName,
+            DisplayName = author?.DisplayName,
+            AvatarUrl = author?.AvatarUrl,
             Content = comment.Content,
             ParentCommentId = comment.ParentCommentId,
             CreatedAt = comment.CreatedAt
