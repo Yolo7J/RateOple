@@ -16,6 +16,7 @@ RateOple is a full-stack media catalog and social platform with:
 - Media tags
 - Group system with posts, comments, votes, staff messages, bans, and pinned media
 - Moderation/reporting and moderator assignments
+- Admin panel with dashboard + media management (add/edit/delete)
 - Database-backed notifications (with publisher abstraction for future realtime delivery)
 
 Core stack:
@@ -64,7 +65,7 @@ frontend/
   src/context/                       # global contexts (auth/theme/language/media cart)
   src/hooks/                         # shared hooks (useTheme/useLanguage/useQueryResource)
   src/features/
-    auth/ collections/ discovery/ groups/ media/ moderation/
+    admin/ auth/ collections/ discovery/ groups/ media/ moderation/
     notifications/ ratings/ reviews/ users/
     # each feature uses pages/components/services/queries (+ hooks placeholders in some)
   src/shared/

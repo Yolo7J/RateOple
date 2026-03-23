@@ -23,6 +23,9 @@ src/context/MediaCartContext.jsx - React context provider and hook for media car
 src/context/ThemeContext.jsx - React context provider and hook for theme state.
 src/features/ - Feature-based domain modules.
 src/features/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+src/features/admin/ - Admin feature module container.
+src/features/admin/pages/ - Pages layer for the admin feature.
+src/features/admin/pages/AdminDashboardPage.jsx - Admin dashboard entry page.
 src/features/auth/ - Auth domain feature module container.
 src/features/auth/components/ - Components layer for the auth feature.
 src/features/auth/components/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
@@ -120,7 +123,9 @@ src/features/media/hooks/.gitkeep - Placeholder file to keep this empty folder t
 src/features/media/pages/ - Pages layer for the media feature.
 src/features/media/pages/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
 src/features/media/pages/AddMediaPage.jsx - Add media route page.
+src/features/media/pages/AdminMediaPage.jsx - Admin media management list page.
 src/features/media/pages/CartPage.jsx - Media cart route page.
+src/features/media/pages/EditMediaPage.jsx - Admin edit media route page.
 src/features/media/pages/MediaDetailPage.jsx - Media detail route page.
 src/features/media/pages/MediaListPage.jsx - Media list route page.
 src/features/media/pages/SeasonManagerPage.jsx - Season manager route page.
