@@ -14,6 +14,8 @@ import SeasonManagerPage from '../features/media/pages/SeasonManagerPage';
 import AddMediaPage from '../features/media/pages/AddMediaPage';
 import CartPage from '../features/media/pages/CartPage';
 import ModerationPage from '../features/moderation/pages/ModerationPage';
+import AdminDashboardPage from '../features/admin/pages/AdminDashboardPage';
+import AdminMediaPage from '../features/media/pages/AdminMediaPage';
 
 export const routes = [
     {
@@ -78,8 +80,16 @@ export const routes = [
     },
     {
         path: '/admin',
+        element: <AdminDashboardPage />,
+    },
+    {
+        path: '/admin/media',
+        element: <AdminMediaPage />,
+    },
+    {
+        path: '/admin/moderation',
         element: <ModerationPage />,
-    }
+    },
 ];
 
 export const fallbackRoute = {

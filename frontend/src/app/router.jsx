@@ -25,6 +25,8 @@ import SeasonManagerPage from '../features/media/pages/SeasonManagerPage';
 import AddMediaPage from '../features/media/pages/AddMediaPage';
 import CartPage from '../features/media/pages/CartPage';
 import ModerationPage from '../features/moderation/pages/ModerationPage';
+import AdminDashboardPage from '../features/admin/pages/AdminDashboardPage';
+import AdminMediaPage from '../features/media/pages/AdminMediaPage';
 
 const Router = () => {
   return (
@@ -64,9 +66,11 @@ const Router = () => {
       </Route>
 
       <Route element={<RequireAuth />}>
-        <Route element={<RequireRole allow={['Moderator', 'Admin', 'SuperAdmin']} />}>
+        <Route element={<RequireRole allow={['Admin', 'SuperAdmin']} />}>
           <Route element={<AdminLayout />}>
-            <Route path="/admin" element={<ModerationPage />} />
+            <Route path="/admin" element={<AdminDashboardPage />} />
+            <Route path="/admin/media" element={<AdminMediaPage />} />
+            <Route path="/admin/moderation" element={<ModerationPage />} />
           </Route>
         </Route>
       </Route>
