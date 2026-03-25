@@ -114,6 +114,8 @@ public class ModerationService : IModerationService
         if (dto.ScopeType != ModeratorScopeType.Global && !dto.ScopeId.HasValue)
             throw new ArgumentException("ScopeId is required for non-global assignments.");
 
+        var normalizedScopeId = NormalizeScopeId(dto.ScopeType, dto.ScopeId);
+
         var userExists = await _context.Users.AnyAsync(u => u.Id == dto.UserId);
         if (!userExists)
             throw new KeyNotFoundException("User not found.");
@@ -122,7 +124,7 @@ public class ModerationService : IModerationService
             .FirstOrDefaultAsync(x =>
                 x.UserId == dto.UserId &&
                 x.ScopeType == dto.ScopeType &&
-                x.ScopeId == dto.ScopeId);
+                x.ScopeId == normalizedScopeId);
 
         if (assignment == null)
         {
@@ -130,7 +132,7 @@ public class ModerationService : IModerationService
             {
                 UserId = dto.UserId,
                 ScopeType = dto.ScopeType,
-                ScopeId = dto.ScopeId,
+                ScopeId = normalizedScopeId,
                 AssignedAt = DateTime.UtcNow,
                 AssignedById = assignedById
             };
@@ -167,11 +169,12 @@ public class ModerationService : IModerationService
 
     public async Task RemoveAssignmentAsync(Guid actorId, Guid userId, ModeratorScopeType scopeType, Guid? scopeId)
     {
+        var normalizedScopeId = NormalizeScopeId(scopeType, scopeId);
         var assignment = await _context.ModeratorAssignments
             .FirstOrDefaultAsync(x =>
                 x.UserId == userId &&
                 x.ScopeType == scopeType &&
-                x.ScopeId == scopeId);
+                x.ScopeId == normalizedScopeId);
 
         if (assignment == null)
             return;
@@ -216,8 +219,20 @@ public class ModerationService : IModerationService
     {
         UserId = assignment.UserId,
         ScopeType = assignment.ScopeType,
-        ScopeId = assignment.ScopeId,
+        ScopeId = assignment.ScopeType == ModeratorScopeType.Global && assignment.ScopeId == Guid.Empty
+            ? null
+            : assignment.ScopeId,
         AssignedAt = assignment.AssignedAt,
         AssignedById = assignment.AssignedById
     };
+
+    private static Guid NormalizeScopeId(ModeratorScopeType scopeType, Guid? scopeId)
+    {
+        if (scopeType == ModeratorScopeType.Global)
+        {
+            return Guid.Empty;
+        }
+
+        return scopeId ?? throw new ArgumentException("ScopeId is required for non-global assignments.");
+    }
 }
