@@ -6,6 +6,7 @@ using RateOple.Core.Media.Services;
 using RateOple.Core.Moderation.Services;
 using RateOple.Core.Social.Services;
 using RateOple.Core.Users.Services;
+using RateOple.Notifications;
 
 namespace RateOple.Extensions;
 
@@ -20,7 +21,7 @@ public static class ApplicationServicesExtensions
         services.AddScoped<IUserProfileService, UserProfileService>();
         services.AddScoped<IUserMediaStatusService, UserMediaStatusService>();
         services.AddScoped<INotificationService, NotificationService>();
-        services.AddSingleton<INotificationPublisher, NoopNotificationPublisher>();
+        services.AddSingleton<INotificationPublisher, SignalRNotificationPublisher>();
         services.AddScoped<ICollectionService, CollectionService>();
         services.AddScoped<IGroupService, GroupService>();
         services.AddScoped<IModerationService, ModerationService>();
