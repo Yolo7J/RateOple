@@ -26,6 +26,11 @@ const moderationService = {
     return response.data;
   },
 
+  getAuditLogs: async (params = {}) => {
+    const response = await api.get('/moderation/audit-logs', { params });
+    return response.data;
+  },
+
   removeAssignment: async ({ userId, scopeType, scopeId = null }) => {
     await api.delete('/moderation/assignments', {
       params: {

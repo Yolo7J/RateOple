@@ -13,10 +13,12 @@ namespace RateOple.Controllers;
 public class ModerationController : ControllerBase
 {
     private readonly IModerationService _moderationService;
+    private readonly IModerationAuditService _auditService;
 
-    public ModerationController(IModerationService moderationService)
+    public ModerationController(IModerationService moderationService, IModerationAuditService auditService)
     {
         _moderationService = moderationService;
+        _auditService = auditService;
     }
 
     [HttpPost("reports")]
@@ -110,8 +112,19 @@ public class ModerationController : ControllerBase
         [FromQuery] ModeratorScopeType scopeType,
         [FromQuery] Guid? scopeId)
     {
-        await _moderationService.RemoveAssignmentAsync(userId, scopeType, scopeId);
+        var actorId = GetRequiredUserId();
+        if (!actorId.HasValue) return Unauthorized();
+
+        await _moderationService.RemoveAssignmentAsync(actorId.Value, userId, scopeType, scopeId);
         return NoContent();
+    }
+
+    [HttpGet("audit-logs")]
+    [Authorize(Policy = PolicyConstants.CanModerateContent)]
+    public async Task<ActionResult<PagedModerationAuditLogsDto>> GetAuditLogs([FromQuery] ModerationAuditLogQueryDto query)
+    {
+        var logs = await _auditService.GetLogsAsync(query);
+        return Ok(logs);
     }
 
     private Guid? GetRequiredUserId()

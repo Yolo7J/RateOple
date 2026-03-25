@@ -57,3 +57,30 @@ public class ModeratorAssignmentDto
     public DateTime AssignedAt { get; set; }
     public Guid AssignedById { get; set; }
 }
+
+public class ModerationAuditLogQueryDto
+{
+    public ModerationAuditAction? Action { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 30;
+}
+
+public class ModerationAuditLogDto
+{
+    public Guid Id { get; set; }
+    public ModerationAuditAction Action { get; set; }
+    public Guid PerformedById { get; set; }
+    public Guid TargetId { get; set; }
+    public ModeratorScopeType? ScopeType { get; set; }
+    public Guid? ScopeId { get; set; }
+    public string? Notes { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+public class PagedModerationAuditLogsDto
+{
+    public List<ModerationAuditLogDto> Items { get; set; } = [];
+    public int TotalCount { get; set; }
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+}

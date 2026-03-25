@@ -24,6 +24,7 @@ public static class ApplicationServicesExtensions
         services.AddScoped<ICollectionService, CollectionService>();
         services.AddScoped<IGroupService, GroupService>();
         services.AddScoped<IModerationService, ModerationService>();
+        services.AddScoped<IModerationAuditService, ModerationAuditService>();
         services.AddScoped<ITvSeriesService, TvSeriesService>();
         services.AddScoped<IMediaService, MediaService>();
         services.AddScoped<IDiscoveryService, DiscoveryService>();

@@ -11,5 +11,5 @@ public interface IModerationService
 
     Task<ModeratorAssignmentDto> AssignModeratorAsync(Guid assignedById, CreateModeratorAssignmentDto dto);
     Task<IReadOnlyList<ModeratorAssignmentDto>> GetAssignmentsAsync(ModeratorScopeType? scopeType, Guid? scopeId);
-    Task RemoveAssignmentAsync(Guid userId, ModeratorScopeType scopeType, Guid? scopeId);
+    Task RemoveAssignmentAsync(Guid actorId, Guid userId, ModeratorScopeType scopeType, Guid? scopeId);
 }

@@ -25,6 +25,7 @@ import SeasonManagerPage from '../features/media/pages/SeasonManagerPage';
 import AddMediaPage from '../features/media/pages/AddMediaPage';
 import CartPage from '../features/media/pages/CartPage';
 import ModerationPage from '../features/moderation/pages/ModerationPage';
+import AuditLogPage from '../features/moderation/pages/AuditLogPage';
 import AdminDashboardPage from '../features/admin/pages/AdminDashboardPage';
 import AdminMediaPage from '../features/media/pages/AdminMediaPage';
 import EditMediaPage from '../features/media/pages/EditMediaPage';
@@ -75,6 +76,7 @@ const Router = () => {
           </Route>
           <Route element={<RequireRole allow={['Admin', 'SuperAdmin', 'Moderator']} />}>
             <Route path="/admin/moderation" element={<ModerationPage />} />
+            <Route path="/admin/moderation/audit-logs" element={<AuditLogPage />} />
           </Route>
         </Route>
       </Route>

@@ -22,11 +22,15 @@ const AdminLayout = () => {
         { to: '/media/add?from=admin', label: 'Add Media' },
         { to: '/admin/media', label: 'Media Management' },
         { to: '/admin/moderation', label: 'Moderation' },
+        { to: '/admin/moderation/audit-logs', label: 'Audit Logs' },
       ];
     }
 
     if (canModerate) {
-      return [{ to: '/admin/moderation', label: 'Moderation' }];
+      return [
+        { to: '/admin/moderation', label: 'Moderation' },
+        { to: '/admin/moderation/audit-logs', label: 'Audit Logs' },
+      ];
     }
 
     return [];

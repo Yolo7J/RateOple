@@ -11,11 +11,16 @@ public class ModerationService : IModerationService
 {
     private readonly ApplicationDbContext _context;
     private readonly INotificationService _notificationService;
+    private readonly IModerationAuditService _auditService;
 
-    public ModerationService(ApplicationDbContext context, INotificationService notificationService)
+    public ModerationService(
+        ApplicationDbContext context,
+        INotificationService notificationService,
+        IModerationAuditService auditService)
     {
         _context = context;
         _notificationService = notificationService;
+        _auditService = auditService;
     }
 
     public async Task<ReportDto> CreateReportAsync(Guid reporterId, CreateReportDto dto)
@@ -87,6 +92,17 @@ public class ModerationService : IModerationService
         report.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+
+        var action = dto.Status switch
+        {
+            ReportStatus.Pending => ModerationAuditAction.ReportMarkedPending,
+            ReportStatus.InReview => ModerationAuditAction.ReportMarkedInReview,
+            ReportStatus.Resolved => ModerationAuditAction.ReportResolved,
+            ReportStatus.Rejected => ModerationAuditAction.ReportRejected,
+            _ => ModerationAuditAction.ReportMarkedPending
+        };
+
+        await _auditService.LogAsync(action, reviewerId, report.Id);
         await _notificationService.CreateAsync(report.ReporterId, NotificationType.ReportStatusChanged, report.Id);
         return Map(report);
     }
@@ -121,6 +137,13 @@ public class ModerationService : IModerationService
             _context.ModeratorAssignments.Add(assignment);
             await _context.SaveChangesAsync();
             await _notificationService.CreateAsync(assignment.UserId, NotificationType.ModeratorAssignment, assignment.UserId);
+
+            await _auditService.LogAsync(
+                ModerationAuditAction.ModeratorAssigned,
+                assignedById,
+                assignment.UserId,
+                assignment.ScopeType,
+                assignment.ScopeId);
         }
 
         return Map(assignment);
@@ -142,7 +165,7 @@ public class ModerationService : IModerationService
         return items.Select(Map).ToList();
     }
 
-    public async Task RemoveAssignmentAsync(Guid userId, ModeratorScopeType scopeType, Guid? scopeId)
+    public async Task RemoveAssignmentAsync(Guid actorId, Guid userId, ModeratorScopeType scopeType, Guid? scopeId)
     {
         var assignment = await _context.ModeratorAssignments
             .FirstOrDefaultAsync(x =>
@@ -155,6 +178,13 @@ public class ModerationService : IModerationService
 
         _context.ModeratorAssignments.Remove(assignment);
         await _context.SaveChangesAsync();
+
+        await _auditService.LogAsync(
+            ModerationAuditAction.ModeratorUnassigned,
+            actorId,
+            assignment.UserId,
+            assignment.ScopeType,
+            assignment.ScopeId);
     }
 
     private async Task<bool> CheckTargetExistsAsync(ReportTargetType targetType, Guid targetId)

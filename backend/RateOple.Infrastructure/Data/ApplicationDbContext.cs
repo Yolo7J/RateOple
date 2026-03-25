@@ -41,6 +41,7 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, 
     // Moderation
     public DbSet<Report> Reports { get; set; }
     public DbSet<ModeratorAssignment> ModeratorAssignments { get; set; }
+    public DbSet<ModerationAuditLog> ModerationAuditLogs { get; set; }
 
     // Collections
     public DbSet<Collection> Collections { get; set; }

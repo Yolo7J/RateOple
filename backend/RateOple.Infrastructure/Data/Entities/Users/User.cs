@@ -43,6 +43,7 @@ namespace RateOple.Infrastructure.Data.Entities
         public ICollection<Report> ReportsReviewed { get; set; } = new List<Report>();
         public ICollection<ModeratorAssignment> ModeratorAssignments { get; set; } = new List<ModeratorAssignment>();
         public ICollection<ModeratorAssignment> AssignmentsCreated { get; set; } = new List<ModeratorAssignment>();
+        public ICollection<ModerationAuditLog> ModerationAuditLogs { get; set; } = new List<ModerationAuditLog>();
         public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
         public UserProfile? Profile { get; set; }
     }

@@ -11,11 +11,16 @@ public class GroupService : IGroupService
 {
     private readonly ApplicationDbContext _context;
     private readonly INotificationService _notificationService;
+    private readonly IModerationAuditService _auditService;
 
-    public GroupService(ApplicationDbContext context, INotificationService notificationService)
+    public GroupService(
+        ApplicationDbContext context,
+        INotificationService notificationService,
+        IModerationAuditService auditService)
     {
         _context = context;
         _notificationService = notificationService;
+        _auditService = auditService;
     }
 
     public async Task<GroupSummaryDto> CreateGroupAsync(Guid userId, CreateGroupDto dto)
@@ -691,6 +696,14 @@ public class GroupService : IGroupService
 
         await _notificationService.CreateAsync(dto.UserId, NotificationType.GroupBan, ban.Id);
 
+        await _auditService.LogAsync(
+            ModerationAuditAction.GroupUserBanned,
+            actorId,
+            ban.UserId,
+            ModeratorScopeType.Group,
+            groupId,
+            ban.Reason);
+
         return MapBan(ban);
     }
 
@@ -709,6 +722,13 @@ public class GroupService : IGroupService
         await _context.SaveChangesAsync();
 
         await _notificationService.CreateAsync(userId, NotificationType.GroupUnban, ban.Id);
+
+        await _auditService.LogAsync(
+            ModerationAuditAction.GroupUserUnbanned,
+            actorId,
+            userId,
+            ModeratorScopeType.Group,
+            groupId);
     }
 
     public async Task<IReadOnlyList<GroupStaffMessageDto>> GetStaffMessagesAsync(Guid groupId, Guid actorId)
