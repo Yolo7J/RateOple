@@ -18,7 +18,15 @@ const styles = {
   rating: 'text-xs font-medium text-[var(--text-secondary)]',
 };
 
-const PLACEHOLDER = 'https://via.placeholder.com/200x300?text=No+Cover';
+const PLACEHOLDER_SVG = `
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300" viewBox="0 0 200 300">
+  <rect width="200" height="300" fill="#22262d"/>
+  <text x="100" y="160" font-family="Arial, sans-serif" font-size="16" fill="#8b93a5" text-anchor="middle">
+    No Cover
+  </text>
+</svg>
+`;
+const PLACEHOLDER = `data:image/svg+xml;utf8,${encodeURIComponent(PLACEHOLDER_SVG)}`;
 
 const TYPE_LABELS = {
   Movie: 'Film',
@@ -39,7 +47,9 @@ const MediaCard = ({ media }) => {
           loading="lazy"
           className={styles.image}
           onError={(e) => {
-            e.currentTarget.src = PLACEHOLDER;
+            if (e.currentTarget.src !== PLACEHOLDER) {
+              e.currentTarget.src = PLACEHOLDER;
+            }
           }}
         />
         <span className={styles.typeBadge}>{TYPE_LABELS[type] ?? type}</span>
