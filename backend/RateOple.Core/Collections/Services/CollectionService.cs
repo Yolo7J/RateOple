@@ -247,7 +247,6 @@ public class CollectionService : ICollectionService
         }
 
         throw new DbUpdateException("Could not add media to collection due to concurrent updates.");
-        return await GetRequiredDtoAsync(collectionId);
     }
 
     public async Task<CollectionDto> RemoveItemAsync(Guid userId, Guid collectionId, Guid mediaId)
