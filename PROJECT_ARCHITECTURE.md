@@ -1,6 +1,6 @@
 # RateOple Architecture (Current State)
 
-Last updated: **March 23, 2026**
+Last updated: **March 25, 2026**
 
 This document reflects the code currently present in the repository.
 
@@ -17,7 +17,7 @@ RateOple is a full-stack media catalog and social platform with:
 - Group system with posts, comments, votes, staff messages, bans, and pinned media
 - Moderation/reporting and moderator assignments
 - Admin panel with dashboard + media management (add/edit/delete)
-- Database-backed notifications (with publisher abstraction for future realtime delivery)
+- Database-backed notifications with SignalR realtime delivery
 
 Core stack:
 
@@ -31,7 +31,7 @@ Runtime flow:
 
 ```text
 Browser (React)
-  -> Axios (withCredentials)
+  -> Axios (withCredentials) + SignalR client
     -> ASP.NET Core API
       -> Core Services
         -> EF Core / PostgreSQL
@@ -46,6 +46,8 @@ backend/
   RateOple/                          # API host, controllers, middleware wiring, DI setup
     Controllers/
       Auth/ Collections/ Discovery/ Groups/ Media/ Moderation/ Users/
+    Hubs/                            # SignalR hubs + user id provider
+    Notifications/                   # SignalR publishers
     Extensions/                      # DI + middleware composition
   RateOple.Core/                     # domain services, interfaces, DTOs
     Auth/ Collections/ Groups/ Media/ Moderation/ Social/ Users/
@@ -68,11 +70,13 @@ frontend/
     admin/ auth/ collections/ discovery/ groups/ media/ moderation/
     notifications/ ratings/ reviews/ users/
     # each feature uses pages/components/services/queries (+ hooks placeholders in some)
+    # realtime hooks live under feature `realtime/` folders
   src/shared/
     api/                             # axios client, auth interceptor, React Query client
     components/                      # shared Header/Footer/MediaCard
     ui/                              # layout primitives + toggles/search/rating UI
     constants/ utils/
+    signalr/                         # SignalR client
   src/locales/                       # i18n dictionaries
   src/assets/                        # bundled static assets
   src/styles/                        # placeholder for global styles
@@ -90,6 +94,7 @@ frontend/
 6. `AddApplicationServices`
 7. `AddCorsConfiguration`
 8. `AddApi`
+9. `AddSignalR` + `IUserIdProvider` for `NameIdentifier` mapping
 
 Then:
 
@@ -109,6 +114,7 @@ Configured in `Extensions/MiddlewareExtensions.cs`:
 5. routing
 6. authentication
 7. antiforgery validation for mutating verbs unless endpoint has `[IgnoreAntiforgeryToken]`
+   (SignalR hub endpoints are excluded from antiforgery)
 8. authorization
 9. controller mapping
 
@@ -252,6 +258,7 @@ Note: Entities are physically domain-grouped in folders but currently share name
 
 - `Report`
 - `ModeratorAssignment`
+- `ModerationAuditLog`
 
 ## 7. Service Registration (DI)
 
@@ -261,9 +268,9 @@ Note: Entities are physically domain-grouped in folders but currently share name
 - Media: `IMediaService`, `ITvSeriesService`, `ITmdbService`, `IOpenLibraryService`, `ITmdbImportService`, `IDiscoveryService`
 - Social: `IRatingService`, `IReviewService`, `IFollowService`, `IInteractionService`, `IUserTasteService`, `IVisibilityService`
 - Collections: `ICollectionService`
-- Users: `IUserProfileService`, `IUserMediaStatusService`, `INotificationService`, `INotificationPublisher` (noop)
+- Users: `IUserProfileService`, `IUserMediaStatusService`, `INotificationService`, `INotificationPublisher` (SignalR)
 - Groups: `IGroupService`
-- Moderation: `IModerationService`
+- Moderation: `IModerationService`, `IModerationAuditService`, `IModerationRealtimePublisher` (SignalR)
 
 ## 8. API Surface
 
@@ -381,6 +388,9 @@ Notifications:
 - `GET /api/notifications`
 - `POST /api/notifications/{id}/read`
 - `POST /api/notifications/read-all`
+SignalR hubs:
+
+- `GET/POST /hubs/notifications` (SignalR)
 
 ### 8.7 Collections
 
@@ -426,6 +436,7 @@ Notifications:
 - `POST /api/moderation/assignments`
 - `GET /api/moderation/assignments`
 - `DELETE /api/moderation/assignments`
+- `GET /api/moderation/audit-logs`
 
 ## 9. Frontend Contract Snapshot
 
@@ -477,6 +488,11 @@ Related contracts currently in use:
 - moderation endpoints under `/api/moderation/*`
 - collection reordering under `/api/collections/{id}/items/reorder`
 
+Realtime clients:
+
+- Notifications: `frontend/src/features/notifications/realtime/useNotificationRealtime.js`
+- Moderation: `frontend/src/features/moderation/realtime/useModerationRealtime.js`
+
 ## 10. External Integrations
 
 ### 10.1 TMDB
@@ -496,20 +512,26 @@ Related contracts currently in use:
 - book search mapping to app DTOs
 - book details mapping from OL work endpoint
 
-## 11. Notification Design (Future Realtime Ready)
+## 11. Notification Design (Realtime)
 
-Notifications are persisted first (DB is source of truth).
+Notifications are persisted first (DB is source of truth), then pushed in realtime via SignalR with polling fallback.
 
-Realtime extension point:
+Realtime wiring:
 
-- `INotificationPublisher`
-- current implementation: `NoopNotificationPublisher`
-- future websocket/signalR delivery can replace noop publisher without changing notification service interface.
+- `NotificationHub` at `/hubs/notifications`
+- `INotificationPublisher` -> `SignalRNotificationPublisher`
+- `IModerationRealtimePublisher` -> `SignalRModerationRealtimePublisher`
+- Clients use authenticated identity (`NameIdentifier`) for `Clients.User(userId)` routing
 
 Current notification hooks:
 
 - moderation report status updates notify the report reporter
 - moderator assignments notify the assigned user
+
+Moderation realtime events:
+
+- `ReportUpdated`
+- `AssignmentUpdated`
 
 ## 12. Delivery Stage Status (8-Stage Plan)
 
@@ -529,4 +551,3 @@ Not yet implemented from larger long-form roadmap:
 - Unified comment target model redesign (current model is still legacy polymorphic shape)
 - Review voting
 - Additional moderation role expansion beyond current implementation details
-- websocket-based notification delivery (abstraction is in place)
