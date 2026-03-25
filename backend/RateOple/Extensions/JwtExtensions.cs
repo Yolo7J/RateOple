@@ -37,6 +37,15 @@ public static class JwtExtensions
                 {
                     OnMessageReceived = context =>
                     {
+                        var path = context.HttpContext.Request.Path;
+                        var accessToken = context.Request.Query["access_token"];
+
+                        if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs/notifications"))
+                        {
+                            context.Token = accessToken;
+                            return Task.CompletedTask;
+                        }
+
                         context.Token = context.Request.Cookies["accessToken"];
                         return Task.CompletedTask;
                     }
