@@ -3,6 +3,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { useModerationReportsQuery } from '../queries/useModerationReportsQuery';
 import { useModeratorAssignmentsQuery } from '../queries/useModeratorAssignmentsQuery';
 import { useModerationMutations } from '../queries/useModerationMutations';
+import { useGroupMutations } from '../../groups/queries/useGroupMutations';
 import ModerationReportRow from '../components/ModerationReportRow';
 import ModeratorAssignmentList from '../components/ModeratorAssignmentList';
 import PageLayout from '../../../layouts/PageLayout';
@@ -73,7 +74,9 @@ function ModerationPage() {
     error: assignmentsError,
   } = useModeratorAssignmentsQuery({}, isAdmin);
 
-  const { updateReportStatus, createAssignment, removeAssignment, loading: mutating } = useModerationMutations();
+  const { updateReportStatus, createAssignment, removeAssignment, loading: moderationMutating } = useModerationMutations();
+  const { banUser, unbanUser, loading: groupMutating } = useGroupMutations();
+  const isMutating = moderationMutating || groupMutating;
 
   const reports = Array.isArray(reportsData?.items) ? reportsData.items : [];
   const assignments = Array.isArray(assignmentsData) ? assignmentsData : [];
@@ -120,6 +123,24 @@ function ModerationPage() {
     }
   };
 
+  const handleBanUser = async ({ groupId, userId, reason }) => {
+    setActionError('');
+    try {
+      await banUser(groupId, { userId, ...(reason ? { reason } : {}) });
+    } catch (err) {
+      setActionError(err?.response?.data?.message || 'Could not ban user from group.');
+    }
+  };
+
+  const handleUnbanUser = async ({ groupId, userId }) => {
+    setActionError('');
+    try {
+      await unbanUser(groupId, userId);
+    } catch (err) {
+      setActionError(err?.response?.data?.message || 'Could not unban user from group.');
+    }
+  };
+
   return (
     <PageLayout>
       <Container>
@@ -157,7 +178,9 @@ function ModerationPage() {
                       key={`${report.id}-${report.status}`}
                       report={report}
                       onUpdateStatus={handleUpdateStatus}
-                      disabled={mutating}
+                      onBanUser={handleBanUser}
+                      onUnbanUser={handleUnbanUser}
+                      disabled={isMutating}
                     />
                   ))}
                   {reports.length === 0 ? <p className={styles.muted}>No reports found.</p> : null}
@@ -207,7 +230,7 @@ function ModerationPage() {
                   <ModeratorAssignmentList
                     assignments={assignments}
                     onRemove={handleRemoveAssignment}
-                    disabled={mutating}
+                    disabled={isMutating}
                   />
                 ) : null}
               </Stack>
