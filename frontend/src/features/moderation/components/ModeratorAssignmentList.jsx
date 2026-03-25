@@ -30,11 +30,14 @@ function ModeratorAssignmentList({ assignments, onRemove, disabled = false }) {
           className={styles.card}
         >
           <p>
-            <strong>User:</strong> <code>{assignment.userId}</code>
+            <strong>Moderator:</strong> <code>{assignment.userId}</code>
           </p>
           <p>
             <strong>Scope:</strong> {SCOPE_LABELS[assignment.scopeType] || assignment.scopeType}
             {assignment.scopeId ? ` (${assignment.scopeId})` : ''}
+          </p>
+          <p className={styles.meta}>
+            Assigned by: <code>{assignment.assignedById}</code>
           </p>
           <p className={styles.meta}>Assigned at: {new Date(assignment.assignedAt).toLocaleString()}</p>
           <button

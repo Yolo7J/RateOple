@@ -90,6 +90,10 @@ function ModerationPage() {
   const handleCreateAssignment = async (e) => {
     e.preventDefault();
     if (!assignmentForm.userId.trim()) return;
+    if (assignmentForm.scopeType !== '1' && !assignmentForm.scopeId.trim()) {
+      setActionError('Scope ID is required for non-global assignments.');
+      return;
+    }
 
     setActionError('');
     try {
