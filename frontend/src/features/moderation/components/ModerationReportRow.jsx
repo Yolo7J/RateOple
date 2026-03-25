@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { formatDate } from '../../../shared/utils/formatDate';
 
 const styles = {
   card: 'flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-4',
-  header: 'flex items-center justify-between gap-2',
+  header: 'flex flex-wrap items-center justify-between gap-2',
   title: 'text-base font-semibold text-[var(--text-primary)]',
+  subtitle: 'text-sm text-[var(--text-muted)]',
   chip: 'rounded-full border border-[var(--border)] px-2.5 py-0.5 text-xs',
   meta: 'text-sm text-[var(--text-muted)]',
   actions: 'flex flex-wrap items-center gap-2',
@@ -34,19 +36,29 @@ const TARGET_LABELS = {
 
 function ModerationReportRow({ report, onUpdateStatus, disabled = false }) {
   const [nextStatus, setNextStatus] = useState(() => Number(report.status || 1));
+  const targetLabel = TARGET_LABELS[report.targetType] || `Type ${report.targetType}`;
+  const statusLabel = STATUS_LABELS[report.status] || `Status ${report.status}`;
 
   return (
     <article className={styles.card}>
       <header className={styles.header}>
-        <h3 className={styles.title}>{TARGET_LABELS[report.targetType] || `Type ${report.targetType}`}</h3>
-        <span className={styles.chip}>{STATUS_LABELS[report.status] || `Status ${report.status}`}</span>
+        <div>
+          <h3 className={styles.title}>Report</h3>
+          <p className={styles.subtitle}>
+            {targetLabel} • <span className="font-medium">ID</span> {report.id}
+          </p>
+        </div>
+        <span className={styles.chip}>{statusLabel}</span>
       </header>
 
+      <p className={styles.meta}>
+        Reporter: <code>{report.reporterId}</code>
+      </p>
       <p className={styles.meta}>
         Target: <code>{report.targetId}</code>
       </p>
       <p className={styles.meta}>
-        Created: {new Date(report.createdAt).toLocaleString()}
+        Created: {formatDate(report.createdAt)}
       </p>
       <p className="text-sm text-[var(--text-secondary)]">{report.reason}</p>
 

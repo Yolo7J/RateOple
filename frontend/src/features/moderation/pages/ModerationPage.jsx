@@ -41,7 +41,6 @@ const styles = {
 const REPORT_STATUS_OPTIONS = [
   { value: '', label: 'All statuses' },
   { value: '1', label: 'Pending' },
-  { value: '2', label: 'In review' },
   { value: '3', label: 'Resolved' },
   { value: '4', label: 'Rejected' },
 ];
