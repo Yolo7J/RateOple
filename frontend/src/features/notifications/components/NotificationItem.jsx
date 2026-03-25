@@ -6,6 +6,7 @@ const styles = {
     'bg-[var(--card-bg)] p-3',
   ].join(' '),
   unread: 'border-[var(--accent)]',
+  highlight: 'live-highlight',
   title: 'text-sm font-semibold text-[var(--text-primary)]',
   muted: 'text-xs text-[var(--text-muted)]',
   button: [
@@ -26,9 +27,11 @@ const NOTIFICATION_LABELS = {
 
 function NotificationItem({ notification, onMarkRead, disabled = false }) {
   const label = NOTIFICATION_LABELS[notification.type] || `Notification type ${notification.type}`;
+  const createdAtMs = new Date(notification.createdAt).getTime();
+  const isRecent = Number.isFinite(createdAtMs) && Date.now() - createdAtMs < 60000;
 
   return (
-    <article className={clsx(styles.item, !notification.read && styles.unread)}>
+    <article className={clsx(styles.item, !notification.read && styles.unread, isRecent && styles.highlight)}>
       <div>
         <h3 className={styles.title}>{label}</h3>
         <p className={styles.muted}>{new Date(notification.createdAt).toLocaleString()}</p>

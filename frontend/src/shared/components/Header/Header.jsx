@@ -15,7 +15,9 @@ const Header = () => {
   const [isMobileUserOpen, setIsMobileUserOpen] = useState(false);
   const [isMobileMediaOpen, setIsMobileMediaOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [badgePulse, setBadgePulse] = useState(false);
   const userMenuRef = useRef(null);
+  const prevUnreadRef = useRef(0);
 
   const { t } = useLanguage();
   const { user, logout } = useAuth();
@@ -42,6 +44,18 @@ const Header = () => {
 
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isUserMenuOpen]);
+
+  useEffect(() => {
+    const prev = prevUnreadRef.current;
+    if (unreadCount > prev) {
+      setBadgePulse(true);
+      const timer = setTimeout(() => setBadgePulse(false), 700);
+      prevUnreadRef.current = unreadCount;
+      return () => clearTimeout(timer);
+    }
+    prevUnreadRef.current = unreadCount;
+    return undefined;
+  }, [unreadCount]);
 
   const handleNavigate = (path) => {
     navigate(path);
@@ -208,7 +222,9 @@ const Header = () => {
               <path d="M13.73 21a2 2 0 0 1-3.46 0" />
             </svg>
             {unreadCount > 0 ? (
-              <span className="absolute -top-1 -right-1 flex h-5 items-center justify-center rounded-full bg-[var(--primary-color)] px-1 text-xs font-semibold text-black">
+              <span
+                className={`absolute -top-1 -right-1 flex h-5 items-center justify-center rounded-full bg-[var(--primary-color)] px-1 text-xs font-semibold text-black ${badgePulse ? 'live-badge' : ''}`}
+              >
                 {unreadCount}
               </span>
             ) : null}

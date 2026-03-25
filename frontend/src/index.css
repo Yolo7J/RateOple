@@ -161,3 +161,34 @@ button:focus-visible {
   outline: 2px solid var(--primary-color);
   outline-offset: 2px;
 }
+
+@keyframes livePulse {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes liveHighlight {
+  0% {
+    box-shadow: 0 0 0 0 rgba(245, 197, 24, 0.45);
+    background-color: var(--primary-color-alpha);
+  }
+  100% {
+    box-shadow: 0 0 0 12px rgba(245, 197, 24, 0);
+    background-color: var(--card-bg);
+  }
+}
+
+.live-badge {
+  animation: livePulse 0.7s ease;
+}
+
+.live-highlight {
+  animation: liveHighlight 1.8s ease;
+}
