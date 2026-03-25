@@ -6,6 +6,7 @@ public static class ApiExtensions
     {
         services.AddControllers();
         services.AddOpenApi();
+        services.AddSignalR();
         
         return services;
     }

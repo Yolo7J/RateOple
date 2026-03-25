@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
+using RateOple.Hubs;
 using RateOple.Infrastructure.Middleware;
 
 namespace RateOple.Extensions;
@@ -27,8 +28,9 @@ public static class MiddlewareExtensions
     var endpoint = context.GetEndpoint();
     var hasIgnore = endpoint?.Metadata
         .GetMetadata<IgnoreAntiforgeryTokenAttribute>() != null;
+    var isHubRequest = context.Request.Path.StartsWithSegments("/hubs");
 
-    if (methods.Contains(context.Request.Method) && !hasIgnore)
+    if (methods.Contains(context.Request.Method) && !hasIgnore && !isHubRequest)
     {
         await antiforgery.ValidateRequestAsync(context);
     }
@@ -37,5 +39,7 @@ public static class MiddlewareExtensions
 
         app.UseAuthorization();
         app.MapControllers();
+        app.MapHub<NotificationHub>("/hubs/notifications")
+            .WithMetadata(new IgnoreAntiforgeryTokenAttribute());
     }
 }
