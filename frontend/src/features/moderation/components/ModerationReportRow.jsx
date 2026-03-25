@@ -3,6 +3,7 @@ import { formatDate } from '../../../shared/utils/formatDate';
 
 const styles = {
   card: 'flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-4',
+  highlight: 'live-highlight',
   header: 'flex flex-wrap items-center justify-between gap-2',
   title: 'text-base font-semibold text-[var(--text-primary)]',
   subtitle: 'text-sm text-[var(--text-muted)]',
@@ -44,11 +45,16 @@ function ModerationReportRow({
   onUnbanUser,
   disabled = false,
 }) {
+  const updatedAtValue = report.updatedAt || report.createdAt;
+  const updatedAtMs = updatedAtValue ? new Date(updatedAtValue).getTime() : 0;
+  const isRecent = Number.isFinite(updatedAtMs) && Date.now() - updatedAtMs < 60000;
   const [confirming, setConfirming] = useState(false);
   const [banForm, setBanForm] = useState({ groupId: '', userId: '', reason: '' });
   const [banError, setBanError] = useState('');
   const [banPending, setBanPending] = useState(false);
   const targetLabel = TARGET_LABELS[report.targetType] || `Type ${report.targetType}`;
+  const targetDisplay = report.targetDisplayName || targetLabel;
+  const reporterDisplay = report.reporterDisplayName || 'Unknown user';
   const statusLabel = STATUS_LABELS[report.status] || `Status ${report.status}`;
   const isResolved = Number(report.status) === 3;
   const isRejected = Number(report.status) === 4;
@@ -109,22 +115,22 @@ function ModerationReportRow({
   };
 
   return (
-    <article className={styles.card}>
+    <article className={`${styles.card} ${isRecent ? styles.highlight : ''}`}>
       <header className={styles.header}>
         <div>
           <h3 className={styles.title}>Report</h3>
           <p className={styles.subtitle}>
-            {targetLabel} • <span className="font-medium">ID</span> {report.id}
+            {targetDisplay}
           </p>
         </div>
         <span className={styles.chip}>{statusLabel}</span>
       </header>
 
       <p className={styles.meta}>
-        Reporter: <code>{report.reporterId}</code>
+        Reporter: {reporterDisplay}
       </p>
       <p className={styles.meta}>
-        Target: <code>{report.targetId}</code>
+        Target: {targetDisplay}
       </p>
       <p className={styles.meta}>
         Created: {formatDate(report.createdAt)}

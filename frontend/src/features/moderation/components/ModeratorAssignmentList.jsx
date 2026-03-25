@@ -1,6 +1,7 @@
 const styles = {
   list: 'grid gap-3',
   card: 'flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-4',
+  highlight: 'live-highlight',
   muted: 'text-[var(--text-muted)]',
   button: [
     'inline-flex items-center justify-center rounded-lg border border-[var(--border)]',
@@ -24,20 +25,25 @@ function ModeratorAssignmentList({ assignments, onRemove, disabled = false }) {
 
   return (
     <div className={styles.list}>
-      {assignments.map((assignment) => (
-        <article
-          key={`${assignment.userId}-${assignment.scopeType}-${assignment.scopeId ?? 'global'}`}
-          className={styles.card}
-        >
+      {assignments.map((assignment) => {
+        const assignedAtMs = new Date(assignment.assignedAt).getTime();
+        const isRecent = Number.isFinite(assignedAtMs) && Date.now() - assignedAtMs < 60000;
+        const moderatorName = assignment.userDisplayName || 'Unknown user';
+        const assignedByName = assignment.assignedByDisplayName || 'Unknown user';
+        const scopeName = assignment.scopeName || SCOPE_LABELS[assignment.scopeType] || 'Scope';
+        return (
+          <article
+            key={`${assignment.userId}-${assignment.scopeType}-${assignment.scopeId ?? 'global'}`}
+            className={`${styles.card} ${isRecent ? styles.highlight : ''}`}
+          >
           <p>
-            <strong>Moderator:</strong> <code>{assignment.userId}</code>
+            <strong>Moderator:</strong> {moderatorName}
           </p>
           <p>
-            <strong>Scope:</strong> {SCOPE_LABELS[assignment.scopeType] || assignment.scopeType}
-            {assignment.scopeId ? ` (${assignment.scopeId})` : ''}
+            <strong>Scope:</strong> {scopeName}
           </p>
           <p className={styles.meta}>
-            Assigned by: <code>{assignment.assignedById}</code>
+            Assigned by: {assignedByName}
           </p>
           <p className={styles.meta}>Assigned at: {new Date(assignment.assignedAt).toLocaleString()}</p>
           <button
@@ -55,7 +61,8 @@ function ModeratorAssignmentList({ assignments, onRemove, disabled = false }) {
             Remove assignment
           </button>
         </article>
-      ))}
+        );
+      })}
     </div>
   );
 }

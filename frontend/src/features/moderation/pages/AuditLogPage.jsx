@@ -104,15 +104,14 @@ function AuditLogPage() {
                         {ACTION_LABELS[log.action] || `Action ${log.action}`}
                       </h3>
                       <p className={styles.meta}>
-                        Moderator: <code>{log.performedById}</code>
+                        Moderator: {log.performedByDisplayName || 'Unknown user'}
                       </p>
                       <p className={styles.meta}>
-                        Target: <code>{log.targetId}</code>
+                        Target: {log.targetDisplayName || '—'}
                       </p>
                       {log.scopeType ? (
                         <p className={styles.meta}>
-                          Scope: {SCOPE_LABELS[log.scopeType] || log.scopeType}
-                          {log.scopeId ? ` (${log.scopeId})` : ''}
+                          Scope: {log.scopeName || SCOPE_LABELS[log.scopeType] || log.scopeType}
                         </p>
                       ) : null}
                       {log.notes ? (

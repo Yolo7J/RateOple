@@ -61,7 +61,7 @@ function ModerationPage() {
   const hasModerationAccess = roles.some((role) => ['Admin', 'SuperAdmin', 'Moderator'].includes(role));
 
   const [statusFilter, setStatusFilter] = useState('1');
-  const [assignmentForm, setAssignmentForm] = useState({ userId: '', scopeType: '1', scopeId: '' });
+  const [assignmentForm, setAssignmentForm] = useState({ userIdentifier: '', scopeType: '1', scopeId: '' });
   const [actionError, setActionError] = useState('');
 
   const { data: reportsData, loading: reportsLoading, error: reportsError } = useModerationReportsQuery({
@@ -96,7 +96,7 @@ function ModerationPage() {
 
   const handleCreateAssignment = async (e) => {
     e.preventDefault();
-    if (!assignmentForm.userId.trim()) return;
+    if (!assignmentForm.userIdentifier.trim()) return;
     if (assignmentForm.scopeType !== '1' && !assignmentForm.scopeId.trim()) {
       setActionError('Scope ID is required for non-global assignments.');
       return;
@@ -104,15 +104,18 @@ function ModerationPage() {
 
     setActionError('');
     try {
+      const identifier = assignmentForm.userIdentifier.trim();
+      const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
+
       await createAssignment({
-        userId: assignmentForm.userId.trim(),
+        ...(isGuid ? { userId: identifier } : { userIdentifier: identifier }),
         scopeType: Number(assignmentForm.scopeType),
         ...(assignmentForm.scopeType === '1' || !assignmentForm.scopeId.trim()
           ? {}
           : { scopeId: assignmentForm.scopeId.trim() }),
       });
 
-      setAssignmentForm((prev) => ({ ...prev, userId: '', scopeId: '' }));
+      setAssignmentForm((prev) => ({ ...prev, userIdentifier: '', scopeId: '' }));
     } catch (err) {
       setActionError(err?.response?.data?.message || 'Could not assign moderator.');
     }
@@ -203,9 +206,9 @@ function ModerationPage() {
                 <form className={styles.form} onSubmit={handleCreateAssignment}>
                   <input
                     className={styles.input}
-                    placeholder="User ID"
-                    value={assignmentForm.userId}
-                    onChange={(e) => setAssignmentForm((prev) => ({ ...prev, userId: e.target.value }))}
+                    placeholder="Username or email"
+                    value={assignmentForm.userIdentifier}
+                    onChange={(e) => setAssignmentForm((prev) => ({ ...prev, userIdentifier: e.target.value }))}
                     required
                   />
                   <select

@@ -25,8 +25,10 @@ public class ReportDto
 {
     public Guid Id { get; set; }
     public Guid ReporterId { get; set; }
+    public string? ReporterDisplayName { get; set; }
     public ReportTargetType TargetType { get; set; }
     public Guid TargetId { get; set; }
+    public string? TargetDisplayName { get; set; }
     public string Reason { get; set; } = string.Empty;
     public ReportStatus Status { get; set; }
     public DateTime CreatedAt { get; set; }
@@ -45,6 +47,7 @@ public class PagedReportsDto
 public class CreateModeratorAssignmentDto
 {
     public Guid UserId { get; set; }
+    public string? UserIdentifier { get; set; }
     public ModeratorScopeType ScopeType { get; set; }
     public Guid? ScopeId { get; set; }
 }
@@ -52,10 +55,13 @@ public class CreateModeratorAssignmentDto
 public class ModeratorAssignmentDto
 {
     public Guid UserId { get; set; }
+    public string? UserDisplayName { get; set; }
     public ModeratorScopeType ScopeType { get; set; }
     public Guid? ScopeId { get; set; }
+    public string? ScopeName { get; set; }
     public DateTime AssignedAt { get; set; }
     public Guid AssignedById { get; set; }
+    public string? AssignedByDisplayName { get; set; }
 }
 
 public class ModerationAuditLogQueryDto
@@ -70,9 +76,12 @@ public class ModerationAuditLogDto
     public Guid Id { get; set; }
     public ModerationAuditAction Action { get; set; }
     public Guid PerformedById { get; set; }
+    public string? PerformedByDisplayName { get; set; }
     public Guid TargetId { get; set; }
+    public string? TargetDisplayName { get; set; }
     public ModeratorScopeType? ScopeType { get; set; }
     public Guid? ScopeId { get; set; }
+    public string? ScopeName { get; set; }
     public string? Notes { get; set; }
     public DateTime CreatedAt { get; set; }
 }
