@@ -221,7 +221,7 @@ function ModerationPage() {
                     value={assignmentForm.scopeId}
                     onChange={(e) => setAssignmentForm((prev) => ({ ...prev, scopeId: e.target.value }))}
                   />
-                  <button className={styles.button} type="submit" disabled={mutating}>
+                  <button className={styles.button} type="submit" disabled={isMutating}>
                     Assign moderator
                   </button>
                 </form>
