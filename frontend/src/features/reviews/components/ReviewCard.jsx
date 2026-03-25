@@ -10,11 +10,12 @@ const styles = {
 };
 
 function ReviewCard({ review }) {
+    const displayName = review.userDisplayName || `User ${String(review.userId).slice(0, 8)}`;
     return (
         <article className={styles.card}>
             <header className={styles.header}>
                 <div className={styles.meta}>
-                    <span className={styles.author}>User {String(review.userId).slice(0, 8)}</span>
+                    <span className={styles.author}>{displayName}</span>
                     <span>{new Date(review.updatedAt ?? review.createdAt).toLocaleDateString()}</span>
                 </div>
                 {typeof review.ratingValue === 'number' && (

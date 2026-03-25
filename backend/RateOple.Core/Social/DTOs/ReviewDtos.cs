@@ -17,6 +17,7 @@ public class ReviewDto
 {
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
+    public string? UserDisplayName { get; set; }
     public Guid MediaId { get; set; }
     public Guid RatingId { get; set; }
     public string Content { get; set; } = string.Empty;

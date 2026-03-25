@@ -49,7 +49,7 @@ public class ReviewService : IReviewService
             existingReview.Content = dto.Content.Trim();
             existingReview.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
-            return Map(existingReview);
+            return await MapWithDisplayNameAsync(existingReview);
         }
 
         var review = new Review
@@ -67,7 +67,7 @@ public class ReviewService : IReviewService
         await _context.SaveChangesAsync();
         await _userTasteService.RecalculateForMediaContextAsync(userId, review.MediaId);
         await _interactionService.TrackReviewCreatedAsync(userId, rating.MediaId, rating.SeasonId, rating.EpisodeId);
-        return Map(review);
+        return await MapWithDisplayNameAsync(review);
     }
 
     public async Task<ReviewDto> UpdateReviewAsync(Guid userId, Guid reviewId, UpdateReviewDto dto)
@@ -91,7 +91,7 @@ public class ReviewService : IReviewService
         await _context.SaveChangesAsync();
         await _userTasteService.RecalculateForMediaContextAsync(userId, review.MediaId);
 
-        return Map(review);
+        return await MapWithDisplayNameAsync(review);
     }
 
     public async Task DeleteReviewAsync(Guid userId, Guid reviewId, bool deleteRating)
@@ -122,24 +122,46 @@ public class ReviewService : IReviewService
 
     public async Task<IReadOnlyList<ReviewDto>> GetMediaReviewsAsync(Guid mediaId)
     {
-        var reviews = await _context.Reviews
+        return await _context.Reviews
             .AsNoTracking()
             .Where(r => r.MediaId == mediaId)
             .OrderByDescending(r => r.UpdatedAt)
+            .Select(r => new ReviewDto
+            {
+                Id = r.Id,
+                UserId = r.UserId,
+                UserDisplayName = r.User.Profile != null
+                    ? r.User.Profile.DisplayName
+                    : r.User.UserName,
+                MediaId = r.MediaId,
+                RatingId = r.RatingId,
+                Content = r.Content,
+                CreatedAt = r.CreatedAt,
+                UpdatedAt = r.UpdatedAt
+            })
             .ToListAsync();
-
-        return reviews.Select(Map).ToList();
     }
 
     public async Task<IReadOnlyList<ReviewDto>> GetUserReviewsAsync(Guid userId)
     {
-        var reviews = await _context.Reviews
+        return await _context.Reviews
             .AsNoTracking()
             .Where(r => r.UserId == userId)
             .OrderByDescending(r => r.UpdatedAt)
+            .Select(r => new ReviewDto
+            {
+                Id = r.Id,
+                UserId = r.UserId,
+                UserDisplayName = r.User.Profile != null
+                    ? r.User.Profile.DisplayName
+                    : r.User.UserName,
+                MediaId = r.MediaId,
+                RatingId = r.RatingId,
+                Content = r.Content,
+                CreatedAt = r.CreatedAt,
+                UpdatedAt = r.UpdatedAt
+            })
             .ToListAsync();
-
-        return reviews.Select(Map).ToList();
     }
 
     private async Task<Guid> ResolveMediaIdFromRatingAsync(Rating rating)
@@ -182,10 +204,23 @@ public class ReviewService : IReviewService
     {
         Id = review.Id,
         UserId = review.UserId,
+        UserDisplayName = null,
         MediaId = review.MediaId,
         RatingId = review.RatingId,
         Content = review.Content,
         CreatedAt = review.CreatedAt,
         UpdatedAt = review.UpdatedAt
     };
+
+    private async Task<ReviewDto> MapWithDisplayNameAsync(Review review)
+    {
+        var dto = Map(review);
+        dto.UserDisplayName = await _context.Users
+            .AsNoTracking()
+            .Where(u => u.Id == review.UserId)
+            .Select(u => u.Profile != null ? u.Profile.DisplayName : u.UserName)
+            .FirstOrDefaultAsync();
+
+        return dto;
+    }
 }
