@@ -25,6 +25,9 @@ const Header = () => {
   const isAdmin = Array.isArray(user?.roles)
     ? user.roles.some((role) => ['Admin', 'SuperAdmin'].includes(role))
     : false;
+  const hasModerationAccess = Array.isArray(user?.roles)
+    ? user.roles.some((role) => ['Admin', 'SuperAdmin', 'Moderator'].includes(role))
+    : false;
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -242,22 +245,33 @@ const Header = () => {
                       {item.label}
                     </button>
                   ))}
-                  {isAdmin ? (
+                  {hasModerationAccess ? (
                     <>
                       <div className="border-t border-[var(--dropdown-border)]" />
+                      {isAdmin ? (
+                        <>
+                          <button
+                            className="flex w-full items-center px-5 py-3 text-left text-base text-[var(--text-primary)] transition hover:bg-[var(--dropdown-hover-bg)]"
+                            onClick={() => handleNavigate('/admin')}
+                            role="menuitem"
+                          >
+                            Admin Dashboard
+                          </button>
+                          <button
+                            className="flex w-full items-center px-5 py-3 text-left text-base text-[var(--text-primary)] transition hover:bg-[var(--dropdown-hover-bg)]"
+                            onClick={() => handleNavigate('/admin/media')}
+                            role="menuitem"
+                          >
+                            Media Management
+                          </button>
+                        </>
+                      ) : null}
                       <button
                         className="flex w-full items-center px-5 py-3 text-left text-base text-[var(--text-primary)] transition hover:bg-[var(--dropdown-hover-bg)]"
-                        onClick={() => handleNavigate('/admin')}
+                        onClick={() => handleNavigate('/admin/moderation')}
                         role="menuitem"
                       >
-                        Admin Dashboard
-                      </button>
-                      <button
-                        className="flex w-full items-center px-5 py-3 text-left text-base text-[var(--text-primary)] transition hover:bg-[var(--dropdown-hover-bg)]"
-                        onClick={() => handleNavigate('/admin/media')}
-                        role="menuitem"
-                      >
-                        Media Management
+                        Moderation
                       </button>
                     </>
                   ) : null}
@@ -478,29 +492,44 @@ const Header = () => {
                       </span>
                     </button>
                   ))}
-                  {isAdmin ? (
+                  {hasModerationAccess ? (
                     <>
+                      {isAdmin ? (
+                        <>
+                          <button
+                            className="flex w-full items-center justify-between rounded-2xl border border-[var(--button-border)] bg-[var(--button-bg)] px-4 py-3 text-base font-semibold text-[var(--text-primary)]"
+                            onClick={() => handleNavigate('/admin')}
+                          >
+                            <span className="flex items-center gap-2">
+                              <svg className="h-5 w-5 text-[var(--text-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                                <path d="M12 2l7 4v6c0 5-3 9-7 10-4-1-7-5-7-10V6l7-4z" />
+                              </svg>
+                              Admin Dashboard
+                            </span>
+                          </button>
+                          <button
+                            className="flex w-full items-center justify-between rounded-2xl border border-[var(--button-border)] bg-[var(--button-bg)] px-4 py-3 text-base font-semibold text-[var(--text-primary)]"
+                            onClick={() => handleNavigate('/admin/media')}
+                          >
+                            <span className="flex items-center gap-2">
+                              <svg className="h-5 w-5 text-[var(--text-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                                <rect x="3" y="4" width="18" height="14" rx="2" />
+                                <path d="M7 20h10" />
+                              </svg>
+                              Media Management
+                            </span>
+                          </button>
+                        </>
+                      ) : null}
                       <button
                         className="flex w-full items-center justify-between rounded-2xl border border-[var(--button-border)] bg-[var(--button-bg)] px-4 py-3 text-base font-semibold text-[var(--text-primary)]"
-                        onClick={() => handleNavigate('/admin')}
+                        onClick={() => handleNavigate('/admin/moderation')}
                       >
                         <span className="flex items-center gap-2">
                           <svg className="h-5 w-5 text-[var(--text-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                             <path d="M12 2l7 4v6c0 5-3 9-7 10-4-1-7-5-7-10V6l7-4z" />
                           </svg>
-                          Admin Dashboard
-                        </span>
-                      </button>
-                      <button
-                        className="flex w-full items-center justify-between rounded-2xl border border-[var(--button-border)] bg-[var(--button-bg)] px-4 py-3 text-base font-semibold text-[var(--text-primary)]"
-                        onClick={() => handleNavigate('/admin/media')}
-                      >
-                        <span className="flex items-center gap-2">
-                          <svg className="h-5 w-5 text-[var(--text-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                            <rect x="3" y="4" width="18" height="14" rx="2" />
-                            <path d="M7 20h10" />
-                          </svg>
-                          Media Management
+                          Moderation
                         </span>
                       </button>
                     </>
@@ -652,29 +681,44 @@ const Header = () => {
                     Notifications
                   </span>
                 </button>
-                {isAdmin ? (
+                {hasModerationAccess ? (
                   <>
+                    {isAdmin ? (
+                      <>
+                        <button
+                          className="flex w-full items-center justify-between rounded-2xl border border-[var(--button-border)] bg-[var(--button-bg)] px-4 py-3 text-base font-semibold text-[var(--text-primary)]"
+                          onClick={() => handleNavigate('/admin')}
+                        >
+                          <span className="flex items-center gap-2">
+                            <svg className="h-5 w-5 text-[var(--text-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                              <path d="M12 2l7 4v6c0 5-3 9-7 10-4-1-7-5-7-10V6l7-4z" />
+                            </svg>
+                            Admin Dashboard
+                          </span>
+                        </button>
+                        <button
+                          className="flex w-full items-center justify-between rounded-2xl border border-[var(--button-border)] bg-[var(--button-bg)] px-4 py-3 text-base font-semibold text-[var(--text-primary)]"
+                          onClick={() => handleNavigate('/admin/media')}
+                        >
+                          <span className="flex items-center gap-2">
+                            <svg className="h-5 w-5 text-[var(--text-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                              <rect x="3" y="4" width="18" height="14" rx="2" />
+                              <path d="M7 20h10" />
+                            </svg>
+                            Media Management
+                          </span>
+                        </button>
+                      </>
+                    ) : null}
                     <button
                       className="flex w-full items-center justify-between rounded-2xl border border-[var(--button-border)] bg-[var(--button-bg)] px-4 py-3 text-base font-semibold text-[var(--text-primary)]"
-                      onClick={() => handleNavigate('/admin')}
+                      onClick={() => handleNavigate('/admin/moderation')}
                     >
                       <span className="flex items-center gap-2">
                         <svg className="h-5 w-5 text-[var(--text-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                           <path d="M12 2l7 4v6c0 5-3 9-7 10-4-1-7-5-7-10V6l7-4z" />
                         </svg>
-                        Admin Dashboard
-                      </span>
-                    </button>
-                    <button
-                      className="flex w-full items-center justify-between rounded-2xl border border-[var(--button-border)] bg-[var(--button-bg)] px-4 py-3 text-base font-semibold text-[var(--text-primary)]"
-                      onClick={() => handleNavigate('/admin/media')}
-                    >
-                      <span className="flex items-center gap-2">
-                        <svg className="h-5 w-5 text-[var(--text-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                          <rect x="3" y="4" width="18" height="14" rx="2" />
-                          <path d="M7 20h10" />
-                        </svg>
-                        Media Management
+                        Moderation
                       </span>
                     </button>
                   </>

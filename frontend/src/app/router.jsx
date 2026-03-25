@@ -67,11 +67,13 @@ const Router = () => {
       </Route>
 
       <Route element={<RequireAuth />}>
-        <Route element={<RequireRole allow={['Admin', 'SuperAdmin']} />}>
-          <Route element={<AdminLayout />}>
+        <Route element={<AdminLayout />}>
+          <Route element={<RequireRole allow={['Admin', 'SuperAdmin']} />}>
             <Route path="/admin" element={<AdminDashboardPage />} />
             <Route path="/admin/media" element={<AdminMediaPage />} />
             <Route path="/admin/media/:id/edit" element={<EditMediaPage />} />
+          </Route>
+          <Route element={<RequireRole allow={['Admin', 'SuperAdmin', 'Moderator']} />}>
             <Route path="/admin/moderation" element={<ModerationPage />} />
           </Route>
         </Route>

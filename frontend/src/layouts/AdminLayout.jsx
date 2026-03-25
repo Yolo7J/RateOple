@@ -1,4 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
+import { useMemo } from 'react';
+import { useAuth } from '../context/AuthContext';
 import SidebarLayout from './SidebarLayout';
 
 const navLinkClass = ({ isActive }) =>
@@ -8,24 +10,41 @@ const navLinkClass = ({ isActive }) =>
   ].join(' ');
 
 const AdminLayout = () => {
+  const { user } = useAuth();
+  const roles = useMemo(() => (Array.isArray(user?.roles) ? user.roles : []), [user]);
+  const isAdmin = roles.some((role) => ['Admin', 'SuperAdmin'].includes(role));
+  const canModerate = roles.some((role) => ['Admin', 'SuperAdmin', 'Moderator'].includes(role));
+
+  const navItems = useMemo(() => {
+    if (isAdmin) {
+      return [
+        { to: '/admin', label: 'Dashboard' },
+        { to: '/media/add?from=admin', label: 'Add Media' },
+        { to: '/admin/media', label: 'Media Management' },
+        { to: '/admin/moderation', label: 'Moderation' },
+      ];
+    }
+
+    if (canModerate) {
+      return [{ to: '/admin/moderation', label: 'Moderation' }];
+    }
+
+    return [];
+  }, [isAdmin, canModerate]);
+
+  const title = isAdmin ? 'Admin' : 'Moderation';
+
   return (
     <SidebarLayout
       sidebar={(
         <>
-          <h3 className="text-lg font-semibold">Admin</h3>
+          <h3 className="text-lg font-semibold">{title}</h3>
           <nav className="grid gap-2 text-sm text-[var(--text-secondary)]">
-            <NavLink to="/admin" end className={navLinkClass}>
-              Dashboard
-            </NavLink>
-            <NavLink to="/media/add?from=admin" className={navLinkClass}>
-              Add Media
-            </NavLink>
-            <NavLink to="/admin/media" className={navLinkClass}>
-              Media Management
-            </NavLink>
-            <NavLink to="/admin/moderation" className={navLinkClass}>
-              Moderation
-            </NavLink>
+            {navItems.map((item) => (
+              <NavLink key={item.to} to={item.to} end={item.to === '/admin'} className={navLinkClass}>
+                {item.label}
+              </NavLink>
+            ))}
           </nav>
         </>
       )}
