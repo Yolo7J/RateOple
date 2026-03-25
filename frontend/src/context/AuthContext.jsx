@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { authService } from "../features/auth/services/authService";
 import { useAuthSessionQuery } from "../features/auth/queries/useAuthSessionQuery";
 import { startNotificationHub, stopNotificationHub } from "../shared/signalr/signalrClient";
+import { useNotificationRealtime } from "../features/notifications/realtime/useNotificationRealtime";
 
 const AuthContext = createContext(null);
 
@@ -30,6 +31,8 @@ export const AuthProvider = ({ children }) => {
             console.error("SignalR connection failed:", error);
         });
     }, [user?.id]);
+
+    useNotificationRealtime(Boolean(user?.id));
 
     const login = async (email, password) => {
         const session = await authService.login(email, password);
