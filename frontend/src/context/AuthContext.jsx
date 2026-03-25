@@ -1,8 +1,9 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useMemo } from "react";
+import { createContext, useContext, useEffect, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { authService } from "../features/auth/services/authService";
 import { useAuthSessionQuery } from "../features/auth/queries/useAuthSessionQuery";
+import { startNotificationHub, stopNotificationHub } from "../shared/signalr/signalrClient";
 
 const AuthContext = createContext(null);
 
@@ -18,6 +19,17 @@ export const AuthProvider = ({ children }) => {
             roles: Array.isArray(sessionData.roles) ? sessionData.roles : [],
         };
     }, [sessionData]);
+
+    useEffect(() => {
+        if (!user?.id) {
+            stopNotificationHub();
+            return;
+        }
+
+        startNotificationHub().catch((error) => {
+            console.error("SignalR connection failed:", error);
+        });
+    }, [user?.id]);
 
     const login = async (email, password) => {
         const session = await authService.login(email, password);
