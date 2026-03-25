@@ -1,6 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { getNotificationHubConnection, startNotificationHub } from '../../../shared/signalr/signalrClient';
+import {
+  getNotificationHubConnection,
+  startNotificationHub,
+  subscribeToNotificationHubStatus,
+} from '../../../shared/signalr/signalrClient';
 
 const toNotificationDto = (notification) => ({
   id: notification.id,
@@ -36,6 +40,8 @@ const updateNotificationCache = (data, queryParams, notification) => {
 
 export const useNotificationRealtime = (enabled) => {
   const queryClient = useQueryClient();
+  const recentIdsRef = useRef(new Map());
+  const refetchTimerRef = useRef(null);
 
   useEffect(() => {
     if (!enabled) return undefined;
@@ -43,6 +49,22 @@ export const useNotificationRealtime = (enabled) => {
     const connection = getNotificationHubConnection();
 
     const handleNotification = (notification) => {
+      if (!notification?.id) return;
+
+      const now = Date.now();
+      const recentIds = recentIdsRef.current;
+      const existingTimestamp = recentIds.get(notification.id);
+      if (existingTimestamp && now - existingTimestamp < 60000) {
+        return;
+      }
+
+      recentIds.set(notification.id, now);
+      for (const [id, timestamp] of recentIds.entries()) {
+        if (now - timestamp > 300000) {
+          recentIds.delete(id);
+        }
+      }
+
       const entries = queryClient.getQueriesData({ queryKey: ['notifications', 'list'] });
       entries.forEach(([key, data]) => {
         const queryParams = Array.isArray(key) ? key[2] : undefined;
@@ -56,12 +78,27 @@ export const useNotificationRealtime = (enabled) => {
     connection.off('ReceiveNotification', handleNotification);
     connection.on('ReceiveNotification', handleNotification);
 
+    const unsubscribe = subscribeToNotificationHubStatus((state) => {
+      if (state === 'disconnected' || state === 'reconnecting') {
+        if (refetchTimerRef.current) return;
+        refetchTimerRef.current = setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ['notifications', 'list'] });
+          refetchTimerRef.current = null;
+        }, 2000);
+      }
+    });
+
     startNotificationHub().catch((error) => {
       console.error('SignalR connection failed:', error);
     });
 
     return () => {
       connection.off('ReceiveNotification', handleNotification);
+      if (refetchTimerRef.current) {
+        clearTimeout(refetchTimerRef.current);
+        refetchTimerRef.current = null;
+      }
+      unsubscribe();
     };
   }, [enabled, queryClient]);
 };

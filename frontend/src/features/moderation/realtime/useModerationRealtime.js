@@ -1,6 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { getNotificationHubConnection, startNotificationHub } from '../../../shared/signalr/signalrClient';
+import {
+  getNotificationHubConnection,
+  startNotificationHub,
+  subscribeToNotificationHubStatus,
+} from '../../../shared/signalr/signalrClient';
 
 const toKey = (value) => (value === null || value === undefined ? '' : String(value));
 
@@ -95,6 +99,7 @@ const updateReportsCache = (data, queryParams, report) => {
 
 export const useModerationRealtime = (enabled) => {
   const queryClient = useQueryClient();
+  const refetchTimerRef = useRef(null);
 
   useEffect(() => {
     if (!enabled) return undefined;
@@ -128,6 +133,17 @@ export const useModerationRealtime = (enabled) => {
     connection.on('ReportUpdated', handleReportUpdated);
     connection.on('AssignmentUpdated', handleAssignmentUpdated);
 
+    const unsubscribe = subscribeToNotificationHubStatus((state) => {
+      if (state === 'disconnected' || state === 'reconnecting') {
+        if (refetchTimerRef.current) return;
+        refetchTimerRef.current = setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ['moderation', 'reports'] });
+          queryClient.invalidateQueries({ queryKey: ['moderation', 'assignments'] });
+          refetchTimerRef.current = null;
+        }, 2000);
+      }
+    });
+
     startNotificationHub().catch((error) => {
       console.error('SignalR connection failed:', error);
     });
@@ -135,6 +151,11 @@ export const useModerationRealtime = (enabled) => {
     return () => {
       connection.off('ReportUpdated', handleReportUpdated);
       connection.off('AssignmentUpdated', handleAssignmentUpdated);
+      if (refetchTimerRef.current) {
+        clearTimeout(refetchTimerRef.current);
+        refetchTimerRef.current = null;
+      }
+      unsubscribe();
     };
   }, [enabled, queryClient]);
 };

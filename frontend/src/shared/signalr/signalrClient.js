@@ -7,6 +7,7 @@ const hubUrl = `${hubBaseUrl}/hubs/notifications`;
 
 const listeners = new Set();
 let connection;
+let startPromise;
 
 const notify = (state, error = null) => {
   listeners.forEach((listener) => listener(state, error));
@@ -43,10 +44,24 @@ export const getNotificationHubConnection = () => {
 export const startNotificationHub = async () => {
   const hubConnection = getNotificationHubConnection();
 
-  if (hubConnection.state === signalR.HubConnectionState.Disconnected) {
-    await hubConnection.start();
-    notify('connected');
+  if (hubConnection.state === signalR.HubConnectionState.Connected) return hubConnection;
+
+  if (!startPromise) {
+    startPromise = hubConnection
+      .start()
+      .then(() => {
+        notify('connected');
+      })
+      .catch((error) => {
+        notify('disconnected', error);
+        throw error;
+      })
+      .finally(() => {
+        startPromise = null;
+      });
   }
+
+  await startPromise;
 
   return hubConnection;
 };
