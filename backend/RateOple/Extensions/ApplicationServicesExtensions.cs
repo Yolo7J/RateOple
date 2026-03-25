@@ -4,6 +4,7 @@ using RateOple.Core.Collections.Services;
 using RateOple.Core.Groups.Services;
 using RateOple.Core.Media.Services;
 using RateOple.Core.Moderation.Services;
+using RateOple.Core.Moderation.Interfaces;
 using RateOple.Core.Social.Services;
 using RateOple.Core.Users.Services;
 using RateOple.Notifications;
@@ -26,6 +27,7 @@ public static class ApplicationServicesExtensions
         services.AddScoped<IGroupService, GroupService>();
         services.AddScoped<IModerationService, ModerationService>();
         services.AddScoped<IModerationAuditService, ModerationAuditService>();
+        services.AddSingleton<IModerationRealtimePublisher, SignalRModerationRealtimePublisher>();
         services.AddScoped<ITvSeriesService, TvSeriesService>();
         services.AddScoped<IMediaService, MediaService>();
         services.AddScoped<IDiscoveryService, DiscoveryService>();

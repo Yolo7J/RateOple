@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using RateOple.Constants.Enums;
 using RateOple.Core.Contracts;
 using RateOple.Core.Moderation.DTOs;
+using RateOple.Core.Moderation.Interfaces;
 using RateOple.Infrastructure.Data;
 using RateOple.Infrastructure.Data.Entities;
 
@@ -12,15 +13,18 @@ public class ModerationService : IModerationService
     private readonly ApplicationDbContext _context;
     private readonly INotificationService _notificationService;
     private readonly IModerationAuditService _auditService;
+    private readonly IModerationRealtimePublisher _realtimePublisher;
 
     public ModerationService(
         ApplicationDbContext context,
         INotificationService notificationService,
-        IModerationAuditService auditService)
+        IModerationAuditService auditService,
+        IModerationRealtimePublisher realtimePublisher)
     {
         _context = context;
         _notificationService = notificationService;
         _auditService = auditService;
+        _realtimePublisher = realtimePublisher;
     }
 
     public async Task<ReportDto> CreateReportAsync(Guid reporterId, CreateReportDto dto)
@@ -104,7 +108,11 @@ public class ModerationService : IModerationService
 
         await _auditService.LogAsync(action, reviewerId, report.Id);
         await _notificationService.CreateAsync(report.ReporterId, NotificationType.ReportStatusChanged, report.Id);
-        return Map(report);
+
+        var updatedReport = Map(report);
+        await _realtimePublisher.ReportUpdatedAsync(updatedReport);
+
+        return updatedReport;
     }
 
     public async Task<ModeratorAssignmentDto> AssignModeratorAsync(Guid assignedById, CreateModeratorAssignmentDto dto)
@@ -146,6 +154,16 @@ public class ModerationService : IModerationService
                 assignment.UserId,
                 assignment.ScopeType,
                 assignment.ScopeId);
+
+            var assignmentDto = Map(assignment);
+            await _realtimePublisher.AssignmentUpdatedAsync(new ModeratorAssignmentUpdateDto
+            {
+                Action = "Added",
+                Assignment = assignmentDto,
+                UserId = assignmentDto.UserId,
+                ScopeType = assignmentDto.ScopeType,
+                ScopeId = assignmentDto.ScopeId
+            });
         }
 
         return Map(assignment);
@@ -188,6 +206,16 @@ public class ModerationService : IModerationService
             assignment.UserId,
             assignment.ScopeType,
             assignment.ScopeId);
+
+        await _realtimePublisher.AssignmentUpdatedAsync(new ModeratorAssignmentUpdateDto
+        {
+            Action = "Removed",
+            UserId = assignment.UserId,
+            ScopeType = assignment.ScopeType,
+            ScopeId = assignment.ScopeId == Guid.Empty && assignment.ScopeType == ModeratorScopeType.Global
+                ? null
+                : assignment.ScopeId
+        });
     }
 
     private async Task<bool> CheckTargetExistsAsync(ReportTargetType targetType, Guid targetId)

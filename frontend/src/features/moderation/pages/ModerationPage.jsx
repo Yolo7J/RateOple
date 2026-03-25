@@ -4,6 +4,7 @@ import { useModerationReportsQuery } from '../queries/useModerationReportsQuery'
 import { useModeratorAssignmentsQuery } from '../queries/useModeratorAssignmentsQuery';
 import { useModerationMutations } from '../queries/useModerationMutations';
 import { useGroupMutations } from '../../groups/queries/useGroupMutations';
+import { useModerationRealtime } from '../realtime/useModerationRealtime';
 import ModerationReportRow from '../components/ModerationReportRow';
 import ModeratorAssignmentList from '../components/ModeratorAssignmentList';
 import PageLayout from '../../../layouts/PageLayout';
@@ -57,6 +58,7 @@ function ModerationPage() {
   const { user } = useAuth();
   const roles = useMemo(() => (Array.isArray(user?.roles) ? user.roles : []), [user]);
   const isAdmin = roles.some((role) => ['Admin', 'SuperAdmin'].includes(role));
+  const hasModerationAccess = roles.some((role) => ['Admin', 'SuperAdmin', 'Moderator'].includes(role));
 
   const [statusFilter, setStatusFilter] = useState('1');
   const [assignmentForm, setAssignmentForm] = useState({ userId: '', scopeType: '1', scopeId: '' });
@@ -77,6 +79,8 @@ function ModerationPage() {
   const { updateReportStatus, createAssignment, removeAssignment, loading: moderationMutating } = useModerationMutations();
   const { banUser, unbanUser, loading: groupMutating } = useGroupMutations();
   const isMutating = moderationMutating || groupMutating;
+
+  useModerationRealtime(hasModerationAccess);
 
   const reports = Array.isArray(reportsData?.items) ? reportsData.items : [];
   const assignments = Array.isArray(assignmentsData) ? assignmentsData : [];
