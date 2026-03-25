@@ -47,6 +47,7 @@ function ModerationReportRow({
   const [confirming, setConfirming] = useState(false);
   const [banForm, setBanForm] = useState({ groupId: '', userId: '', reason: '' });
   const [banError, setBanError] = useState('');
+  const [banPending, setBanPending] = useState(false);
   const targetLabel = TARGET_LABELS[report.targetType] || `Type ${report.targetType}`;
   const statusLabel = STATUS_LABELS[report.status] || `Status ${report.status}`;
   const isResolved = Number(report.status) === 3;
@@ -75,8 +76,16 @@ function ModerationReportRow({
       setBanError('Group ID and user ID are required to ban.');
       return;
     }
+    if (!window.confirm(`Ban user ${userId} from group ${groupId}?`)) return;
     setBanError('');
-    await onBanUser({ groupId, userId, reason: reason || undefined });
+    setBanPending(true);
+    try {
+      await onBanUser({ groupId, userId, reason: reason || undefined });
+    } catch (err) {
+      setBanError(err?.response?.data?.message || 'Could not ban user from group.');
+    } finally {
+      setBanPending(false);
+    }
   };
 
   const handleUnban = async () => {
@@ -87,8 +96,16 @@ function ModerationReportRow({
       setBanError('Group ID and user ID are required to unban.');
       return;
     }
+    if (!window.confirm(`Unban user ${userId} from group ${groupId}?`)) return;
     setBanError('');
-    await onUnbanUser({ groupId, userId });
+    setBanPending(true);
+    try {
+      await onUnbanUser({ groupId, userId });
+    } catch (err) {
+      setBanError(err?.response?.data?.message || 'Could not unban user from group.');
+    } finally {
+      setBanPending(false);
+    }
   };
 
   return (
@@ -158,18 +175,18 @@ function ModerationReportRow({
             <button
               className={styles.button}
               type="button"
-              disabled={disabled}
+              disabled={disabled || banPending || !banForm.groupId.trim() || !banForm.userId.trim()}
               onClick={handleBan}
             >
-              Ban user (group)
+              {banPending ? 'Processing...' : 'Ban user (group)'}
             </button>
             <button
               className={styles.button}
               type="button"
-              disabled={disabled}
+              disabled={disabled || banPending || !banForm.groupId.trim() || !banForm.userId.trim()}
               onClick={handleUnban}
             >
-              Unban user
+              {banPending ? 'Processing...' : 'Unban user'}
             </button>
           </div>
           {banError ? <p className={styles.error}>{banError}</p> : null}

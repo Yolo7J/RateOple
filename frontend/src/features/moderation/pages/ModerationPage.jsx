@@ -129,6 +129,7 @@ function ModerationPage() {
       await banUser(groupId, { userId, ...(reason ? { reason } : {}) });
     } catch (err) {
       setActionError(err?.response?.data?.message || 'Could not ban user from group.');
+      throw err;
     }
   };
 
@@ -138,6 +139,7 @@ function ModerationPage() {
       await unbanUser(groupId, userId);
     } catch (err) {
       setActionError(err?.response?.data?.message || 'Could not unban user from group.');
+      throw err;
     }
   };
 
@@ -169,6 +171,7 @@ function ModerationPage() {
 
               {reportsLoading ? <p className={styles.muted}>Loading reports...</p> : null}
               {reportsError ? <p className={styles.error}>Failed to load reports.</p> : null}
+              {isMutating ? <p className={styles.muted}>Applying moderation changes...</p> : null}
               {actionError ? <p className={styles.error}>{actionError}</p> : null}
 
               {!reportsLoading && !reportsError ? (
