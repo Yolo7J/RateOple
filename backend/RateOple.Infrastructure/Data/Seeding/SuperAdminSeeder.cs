@@ -10,7 +10,7 @@ namespace RateOple.Infrastructure.Data.Seeding
             UserManager<User> userManager
         )
         {
-            var superAdminEmail = "potato7morkov@gmail.com";
+            var superAdminEmail = "superadmin@example.com";
             var superAdminUsername = "superadmin";
             var superAdminPassword = "ChangeThis123!";
 
