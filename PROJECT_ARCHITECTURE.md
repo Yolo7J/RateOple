@@ -101,8 +101,16 @@ frontend/
 
 Then:
 
-- `SeedDatabaseAsync()` runs (roles, super admin, test users + profiles, genres)
+- `SeedDatabaseAsync()` runs according to explicit `Seed:Mode`
 - middleware pipeline is configured via `ConfigureMiddleware`
+
+Seed modes:
+
+- `None`: no app data seeding.
+- `Required`: roles and genres; super-admin only when valid `Seed:SuperAdmin` settings are provided.
+- `Demo`: development-only; roles, genres, configured super-admin, and configured demo users.
+
+No seeder uses fallback passwords. Production rejects `Demo` mode and known placeholder super-admin passwords.
 
 ## 4. Middleware, Auth, Security
 

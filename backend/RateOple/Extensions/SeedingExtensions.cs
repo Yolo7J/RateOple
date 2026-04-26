@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Options;
 using RateOple.Infrastructure.Data;
 using RateOple.Infrastructure.Data.Entities;
 using RateOple.Infrastructure.Data.Seeding;
@@ -14,19 +15,46 @@ public static class SeedingExtensions
 
         try
         {
+            var logger = services.GetRequiredService<ILogger<Program>>();
+            var seedOptions = services.GetRequiredService<IOptions<SeedOptions>>().Value;
+            SeedOptionsValidator.Validate(seedOptions, app.Environment.IsDevelopment());
+
+            if (seedOptions.Mode == SeedMode.None)
+            {
+                logger.LogInformation("Database seeding skipped. Seed mode: {SeedMode}", seedOptions.Mode);
+                return;
+            }
+
             var roleManager = services.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
             var userManager = services.GetRequiredService<UserManager<User>>();
             var db = services.GetRequiredService<ApplicationDbContext>();
 
             await RoleSeeder.SeedAsync(roleManager);
-            await SuperAdminSeeder.SeedAsync(userManager);
-            await TestUsersSeeder.SeedAsync(userManager, db);
             await GenreSeeder.SeedAsync(db);
+
+            if (seedOptions.SuperAdmin.Enabled
+                || !string.IsNullOrWhiteSpace(seedOptions.SuperAdmin.Email)
+                || !string.IsNullOrWhiteSpace(seedOptions.SuperAdmin.Username)
+                || !string.IsNullOrWhiteSpace(seedOptions.SuperAdmin.Password))
+            {
+                await SuperAdminSeeder.SeedAsync(userManager, seedOptions.SuperAdmin);
+            }
+
+            if (seedOptions.Mode == SeedMode.Demo)
+            {
+                await TestUsersSeeder.SeedAsync(userManager, db, seedOptions.DemoUsers);
+            }
+
+            logger.LogInformation(
+                "Database seeding completed. Seed mode: {SeedMode}; Demo users configured: {DemoUserCount}",
+                seedOptions.Mode,
+                seedOptions.DemoUsers.Count);
         }
         catch (Exception ex)
         {
             var logger = services.GetRequiredService<ILogger<Program>>();
             logger.LogError(ex, "An error occurred while seeding the database.");
+            throw;
         }
     }
 }

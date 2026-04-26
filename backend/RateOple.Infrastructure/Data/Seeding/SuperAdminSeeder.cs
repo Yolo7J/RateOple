@@ -7,16 +7,29 @@ namespace RateOple.Infrastructure.Data.Seeding
     public static class SuperAdminSeeder
     {
         public static async Task SeedAsync(
-            UserManager<User> userManager
+            UserManager<User> userManager,
+            SuperAdminSeedOptions options
         )
         {
-            var superAdminEmail = "superadmin@example.com";
-            var superAdminUsername = "superadmin";
-            var superAdminPassword = "ChangeThis123!";
+            if (!options.Enabled
+                && string.IsNullOrWhiteSpace(options.Email)
+                && string.IsNullOrWhiteSpace(options.Username)
+                && string.IsNullOrWhiteSpace(options.Password))
+            {
+                return;
+            }
+
+            var superAdminEmail = options.Email!.Trim();
+            var superAdminUsername = options.Username!.Trim();
+            var superAdminPassword = options.Password!;
 
             var existingUser = await userManager.FindByEmailAsync(superAdminEmail);
             if (existingUser != null)
+            {
+                if (!await userManager.IsInRoleAsync(existingUser, RoleConstants.SuperAdmin))
+                    await userManager.AddToRoleAsync(existingUser, RoleConstants.SuperAdmin);
                 return;
+            }
 
             var user = new User
             {
@@ -27,7 +40,7 @@ namespace RateOple.Infrastructure.Data.Seeding
 
             var result = await userManager.CreateAsync(user, superAdminPassword);
             if (!result.Succeeded)
-                throw new Exception("Failed to create SuperAdmin user");
+                throw new InvalidOperationException($"Failed to create SuperAdmin user: {string.Join(", ", result.Errors.Select(e => e.Description))}");
 
             await userManager.AddToRoleAsync(user, RoleConstants.SuperAdmin);
         }

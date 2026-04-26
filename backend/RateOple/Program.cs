@@ -1,6 +1,9 @@
 using RateOple.Extensions;
+using RateOple.Infrastructure.Data.Seeding;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.Configure<SeedOptions>(builder.Configuration.GetSection("Seed"));
 
 builder.Services
     .AddDatabase(builder.Configuration)
