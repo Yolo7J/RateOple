@@ -1,6 +1,6 @@
 # RateOple Architecture (Current State)
 
-Last updated: **March 25, 2026**
+Last updated: **April 26, 2026**
 
 This document reflects the code currently present in the repository.
 
@@ -39,6 +39,8 @@ Browser (React)
         -> Open Library API
 ```
 
+Development serves React through Vite and the API through ASP.NET Core with a development-only CORS policy. Production serves compiled Vite artifacts from `backend/RateOple/wwwroot`, with API routes under `/api`, SignalR under `/hubs`, and frontend routes falling back to `index.html`.
+
 ## 2. Repository Layout
 
 ```text
@@ -49,6 +51,7 @@ backend/
     Hubs/                            # SignalR hubs + user id provider
     Notifications/                   # SignalR publishers
     Extensions/                      # DI + middleware composition
+    wwwroot/                         # compiled frontend build output for production hosting
   RateOple.Core/                     # domain services, interfaces, DTOs
     Auth/ Collections/ Groups/ Media/ Moderation/ Social/ Users/
   RateOple.Infrastructure/           # DbContext, entities, EF configs, migrations, infra middleware
@@ -110,13 +113,24 @@ Configured in `Extensions/MiddlewareExtensions.cs`:
 1. OpenAPI map in development
 2. HTTPS redirection
 3. security headers middleware
-4. CORS (`AllowFrontend`)
-5. routing
-6. authentication
-7. antiforgery validation for mutating verbs unless endpoint has `[IgnoreAntiforgeryToken]`
+4. default/static files from `wwwroot`
+5. development-only CORS (`AllowFrontend`)
+6. routing
+7. authentication
+8. antiforgery validation for mutating verbs unless endpoint has `[IgnoreAntiforgeryToken]`
    (SignalR hub endpoints are excluded from antiforgery)
-8. authorization
-9. controller mapping
+9. authorization
+10. controller + SignalR hub mapping
+11. SPA fallback to `wwwroot/index.html` for non-API/non-hub frontend routes
+
+Production frontend build command:
+
+```bash
+cd frontend
+npm run build:backend
+```
+
+This builds Vite and copies `frontend/dist` into `backend/RateOple/wwwroot`. React source files stay in `frontend/`; `wwwroot` is only for compiled deployment artifacts.
 
 ### 4.2 Authentication Model
 
@@ -551,3 +565,33 @@ Not yet implemented from larger long-form roadmap:
 - Unified comment target model redesign (current model is still legacy polymorphic shape)
 - Review voting
 - Additional moderation role expansion beyond current implementation details
+
+## 13. Architecture Quality Audit (April 26, 2026)
+
+The current structure is feature-rich but still carries product and architecture debt that should be treated as roadmap input, not cosmetic cleanup.
+
+Highest-priority risks:
+
+- Several user-facing workflows still require raw GUID entry. Examples include group pinned media, group post media attachments, group ban controls in moderation, and scoped moderator assignment.
+- Backend contracts often expose only IDs for operations where the UI needs searchable user/media/group/collection pickers.
+- Cookie-based JWT auth is paired with many `[IgnoreAntiforgeryToken]` mutating endpoints. That weakens the intended CSRF model described by the frontend interceptor.
+- Startup seeding creates hardcoded privileged/demo accounts and is not clearly environment-gated.
+- There are no backend test projects covering service logic, controller contracts, seeding, authorization, or aggregate behavior.
+- Frontend routing has a stale route map artifact (`src/app/routes.jsx`) while `src/app/router.jsx` is the active router.
+- The frontend has no project-specific README and the global search bar is still a TODO.
+
+Documentation note: the full prioritized critique and remediation backlog lives in `PROJECT_CRITIQUE_AND_RECOMMENDATIONS.txt`.
+
+## 14. Recommended Architecture Direction
+
+Immediate architecture work should be ordered by risk:
+
+1. Secure seeding and CSRF behavior before adding more product surface.
+2. Add backend test projects and cover the high-risk service rules first: auth refresh rotation, ratings aggregates, group permissions, collection reorder, moderation assignments, account deletion.
+3. Add lookup/query endpoints for entity pickers so the frontend can stop asking for raw IDs.
+4. Build shared frontend primitives for buttons, fields, dialogs, entity pickers, data tables, badges, and empty states.
+5. Decide whether `RateOple.Core` is intended to be a clean domain layer or an EF-backed service layer. Right now it references Infrastructure and injects `ApplicationDbContext`, so the honest current model is a pragmatic service layer over EF Core.
+6. Normalize DTO validation and API error responses with ProblemDetails.
+7. Add representative development/demo seeds for media, tags, collections, groups, posts, reports, assignments, notifications, and ratings.
+
+The most important product rule for future architecture: do not design API or UI flows that require users, admins, or moderators to know database identifiers. IDs should remain implementation details behind lookup/search/select workflows.

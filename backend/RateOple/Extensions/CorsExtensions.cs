@@ -8,6 +8,8 @@ public static class CorsExtensions
         {
             options.AddPolicy("AllowFrontend", policy =>
             {
+                // Development-only CORS. Production browser traffic should be same-origin:
+                // ASP.NET Core serves the compiled frontend from wwwroot and the API from /api.
                 policy.WithOrigins(
                           "http://localhost:5173",
                           "http://127.0.0.1:5173",

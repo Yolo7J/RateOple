@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.FileProviders;
 using RateOple.Hubs;
 using RateOple.Infrastructure.Middleware;
 
@@ -16,7 +17,14 @@ public static class MiddlewareExtensions
 
         app.UseHttpsRedirection();
         app.UseSecurityHeaders();
-        app.UseCors("AllowFrontend");
+        app.UseDefaultFiles();
+        app.UseStaticFiles();
+
+        if (env.IsDevelopment())
+        {
+            app.UseCors("AllowFrontend");
+        }
+
         app.UseRouting();
         app.UseAuthentication();
 
@@ -41,5 +49,32 @@ public static class MiddlewareExtensions
         app.MapControllers();
         app.MapHub<NotificationHub>("/hubs/notifications")
             .WithMetadata(new IgnoreAntiforgeryTokenAttribute());
+
+        app.MapFallback(async context =>
+        {
+            if (IsReservedBackendPath(context.Request.Path))
+            {
+                context.Response.StatusCode = StatusCodes.Status404NotFound;
+                return;
+            }
+
+            var indexPath = Path.Combine(app.Environment.WebRootPath ?? "wwwroot", "index.html");
+            if (!File.Exists(indexPath))
+            {
+                context.Response.StatusCode = StatusCodes.Status404NotFound;
+                return;
+            }
+
+            context.Response.ContentType = "text/html; charset=utf-8";
+            await context.Response.SendFileAsync(indexPath);
+        });
+    }
+
+    private static bool IsReservedBackendPath(PathString path)
+    {
+        return path.StartsWithSegments("/api")
+            || path.StartsWithSegments("/hubs")
+            || path.StartsWithSegments("/swagger")
+            || path.StartsWithSegments("/openapi");
     }
 }
