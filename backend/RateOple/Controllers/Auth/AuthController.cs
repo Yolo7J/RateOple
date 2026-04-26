@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RateOple.Core.Contracts;
@@ -21,17 +23,20 @@ namespace RateOple.Controllers
         private readonly IJwtService _jwtService;
         private readonly ApplicationDbContext _db;
         private readonly IWebHostEnvironment _environment;
+        private readonly IConfiguration _configuration;
 
         public AuthController(
             UserManager<User> userManager,
             IJwtService jwtService,
             ApplicationDbContext db,
-            IWebHostEnvironment environment)
+            IWebHostEnvironment environment,
+            IConfiguration configuration)
         {
             _userManager = userManager;
             _jwtService = jwtService;
             _db = db;
             _environment = environment;
+            _configuration = configuration;
         }
 
         [HttpPost("register")]
@@ -91,31 +96,118 @@ namespace RateOple.Controllers
             {
                 return Unauthorized("Incorrect Email or Password");
             }
-            var roles = await _userManager.GetRolesAsync(user);
-        
-            var accessToken = _jwtService.GenerateAccessToken(user, roles);
-            var refreshToken = _jwtService.GenerateRefreshToken();
-        
-            var hashedRefresh = TokenHasher.Hash(refreshToken);
-        
-            _db.RefreshTokens.Add(new RefreshToken
+
+            return Ok(await IssueAppSignInAsync(user));
+        }
+
+        [HttpGet("google/login")]
+        public IActionResult GoogleLogin([FromQuery] string? returnUrl = "/")
+        {
+            if (!IsGoogleConfigured())
+                return NotFound("Google authentication is not configured.");
+
+            var redirectUri = Url.Action(nameof(GoogleCallback), "Auth", new { returnUrl });
+            var properties = new AuthenticationProperties
             {
-                UserId = user.Id,
-                TokenHash = hashedRefresh,
-                ExpiresAt = DateTime.UtcNow.AddDays(7)
-            });
-        
-            await _db.SaveChangesAsync();
-        
-            SetAuthCookies(accessToken, refreshToken);
-        
-            return Ok(new { user.Id, user.UserName, roles });
+                RedirectUri = redirectUri
+            };
+
+            return Challenge(properties, GoogleDefaults.AuthenticationScheme);
+        }
+
+        [HttpGet("google/callback")]
+        public async Task<IActionResult> GoogleCallback([FromQuery] string? returnUrl = "/")
+        {
+            if (!IsGoogleConfigured())
+                return NotFound("Google authentication is not configured.");
+
+            var external = await HttpContext.AuthenticateAsync(IdentityConstants.ExternalScheme);
+            if (!external.Succeeded || external.Principal == null)
+                return Redirect(BuildExternalLoginRedirect(returnUrl, success: false));
+
+            var providerKey = external.Principal.FindFirstValue(ClaimTypes.NameIdentifier);
+            var email = external.Principal.FindFirstValue(ClaimTypes.Email);
+            var name = external.Principal.FindFirstValue(ClaimTypes.Name)
+                ?? email?.Split('@')[0];
+
+            if (string.IsNullOrWhiteSpace(providerKey) || string.IsNullOrWhiteSpace(email))
+            {
+                await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+                return Redirect(BuildExternalLoginRedirect(returnUrl, success: false));
+            }
+
+            var user = await _userManager.FindByLoginAsync(GoogleDefaults.AuthenticationScheme, providerKey);
+            if (user == null)
+            {
+                user = await _userManager.FindByEmailAsync(email);
+                if (user == null)
+                {
+                    user = new User
+                    {
+                        UserName = await BuildUniqueUsernameAsync(name ?? email.Split('@')[0]),
+                        Email = email,
+                        EmailConfirmed = true
+                    };
+
+                    var createResult = await _userManager.CreateAsync(user);
+                    if (!createResult.Succeeded)
+                    {
+                        await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+                        return Redirect(BuildExternalLoginRedirect(returnUrl, success: false));
+                    }
+
+                    await _userManager.AddToRoleAsync(user, "User");
+                    _db.UserProfiles.Add(new UserProfile
+                    {
+                        UserId = user.Id,
+                        DisplayName = user.UserName ?? email,
+                        AvatarUrl = user.AvatarUrl,
+                        Bio = user.Bio,
+                        PrivacySetting = user.Visibility == UserVisibility.Private
+                            ? PrivacySetting.Private
+                            : PrivacySetting.Public
+                    });
+                }
+
+                var loginResult = await _userManager.AddLoginAsync(
+                    user,
+                    new UserLoginInfo(GoogleDefaults.AuthenticationScheme, providerKey, "Google"));
+                if (!loginResult.Succeeded)
+                {
+                    await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+                    return Redirect(BuildExternalLoginRedirect(returnUrl, success: false));
+                }
+            }
+
+            await IssueAppSignInAsync(user);
+            await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+
+            return Redirect(BuildExternalLoginRedirect(returnUrl, success: true));
         }
         
         private void SetAuthCookies(string accessToken, string refreshToken)
         {
             Response.Cookies.Append("accessToken", accessToken, BuildAccessCookieOptions());
             Response.Cookies.Append("refreshToken", refreshToken, BuildRefreshCookieOptions());
+        }
+
+        private async Task<object> IssueAppSignInAsync(User user)
+        {
+            var roles = await _userManager.GetRolesAsync(user);
+            var accessToken = _jwtService.GenerateAccessToken(user, roles);
+            var refreshToken = _jwtService.GenerateRefreshToken();
+
+            _db.RefreshTokens.Add(new RefreshToken
+            {
+                UserId = user.Id,
+                TokenHash = TokenHasher.Hash(refreshToken),
+                ExpiresAt = DateTime.UtcNow.AddDays(7)
+            });
+
+            await _db.SaveChangesAsync();
+            SetAuthCookies(accessToken, refreshToken);
+
+            return new { user.Id, user.UserName, roles };
         }
 
         private CookieOptions BuildAccessCookieOptions()
@@ -162,23 +254,8 @@ namespace RateOple.Controllers
                 return Unauthorized();
         
             stored.Revoked = true;
-        
-            var roles = await _userManager.GetRolesAsync(stored.User);
-            var newAccess = _jwtService.GenerateAccessToken(stored.User, roles);
-            var newRefresh = _jwtService.GenerateRefreshToken();
-        
-            _db.RefreshTokens.Add(new RefreshToken
-            {
-                UserId = stored.UserId,
-                TokenHash = TokenHasher.Hash(newRefresh),
-                ExpiresAt = DateTime.UtcNow.AddDays(7)
-            });
-        
-            await _db.SaveChangesAsync();
-        
-            SetAuthCookies(newAccess, newRefresh);
-        
-            return Ok(new { stored.User.Id, stored.User.UserName, roles });
+
+            return Ok(await IssueAppSignInAsync(stored.User));
         }
 
         [HttpPost("logout")]
@@ -202,6 +279,43 @@ namespace RateOple.Controllers
             Response.Cookies.Delete("refreshToken", BuildRefreshCookieOptions());
         
             return Ok();
+        }
+
+        private bool IsGoogleConfigured()
+        {
+            return !string.IsNullOrWhiteSpace(_configuration["Authentication:Google:ClientId"])
+                && !string.IsNullOrWhiteSpace(_configuration["Authentication:Google:ClientSecret"]);
+        }
+
+        private string BuildExternalLoginRedirect(string? returnUrl, bool success)
+        {
+            var path = Url.IsLocalUrl(returnUrl) ? returnUrl! : "/";
+            var separator = path.Contains('?') ? "&" : "?";
+            return $"{path}{separator}externalLogin={(success ? "success" : "failed")}";
+        }
+
+        private async Task<string> BuildUniqueUsernameAsync(string baseName)
+        {
+            var candidate = new string(baseName
+                .Where(char.IsLetterOrDigit)
+                .ToArray());
+
+            if (string.IsNullOrWhiteSpace(candidate))
+                candidate = "googleuser";
+
+            candidate = candidate.Length > 24 ? candidate[..24] : candidate;
+
+            if (await _userManager.FindByNameAsync(candidate) == null)
+                return candidate;
+
+            for (var i = 1; i <= 1000; i++)
+            {
+                var next = $"{candidate}{i}";
+                if (await _userManager.FindByNameAsync(next) == null)
+                    return next;
+            }
+
+            return $"google{Guid.NewGuid():N}"[..30];
         }
         
         

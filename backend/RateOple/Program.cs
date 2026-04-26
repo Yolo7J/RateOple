@@ -10,6 +10,7 @@ builder.Services
     .AddIdentityConfiguration()
     .AddAuthorizationPolicies()
     .AddJwtAuthentication(builder.Configuration, builder.Environment)
+    .AddGoogleAuthenticationIfConfigured(builder.Configuration)
     .AddCsrfProtection()
     .AddApplicationServices()
     .AddCorsConfiguration()

@@ -154,6 +154,10 @@ Auth endpoints:
 - `POST /api/auth/refresh`
 - `POST /api/auth/logout`
 - `GET /api/auth/me`
+- `GET /api/auth/google/login`
+- `GET /api/auth/google/callback`
+
+Google OAuth is backend-mediated only. It registers only when `Authentication:Google:ClientId` and `Authentication:Google:ClientSecret` are configured. The frontend starts the flow by navigating to `/api/auth/google/login`; the backend handles the Google callback, creates or links an ASP.NET Identity user, issues the normal HttpOnly app cookies, and redirects back to a local frontend route.
 
 ### 4.3 CSRF and CORS
 
