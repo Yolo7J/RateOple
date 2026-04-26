@@ -7,8 +7,28 @@ namespace RateOple.Extensions;
 
 public static class JwtExtensions
 {
-    public static IServiceCollection AddJwtAuthentication(this IServiceCollection services, IConfiguration config)
+    public static IServiceCollection AddJwtAuthentication(
+        this IServiceCollection services,
+        IConfiguration config,
+        IWebHostEnvironment environment)
     {
+        var signingKey = config["Jwt:Key"];
+        var issuer = config["Jwt:Issuer"];
+        var audience = config["Jwt:Audience"];
+
+        if (!environment.IsDevelopment())
+        {
+            if (string.IsNullOrWhiteSpace(signingKey) || Encoding.UTF8.GetByteCount(signingKey) < 32)
+                throw new InvalidOperationException("Jwt:Key is required outside Development and must be at least 32 bytes.");
+            if (string.IsNullOrWhiteSpace(issuer))
+                throw new InvalidOperationException("Jwt:Issuer is required outside Development.");
+            if (string.IsNullOrWhiteSpace(audience))
+                throw new InvalidOperationException("Jwt:Audience is required outside Development.");
+        }
+
+        if (string.IsNullOrWhiteSpace(signingKey))
+            throw new InvalidOperationException("Jwt:Key is required. Configure it with user secrets or environment variables.");
+
         // Override the default scheme that AddIdentity set — Bearer must win for API routes
         services.AddAuthentication(options =>
             {
@@ -26,10 +46,10 @@ public static class JwtExtensions
                     ValidateIssuerSigningKey = true,
                     NameClaimType = ClaimTypes.NameIdentifier,
                     RoleClaimType = ClaimTypes.Role,
-                    ValidIssuer = config["Jwt:Issuer"],
-                    ValidAudience = config["Jwt:Audience"],
+                    ValidIssuer = issuer,
+                    ValidAudience = audience,
                     IssuerSigningKey = new SymmetricSecurityKey(
-                        Encoding.UTF8.GetBytes(config["Jwt:Key"]!))
+                        Encoding.UTF8.GetBytes(signingKey))
                 };
 
                 // Read JWT from HttpOnly cookie instead of Authorization header

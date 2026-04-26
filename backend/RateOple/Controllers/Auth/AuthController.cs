@@ -20,19 +20,21 @@ namespace RateOple.Controllers
         private readonly UserManager<User> _userManager;
         private readonly IJwtService _jwtService;
         private readonly ApplicationDbContext _db;
+        private readonly IWebHostEnvironment _environment;
 
         public AuthController(
             UserManager<User> userManager,
             IJwtService jwtService,
-            ApplicationDbContext db)
+            ApplicationDbContext db,
+            IWebHostEnvironment environment)
         {
             _userManager = userManager;
             _jwtService = jwtService;
             _db = db;
+            _environment = environment;
         }
 
         [HttpPost("register")]
-        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> Register(RegisterDto dto)
         {
             var user = new User
@@ -65,7 +67,6 @@ namespace RateOple.Controllers
 
         [HttpGet("me")]
         [Authorize]
-        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> Me()
         {
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier)
@@ -83,7 +84,6 @@ namespace RateOple.Controllers
         }
 
         [HttpPost("login")]
-        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> Login(LoginDto dto)
         {
             var user = await _userManager.FindByEmailAsync(dto.Email);
@@ -114,27 +114,35 @@ namespace RateOple.Controllers
         
         private void SetAuthCookies(string accessToken, string refreshToken)
         {
-            var isProd = !HttpContext.RequestServices
-                .GetRequiredService<IWebHostEnvironment>().IsDevelopment();
-
-            Response.Cookies.Append("accessToken", accessToken, new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = isProd,
-                SameSite = SameSiteMode.Strict,
-                Expires = DateTime.UtcNow.AddMinutes(15)
-            });
-
-            Response.Cookies.Append("refreshToken", refreshToken, new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = isProd,
-                SameSite = SameSiteMode.Strict,
-                Expires = DateTime.UtcNow.AddDays(7)
-            });
+            Response.Cookies.Append("accessToken", accessToken, BuildAccessCookieOptions());
+            Response.Cookies.Append("refreshToken", refreshToken, BuildRefreshCookieOptions());
         }
+
+        private CookieOptions BuildAccessCookieOptions()
+        {
+            return new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = !_environment.IsDevelopment(),
+                SameSite = SameSiteMode.Lax,
+                Path = "/",
+                Expires = DateTime.UtcNow.AddMinutes(15)
+            };
+        }
+
+        private CookieOptions BuildRefreshCookieOptions()
+        {
+            return new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = !_environment.IsDevelopment(),
+                SameSite = SameSiteMode.Lax,
+                Path = "/api/auth",
+                Expires = DateTime.UtcNow.AddDays(7)
+            };
+        }
+
         [HttpPost("refresh")]
-        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> Refresh()
         {
             var refreshToken = Request.Cookies["refreshToken"];
@@ -174,7 +182,6 @@ namespace RateOple.Controllers
         }
 
         [HttpPost("logout")]
-        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> Logout()
         {
             var refreshToken = Request.Cookies["refreshToken"];
@@ -191,8 +198,8 @@ namespace RateOple.Controllers
                 }
             }
         
-            Response.Cookies.Delete("accessToken");
-            Response.Cookies.Delete("refreshToken");
+            Response.Cookies.Delete("accessToken", BuildAccessCookieOptions());
+            Response.Cookies.Delete("refreshToken", BuildRefreshCookieOptions());
         
             return Ok();
         }

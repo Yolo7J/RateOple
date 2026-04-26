@@ -19,7 +19,6 @@ public class RatingsController : ControllerBase
 
     [HttpPost("media/{mediaId:guid}/ratings")]
     [Authorize]
-    [IgnoreAntiforgeryToken]
     public async Task<ActionResult<RatingDto>> RateMedia(Guid mediaId, [FromBody] RatingUpsertDto dto)
     {
         return await HandleRate(async userId => await _ratingService.RateMediaAsync(userId, mediaId, dto.Value));
@@ -27,7 +26,6 @@ public class RatingsController : ControllerBase
 
     [HttpPost("seasons/{seasonId:guid}/ratings")]
     [Authorize]
-    [IgnoreAntiforgeryToken]
     public async Task<ActionResult<RatingDto>> RateSeason(Guid seasonId, [FromBody] RatingUpsertDto dto)
     {
         return await HandleRate(async userId => await _ratingService.RateSeasonAsync(userId, seasonId, dto.Value));
@@ -35,7 +33,6 @@ public class RatingsController : ControllerBase
 
     [HttpPost("episodes/{episodeId:guid}/ratings")]
     [Authorize]
-    [IgnoreAntiforgeryToken]
     public async Task<ActionResult<RatingDto>> RateEpisode(Guid episodeId, [FromBody] RatingUpsertDto dto)
     {
         return await HandleRate(async userId => await _ratingService.RateEpisodeAsync(userId, episodeId, dto.Value));
@@ -43,7 +40,6 @@ public class RatingsController : ControllerBase
 
     [HttpDelete("media/{mediaId:guid}/ratings")]
     [Authorize]
-    [IgnoreAntiforgeryToken]
     public async Task<IActionResult> DeleteMediaRating(Guid mediaId)
     {
         return await HandleDelete(async userId => await _ratingService.DeleteMediaRatingAsync(userId, mediaId));
@@ -51,7 +47,6 @@ public class RatingsController : ControllerBase
 
     [HttpDelete("seasons/{seasonId:guid}/ratings")]
     [Authorize]
-    [IgnoreAntiforgeryToken]
     public async Task<IActionResult> DeleteSeasonRating(Guid seasonId)
     {
         return await HandleDelete(async userId => await _ratingService.DeleteSeasonRatingAsync(userId, seasonId));
@@ -59,7 +54,6 @@ public class RatingsController : ControllerBase
 
     [HttpDelete("episodes/{episodeId:guid}/ratings")]
     [Authorize]
-    [IgnoreAntiforgeryToken]
     public async Task<IActionResult> DeleteEpisodeRating(Guid episodeId)
     {
         return await HandleDelete(async userId => await _ratingService.DeleteEpisodeRatingAsync(userId, episodeId));

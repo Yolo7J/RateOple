@@ -19,6 +19,13 @@ public class JwtService : IJwtService
     }
     public string GenerateAccessToken(User user, IList<string> roles)
     {
+        var signingKey = _config["Jwt:Key"];
+        var issuer = _config["Jwt:Issuer"];
+        var audience = _config["Jwt:Audience"];
+
+        if (string.IsNullOrWhiteSpace(signingKey))
+            throw new InvalidOperationException("Jwt:Key is not configured.");
+
         var claims = new List<Claim>
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
@@ -29,14 +36,13 @@ public class JwtService : IJwtService
 
         claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
 
-        var key = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey));
 
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var token = new JwtSecurityToken(
-            issuer: _config["Jwt:Issuer"],
-            audience: _config["Jwt:Audience"],
+            issuer: issuer,
+            audience: audience,
             claims: claims,
             expires: DateTime.UtcNow.AddMinutes(15),
             signingCredentials: creds);

@@ -55,7 +55,6 @@ public class GroupsController : ControllerBase
 
     [HttpPost]
     [Authorize]
-    [IgnoreAntiforgeryToken]
     public async Task<ActionResult<GroupSummaryDto>> Create([FromBody] CreateGroupDto dto)
     {
         var userId = GetRequiredUserId();
@@ -74,7 +73,6 @@ public class GroupsController : ControllerBase
 
     [HttpPost("{id:guid}/join")]
     [Authorize]
-    [IgnoreAntiforgeryToken]
     public async Task<IActionResult> Join(Guid id)
     {
         var userId = GetRequiredUserId();
@@ -97,7 +95,6 @@ public class GroupsController : ControllerBase
 
     [HttpDelete("{id:guid}/leave")]
     [Authorize]
-    [IgnoreAntiforgeryToken]
     public async Task<IActionResult> Leave(Guid id)
     {
         var userId = GetRequiredUserId();
@@ -116,7 +113,6 @@ public class GroupsController : ControllerBase
 
     [HttpPost("{id:guid}/members/{userId:guid}/role")]
     [Authorize]
-    [IgnoreAntiforgeryToken]
     public async Task<IActionResult> SetRole(Guid id, Guid userId, [FromBody] SetGroupMemberRoleDto dto)
     {
         var actorId = GetRequiredUserId();
@@ -147,7 +143,6 @@ public class GroupsController : ControllerBase
 
     [HttpPost("{id:guid}/posts")]
     [Authorize]
-    [IgnoreAntiforgeryToken]
     public async Task<ActionResult<GroupPostDto>> CreatePost(Guid id, [FromBody] CreateGroupPostDto dto)
     {
         var userId = GetRequiredUserId();
@@ -213,7 +208,6 @@ public class GroupsController : ControllerBase
 
     [HttpPost("{id:guid}/posts/{postId:guid}/vote")]
     [Authorize]
-    [IgnoreAntiforgeryToken]
     public async Task<ActionResult<GroupPostDto>> VotePost(Guid id, Guid postId, [FromBody] GroupPostVoteDto dto)
     {
         var userId = GetRequiredUserId();
@@ -258,7 +252,6 @@ public class GroupsController : ControllerBase
 
     [HttpPost("{id:guid}/posts/{postId:guid}/comments")]
     [Authorize]
-    [IgnoreAntiforgeryToken]
     public async Task<ActionResult<GroupPostCommentDto>> CreatePostComment(
         Guid id,
         Guid postId,
@@ -288,7 +281,6 @@ public class GroupsController : ControllerBase
 
     [HttpDelete("{id:guid}/posts/{postId:guid}/comments/{commentId:guid}")]
     [Authorize]
-    [IgnoreAntiforgeryToken]
     public async Task<IActionResult> DeletePostComment(Guid id, Guid postId, Guid commentId)
     {
         var userId = GetRequiredUserId();
@@ -311,7 +303,6 @@ public class GroupsController : ControllerBase
 
     [HttpPost("{id:guid}/bans")]
     [Authorize]
-    [IgnoreAntiforgeryToken]
     public async Task<ActionResult<GroupBanDto>> BanUser(Guid id, [FromBody] CreateGroupBanDto dto)
     {
         var userId = GetRequiredUserId();
@@ -342,7 +333,6 @@ public class GroupsController : ControllerBase
 
     [HttpDelete("{id:guid}/bans/{userId:guid}")]
     [Authorize]
-    [IgnoreAntiforgeryToken]
     public async Task<IActionResult> UnbanUser(Guid id, Guid userId)
     {
         var actorId = GetRequiredUserId();
@@ -387,7 +377,6 @@ public class GroupsController : ControllerBase
 
     [HttpPost("{id:guid}/staff/messages")]
     [Authorize]
-    [IgnoreAntiforgeryToken]
     public async Task<ActionResult<GroupStaffMessageDto>> CreateStaffMessage(
         Guid id,
         [FromBody] CreateGroupStaffMessageDto dto)
@@ -416,7 +405,6 @@ public class GroupsController : ControllerBase
 
     [HttpPost("{id:guid}/pinned-media")]
     [Authorize]
-    [IgnoreAntiforgeryToken]
     public async Task<IActionResult> AddPinnedMedia(Guid id, [FromBody] AddPinnedMediaDto dto)
     {
         var userId = GetRequiredUserId();

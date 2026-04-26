@@ -7,7 +7,6 @@ namespace RateOple.Controllers;
 [ApiController]
 [Route("api/tmdb")]
 [Authorize]                     // must be logged in to search — prevents anonymous abuse
-[IgnoreAntiforgeryToken]
 public class TmdbController : ControllerBase
 {
     private readonly ITmdbService _tmdb;
@@ -48,7 +47,6 @@ public class TmdbController : ControllerBase
     // POST /api/tmdb/import-series/{tmdbId}
     [HttpPost("import-series/{tmdbId:int}")]
     [Authorize(Policy = "RequireAdmin")]
-    [IgnoreAntiforgeryToken]
     public async Task<IActionResult> ImportSeries(int tmdbId)
     {
         var id = await _import.ImportSeriesAsync(tmdbId);

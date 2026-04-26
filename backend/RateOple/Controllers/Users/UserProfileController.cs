@@ -44,7 +44,6 @@ public class UserProfileController : ControllerBase
     }
 
     [HttpPut("profile")]
-    [IgnoreAntiforgeryToken]
     public async Task<ActionResult<UserProfileDto>> UpdateProfile([FromBody] UpdateUserProfileDto dto)
     {
         var userId = GetCurrentUserId();
@@ -107,7 +106,6 @@ public class UserProfileController : ControllerBase
     }
 
     [HttpPost("change-password")]
-    [IgnoreAntiforgeryToken]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
     {
         var userId = GetCurrentUserId();
@@ -125,7 +123,6 @@ public class UserProfileController : ControllerBase
     }
 
     [HttpDelete]
-    [IgnoreAntiforgeryToken]
     public async Task<IActionResult> DeleteAccount([FromBody] DeleteAccountDto dto)
     {
         var userId = GetCurrentUserId();

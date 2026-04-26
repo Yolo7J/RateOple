@@ -9,7 +9,7 @@ builder.Services
     .AddDatabase(builder.Configuration)
     .AddIdentityConfiguration()
     .AddAuthorizationPolicies()
-    .AddJwtAuthentication(builder.Configuration)
+    .AddJwtAuthentication(builder.Configuration, builder.Environment)
     .AddCsrfProtection()
     .AddApplicationServices()
     .AddCorsConfiguration()

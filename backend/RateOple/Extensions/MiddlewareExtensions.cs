@@ -47,6 +47,8 @@ public static class MiddlewareExtensions
 
         app.UseAuthorization();
         app.MapControllers();
+        // SignalR negotiate/connect requests are not normal form/API mutations and
+        // cannot reliably carry the antiforgery header through every transport.
         app.MapHub<NotificationHub>("/hubs/notifications")
             .WithMetadata(new IgnoreAntiforgeryTokenAttribute());
 

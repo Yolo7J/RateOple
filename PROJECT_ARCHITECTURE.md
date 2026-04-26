@@ -160,6 +160,8 @@ Auth endpoints:
 - CSRF endpoint: `GET /api/csrf`
 - Antiforgery header: `X-CSRF-TOKEN`
 - CORS policy allows local frontend origins with credentials
+- Mutating API endpoints require antiforgery validation when using cookie auth.
+- The SignalR hub is the only documented antiforgery exemption because negotiate/connect transport requests do not behave like normal JSON mutations.
 
 ### 4.4 Authorization Policies
 

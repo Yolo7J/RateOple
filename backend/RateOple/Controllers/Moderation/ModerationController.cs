@@ -23,7 +23,6 @@ public class ModerationController : ControllerBase
 
     [HttpPost("reports")]
     [Authorize]
-    [IgnoreAntiforgeryToken]
     public async Task<ActionResult<ReportDto>> CreateReport([FromBody] CreateReportDto dto)
     {
         var userId = GetRequiredUserId();
@@ -54,7 +53,6 @@ public class ModerationController : ControllerBase
 
     [HttpPut("reports/{id:guid}/status")]
     [Authorize(Policy = PolicyConstants.CanModerateContent)]
-    [IgnoreAntiforgeryToken]
     public async Task<ActionResult<ReportDto>> UpdateStatus(Guid id, [FromBody] UpdateReportStatusDto dto)
     {
         var userId = GetRequiredUserId();
@@ -73,7 +71,6 @@ public class ModerationController : ControllerBase
 
     [HttpPost("assignments")]
     [Authorize(Policy = PolicyConstants.RequireAdmin)]
-    [IgnoreAntiforgeryToken]
     public async Task<ActionResult<ModeratorAssignmentDto>> CreateAssignment([FromBody] CreateModeratorAssignmentDto dto)
     {
         var userId = GetRequiredUserId();
@@ -106,7 +103,6 @@ public class ModerationController : ControllerBase
 
     [HttpDelete("assignments")]
     [Authorize(Policy = PolicyConstants.RequireAdmin)]
-    [IgnoreAntiforgeryToken]
     public async Task<IActionResult> RemoveAssignment(
         [FromQuery] Guid userId,
         [FromQuery] ModeratorScopeType scopeType,

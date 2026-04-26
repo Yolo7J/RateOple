@@ -19,7 +19,6 @@ public class ReviewsController : ControllerBase
 
     [HttpPost("reviews")]
     [Authorize]
-    [IgnoreAntiforgeryToken]
     public async Task<ActionResult<ReviewDto>> CreateReview([FromBody] CreateReviewDto dto)
     {
         return await HandleReviewAction(async userId => await _reviewService.CreateReviewAsync(userId, dto));
@@ -27,7 +26,6 @@ public class ReviewsController : ControllerBase
 
     [HttpPut("reviews/{reviewId:guid}")]
     [Authorize]
-    [IgnoreAntiforgeryToken]
     public async Task<ActionResult<ReviewDto>> UpdateReview(Guid reviewId, [FromBody] UpdateReviewDto dto)
     {
         return await HandleReviewAction(async userId => await _reviewService.UpdateReviewAsync(userId, reviewId, dto));
@@ -35,7 +33,6 @@ public class ReviewsController : ControllerBase
 
     [HttpDelete("reviews/{reviewId:guid}")]
     [Authorize]
-    [IgnoreAntiforgeryToken]
     public async Task<IActionResult> DeleteReview(Guid reviewId, [FromQuery] bool deleteRating = false)
     {
         var userId = GetRequiredUserId();

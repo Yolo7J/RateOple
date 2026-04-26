@@ -33,7 +33,6 @@ public class CollectionsController : ControllerBase
 
     [HttpPost]
     [Authorize]
-    [IgnoreAntiforgeryToken]
     public async Task<ActionResult<CollectionDto>> Create([FromBody] CreateCollectionDto dto)
     {
         var userId = GetRequiredUserId();
@@ -52,7 +51,6 @@ public class CollectionsController : ControllerBase
 
     [HttpPut("{id:guid}")]
     [Authorize]
-    [IgnoreAntiforgeryToken]
     public async Task<ActionResult<CollectionDto>> Update(Guid id, [FromBody] UpdateCollectionDto dto)
     {
         var userId = GetRequiredUserId();
@@ -79,7 +77,6 @@ public class CollectionsController : ControllerBase
 
     [HttpDelete("{id:guid}")]
     [Authorize]
-    [IgnoreAntiforgeryToken]
     public async Task<IActionResult> Delete(Guid id)
     {
         var userId = GetRequiredUserId();
@@ -102,7 +99,6 @@ public class CollectionsController : ControllerBase
 
     [HttpPost("{id:guid}/items")]
     [Authorize]
-    [IgnoreAntiforgeryToken]
     public async Task<ActionResult<CollectionDto>> AddItem(Guid id, [FromBody] AddCollectionItemDto dto)
     {
         var userId = GetRequiredUserId();
@@ -125,7 +121,6 @@ public class CollectionsController : ControllerBase
 
     [HttpDelete("{id:guid}/items/{mediaId:guid}")]
     [Authorize]
-    [IgnoreAntiforgeryToken]
     public async Task<ActionResult<CollectionDto>> RemoveItem(Guid id, Guid mediaId)
     {
         var userId = GetRequiredUserId();
@@ -148,7 +143,6 @@ public class CollectionsController : ControllerBase
 
     [HttpPut("{id:guid}/items/reorder")]
     [Authorize]
-    [IgnoreAntiforgeryToken]
     public async Task<ActionResult<CollectionDto>> ReorderItems(Guid id, [FromBody] ReorderCollectionItemsDto dto)
     {
         var userId = GetRequiredUserId();
@@ -175,7 +169,6 @@ public class CollectionsController : ControllerBase
 
     [HttpPost("{id:guid}/follow")]
     [Authorize]
-    [IgnoreAntiforgeryToken]
     public async Task<IActionResult> Follow(Guid id)
     {
         var userId = GetRequiredUserId();
@@ -194,7 +187,6 @@ public class CollectionsController : ControllerBase
 
     [HttpDelete("{id:guid}/follow")]
     [Authorize]
-    [IgnoreAntiforgeryToken]
     public async Task<IActionResult> Unfollow(Guid id)
     {
         var userId = GetRequiredUserId();
