@@ -23,3 +23,5 @@ await app.SeedDatabaseAsync();
 app.ConfigureMiddleware(app.Environment);
 
 app.Run();
+
+public partial class Program;

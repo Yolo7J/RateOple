@@ -40,7 +40,19 @@ public static class MiddlewareExtensions
 
     if (methods.Contains(context.Request.Method) && !hasIgnore && !isHubRequest)
     {
-        await antiforgery.ValidateRequestAsync(context);
+        try
+        {
+            await antiforgery.ValidateRequestAsync(context);
+        }
+        catch (AntiforgeryValidationException)
+        {
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            await context.Response.WriteAsJsonAsync(new
+            {
+                message = "A valid CSRF token is required for this request."
+            });
+            return;
+        }
     }
     await next();
 });

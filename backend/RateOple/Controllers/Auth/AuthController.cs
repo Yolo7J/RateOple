@@ -12,6 +12,7 @@ using RateOple.Infrastructure.Security;
 using Microsoft.AspNetCore.Authorization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using RateOple.Auth;
 
 namespace RateOple.Controllers
 {
@@ -212,26 +213,12 @@ namespace RateOple.Controllers
 
         private CookieOptions BuildAccessCookieOptions()
         {
-            return new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = !_environment.IsDevelopment(),
-                SameSite = SameSiteMode.Lax,
-                Path = "/",
-                Expires = DateTime.UtcNow.AddMinutes(15)
-            };
+            return AuthCookieOptionsFactory.BuildAccessCookieOptions(_environment.IsDevelopment());
         }
 
         private CookieOptions BuildRefreshCookieOptions()
         {
-            return new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = !_environment.IsDevelopment(),
-                SameSite = SameSiteMode.Lax,
-                Path = "/api/auth",
-                Expires = DateTime.UtcNow.AddDays(7)
-            };
+            return AuthCookieOptionsFactory.BuildRefreshCookieOptions(_environment.IsDevelopment());
         }
 
         [HttpPost("refresh")]
