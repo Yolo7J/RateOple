@@ -1,0 +1,249 @@
+RateOple backend foundation report
+Generated: 2026-04-30
+Scope: backend architecture, validation, ProblemDetails, pagination, service error cleanup, and tests.
+
+1. Files changed
+================
+
+Architecture and API host:
+- PROJECT_ARCHITECTURE.md
+- backend/RateOple/Extensions/ApiExtensions.cs
+- backend/RateOple/Extensions/MiddlewareExtensions.cs
+- backend/RateOple/Extensions/ClaimsPrincipalExtensions.cs
+- backend/RateOple/Middleware/GlobalExceptionHandler.cs
+
+Controllers updated to use shared user helpers and thinner exception handling:
+- backend/RateOple/Controllers/Collections/CollectionsController.cs
+- backend/RateOple/Controllers/Discovery/DiscoveryController.cs
+- backend/RateOple/Controllers/Groups/GroupsController.cs
+- backend/RateOple/Controllers/Media/MediaController.cs
+- backend/RateOple/Controllers/Media/RatingsController.cs
+- backend/RateOple/Controllers/Media/ReviewsController.cs
+- backend/RateOple/Controllers/Moderation/ModerationController.cs
+- backend/RateOple/Controllers/Users/FollowsController.cs
+- backend/RateOple/Controllers/Users/NotificationsController.cs
+- backend/RateOple/Controllers/Users/UserProfileController.cs
+
+Core validation and pagination:
+- backend/RateOple.Core/Common/Pagination.cs
+- backend/RateOple.Core/Validation/NotEmptyGuidAttribute.cs
+- backend/RateOple.Core/Auth/DTOs/LoginDto.cs
+- backend/RateOple.Core/Auth/DTOs/RegisterDto.cs
+- backend/RateOple.Core/Collections/DTOs/CollectionDtos.cs
+- backend/RateOple.Core/Groups/DTOs/GroupDtos.cs
+- backend/RateOple.Core/Media/DTOs/MediaDtos.cs
+- backend/RateOple.Core/Media/DTOs/TagDtos.cs
+- backend/RateOple.Core/Media/DTOs/UpdateDtos.cs
+- backend/RateOple.Core/Moderation/DTOs/ModerationDtos.cs
+- backend/RateOple.Core/Social/DTOs/ReviewDtos.cs
+- backend/RateOple.Core/Users/DTOs/NotificationDtos.cs
+- backend/RateOple.Core/Users/DTOs/UserMediaStatusDtos.cs
+- backend/RateOple.Core/Users/DTOs/UserProfileDtos.cs
+
+Services/error cleanup:
+- backend/RateOple.Core/Collections/Services/CollectionService.cs
+- backend/RateOple.Core/Groups/Services/GroupService.cs
+- backend/RateOple.Core/Media/Services/MediaService.cs
+- backend/RateOple.Core/Media/Services/TmdbImportService.cs
+- backend/RateOple.Core/Moderation/Services/ModerationAuditService.cs
+- backend/RateOple.Core/Moderation/Services/ModerationService.cs
+- backend/RateOple.Core/Users/Services/NotificationService.cs
+- backend/RateOple.Core/Users/Services/UserMediaStatusService.cs
+- backend/RateOple.Infrastructure/Data/Seeding/TestUsersSeeder.cs
+
+Tests:
+- backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj
+- backend/RateOple.Core.Tests/Social/RatingServiceTests.cs
+- backend/RateOple.Core.Tests/TestSupport/SqliteTestDb.cs
+- backend/RateOple.Core.Tests/TestSupport/NoopInteractionService.cs
+- backend/RateOple.Core.Tests/TestSupport/NoopUserTasteService.cs
+- backend/RateOple.Core.Tests/Validation/DtoValidationTests.cs
+- backend/RateOple.Core.Tests/Validation/PaginationTests.cs
+- backend/RateOple.Api.Tests/Security/ProblemDetailsBehaviorTests.cs
+
+Report:
+- results.txt
+
+2. Architecture decision made and documented
+============================================
+
+Decision:
+- RateOple is intentionally documented as a pragmatic EF-backed layered architecture, not strict clean architecture.
+- RateOple.Core remains an application/service layer over EF Core for now.
+- RateOple.Infrastructure continues to own entities, DbContext, configurations, migrations, and seeding.
+- The API project owns controllers, auth, middleware, SignalR, HTTP error shaping, and endpoint wiring.
+- No broad repository-pattern rewrite or entity migration into Core was introduced.
+
+Architecture rules added:
+- Controllers should be thin.
+- Services own business rules.
+- Infrastructure owns EF Core persistence.
+- Core services may use ApplicationDbContext for now.
+- Do not introduce repositories unless they solve a real testing/composition problem.
+- New business logic needs targeted backend tests.
+
+3. New shared helpers added
+===========================
+
+Added:
+- ClaimsPrincipalExtensions.GetUserIdOrNull()
+- ClaimsPrincipalExtensions.GetRequiredUserId()
+- ClaimsPrincipalExtensions.GetUsernameOrNull()
+
+Behavior:
+- Optional user ID parsing returns null for missing/invalid NameIdentifier claims.
+- Required user ID parsing throws UnauthorizedAccessException with a clear message.
+- Controllers no longer keep duplicated local Guid.Parse helpers.
+
+AuthController still reads external/Google claims directly where provider-specific claim handling is required.
+
+4. Exception and ProblemDetails behavior
+========================================
+
+Before:
+- Controllers frequently caught KeyNotFoundException, ArgumentException, UnauthorizedAccessException, and InvalidOperationException locally.
+- Error responses mixed raw strings, anonymous objects, empty NotFound responses, Identity arrays, and ad hoc BadRequest/Conflict responses.
+- Several service exceptions were wrapped in generic Exception, losing clean error semantics.
+
+After:
+- GlobalExceptionHandler maps common exceptions into application/problem+json.
+- Validation errors use ValidationProblemDetails through the ApiController invalid model state factory.
+- ProblemDetails includes type, title, status, detail, traceId, and a message compatibility extension.
+- Production 500 responses use a generic message; Development may include the exception message.
+- Common mappings:
+  - ValidationException / ArgumentException -> 400
+  - UnauthorizedAccessException -> 403
+  - KeyNotFoundException -> 404
+  - InvalidOperationException -> 409 when conflict-like, otherwise 400
+  - unhandled exception -> 500
+
+Controllers were thinned in the media, ratings, reviews, collections, moderation, notification, profile, follow, discovery, and group user-id paths. Some group controller action-level catches remain and can be removed in a later cleanup pass.
+
+5. DTO validation added
+=======================
+
+Validation strategy:
+- DataAnnotations, plus custom NotEmptyGuidAttribute and IValidatableObject where cross-field/list validation is needed.
+- This matches the existing ASP.NET Core ApiController model validation path and avoids new validation infrastructure.
+
+Covered areas:
+- Auth login/register.
+- User profile, password change, delete account.
+- Media create/update/query DTOs.
+- TV season/episode create/update DTOs.
+- Tag upsert count.
+- Rating/review DTOs.
+- Collection create/update/add/reorder/query DTOs.
+- Group create/query/post/comment/vote/ban/staff-message/pinned-media DTOs.
+- Moderation report/status/query/assignment/audit query DTOs.
+- Notification and media status query/update DTOs.
+
+Invalid DTOs now return validation ProblemDetails with errors, traceId, and message.
+
+6. Pagination and query normalization added
+===========================================
+
+Added:
+- RateOple.Core.Common.Pagination.Normalize()
+
+Rules:
+- Page defaults to 1 when lower than 1.
+- PageSize defaults to the feature default when lower than 1.
+- PageSize is capped at 100.
+
+Applied to:
+- MediaService.GetAllAsync
+- GroupService.GetGroupsAsync
+- GroupService.GetPostsAsync
+- CollectionService.QueryAsync
+- ModerationService.GetReportsAsync
+- ModerationAuditService.GetLogsAsync
+- NotificationService.GetForUserAsync
+- UserMediaStatusService.GetUserStatusesAsync
+
+DTO query validation also rejects invalid page/pageSize at the API boundary for normal requests.
+
+7. Logging and error cleanup performed
+======================================
+
+Changed:
+- MediaService now uses ILogger<MediaService> instead of Console.WriteLine.
+- MediaService.GetAllAsync logs query context and rethrows with throw; instead of wrapping in a generic Exception.
+- Bulk media creation logs per-item failures as warnings while preserving its existing partial-success response contract.
+- TestUsersSeeder now throws InvalidOperationException instead of generic Exception when Identity user creation fails.
+- TmdbImportService now throws KeyNotFoundException for missing TMDB series.
+
+Remaining intentional catches:
+- SeedingExtensions still catches Exception to log startup seeding failures and rethrow.
+- BulkCreateAsync still catches per-item exceptions because that endpoint intentionally returns created items plus per-item errors.
+
+8. Tests added and how to run them
+==================================
+
+Added test infrastructure:
+- SQLite in-memory test database helper for Core service tests.
+- No-op interaction and user-taste services for RatingService tests.
+
+Added tests:
+- RatingService:
+  - upsert creates a rating and refreshes media aggregate.
+  - upsert updates existing rating and aggregate.
+  - delete removes rating and refreshes aggregate.
+  - invalid rating value is rejected.
+- Pagination:
+  - negative/zero values normalize to defaults.
+  - oversized pageSize caps at 100.
+  - valid values are preserved.
+- DTO validation:
+  - collection reorder rejects duplicate IDs.
+  - group post rejects empty media IDs.
+  - moderator assignment requires ScopeId for non-global scopes.
+- API ProblemDetails:
+  - invalid register payload returns application/problem+json validation ProblemDetails with traceId/message/errors.
+
+How to run:
+- dotnet test backend/RateOple.sln
+- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj
+- dotnet test backend/RateOple.Api.Tests/RateOple.Api.Tests.csproj
+
+Verification:
+- dotnet test backend/RateOple.sln passed.
+- Total: 20 tests passed, 0 failed.
+
+9. Commits created
+==================
+
+- 04b4b39 Add backend error handling foundation
+- c112839 Add DTO validation and pagination normalization
+- 5a1ebb1 Clean service error logging
+- 0a73bbe Expand backend service tests
+- 2e610af Cover validation problem details response
+
+The results.txt report itself is committed separately after final verification.
+
+10. Frontend compatibility concerns
+===================================
+
+Routes were not renamed.
+
+Potential behavior changes:
+- Invalid payloads now fail earlier with validation ProblemDetails.
+- Some previously raw-string BadRequest/NotFound/Conflict responses now return ProblemDetails.
+- Frontend code that only reads err.response.data.message should still have a compatibility message field on ProblemDetails.
+- Frontend code that depends on raw string response bodies should be updated to handle ProblemDetails.
+- URL validation on optional image fields may reject malformed non-URL strings that previously reached services.
+- Page/pageSize values outside the accepted bounds now receive validation errors at the API boundary.
+
+11. Known limitations and recommended next task
+===============================================
+
+Known limitations:
+- This is still a pragmatic EF-backed service layer. Core still references Infrastructure by design.
+- Some group controller methods still have local exception mapping and should be thinned in a follow-up.
+- DTO validation is broad but not exhaustive. More cross-field business validation should stay in services when DB checks are required.
+- ProblemDetails tests cover validation shape; explicit 404/500 global handler tests would need either carefully chosen seeded API paths or a test-only endpoint.
+- CollectionService still contains PostgreSQL-specific raw SQL for conflict handling, so its service tests need a separate strategy before moving fully to SQLite tests.
+- The frontend still has hardcoded API base URLs and raw GUID workflows; those were non-goals for this backend pass.
+
+Recommended next task:
+- Continue backend test expansion around GroupService, CollectionService, ModerationService, UserProfileService, and refresh-token rotation using reusable test setup.
