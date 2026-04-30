@@ -1,249 +1,259 @@
-RateOple backend foundation report
+RateOple backend media/catalog test report
 Generated: 2026-04-30
-Scope: backend architecture, validation, ProblemDetails, pagination, service error cleanup, and tests.
+Scope: MediaService, TvSeriesService, media DTO behavior, media admin API authorization, production fixes, and remaining catalog gaps.
 
 1. Files changed
 ================
 
-Architecture and API host:
-- PROJECT_ARCHITECTURE.md
-- backend/RateOple/Extensions/ApiExtensions.cs
-- backend/RateOple/Extensions/MiddlewareExtensions.cs
-- backend/RateOple/Extensions/ClaimsPrincipalExtensions.cs
-- backend/RateOple/Middleware/GlobalExceptionHandler.cs
+Media test infrastructure:
+- backend/RateOple.Core.Tests/TestSupport/TestDataFactory.cs
+- backend/RateOple.Core.Tests/TestSupport/TestMedia.cs
+- backend/RateOple.Core.Tests/TestSupport/TestGenres.cs
+- backend/RateOple.Core.Tests/TestSupport/TestTags.cs
+- backend/RateOple.Core.Tests/TestSupport/NoopOpenLibraryService.cs
 
-Controllers updated to use shared user helpers and thinner exception handling:
-- backend/RateOple/Controllers/Collections/CollectionsController.cs
-- backend/RateOple/Controllers/Discovery/DiscoveryController.cs
-- backend/RateOple/Controllers/Groups/GroupsController.cs
-- backend/RateOple/Controllers/Media/MediaController.cs
-- backend/RateOple/Controllers/Media/RatingsController.cs
-- backend/RateOple/Controllers/Media/ReviewsController.cs
-- backend/RateOple/Controllers/Moderation/ModerationController.cs
-- backend/RateOple/Controllers/Users/FollowsController.cs
-- backend/RateOple/Controllers/Users/NotificationsController.cs
-- backend/RateOple/Controllers/Users/UserProfileController.cs
+Core media tests:
+- backend/RateOple.Core.Tests/Media/MediaServiceTests.cs
+- backend/RateOple.Core.Tests/Media/TvSeriesServiceTests.cs
 
-Core validation and pagination:
-- backend/RateOple.Core/Common/Pagination.cs
-- backend/RateOple.Core/Validation/NotEmptyGuidAttribute.cs
-- backend/RateOple.Core/Auth/DTOs/LoginDto.cs
-- backend/RateOple.Core/Auth/DTOs/RegisterDto.cs
-- backend/RateOple.Core/Collections/DTOs/CollectionDtos.cs
-- backend/RateOple.Core/Groups/DTOs/GroupDtos.cs
-- backend/RateOple.Core/Media/DTOs/MediaDtos.cs
-- backend/RateOple.Core/Media/DTOs/TagDtos.cs
-- backend/RateOple.Core/Media/DTOs/UpdateDtos.cs
-- backend/RateOple.Core/Moderation/DTOs/ModerationDtos.cs
-- backend/RateOple.Core/Social/DTOs/ReviewDtos.cs
-- backend/RateOple.Core/Users/DTOs/NotificationDtos.cs
-- backend/RateOple.Core/Users/DTOs/UserMediaStatusDtos.cs
-- backend/RateOple.Core/Users/DTOs/UserProfileDtos.cs
+API media/admin tests:
+- backend/RateOple.Api.Tests/Media/MediaAdminContractTests.cs
 
-Services/error cleanup:
-- backend/RateOple.Core/Collections/Services/CollectionService.cs
-- backend/RateOple.Core/Groups/Services/GroupService.cs
+Production code fixed:
 - backend/RateOple.Core/Media/Services/MediaService.cs
-- backend/RateOple.Core/Media/Services/TmdbImportService.cs
-- backend/RateOple.Core/Moderation/Services/ModerationAuditService.cs
-- backend/RateOple.Core/Moderation/Services/ModerationService.cs
-- backend/RateOple.Core/Users/Services/NotificationService.cs
-- backend/RateOple.Core/Users/Services/UserMediaStatusService.cs
-- backend/RateOple.Infrastructure/Data/Seeding/TestUsersSeeder.cs
-
-Tests:
-- backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj
-- backend/RateOple.Core.Tests/Social/RatingServiceTests.cs
-- backend/RateOple.Core.Tests/TestSupport/SqliteTestDb.cs
-- backend/RateOple.Core.Tests/TestSupport/NoopInteractionService.cs
-- backend/RateOple.Core.Tests/TestSupport/NoopUserTasteService.cs
-- backend/RateOple.Core.Tests/Validation/DtoValidationTests.cs
-- backend/RateOple.Core.Tests/Validation/PaginationTests.cs
-- backend/RateOple.Api.Tests/Security/ProblemDetailsBehaviorTests.cs
+- backend/RateOple.Core/Media/Services/TvSeriesService.cs
 
 Report:
 - results.txt
 
-2. Architecture decision made and documented
-============================================
-
-Decision:
-- RateOple is intentionally documented as a pragmatic EF-backed layered architecture, not strict clean architecture.
-- RateOple.Core remains an application/service layer over EF Core for now.
-- RateOple.Infrastructure continues to own entities, DbContext, configurations, migrations, and seeding.
-- The API project owns controllers, auth, middleware, SignalR, HTTP error shaping, and endpoint wiring.
-- No broad repository-pattern rewrite or entity migration into Core was introduced.
-
-Architecture rules added:
-- Controllers should be thin.
-- Services own business rules.
-- Infrastructure owns EF Core persistence.
-- Core services may use ApplicationDbContext for now.
-- Do not introduce repositories unless they solve a real testing/composition problem.
-- New business logic needs targeted backend tests.
-
-3. New shared helpers added
-===========================
-
-Added:
-- ClaimsPrincipalExtensions.GetUserIdOrNull()
-- ClaimsPrincipalExtensions.GetRequiredUserId()
-- ClaimsPrincipalExtensions.GetUsernameOrNull()
-
-Behavior:
-- Optional user ID parsing returns null for missing/invalid NameIdentifier claims.
-- Required user ID parsing throws UnauthorizedAccessException with a clear message.
-- Controllers no longer keep duplicated local Guid.Parse helpers.
-
-AuthController still reads external/Google claims directly where provider-specific claim handling is required.
-
-4. Exception and ProblemDetails behavior
-========================================
-
-Before:
-- Controllers frequently caught KeyNotFoundException, ArgumentException, UnauthorizedAccessException, and InvalidOperationException locally.
-- Error responses mixed raw strings, anonymous objects, empty NotFound responses, Identity arrays, and ad hoc BadRequest/Conflict responses.
-- Several service exceptions were wrapped in generic Exception, losing clean error semantics.
-
-After:
-- GlobalExceptionHandler maps common exceptions into application/problem+json.
-- Validation errors use ValidationProblemDetails through the ApiController invalid model state factory.
-- ProblemDetails includes type, title, status, detail, traceId, and a message compatibility extension.
-- Production 500 responses use a generic message; Development may include the exception message.
-- Common mappings:
-  - ValidationException / ArgumentException -> 400
-  - UnauthorizedAccessException -> 403
-  - KeyNotFoundException -> 404
-  - InvalidOperationException -> 409 when conflict-like, otherwise 400
-  - unhandled exception -> 500
-
-Controllers were thinned in the media, ratings, reviews, collections, moderation, notification, profile, follow, discovery, and group user-id paths. Some group controller action-level catches remain and can be removed in a later cleanup pass.
-
-5. DTO validation added
-=======================
-
-Validation strategy:
-- DataAnnotations, plus custom NotEmptyGuidAttribute and IValidatableObject where cross-field/list validation is needed.
-- This matches the existing ASP.NET Core ApiController model validation path and avoids new validation infrastructure.
-
-Covered areas:
-- Auth login/register.
-- User profile, password change, delete account.
-- Media create/update/query DTOs.
-- TV season/episode create/update DTOs.
-- Tag upsert count.
-- Rating/review DTOs.
-- Collection create/update/add/reorder/query DTOs.
-- Group create/query/post/comment/vote/ban/staff-message/pinned-media DTOs.
-- Moderation report/status/query/assignment/audit query DTOs.
-- Notification and media status query/update DTOs.
-
-Invalid DTOs now return validation ProblemDetails with errors, traceId, and message.
-
-6. Pagination and query normalization added
-===========================================
-
-Added:
-- RateOple.Core.Common.Pagination.Normalize()
-
-Rules:
-- Page defaults to 1 when lower than 1.
-- PageSize defaults to the feature default when lower than 1.
-- PageSize is capped at 100.
-
-Applied to:
-- MediaService.GetAllAsync
-- GroupService.GetGroupsAsync
-- GroupService.GetPostsAsync
-- CollectionService.QueryAsync
-- ModerationService.GetReportsAsync
-- ModerationAuditService.GetLogsAsync
-- NotificationService.GetForUserAsync
-- UserMediaStatusService.GetUserStatusesAsync
-
-DTO query validation also rejects invalid page/pageSize at the API boundary for normal requests.
-
-7. Logging and error cleanup performed
-======================================
-
-Changed:
-- MediaService now uses ILogger<MediaService> instead of Console.WriteLine.
-- MediaService.GetAllAsync logs query context and rethrows with throw; instead of wrapping in a generic Exception.
-- Bulk media creation logs per-item failures as warnings while preserving its existing partial-success response contract.
-- TestUsersSeeder now throws InvalidOperationException instead of generic Exception when Identity user creation fails.
-- TmdbImportService now throws KeyNotFoundException for missing TMDB series.
-
-Remaining intentional catches:
-- SeedingExtensions still catches Exception to log startup seeding failures and rethrow.
-- BulkCreateAsync still catches per-item exceptions because that endpoint intentionally returns created items plus per-item errors.
-
-8. Tests added and how to run them
+2. Media test infrastructure added
 ==================================
 
-Added test infrastructure:
-- SQLite in-memory test database helper for Core service tests.
-- No-op interaction and user-taste services for RatingService tests.
+Added reusable media/catalog helpers:
+- CreateMovieAsync
+- CreateBookAsync
+- CreateTvSeriesAsync
+- CreateGenreAsync
+- CreateTagAsync
+- CreateSeasonAsync
+- CreateEpisodeAsync
+- CreateDeletedMediaAsync
+- CreateRatedMediaAsync
 
-Added tests:
-- RatingService:
-  - upsert creates a rating and refreshes media aggregate.
-  - upsert updates existing rating and aggregate.
-  - delete removes rating and refreshes aggregate.
-  - invalid rating value is rejected.
-- Pagination:
-  - negative/zero values normalize to defaults.
-  - oversized pageSize caps at 100.
-  - valid values are preserved.
-- DTO validation:
-  - collection reorder rejects duplicate IDs.
-  - group post rejects empty media IDs.
-  - moderator assignment requires ScopeId for non-global scopes.
-- API ProblemDetails:
-  - invalid register payload returns application/problem+json validation ProblemDetails with traceId/message/errors.
+Helper behavior:
+- Creates valid minimal entities.
+- Allows title, type-specific setup, release year, deleted state, genres, tags, and rating aggregate overrides.
+- Keeps arrange sections readable without hidden global state.
+- Adds a NoopOpenLibraryService so MediaService tests never call external APIs.
 
-How to run:
-- dotnet test backend/RateOple.sln
-- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj
-- dotnet test backend/RateOple.Api.Tests/RateOple.Api.Tests.csproj
+3. MediaService create tests added
+==================================
 
-Verification:
-- dotnet test backend/RateOple.sln passed.
-- Total: 20 tests passed, 0 failed.
+Covered:
+- CreateMovieAsync creates base Media plus Movie subtype row.
+- Movie fields are preserved: title, description, cover URL, release year, director, duration, TMDB ID.
+- Movie genres are attached.
+- CreateBookAsync creates base Media plus Book subtype row.
+- Book fields are preserved: author, page count, ISBN, Open Library ID.
+- Book genres are attached.
+- CreateTvSeriesAsync creates base Media plus TvSeries subtype row.
+- TV fields are preserved: release year, TMDB ID, season count, season/episode tree.
+- TV genres are attached.
+- Duplicate genre IDs are rejected.
+- Missing genre IDs are rejected.
+- Invalid create attempts do not leave orphan base media rows.
 
-9. Commits created
-==================
+4. MediaService update tests added
+==================================
 
-- 04b4b39 Add backend error handling foundation
-- c112839 Add DTO validation and pagination normalization
-- 5a1ebb1 Clean service error logging
-- 0a73bbe Expand backend service tests
-- 2e610af Cover validation problem details response
+Covered:
+- UpdateMovieAsync changes base and movie-specific fields.
+- UpdateBookAsync changes base and book-specific fields.
+- UpdateTvSeriesAsync changes base fields and upserts season/episode metadata.
+- Updating genres replaces existing relationships.
+- Duplicate genre IDs are rejected.
+- Missing genre IDs are rejected.
+- Updating nonexistent media throws KeyNotFoundException.
+- Updating the wrong subtype throws InvalidOperationException.
+- Updating deleted media is rejected through the normal not-found path.
+- Rating aggregate fields are not reset during media metadata update.
 
-The results.txt report itself is committed separately after final verification.
+5. MediaService delete/soft-delete tests added
+==============================================
 
-10. Frontend compatibility concerns
+Covered:
+- SoftDeleteAsync marks media as deleted instead of hard-deleting.
+- Deleted media is hidden from GetByIdAsync.
+- Deleted media is hidden from GetAllAsync items and total count.
+- Deleting TV series soft-deletes seasons and episodes.
+- Deleting nonexistent media throws KeyNotFoundException.
+- Deleting already-deleted media currently throws KeyNotFoundException.
+- Existing collection/group tests already cover deleted media rejection when adding media to collections/groups.
+- RatingService tests in TvSeriesService coverage verify deleted season/episode targets cannot be rated.
+
+6. Query/search/filter/sort tests added
+=======================================
+
+Covered GetAllAsync behavior:
+- Default query returns only non-deleted media.
+- Search by title works.
+- Search is case-insensitive for current SQLite-backed behavior.
+- Filter by media type works.
+- Filter by genre works.
+- Filter by tag works.
+- Sort by title works.
+- Sort by release year works.
+- Sort by rating remains the default.
+- Pagination is normalized.
+- Page item count and total count are correct.
+- Deleted media is excluded from count and items.
+- Empty result behavior is exercised through deleted-only query paths.
+
+Not implemented in current service:
+- Release year range filters are not part of MediaQueryDto yet.
+- Popularity-specific sorting is not separate from rating sorting yet.
+
+7. Tag/genre tests added
+========================
+
+Covered:
+- GetGenresAsync returns genres ordered by name.
+- GetTagsAsync returns tags ordered by name.
+- AddTagsAsync creates tags and links them to media.
+- AddTagsAsync trims names and deduplicates names within a request case-insensitively.
+- Adding existing tags to the same media is idempotent.
+- Adding tags to nonexistent media fails.
+- Adding tags to deleted media fails.
+- RemoveTagAsync removes an existing tag link.
+- Removing a missing tag link is idempotent.
+- Removing tags from deleted media fails.
+
+Current tag behavior documented:
+- Tag usage counts are not implemented in the current entity/model.
+- Cross-request case normalization is only partially enforced by service logic and database collation; a dedicated normalized tag key would be needed for full consistency.
+
+8. Bulk create tests added
+==========================
+
+Covered:
+- Bulk create can create valid movies, books, and TV series in one request.
+- Bulk create with one invalid item returns partial success.
+- Per-item errors include title, type, and reason.
+- Invalid genre references are reported per item.
+- Successful items are still saved.
+- Invalid items do not leave base/subtype mismatches.
+- Bulk create reuses the single-create validation path.
+
+9. TvSeriesService tests added
+==============================
+
+Covered seasons:
+- Add season to TV series succeeds.
+- Add season to nonexistent media fails.
+- Add season to non-TV media fails.
+- Duplicate season number is rejected.
+- Season number must be positive.
+- Duplicate episode numbers in a season payload are rejected.
+- Update season works.
+- Updating nonexistent season fails.
+- Updating a season to an existing season number fails.
+- Delete season soft-deletes season and episodes.
+- Deleted season is hidden from normal season list.
+
+Covered episodes:
+- Add episode to season succeeds.
+- Add episode to nonexistent season fails.
+- Add episode to deleted/missing season fails through the not-found path.
+- Duplicate episode number in the same season is rejected.
+- Same episode number in different seasons is allowed.
+- Episode number must be positive.
+- Update episode works.
+- Update nonexistent/deleted episode fails.
+- Delete episode soft-deletes it.
+- Deleted episode is hidden from normal episode list.
+
+Covered aggregates/ratings:
+- Media rating aggregate survives season/episode metadata update.
+- Deleted season/episode cannot be rated because RatingService rejects deleted targets.
+
+10. API media/admin tests added
+===============================
+
+Added MediaAdminContractTests.
+
+Covered:
+- Anonymous user cannot create media.
+- Normal user cannot create media.
+- Admin can create movie with CSRF.
+- Admin can update movie with CSRF.
+- Admin can delete media with CSRF.
+- Missing CSRF fails before admin mutation.
+- Invalid payload returns validation ProblemDetails.
+- Wrong subtype update returns ProblemDetails.
+- Public GET /api/media does not require auth.
+- Deleted media does not appear in public media query.
+
+11. Production bugs found and fixed
 ===================================
 
-Routes were not renamed.
+MediaService:
+- Missing genre IDs were silently ignored on create/update. They now throw KeyNotFoundException.
+- Duplicate genre IDs could create nondeterministic relationship behavior. They now throw ArgumentException.
+- Non-positive genre IDs now throw ArgumentException.
+- TV-series episode upserts through MediaService used navigation collection adds that could surface EF concurrency/provider issues in tests. New episodes are now added through DbSet with explicit foreign keys.
+- TV-series upsert payloads now reject non-positive and duplicate season/episode numbers.
 
-Potential behavior changes:
-- Invalid payloads now fail earlier with validation ProblemDetails.
-- Some previously raw-string BadRequest/NotFound/Conflict responses now return ProblemDetails.
-- Frontend code that only reads err.response.data.message should still have a compatibility message field on ProblemDetails.
-- Frontend code that depends on raw string response bodies should be updated to handle ProblemDetails.
-- URL validation on optional image fields may reject malformed non-URL strings that previously reached services.
-- Page/pageSize values outside the accepted bounds now receive validation errors at the API boundary.
+TvSeriesService:
+- Season number validation was mostly API-only. Service now rejects non-positive season numbers.
+- Episode number validation was mostly API-only. Service now rejects non-positive episode numbers on add/update/delete paths.
+- Duplicate episode numbers in a season payload are rejected before persistence.
+- Adding an episode with a number already used by a soft-deleted episode now fails deterministically instead of depending on the database unique constraint.
+- New episodes are added through DbSet with explicit foreign keys to avoid navigation tracking/provider-specific concurrency failures.
 
-11. Known limitations and recommended next task
-===============================================
+Test namespace issue fixed:
+- API media tests use namespace RateOple.Api.Tests.MediaTests to avoid shadowing the Media entity type used by existing tests.
 
-Known limitations:
-- This is still a pragmatic EF-backed service layer. Core still references Infrastructure by design.
-- Some group controller methods still have local exception mapping and should be thinned in a follow-up.
-- DTO validation is broad but not exhaustive. More cross-field business validation should stay in services when DB checks are required.
-- ProblemDetails tests cover validation shape; explicit 404/500 global handler tests would need either carefully chosen seeded API paths or a test-only endpoint.
-- CollectionService still contains PostgreSQL-specific raw SQL for conflict handling, so its service tests need a separate strategy before moving fully to SQLite tests.
-- The frontend still has hardcoded API base URLs and raw GUID workflows; those were non-goals for this backend pass.
+12. Tests run and results
+=========================
 
-Recommended next task:
-- Continue backend test expansion around GroupService, CollectionService, ModerationService, UserProfileService, and refresh-token rotation using reusable test setup.
+Commands run during the task:
+- dotnet test backend/RateOple.sln
+- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter UpdateTvSeriesAsync_ChangesBaseFieldsAndUpsertsSeasonEpisodes
+
+Latest full suite result:
+- dotnet test backend/RateOple.sln passed.
+- RateOple.Core.Tests: 86 passed, 0 failed, 0 skipped.
+- RateOple.Api.Tests: 22 passed, 0 failed, 0 skipped.
+- Total: 108 passed, 0 failed, 0 skipped.
+
+Commits created:
+- 0aeeb4e Add media test support helpers
+- b812acf Add media service behavior tests
+- ac4a81a Add TV series service tests
+- 342d46a Add media admin API contract tests
+
+13. Remaining media/catalog gaps
+================================
+
+Still worth covering later:
+- ReviewService media/season/episode review behavior and deleted target behavior.
+- UserMediaStatusService behavior for deleted media.
+- DiscoveryService recommendation/trending/popular/similar behavior.
+- TmdbService, OpenLibraryService, and TmdbImportService with mocked HTTP clients.
+- MediaController smoke tests for books, TV series, tags, bulk create, seasons, and episodes.
+- More branch coverage around Open Library proxy endpoints.
+- Explicit year-range filtering if MediaQueryDto gains that feature.
+- Dedicated popularity sort if product requirements separate it from rating sort.
+- Stronger tag normalization across requests, likely by adding a normalized tag key.
+- Restore behavior is not implemented; deleted media currently cannot be updated or retrieved through normal service paths.
+
+14. Recommended next task
+=========================
+
+Add ReviewService and UserMediaStatusService tests next.
+
+Reason:
+- They are the next user-facing media/catalog behaviors after create/query/TV management.
+- They depend on media, season, and episode target integrity.
+- They should explicitly protect deleted media/season/episode paths.
+- They will increase confidence that catalog state changes cannot leak into social/user workflows incorrectly.
