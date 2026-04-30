@@ -308,6 +308,8 @@ public class MediaService : IMediaService
                 .Where(s => s.TvSeriesId == id && !s.IsDeleted)
                 .ToListAsync();
 
+            ValidateSeasonUpserts(dto.Seasons);
+
             foreach (var seasonDto in dto.Seasons)
             {
                 var season = existingSeasons
@@ -338,7 +340,7 @@ public class MediaService : IMediaService
                     }
                     else
                     {
-                        season.Episodes.Add(new Episode
+                        _db.Episodes.Add(new Episode
                         {
                             Id            = Guid.NewGuid(),
                             SeasonId      = season.Id,
@@ -357,6 +359,22 @@ public class MediaService : IMediaService
 
         await _db.SaveChangesAsync();
         return MapToDetail(await GetWithIncludes(id));
+    }
+
+    private static void ValidateSeasonUpserts(List<UpsertSeasonDto> seasons)
+    {
+        if (seasons.Any(s => s.SeasonNumber <= 0))
+            throw new ArgumentException("Season numbers must be positive.");
+        if (seasons.Select(s => s.SeasonNumber).Distinct().Count() != seasons.Count)
+            throw new ArgumentException("Season numbers must not contain duplicates.");
+
+        foreach (var season in seasons)
+        {
+            if (season.Episodes.Any(e => e.EpisodeNumber <= 0))
+                throw new ArgumentException("Episode numbers must be positive.");
+            if (season.Episodes.Select(e => e.EpisodeNumber).Distinct().Count() != season.Episodes.Count)
+                throw new ArgumentException("Episode numbers must not contain duplicates within a season.");
+        }
     }
 
     public async Task<MediaDetailDto> AddTagsAsync(Guid id, UpsertMediaTagsDto dto)
@@ -527,10 +545,7 @@ public class MediaService : IMediaService
     {
         if (genreIds.Count == 0) return;
 
-        var validIds = await _db.Genres
-            .Where(g => genreIds.Contains(g.Id))
-            .Select(g => g.Id)
-            .ToListAsync();
+        var validIds = await ValidateGenreIdsAsync(genreIds);
 
         media.MediaGenres = validIds
             .Select(gId => new MediaGenre { MediaId = media.Id, GenreId = gId })
@@ -539,20 +554,38 @@ public class MediaService : IMediaService
 
     private async Task ReplaceGenres(MediaEntity media, List<int> genreIds)
     {
-        // Remove existing genre links
+        var validIds = await ValidateGenreIdsAsync(genreIds);
+
         var existing = await _db.MediaGenres
             .Where(mg => mg.MediaId == media.Id)
             .ToListAsync();
         _db.MediaGenres.RemoveRange(existing);
 
-        // Attach new ones
+        foreach (var gId in validIds)
+            _db.MediaGenres.Add(new MediaGenre { MediaId = media.Id, GenreId = gId });
+    }
+
+    private async Task<List<int>> ValidateGenreIdsAsync(List<int> genreIds)
+    {
+        var normalizedIds = genreIds.Where(id => id > 0).ToList();
+        if (normalizedIds.Count != genreIds.Count)
+            throw new ArgumentException("Genre ids must be positive.");
+
+        if (normalizedIds.Count != normalizedIds.Distinct().Count())
+            throw new ArgumentException("Genre ids must not contain duplicates.");
+
+        if (normalizedIds.Count == 0)
+            return [];
+
         var validIds = await _db.Genres
-            .Where(g => genreIds.Contains(g.Id))
+            .Where(g => normalizedIds.Contains(g.Id))
             .Select(g => g.Id)
             .ToListAsync();
 
-        foreach (var gId in validIds)
-            _db.MediaGenres.Add(new MediaGenre { MediaId = media.Id, GenreId = gId });
+        if (validIds.Count != normalizedIds.Count)
+            throw new KeyNotFoundException("One or more genres were not found.");
+
+        return validIds;
     }
 
     private async Task<MediaEntity> GetWithIncludes(Guid id, bool throwIfMissing = true)

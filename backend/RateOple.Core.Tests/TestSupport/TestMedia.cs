@@ -36,9 +36,11 @@ public sealed class TestMedia
         bool isDeleted = false,
         int? releaseYear = 2020,
         IEnumerable<Genre>? genres = null,
-        IEnumerable<Tag>? tags = null)
+        IEnumerable<Tag>? tags = null,
+        double averageRating = 0,
+        int ratingsCount = 0)
     {
-        var media = Base(title, MediaType.Book, isDeleted, releaseYear);
+        var media = Base(title, MediaType.Book, isDeleted, releaseYear, averageRating, ratingsCount);
         _context.Media.Add(media);
         _context.Books.Add(new Book { MediaId = media.Id, Author = "Test Author" });
         AttachGenres(media, genres);
@@ -51,9 +53,11 @@ public sealed class TestMedia
         bool isDeleted = false,
         int? releaseYear = 2020,
         IEnumerable<Genre>? genres = null,
-        IEnumerable<Tag>? tags = null)
+        IEnumerable<Tag>? tags = null,
+        double averageRating = 0,
+        int ratingsCount = 0)
     {
-        var media = Base(title, MediaType.TvSeries, isDeleted, releaseYear);
+        var media = Base(title, MediaType.TvSeries, isDeleted, releaseYear, averageRating, ratingsCount);
         _context.Media.Add(media);
         _context.TvSeries.Add(new TvSeries { MediaId = media.Id, SeasonsCount = 1 });
         AttachGenres(media, genres);
@@ -123,6 +127,7 @@ public sealed class TestMedia
             IsDeleted = isDeleted
         };
         _context.Seasons.Add(season);
+        tvSeries.TvSeries?.Seasons.Add(season);
         await _context.SaveChangesAsync();
         return season;
     }
@@ -143,6 +148,7 @@ public sealed class TestMedia
             IsDeleted = isDeleted
         };
         _context.Episodes.Add(episode);
+        season.Episodes.Add(episode);
         await _context.SaveChangesAsync();
         return episode;
     }
