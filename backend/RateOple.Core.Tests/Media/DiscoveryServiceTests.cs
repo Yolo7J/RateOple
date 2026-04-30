@@ -449,5 +449,130 @@ public class DiscoveryServiceTests
         Assert.Equal(candidate.Id, item.Id);
     }
 
+    [Fact]
+    public async Task GetSimilarAsync_ThrowsWhenSourceMediaIsMissing()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var service = CreateService(db);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => service.GetSimilarAsync(Guid.NewGuid()));
+    }
+
+    [Fact]
+    public async Task GetSimilarAsync_ThrowsWhenSourceMediaIsDeleted()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var source = await data.Media.CreateMovieAsync("Deleted source", isDeleted: true);
+        var service = CreateService(db);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => service.GetSimilarAsync(source.Id));
+    }
+
+    [Fact]
+    public async Task GetSimilarAsync_ReturnsEmptyWhenSourceHasNoGenres()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var source = await data.Media.CreateMovieAsync("No genre source");
+        var service = CreateService(db);
+
+        var result = await service.GetSimilarAsync(source.Id);
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task GetSimilarAsync_ExcludesSourceMediaAndDeletedCandidates()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var genre = await data.Genres.CreateGenreAsync("Drama");
+        var source = await data.Discovery.CreateMediaWithGenresAsync("Source", [genre], averageRating: 10, ratingsCount: 10);
+        var visible = await data.Discovery.CreateMediaWithGenresAsync("Visible similar", [genre], averageRating: 5, ratingsCount: 1);
+        var deleted = await data.Discovery.CreateDeletedDiscoverableMediaAsync("Deleted similar", genres: [genre]);
+        var service = CreateService(db);
+
+        var result = await service.GetSimilarAsync(source.Id);
+
+        Assert.Equal([visible.Id], result.Select(x => x.Id).ToList());
+        Assert.DoesNotContain(result, x => x.Id == source.Id);
+        Assert.DoesNotContain(result, x => x.Id == deleted.Id);
+    }
+
+    [Fact]
+    public async Task GetSimilarAsync_PrefersMoreSharedGenresThenAverageRating()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var drama = await data.Genres.CreateGenreAsync("Drama");
+        var mystery = await data.Genres.CreateGenreAsync("Mystery");
+        var comedy = await data.Genres.CreateGenreAsync("Comedy");
+        var source = await data.Discovery.CreateMediaWithGenresAsync("Source", [drama, mystery]);
+        var twoGenreMatch = await data.Discovery.CreateMediaWithGenresAsync("Two genre match", [drama, mystery], averageRating: 3);
+        var oneGenreHighRating = await data.Discovery.CreateMediaWithGenresAsync("One genre high rating", [drama, comedy], averageRating: 10);
+        var oneGenreLowerRating = await data.Discovery.CreateMediaWithGenresAsync("One genre lower rating", [mystery], averageRating: 5);
+        var service = CreateService(db);
+
+        var result = await service.GetSimilarAsync(source.Id);
+
+        Assert.Equal(
+            [twoGenreMatch.Id, oneGenreHighRating.Id, oneGenreLowerRating.Id],
+            result.Select(x => x.Id).ToList());
+    }
+
+    [Fact]
+    public async Task GetSimilarAsync_IncludesAllMediaTypesThatShareGenres()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var genre = await data.Genres.CreateGenreAsync("Adventure");
+        var source = await data.Discovery.CreateMediaWithGenresAsync("Source", [genre], MediaType.Movie);
+        await data.Discovery.CreateMediaWithGenresAsync("Book", [genre], MediaType.Book, averageRating: 5);
+        await data.Discovery.CreateMediaWithGenresAsync("Movie", [genre], MediaType.Movie, averageRating: 5);
+        await data.Discovery.CreateMediaWithGenresAsync("Series", [genre], MediaType.TvSeries, averageRating: 5);
+        var service = CreateService(db);
+
+        var result = await service.GetSimilarAsync(source.Id);
+
+        Assert.Equal(["Book", "Movie", "Series"], result.Select(x => x.Title));
+        Assert.Equal(["Book", "Movie", "TvSeries"], result.Select(x => x.Type));
+    }
+
+    [Fact]
+    public async Task GetSimilarAsync_RespectsLimitAndUsesDeterministicTitleOrdering()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var genre = await data.Genres.CreateGenreAsync("Noir");
+        var source = await data.Discovery.CreateMediaWithGenresAsync("Source", [genre]);
+        await data.Discovery.CreateMediaWithGenresAsync("Charlie", [genre], averageRating: 5);
+        await data.Discovery.CreateMediaWithGenresAsync("Alpha", [genre], averageRating: 5);
+        await data.Discovery.CreateMediaWithGenresAsync("Bravo", [genre], averageRating: 5);
+        var service = CreateService(db);
+
+        var result = await service.GetSimilarAsync(source.Id, 2);
+        var none = await service.GetSimilarAsync(source.Id, -1);
+
+        Assert.Equal(["Alpha", "Bravo"], result.Select(x => x.Title));
+        Assert.Empty(none);
+    }
+
+    [Fact]
+    public async Task GetSimilarAsync_DoesNotReturnDuplicateMedia()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var drama = await data.Genres.CreateGenreAsync("Drama");
+        var mystery = await data.Genres.CreateGenreAsync("Mystery");
+        var source = await data.Discovery.CreateMediaWithGenresAsync("Source", [drama, mystery]);
+        await data.Discovery.CreateMediaWithGenresAsync("Candidate", [drama, mystery]);
+        var service = CreateService(db);
+
+        var result = await service.GetSimilarAsync(source.Id);
+
+        Assert.Equal(result.Count, result.Select(x => x.Id).Distinct().Count());
+    }
+
     private static DiscoveryService CreateService(SqliteTestDb db) => new(db.Context);
 }

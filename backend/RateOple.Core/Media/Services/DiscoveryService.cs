@@ -135,6 +135,12 @@ public class DiscoveryService : IDiscoveryService
         if (limit == 0)
             return [];
 
+        var sourceExists = await _context.Media
+            .AsNoTracking()
+            .AnyAsync(m => m.Id == mediaId && !m.IsDeleted);
+        if (!sourceExists)
+            throw new KeyNotFoundException($"Media {mediaId} not found.");
+
         var sourceGenreIds = await _context.MediaGenres
             .AsNoTracking()
             .Where(mg => mg.MediaId == mediaId)
@@ -158,7 +164,8 @@ public class DiscoveryService : IDiscoveryService
                 return new { Media = m, Overlap = overlap, Score = similarityScore };
             })
             .Where(x => x.Overlap > 0)
-            .OrderByDescending(x => x.Score)
+            .OrderByDescending(x => x.Overlap)
+            .ThenByDescending(x => x.Score)
             .ThenBy(x => x.Media.Title)
             .ThenBy(x => x.Media.Id)
             .Take(limit)
