@@ -637,6 +637,58 @@ public class ReviewServiceTests
     }
 
     [Fact]
+    public async Task DeleteReviewAsync_DeletedTargetWithoutDeletingRatingRemovesReviewAndRecalculatesUserTaste()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var user = data.Users.Add(data.Users.Normal("deleted-target-review-delete-user"));
+        var media = data.Media.Movie("Deleted Target Review Delete Movie");
+        var rating = data.Reviews.RatingForMedia(user, media, 6);
+        var review = data.Reviews.Review(user, media, rating, "Remove after target deleted");
+        await data.SaveAsync();
+        media.IsDeleted = true;
+        await data.SaveAsync();
+        var interaction = new SpyInteractionService();
+        var taste = new SpyUserTasteService();
+        var service = CreateService(db, interactionService: interaction, userTasteService: taste);
+
+        await service.DeleteReviewAsync(user.Id, review.Id, deleteRating: false);
+
+        Assert.Empty(await db.Context.Reviews.ToListAsync());
+        Assert.Single(await db.Context.Ratings.ToListAsync());
+        Assert.Empty(interaction.ReviewCreatedCalls);
+        Assert.Empty(taste.RecalculateMediaContextCalls);
+        Assert.Equal(user.Id, Assert.Single(taste.RecalculateUserCalls));
+    }
+
+    [Fact]
+    public async Task DeleteReviewAsync_DeletedTargetWithDeleteRatingRollsBackWithoutSignals()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var user = data.Users.Add(data.Users.Normal("deleted-target-review-rating-delete-user"));
+        var media = data.Media.Movie("Deleted Target Review Rating Delete Movie");
+        var rating = data.Reviews.RatingForMedia(user, media, 6);
+        var review = data.Reviews.Review(user, media, rating, "Remove rating after target deleted");
+        await data.SaveAsync();
+        media.IsDeleted = true;
+        await data.SaveAsync();
+        var interaction = new SpyInteractionService();
+        var taste = new SpyUserTasteService();
+        var service = CreateService(db, interactionService: interaction, userTasteService: taste);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => service.DeleteReviewAsync(user.Id, review.Id, deleteRating: true));
+
+        db.Context.ChangeTracker.Clear();
+        Assert.Single(await db.Context.Reviews.ToListAsync());
+        Assert.Single(await db.Context.Ratings.ToListAsync());
+        Assert.Empty(interaction.ReviewCreatedCalls);
+        Assert.Empty(taste.RecalculateMediaContextCalls);
+        Assert.Empty(taste.RecalculateUserCalls);
+    }
+
+    [Fact]
     public async Task DeleteReviewAsync_NonOwnerCannotDeleteReview()
     {
         await using var db = await SqliteTestDb.CreateAsync();
