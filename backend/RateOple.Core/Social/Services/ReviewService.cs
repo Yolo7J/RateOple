@@ -38,6 +38,8 @@ public class ReviewService : IReviewService
         if (rating.UserId != userId)
             throw new UnauthorizedAccessException("You can review only your own ratings.");
 
+        await EnsureRatingTargetIsActiveAsync(rating);
+
         if (dto.UpdatedRatingValue.HasValue)
             await UpdateRatingValueAsync(userId, rating, dto.UpdatedRatingValue.Value);
 
@@ -83,6 +85,8 @@ public class ReviewService : IReviewService
         if (review.UserId != userId)
             throw new UnauthorizedAccessException("You can update only your own reviews.");
 
+        await EnsureRatingTargetIsActiveAsync(review.Rating);
+
         if (dto.UpdatedRatingValue.HasValue)
             await UpdateRatingValueAsync(userId, review.Rating, dto.UpdatedRatingValue.Value);
 
@@ -124,7 +128,7 @@ public class ReviewService : IReviewService
     {
         return await _context.Reviews
             .AsNoTracking()
-            .Where(r => r.MediaId == mediaId)
+            .Where(r => r.MediaId == mediaId && !r.Media.IsDeleted)
             .OrderByDescending(r => r.UpdatedAt)
             .Select(r => new ReviewDto
             {
@@ -146,7 +150,7 @@ public class ReviewService : IReviewService
     {
         return await _context.Reviews
             .AsNoTracking()
-            .Where(r => r.UserId == userId)
+            .Where(r => r.UserId == userId && !r.Media.IsDeleted)
             .OrderByDescending(r => r.UpdatedAt)
             .Select(r => new ReviewDto
             {
@@ -183,6 +187,39 @@ public class ReviewService : IReviewService
                 .Where(e => e.Id == rating.EpisodeId.Value)
                 .Select(e => e.Season.TvSeriesId)
                 .FirstAsync();
+        }
+
+        throw new InvalidOperationException("Rating target is invalid.");
+    }
+
+    private async Task EnsureRatingTargetIsActiveAsync(Rating rating)
+    {
+        if (rating.MediaId.HasValue)
+        {
+            var exists = await _context.Media.AnyAsync(m => m.Id == rating.MediaId.Value && !m.IsDeleted);
+            if (!exists)
+                throw new KeyNotFoundException("Media not found.");
+            return;
+        }
+
+        if (rating.SeasonId.HasValue)
+        {
+            var exists = await _context.Seasons.AnyAsync(s => s.Id == rating.SeasonId.Value && !s.IsDeleted && !s.TvSeries.Media.IsDeleted);
+            if (!exists)
+                throw new KeyNotFoundException("Season not found.");
+            return;
+        }
+
+        if (rating.EpisodeId.HasValue)
+        {
+            var exists = await _context.Episodes.AnyAsync(e =>
+                e.Id == rating.EpisodeId.Value &&
+                !e.IsDeleted &&
+                !e.Season.IsDeleted &&
+                !e.Season.TvSeries.Media.IsDeleted);
+            if (!exists)
+                throw new KeyNotFoundException("Episode not found.");
+            return;
         }
 
         throw new InvalidOperationException("Rating target is invalid.");
