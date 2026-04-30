@@ -30,6 +30,8 @@ public class ReviewService : IReviewService
         if (string.IsNullOrWhiteSpace(dto.Content))
             throw new ArgumentException("Review content is required.");
 
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+
         var rating = await _context.Ratings
             .AsNoTracking()
             .FirstOrDefaultAsync(r => r.Id == dto.RatingId)
@@ -40,8 +42,9 @@ public class ReviewService : IReviewService
 
         await EnsureRatingTargetIsActiveAsync(rating);
 
-        if (dto.UpdatedRatingValue.HasValue)
-            await UpdateRatingValueAsync(userId, rating, dto.UpdatedRatingValue.Value);
+        var ratingValueUpdated = dto.UpdatedRatingValue.HasValue;
+        if (ratingValueUpdated)
+            await UpdateRatingValueAsync(userId, rating, dto.UpdatedRatingValue.GetValueOrDefault());
 
         var existingReview = await _context.Reviews
             .FirstOrDefaultAsync(r => r.RatingId == dto.RatingId);
@@ -51,6 +54,9 @@ public class ReviewService : IReviewService
             existingReview.Content = dto.Content.Trim();
             existingReview.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
+            if (!ratingValueUpdated)
+                await _userTasteService.RecalculateForMediaContextAsync(userId, existingReview.MediaId);
+            await transaction.CommitAsync();
             return await MapWithDisplayNameAsync(existingReview);
         }
 
@@ -67,8 +73,8 @@ public class ReviewService : IReviewService
 
         _context.Reviews.Add(review);
         await _context.SaveChangesAsync();
-        await _userTasteService.RecalculateForMediaContextAsync(userId, review.MediaId);
         await _interactionService.TrackReviewCreatedAsync(userId, rating.MediaId, rating.SeasonId, rating.EpisodeId);
+        await transaction.CommitAsync();
         return await MapWithDisplayNameAsync(review);
     }
 
@@ -76,6 +82,8 @@ public class ReviewService : IReviewService
     {
         if (string.IsNullOrWhiteSpace(dto.Content))
             throw new ArgumentException("Review content is required.");
+
+        await using var transaction = await _context.Database.BeginTransactionAsync();
 
         var review = await _context.Reviews
             .Include(r => r.Rating)
@@ -87,19 +95,24 @@ public class ReviewService : IReviewService
 
         await EnsureRatingTargetIsActiveAsync(review.Rating);
 
-        if (dto.UpdatedRatingValue.HasValue)
-            await UpdateRatingValueAsync(userId, review.Rating, dto.UpdatedRatingValue.Value);
+        var ratingValueUpdated = dto.UpdatedRatingValue.HasValue;
+        if (ratingValueUpdated)
+            await UpdateRatingValueAsync(userId, review.Rating, dto.UpdatedRatingValue.GetValueOrDefault());
 
         review.Content = dto.Content.Trim();
         review.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
-        await _userTasteService.RecalculateForMediaContextAsync(userId, review.MediaId);
+        if (!ratingValueUpdated)
+            await _userTasteService.RecalculateForMediaContextAsync(userId, review.MediaId);
 
+        await transaction.CommitAsync();
         return await MapWithDisplayNameAsync(review);
     }
 
     public async Task DeleteReviewAsync(Guid userId, Guid reviewId, bool deleteRating)
     {
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+
         var review = await _context.Reviews
             .Include(r => r.Rating)
             .FirstOrDefaultAsync(r => r.Id == reviewId)
@@ -108,12 +121,21 @@ public class ReviewService : IReviewService
         if (review.UserId != userId)
             throw new UnauthorizedAccessException("You can delete only your own reviews.");
 
+        var activeMediaId = await ResolveActiveMediaIdFromRatingAsync(review.Rating);
+
         _context.Reviews.Remove(review);
         await _context.SaveChangesAsync();
-        await _userTasteService.RecalculateForMediaContextAsync(userId, review.MediaId);
 
         if (!deleteRating)
+        {
+            if (activeMediaId.HasValue)
+                await _userTasteService.RecalculateForMediaContextAsync(userId, activeMediaId.Value);
+            else
+                await _userTasteService.RecalculateForUserAsync(userId);
+
+            await transaction.CommitAsync();
             return;
+        }
 
         var rating = review.Rating;
         if (rating.MediaId.HasValue)
@@ -122,6 +144,8 @@ public class ReviewService : IReviewService
             await _ratingService.DeleteSeasonRatingAsync(userId, rating.SeasonId.Value);
         else if (rating.EpisodeId.HasValue)
             await _ratingService.DeleteEpisodeRatingAsync(userId, rating.EpisodeId.Value);
+
+        await transaction.CommitAsync();
     }
 
     public async Task<IReadOnlyList<ReviewDto>> GetMediaReviewsAsync(Guid mediaId)
@@ -187,6 +211,39 @@ public class ReviewService : IReviewService
                 .Where(e => e.Id == rating.EpisodeId.Value)
                 .Select(e => e.Season.TvSeriesId)
                 .FirstAsync();
+        }
+
+        throw new InvalidOperationException("Rating target is invalid.");
+    }
+
+    private async Task<Guid?> ResolveActiveMediaIdFromRatingAsync(Rating rating)
+    {
+        if (rating.MediaId.HasValue)
+        {
+            return await _context.Media
+                .Where(m => m.Id == rating.MediaId.Value && !m.IsDeleted)
+                .Select(m => (Guid?)m.Id)
+                .FirstOrDefaultAsync();
+        }
+
+        if (rating.SeasonId.HasValue)
+        {
+            return await _context.Seasons
+                .Where(s => s.Id == rating.SeasonId.Value && !s.IsDeleted && !s.TvSeries.Media.IsDeleted)
+                .Select(s => (Guid?)s.TvSeriesId)
+                .FirstOrDefaultAsync();
+        }
+
+        if (rating.EpisodeId.HasValue)
+        {
+            return await _context.Episodes
+                .Where(e =>
+                    e.Id == rating.EpisodeId.Value &&
+                    !e.IsDeleted &&
+                    !e.Season.IsDeleted &&
+                    !e.Season.TvSeries.Media.IsDeleted)
+                .Select(e => (Guid?)e.Season.TvSeriesId)
+                .FirstOrDefaultAsync();
         }
 
         throw new InvalidOperationException("Rating target is invalid.");
