@@ -55,6 +55,40 @@ public class ReviewContractTests
     }
 
     [Fact]
+    public async Task AuthenticatedUser_CreateReviewRecordsInteractionAndUpdatesTaste()
+    {
+        using var factory = new ApiTestFactory(useTestAuth: true);
+        var client = factory.CreateManualCookieClient();
+        var user = await factory.AddUserAsync("review-signal-api-user", RoleConstants.User);
+        var (mediaId, ratingId) = await SeedMediaRatingAsync(factory, user.Id, withGenre: true);
+        var csrf = await factory.GetCsrfAsync(client, user, RoleConstants.User);
+
+        using var request = AuthenticatedRequest(
+            user,
+            [RoleConstants.User],
+            csrf,
+            HttpMethod.Post,
+            "/api/reviews",
+            new { ratingId, content = "API signal review" });
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        await factory.WithDbAsync(async db =>
+        {
+            var interaction = await db.MediaInteractions.SingleAsync();
+            Assert.Equal(user.Id, interaction.UserId);
+            Assert.Equal(mediaId, interaction.MediaId);
+            Assert.Equal(InteractionType.ReviewCreated, interaction.InteractionType);
+            Assert.Equal(8, interaction.Points);
+
+            var score = await db.UserGenreScores.SingleAsync();
+            Assert.Equal(user.Id, score.UserId);
+            Assert.Equal(22, score.Score);
+        });
+    }
+
+    [Fact]
     public async Task MissingCsrf_FailsBeforeReviewMutation()
     {
         using var factory = new ApiTestFactory(useTestAuth: true);
@@ -69,7 +103,12 @@ public class ReviewContractTests
         var response = await client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        await factory.WithDbAsync(async db => Assert.False(await db.Reviews.AnyAsync()));
+        await factory.WithDbAsync(async db =>
+        {
+            Assert.False(await db.Reviews.AnyAsync());
+            Assert.False(await db.MediaInteractions.AnyAsync());
+            Assert.False(await db.UserGenreScores.AnyAsync());
+        });
     }
 
     [Fact]
@@ -102,6 +141,12 @@ public class ReviewContractTests
 
         Assert.Equal(HttpStatusCode.Forbidden, updateResponse.StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, deleteResponse.StatusCode);
+        await factory.WithDbAsync(async db =>
+        {
+            Assert.False(await db.MediaInteractions.AnyAsync());
+            Assert.False(await db.UserGenreScores.AnyAsync());
+            Assert.Single(await db.Reviews.ToListAsync());
+        });
     }
 
     [Fact]
@@ -149,7 +194,12 @@ public class ReviewContractTests
         var response = await client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-        await factory.WithDbAsync(async db => Assert.False(await db.Reviews.AnyAsync()));
+        await factory.WithDbAsync(async db =>
+        {
+            Assert.False(await db.Reviews.AnyAsync());
+            Assert.False(await db.MediaInteractions.AnyAsync());
+            Assert.False(await db.UserGenreScores.AnyAsync());
+        });
     }
 
     [Fact]
@@ -172,20 +222,28 @@ public class ReviewContractTests
     private static async Task<(Guid MediaId, Guid RatingId)> SeedMediaRatingAsync(
         ApiTestFactory factory,
         Guid userId,
-        bool isDeleted = false)
+        bool isDeleted = false,
+        bool withGenre = false)
     {
         var mediaId = Guid.NewGuid();
         var ratingId = Guid.NewGuid();
         await factory.WithDbAsync(db =>
         {
-            db.Media.Add(new Media
+            var media = new Media
             {
                 Id = mediaId,
                 Type = MediaType.Movie,
                 Title = "Review API Movie",
                 CreatedAt = DateTime.UtcNow,
                 IsDeleted = isDeleted
-            });
+            };
+            db.Media.Add(media);
+            if (withGenre)
+            {
+                var genre = new Genre { Name = $"Review API Genre {Guid.NewGuid():N}" };
+                db.Genres.Add(genre);
+                db.MediaGenres.Add(new MediaGenre { MediaId = mediaId, Genre = genre });
+            }
             db.Ratings.Add(new Rating
             {
                 Id = ratingId,

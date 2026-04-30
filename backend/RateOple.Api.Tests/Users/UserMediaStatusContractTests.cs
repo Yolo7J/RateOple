@@ -57,6 +57,40 @@ public class UserMediaStatusContractTests
     }
 
     [Fact]
+    public async Task AuthenticatedUser_SetMediaStatusRecordsInteractionAndUpdatesTaste()
+    {
+        using var factory = new ApiTestFactory(useTestAuth: true);
+        var client = factory.CreateManualCookieClient();
+        var user = await factory.AddUserAsync("status-signal-api-user", RoleConstants.User);
+        var mediaId = await SeedMediaAsync(factory, title: "API Status Signal Movie", withGenre: true);
+        var csrf = await factory.GetCsrfAsync(client, user, RoleConstants.User);
+
+        using var request = AuthenticatedRequest(
+            user,
+            [RoleConstants.User],
+            csrf,
+            HttpMethod.Post,
+            $"/api/media/{mediaId}/status",
+            new { status = "Done" });
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        await factory.WithDbAsync(async db =>
+        {
+            var interaction = await db.MediaInteractions.SingleAsync();
+            Assert.Equal(user.Id, interaction.UserId);
+            Assert.Equal(mediaId, interaction.MediaId);
+            Assert.Equal(InteractionType.MediaStatusChanged, interaction.InteractionType);
+            Assert.Equal(4, interaction.Points);
+
+            var score = await db.UserGenreScores.SingleAsync();
+            Assert.Equal(user.Id, score.UserId);
+            Assert.Equal(4, score.Score);
+        });
+    }
+
+    [Fact]
     public async Task MissingCsrf_FailsBeforeStatusMutation()
     {
         using var factory = new ApiTestFactory(useTestAuth: true);
@@ -71,7 +105,12 @@ public class UserMediaStatusContractTests
         var response = await client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        await factory.WithDbAsync(async db => Assert.False(await db.UserMediaStatuses.AnyAsync()));
+        await factory.WithDbAsync(async db =>
+        {
+            Assert.False(await db.UserMediaStatuses.AnyAsync());
+            Assert.False(await db.MediaInteractions.AnyAsync());
+            Assert.False(await db.UserGenreScores.AnyAsync());
+        });
     }
 
     [Fact]
@@ -94,7 +133,12 @@ public class UserMediaStatusContractTests
         var response = await client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-        await factory.WithDbAsync(async db => Assert.False(await db.UserMediaStatuses.AnyAsync()));
+        await factory.WithDbAsync(async db =>
+        {
+            Assert.False(await db.UserMediaStatuses.AnyAsync());
+            Assert.False(await db.MediaInteractions.AnyAsync());
+            Assert.False(await db.UserGenreScores.AnyAsync());
+        });
     }
 
     [Fact]
@@ -153,24 +197,38 @@ public class UserMediaStatusContractTests
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
         Assert.Equal(400, json.RootElement.GetProperty("status").GetInt32());
         Assert.True(json.RootElement.TryGetProperty("errors", out _));
+        await factory.WithDbAsync(async db =>
+        {
+            Assert.False(await db.UserMediaStatuses.AnyAsync());
+            Assert.False(await db.MediaInteractions.AnyAsync());
+            Assert.False(await db.UserGenreScores.AnyAsync());
+        });
     }
 
     private static async Task<Guid> SeedMediaAsync(
         ApiTestFactory factory,
         string title = "Status API Movie",
-        bool isDeleted = false)
+        bool isDeleted = false,
+        bool withGenre = false)
     {
         var mediaId = Guid.NewGuid();
         await factory.WithDbAsync(db =>
         {
-            db.Media.Add(new Media
+            var media = new Media
             {
                 Id = mediaId,
                 Type = MediaType.Movie,
                 Title = title,
                 CreatedAt = DateTime.UtcNow,
                 IsDeleted = isDeleted
-            });
+            };
+            db.Media.Add(media);
+            if (withGenre)
+            {
+                var genre = new Genre { Name = $"Status API Genre {Guid.NewGuid():N}" };
+                db.Genres.Add(genre);
+                db.MediaGenres.Add(new MediaGenre { MediaId = mediaId, Genre = genre });
+            }
             return Task.CompletedTask;
         });
 
