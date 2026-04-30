@@ -19,6 +19,8 @@ public sealed class TestDataFactory
         Moderation = new TestModeration(context);
         Reviews = new TestReviews(context);
         Statuses = new TestStatuses(context);
+        Interactions = new TestInteractions(context);
+        Discovery = new TestDiscovery(context, Media, Reviews, Interactions);
     }
 
     public TestUsers Users { get; }
@@ -30,6 +32,8 @@ public sealed class TestDataFactory
     public TestModeration Moderation { get; }
     public TestReviews Reviews { get; }
     public TestStatuses Statuses { get; }
+    public TestInteractions Interactions { get; }
+    public TestDiscovery Discovery { get; }
 
     public async Task SaveAsync()
     {
