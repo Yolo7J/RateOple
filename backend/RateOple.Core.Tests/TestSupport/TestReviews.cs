@@ -97,6 +97,31 @@ public sealed class TestReviews
         return (media, rating);
     }
 
+    public async Task<(MediaEntity Series, Season Season, Rating Rating)> CreateSeasonRatingWithDeletedParentAsync(
+        User user,
+        TestMedia mediaFactory,
+        string title = "Deleted parent series",
+        int value = 8)
+    {
+        var series = await mediaFactory.CreateTvSeriesAsync(title, isDeleted: true);
+        var season = await mediaFactory.CreateSeasonAsync(series);
+        var rating = await CreateSeasonRatingTargetAsync(user, season, value);
+        return (series, season, rating);
+    }
+
+    public async Task<(MediaEntity Series, Season Season, Episode Episode, Rating Rating)> CreateEpisodeRatingWithDeletedParentAsync(
+        User user,
+        TestMedia mediaFactory,
+        string title = "Deleted parent episode series",
+        int value = 8)
+    {
+        var series = await mediaFactory.CreateTvSeriesAsync(title, isDeleted: true);
+        var season = await mediaFactory.CreateSeasonAsync(series);
+        var episode = await mediaFactory.CreateEpisodeAsync(season);
+        var rating = await CreateEpisodeRatingTargetAsync(user, episode, value);
+        return (series, season, episode, rating);
+    }
+
     private static Rating BaseRating(User user, int value) => new()
     {
         Id = Guid.NewGuid(),
