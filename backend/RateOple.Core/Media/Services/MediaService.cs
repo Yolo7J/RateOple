@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using RateOple.Constants.Enums;
+using RateOple.Core.Common;
 using RateOple.Core.Contracts;
 using RateOple.Core.Media.DTOs;
 using RateOple.Infrastructure.Data;
@@ -27,8 +28,7 @@ public class MediaService : IMediaService
         {
             query ??= new MediaQueryDto();
 
-            var page = query.Page < 1 ? 1 : query.Page;
-            var pageSize = query.PageSize <= 0 ? 24 : Math.Min(query.PageSize, 100);
+            var pagination = Pagination.Normalize(query.Page, query.PageSize, defaultPageSize: 24);
             var sortBy = (query.SortBy ?? "rating").Trim().ToLowerInvariant();
             var sortDir = (query.SortDir ?? "desc").Trim().ToLowerInvariant();
             var search = query.Search?.Trim();
@@ -84,8 +84,8 @@ public class MediaService : IMediaService
             var totalCount = await q.CountAsync();
 
             var items = await q
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
+                .Skip((pagination.Page - 1) * pagination.PageSize)
+                .Take(pagination.PageSize)
                 .Select(m => new MediaListItemDto
                 {
                     Id            = m.Id,
@@ -110,8 +110,8 @@ public class MediaService : IMediaService
             {
                 Items      = items,
                 TotalCount = totalCount,
-                Page       = page,
-                PageSize   = pageSize,
+                Page       = pagination.Page,
+                PageSize   = pagination.PageSize,
             };
         }
         catch (Exception ex)

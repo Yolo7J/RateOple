@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using RateOple.Constants.Enums;
+using RateOple.Core.Common;
 using RateOple.Core.Contracts;
 using RateOple.Core.Users.DTOs;
 using RateOple.Infrastructure.Data;
@@ -52,8 +53,8 @@ public class NotificationService : INotificationService
 
     public async Task<PagedNotificationsDto> GetForUserAsync(Guid userId, NotificationQueryDto query)
     {
-        var page = query.Page <= 0 ? 1 : query.Page;
-        var pageSize = query.PageSize <= 0 ? 30 : Math.Min(query.PageSize, 100);
+        query ??= new NotificationQueryDto();
+        var pagination = Pagination.Normalize(query.Page, query.PageSize, defaultPageSize: 30);
 
         var q = _context.Notifications
             .AsNoTracking()
@@ -66,16 +67,16 @@ public class NotificationService : INotificationService
         var total = await q.CountAsync();
         var items = await q
             .OrderByDescending(n => n.CreatedAt)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
+            .Skip((pagination.Page - 1) * pagination.PageSize)
+            .Take(pagination.PageSize)
             .ToListAsync();
 
         return new PagedNotificationsDto
         {
             Items = items.Select(Map).ToList(),
             TotalCount = total,
-            Page = page,
-            PageSize = pageSize
+            Page = pagination.Page,
+            PageSize = pagination.PageSize
         };
     }
 

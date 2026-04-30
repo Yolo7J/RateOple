@@ -1,35 +1,57 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace RateOple.Core.Media.DTOs;
 
 // ── Update commands ───────────────────────────────────────────────────────────
 
 public class UpdateMovieDto
 {
+    [MaxLength(200)]
     public string? Title { get; set; }
+    [MaxLength(4000)]
     public string? Description { get; set; }
+    [Url]
+    [MaxLength(2048)]
     public string? CoverUrl { get; set; }
+    [Range(1800, 2200)]
     public int? ReleaseYear { get; set; }
+    [MaxLength(200)]
     public string? Director { get; set; }
+    [Range(1, 1000)]
     public int? Duration { get; set; }
     public List<int>? GenreIds { get; set; }
 }
 
 public class UpdateBookDto
 {
+    [MaxLength(200)]
     public string? Title { get; set; }
+    [MaxLength(4000)]
     public string? Description { get; set; }
+    [Url]
+    [MaxLength(2048)]
     public string? CoverUrl { get; set; }
+    [Range(1000, 2200)]
     public int? ReleaseYear { get; set; }
+    [MaxLength(200)]
     public string? Author { get; set; }
+    [Range(1, 100000)]
     public int? Pages { get; set; }
+    [MaxLength(32)]
     public string? Isbn { get; set; }
     public List<int>? GenreIds { get; set; }
 }
 
 public class UpdateTvSeriesDto
 {
+    [MaxLength(200)]
     public string? Title { get; set; }
+    [MaxLength(4000)]
     public string? Description { get; set; }
+    [Url]
+    [MaxLength(2048)]
     public string? CoverUrl { get; set; }
+    [Range(1900, 2200)]
     public int? ReleaseYear { get; set; }
     public List<int>? GenreIds { get; set; }
 
@@ -43,6 +65,7 @@ public class UpdateTvSeriesDto
 public class UpsertSeasonDto
 {
     /// <summary>Used to match existing season. Required.</summary>
+    [Range(0, 1000)]
     public int SeasonNumber { get; set; }
 
     /// <summary>
@@ -55,8 +78,11 @@ public class UpsertSeasonDto
 public class UpsertEpisodeDto
 {
     /// <summary>Used to match existing episode. Required.</summary>
+    [Range(1, 10000)]
     public int EpisodeNumber { get; set; }
+    [MaxLength(200)]
     public string? Title { get; set; }
+    [Range(1, 1000)]
     public int? Duration { get; set; }
 }
 

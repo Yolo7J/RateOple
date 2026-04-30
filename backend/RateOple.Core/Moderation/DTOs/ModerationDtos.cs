@@ -1,23 +1,33 @@
+using System.ComponentModel.DataAnnotations;
 using RateOple.Constants.Enums;
+using RateOple.Core.Validation;
 
 namespace RateOple.Core.Moderation.DTOs;
 
 public class CreateReportDto
 {
+    [EnumDataType(typeof(ReportTargetType))]
     public ReportTargetType TargetType { get; set; }
+    [NotEmptyGuid]
     public Guid TargetId { get; set; }
+    [Required]
+    [MaxLength(2000)]
     public string Reason { get; set; } = string.Empty;
 }
 
 public class UpdateReportStatusDto
 {
+    [EnumDataType(typeof(ReportStatus))]
     public ReportStatus Status { get; set; }
 }
 
 public class ReportQueryDto
 {
+    [EnumDataType(typeof(ReportStatus))]
     public ReportStatus? Status { get; set; }
+    [Range(1, int.MaxValue)]
     public int Page { get; set; } = 1;
+    [Range(1, 100)]
     public int PageSize { get; set; } = 30;
 }
 
@@ -44,12 +54,24 @@ public class PagedReportsDto
     public int PageSize { get; set; }
 }
 
-public class CreateModeratorAssignmentDto
+public class CreateModeratorAssignmentDto : IValidatableObject
 {
     public Guid UserId { get; set; }
+    [MaxLength(256)]
     public string? UserIdentifier { get; set; }
+    [EnumDataType(typeof(ModeratorScopeType))]
     public ModeratorScopeType ScopeType { get; set; }
+    [NotEmptyGuid]
     public Guid? ScopeId { get; set; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (UserId == Guid.Empty && string.IsNullOrWhiteSpace(UserIdentifier))
+            yield return new ValidationResult("UserId or UserIdentifier is required.", [nameof(UserId), nameof(UserIdentifier)]);
+
+        if (ScopeType != ModeratorScopeType.Global && !ScopeId.HasValue)
+            yield return new ValidationResult("ScopeId is required for non-global moderator assignments.", [nameof(ScopeId)]);
+    }
 }
 
 public class ModeratorAssignmentDto
@@ -66,8 +88,11 @@ public class ModeratorAssignmentDto
 
 public class ModerationAuditLogQueryDto
 {
+    [EnumDataType(typeof(ModerationAuditAction))]
     public ModerationAuditAction? Action { get; set; }
+    [Range(1, int.MaxValue)]
     public int Page { get; set; } = 1;
+    [Range(1, 100)]
     public int PageSize { get; set; } = 30;
 }
 

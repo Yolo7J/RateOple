@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using RateOple.Constants.Enums;
+using RateOple.Core.Common;
 using RateOple.Core.Contracts;
 using RateOple.Core.Groups.DTOs;
 using RateOple.Infrastructure.Data;
@@ -55,8 +56,8 @@ public class GroupService : IGroupService
 
     public async Task<PagedGroupsDto> GetGroupsAsync(GroupQueryDto query, Guid? viewerId = null)
     {
-        var page = query.Page <= 0 ? 1 : query.Page;
-        var pageSize = query.PageSize <= 0 ? 20 : Math.Min(query.PageSize, 100);
+        query ??= new GroupQueryDto();
+        var pagination = Pagination.Normalize(query.Page, query.PageSize);
 
         var q = _context.Groups.AsNoTracking().AsQueryable();
 
@@ -92,8 +93,8 @@ public class GroupService : IGroupService
         var groups = await q
             .OrderByDescending(g => g.Members.Count)
             .ThenByDescending(g => g.CreatedAt)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
+            .Skip((pagination.Page - 1) * pagination.PageSize)
+            .Take(pagination.PageSize)
             .Select(g => new GroupSummaryDto
             {
                 Id = g.Id,
@@ -114,8 +115,8 @@ public class GroupService : IGroupService
         {
             Items = groups,
             TotalCount = total,
-            Page = page,
-            PageSize = pageSize
+            Page = pagination.Page,
+            PageSize = pagination.PageSize
         };
     }
 
@@ -318,8 +319,7 @@ public class GroupService : IGroupService
         if (group.Visibility == GroupVisibility.Private)
             await EnsureCanViewGroupAsync(groupId, viewerId);
 
-        page = page <= 0 ? 1 : page;
-        pageSize = pageSize <= 0 ? 20 : Math.Min(pageSize, 100);
+        var pagination = Pagination.Normalize(page, pageSize);
 
         var query = _context.GroupPosts
             .AsNoTracking()
@@ -328,8 +328,8 @@ public class GroupService : IGroupService
         var total = await query.CountAsync();
         var posts = await query
             .OrderByDescending(p => p.CreatedAt)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
+            .Skip((pagination.Page - 1) * pagination.PageSize)
+            .Take(pagination.PageSize)
             .Select(p => new GroupPostDto
             {
                 Id = p.Id,
@@ -401,8 +401,8 @@ public class GroupService : IGroupService
         {
             Items = posts,
             TotalCount = total,
-            Page = page,
-            PageSize = pageSize
+            Page = pagination.Page,
+            PageSize = pagination.PageSize
         };
     }
 

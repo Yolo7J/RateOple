@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using RateOple.Constants.Enums;
+using RateOple.Core.Common;
 using RateOple.Core.Contracts;
 using RateOple.Core.Users.DTOs;
 using RateOple.Infrastructure.Data;
@@ -67,8 +68,8 @@ public class UserMediaStatusService : IUserMediaStatusService
 
     public async Task<IReadOnlyList<UserMediaStatusDto>> GetUserStatusesAsync(Guid userId, MediaStatusQueryDto query)
     {
-        var page = query.Page <= 0 ? 1 : query.Page;
-        var pageSize = query.PageSize <= 0 ? 50 : Math.Min(query.PageSize, 200);
+        query ??= new MediaStatusQueryDto();
+        var pagination = Pagination.Normalize(query.Page, query.PageSize, defaultPageSize: 50);
 
         var q = _context.UserMediaStatuses
             .AsNoTracking()
@@ -84,8 +85,8 @@ public class UserMediaStatusService : IUserMediaStatusService
 
         var statuses = await q
             .OrderByDescending(x => x.UpdatedAt)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
+            .Skip((pagination.Page - 1) * pagination.PageSize)
+            .Take(pagination.PageSize)
             .ToListAsync();
 
         return statuses.Select(x => Map(x, x.Media)).ToList();

@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace RateOple.Core.Media.DTOs;
 
 // ── List view (card) ──────────────────────────────────────────────────────────
@@ -65,35 +67,61 @@ public class EpisodeDto
 
 public class CreateMovieDto
 {
+    [Required]
+    [MaxLength(200)]
     public string Title { get; set; } = null!;
+    [MaxLength(4000)]
     public string? Description { get; set; }
+    [Url]
+    [MaxLength(2048)]
     public string? CoverUrl { get; set; }
+    [Range(1800, 2200)]
     public int? ReleaseYear { get; set; }
+    [MaxLength(200)]
     public string? Director { get; set; }
+    [Range(1, 1000)]
     public int? Duration { get; set; }
+    [Range(1, int.MaxValue)]
     public int? TmdbId { get; set; }
     public List<int> GenreIds { get; set; } = [];
 }
 
 public class CreateBookDto
 {
+    [Required]
+    [MaxLength(200)]
     public string Title { get; set; } = null!;
+    [MaxLength(4000)]
     public string? Description { get; set; }
+    [Url]
+    [MaxLength(2048)]
     public string? CoverUrl { get; set; }
+    [Range(1000, 2200)]
     public int? ReleaseYear { get; set; }
+    [MaxLength(200)]
     public string? Author { get; set; }
+    [Range(1, 100000)]
     public int? Pages { get; set; }
+    [MaxLength(32)]
     public string? Isbn { get; set; }
+    [MaxLength(128)]
     public string? OlId { get; set; }
     public List<int> GenreIds { get; set; } = [];
 }
 
 public class CreateTvSeriesDto
 {
+    [Required]
+    [MaxLength(200)]
     public string Title { get; set; } = null!;
+    [MaxLength(4000)]
     public string? Description { get; set; }
+    [Url]
+    [MaxLength(2048)]
     public string? CoverUrl { get; set; }
+    [Range(1900, 2200)]
     public int? ReleaseYear { get; set; }
+    [Range(1, int.MaxValue)]
     public int? TmdbId { get; set; }
     public List<int> GenreIds { get; set; } = [];
 
@@ -106,14 +134,19 @@ public class CreateTvSeriesDto
 
 public class CreateSeasonDto
 {
+    [Range(0, 1000)]
     public int SeasonNumber { get; set; }
     public List<CreateEpisodeDto> Episodes { get; set; } = [];
 }
 
 public class CreateEpisodeDto
 {
+    [Range(1, 10000)]
     public int EpisodeNumber { get; set; }
+    [Required]
+    [MaxLength(200)]
     public string Title { get; set; } = null!;
+    [Range(1, 1000)]
     public int? Duration { get; set; }
 }
 
@@ -146,10 +179,15 @@ public class MediaQueryDto
     public List<string>? Types { get; set; }
     public List<int>? GenreIds { get; set; }
     public List<int>? TagIds { get; set; }
+    [MaxLength(120)]
     public string? Search { get; set; }
+    [RegularExpression("^(rating|year|title)$")]
     public string SortBy { get; set; } = "rating";
+    [RegularExpression("^(asc|desc)$")]
     public string SortDir { get; set; } = "desc";
+    [Range(1, int.MaxValue)]
     public int Page { get; set; } = 1;
+    [Range(1, 100)]
     public int PageSize { get; set; } = 24;
 }
 

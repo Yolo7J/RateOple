@@ -1,19 +1,29 @@
+using System.ComponentModel.DataAnnotations;
 using RateOple.Constants.Enums;
+using RateOple.Core.Validation;
 
 namespace RateOple.Core.Groups.DTOs;
 
 public class CreateGroupDto
 {
+    [Required]
+    [MaxLength(80)]
     public string Name { get; set; } = string.Empty;
+    [MaxLength(1000)]
     public string? Description { get; set; }
+    [EnumDataType(typeof(GroupVisibility))]
     public GroupVisibility Visibility { get; set; } = GroupVisibility.Public;
 }
 
 public class GroupQueryDto
 {
+    [MaxLength(120)]
     public string? Search { get; set; }
+    [EnumDataType(typeof(GroupVisibility))]
     public GroupVisibility? Visibility { get; set; }
+    [Range(1, int.MaxValue)]
     public int Page { get; set; } = 1;
+    [Range(1, 100)]
     public int PageSize { get; set; } = 20;
 }
 
@@ -48,14 +58,28 @@ public class PagedGroupsDto
 
 public class SetGroupMemberRoleDto
 {
+    [EnumDataType(typeof(GroupRole))]
     public GroupRole Role { get; set; }
 }
 
-public class CreateGroupPostDto
+public class CreateGroupPostDto : IValidatableObject
 {
+    [Required]
+    [MaxLength(160)]
     public string Title { get; set; } = string.Empty;
+    [Required]
+    [MaxLength(8000)]
     public string Content { get; set; } = string.Empty;
     public List<Guid> MediaIds { get; set; } = [];
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (MediaIds.Any(id => id == Guid.Empty))
+            yield return new ValidationResult("Media ids must not contain empty GUID values.", [nameof(MediaIds)]);
+
+        if (MediaIds.Distinct().Count() != MediaIds.Count)
+            yield return new ValidationResult("Media ids must not contain duplicates.", [nameof(MediaIds)]);
+    }
 }
 
 public class GroupPostMediaDto
@@ -90,7 +114,10 @@ public class PagedGroupPostsDto
 
 public class CreateGroupPostCommentDto
 {
+    [Required]
+    [MaxLength(4000)]
     public string Content { get; set; } = string.Empty;
+    [NotEmptyGuid]
     public Guid? ParentCommentId { get; set; }
 }
 
@@ -111,6 +138,7 @@ public class GroupPostCommentDto
 
 public class GroupPostVoteDto
 {
+    [Range(-1, 1)]
     public int Value { get; set; }
 }
 
@@ -125,7 +153,9 @@ public class GroupBanDto
 
 public class CreateGroupBanDto
 {
+    [NotEmptyGuid]
     public Guid UserId { get; set; }
+    [MaxLength(1000)]
     public string? Reason { get; set; }
 }
 
@@ -141,11 +171,14 @@ public class GroupStaffMessageDto
 
 public class CreateGroupStaffMessageDto
 {
+    [Required]
+    [MaxLength(4000)]
     public string Content { get; set; } = string.Empty;
 }
 
 public class AddPinnedMediaDto
 {
+    [NotEmptyGuid]
     public Guid MediaId { get; set; }
 }
 

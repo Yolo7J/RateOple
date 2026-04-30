@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace RateOple.Core.Media.DTOs;
 
 public class TagDto
@@ -8,5 +10,6 @@ public class TagDto
 
 public class UpsertMediaTagsDto
 {
+    [MaxLength(25)]
     public List<string> TagNames { get; set; } = [];
 }

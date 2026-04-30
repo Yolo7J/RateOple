@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using RateOple.Constants.Enums;
+using RateOple.Core.Common;
 using RateOple.Core.Contracts;
 using RateOple.Core.Moderation.DTOs;
 using RateOple.Infrastructure.Data;
@@ -46,8 +47,8 @@ public class ModerationAuditService : IModerationAuditService
 
     public async Task<PagedModerationAuditLogsDto> GetLogsAsync(ModerationAuditLogQueryDto query)
     {
-        var page = query.Page <= 0 ? 1 : query.Page;
-        var pageSize = query.PageSize <= 0 ? 30 : Math.Min(query.PageSize, 100);
+        query ??= new ModerationAuditLogQueryDto();
+        var pagination = Pagination.Normalize(query.Page, query.PageSize, defaultPageSize: 30);
 
         var q = _context.ModerationAuditLogs.AsNoTracking().AsQueryable();
         if (query.Action.HasValue)
@@ -56,8 +57,8 @@ public class ModerationAuditService : IModerationAuditService
         var total = await q.CountAsync();
         var items = await q
             .OrderByDescending(l => l.CreatedAt)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
+            .Skip((pagination.Page - 1) * pagination.PageSize)
+            .Take(pagination.PageSize)
             .ToListAsync();
 
         var mappedItems = await MapLogsAsync(items);
@@ -66,8 +67,8 @@ public class ModerationAuditService : IModerationAuditService
         {
             Items = mappedItems,
             TotalCount = total,
-            Page = page,
-            PageSize = pageSize
+            Page = pagination.Page,
+            PageSize = pagination.PageSize
         };
     }
 

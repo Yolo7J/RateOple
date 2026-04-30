@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using RateOple.Constants.Enums;
+using RateOple.Core.Common;
 using RateOple.Core.Contracts;
 using RateOple.Core.Collections.DTOs;
 using RateOple.Infrastructure.Data;
@@ -60,6 +61,8 @@ public class CollectionService : ICollectionService
 
     public async Task<PagedCollectionsDto> QueryAsync(CollectionQueryDto query, Guid? viewerId = null)
     {
+        query ??= new CollectionQueryDto();
+        var pagination = Pagination.Normalize(query.Page, query.PageSize);
         var q = _context.Collections.AsNoTracking().AsQueryable();
 
         if (query.OwnerType.HasValue)
@@ -72,8 +75,8 @@ public class CollectionService : ICollectionService
         var total = await q.CountAsync();
         var collections = await q
             .OrderByDescending(c => c.CreatedAt)
-            .Skip((query.Page - 1) * query.PageSize)
-            .Take(query.PageSize)
+            .Skip((pagination.Page - 1) * pagination.PageSize)
+            .Take(pagination.PageSize)
             .ToListAsync();
 
         var collectionIds = collections.Select(c => c.Id).ToList();
@@ -135,8 +138,8 @@ public class CollectionService : ICollectionService
         {
             Items = items,
             TotalCount = total,
-            Page = query.Page,
-            PageSize = query.PageSize
+            Page = pagination.Page,
+            PageSize = pagination.PageSize
         };
     }
 
