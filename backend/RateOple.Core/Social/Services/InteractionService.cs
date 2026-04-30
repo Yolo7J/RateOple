@@ -41,6 +41,7 @@ public class InteractionService : IInteractionService
         if (targetCount != 1)
             throw new ArgumentException("Exactly one target must be set for an interaction.");
 
+        await EnsureUserExistsAsync(userId);
         await EnsureTargetExistsAsync(mediaId, seasonId, episodeId);
 
         var interaction = new MediaInteraction
@@ -61,6 +62,13 @@ public class InteractionService : IInteractionService
         var ownerMediaId = await ResolveMediaIdAsync(mediaId, seasonId, episodeId);
         if (ownerMediaId.HasValue)
             await _userTasteService.RecalculateForMediaContextAsync(userId, ownerMediaId.Value);
+    }
+
+    private async Task EnsureUserExistsAsync(Guid userId)
+    {
+        var userExists = await _context.Users.AnyAsync(u => u.Id == userId);
+        if (!userExists)
+            throw new KeyNotFoundException($"User {userId} not found.");
     }
 
     private async Task EnsureTargetExistsAsync(Guid? mediaId, Guid? seasonId, Guid? episodeId)
