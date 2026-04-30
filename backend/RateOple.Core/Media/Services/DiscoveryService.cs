@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RateOple.Constants.Enums;
 using RateOple.Core.Contracts;
 using RateOple.Core.Media.DTOs;
 using RateOple.Infrastructure.Data;
@@ -71,27 +72,43 @@ public class DiscoveryService : IDiscoveryService
         if (limit == 0)
             return [];
 
-        var userTaste = await _context.UserGenreScores
-            .AsNoTracking()
-            .Where(x => x.UserId == userId)
-            .ToListAsync();
-
-        if (userTaste.Count == 0)
-            return await GetPopularAsync(limit);
-
-        var scoreByGenre = userTaste.ToDictionary(x => x.GenreId, x => x.Score);
         var ratedMediaIds = await _context.Ratings
             .AsNoTracking()
             .Where(r => r.UserId == userId && r.MediaId.HasValue)
             .Select(r => r.MediaId!.Value)
             .Distinct()
             .ToListAsync();
+        var completedMediaIds = await _context.UserMediaStatuses
+            .AsNoTracking()
+            .Where(s => s.UserId == userId && s.Status == MediaProgressStatus.Done)
+            .Select(s => s.MediaId)
+            .Distinct()
+            .ToListAsync();
+        var excludedMediaIds = ratedMediaIds.Concat(completedMediaIds).ToHashSet();
+
+        var userTaste = await _context.UserGenreScores
+            .AsNoTracking()
+            .Where(x => x.UserId == userId)
+            .ToListAsync();
+        var scoreByGenre = userTaste.ToDictionary(x => x.GenreId, x => x.Score);
 
         var candidates = await _context.Media
-            .Where(m => !m.IsDeleted && !ratedMediaIds.Contains(m.Id))
+            .Where(m => !m.IsDeleted && !excludedMediaIds.Contains(m.Id))
             .Include(m => m.MediaGenres).ThenInclude(mg => mg.Genre)
             .Include(m => m.MediaTags).ThenInclude(mt => mt.Tag)
             .ToListAsync();
+
+        if (userTaste.Count == 0)
+        {
+            return candidates
+                .OrderByDescending(m => m.RatingsCount)
+                .ThenByDescending(m => m.AverageRating)
+                .ThenBy(m => m.Title)
+                .ThenBy(m => m.Id)
+                .Take(limit)
+                .Select(Map)
+                .ToList();
+        }
 
         var ranked = candidates
             .Select(m =>
