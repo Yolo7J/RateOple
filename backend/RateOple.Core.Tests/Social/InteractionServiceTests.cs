@@ -204,6 +204,25 @@ public class InteractionServiceTests
     }
 
     [Fact]
+    public async Task TrackRatingCreatedAsync_RejectsSeasonWhoseParentSeriesIsDeletedWithoutSignals()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var user = data.Users.Add(data.Users.Normal("deleted-parent-season-interaction-user"));
+        var series = data.Media.TvSeries("Deleted Parent Interaction Series", isDeleted: true);
+        await data.SaveAsync();
+        var season = await data.Media.CreateSeasonAsync(series);
+        var taste = new SpyUserTasteService();
+        var service = new InteractionService(db.Context, taste);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => service.TrackRatingCreatedAsync(user.Id, null, season.Id, null));
+
+        Assert.Empty(await db.Context.MediaInteractions.ToListAsync());
+        Assert.Empty(taste.RecalculateMediaContextCalls);
+    }
+
+    [Fact]
     public async Task TrackReviewCreatedAsync_ForEpisodeStoresEpisodeAndRecalculatesParentSeriesTaste()
     {
         await using var db = await SqliteTestDb.CreateAsync();
@@ -223,6 +242,46 @@ public class InteractionServiceTests
         Assert.Null(interaction.SeasonId);
         Assert.Equal(episode.Id, interaction.EpisodeId);
         Assert.Equal((user.Id, series.Id), Assert.Single(taste.RecalculateMediaContextCalls));
+    }
+
+    [Fact]
+    public async Task TrackReviewCreatedAsync_RejectsEpisodeWhoseSeasonIsDeletedWithoutSignals()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var user = data.Users.Add(data.Users.Normal("deleted-season-episode-interaction-user"));
+        var series = data.Media.TvSeries("Deleted Season Interaction Series");
+        await data.SaveAsync();
+        var season = await data.Media.CreateSeasonAsync(series, isDeleted: true);
+        var episode = await data.Media.CreateEpisodeAsync(season);
+        var taste = new SpyUserTasteService();
+        var service = new InteractionService(db.Context, taste);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => service.TrackReviewCreatedAsync(user.Id, null, null, episode.Id));
+
+        Assert.Empty(await db.Context.MediaInteractions.ToListAsync());
+        Assert.Empty(taste.RecalculateMediaContextCalls);
+    }
+
+    [Fact]
+    public async Task TrackReviewCreatedAsync_RejectsEpisodeWhoseParentSeriesIsDeletedWithoutSignals()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var user = data.Users.Add(data.Users.Normal("deleted-parent-episode-interaction-user"));
+        var series = data.Media.TvSeries("Deleted Parent Episode Interaction Series", isDeleted: true);
+        await data.SaveAsync();
+        var season = await data.Media.CreateSeasonAsync(series);
+        var episode = await data.Media.CreateEpisodeAsync(season);
+        var taste = new SpyUserTasteService();
+        var service = new InteractionService(db.Context, taste);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => service.TrackReviewCreatedAsync(user.Id, null, null, episode.Id));
+
+        Assert.Empty(await db.Context.MediaInteractions.ToListAsync());
+        Assert.Empty(taste.RecalculateMediaContextCalls);
     }
 
     private static InteractionService CreateService(SqliteTestDb db) =>

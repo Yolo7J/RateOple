@@ -266,14 +266,18 @@ public class RatingService : IRatingService
 
         if (seasonId.HasValue)
             return await _context.Seasons
-                .Where(s => s.Id == seasonId.Value && !s.IsDeleted)
+                .Where(s => s.Id == seasonId.Value && !s.IsDeleted && !s.TvSeries.Media.IsDeleted)
                 .Select(s => (Guid?)s.TvSeriesId)
                 .FirstOrDefaultAsync();
 
         if (episodeId.HasValue)
         {
             return await _context.Episodes
-                .Where(e => e.Id == episodeId.Value && !e.IsDeleted)
+                .Where(e =>
+                    e.Id == episodeId.Value &&
+                    !e.IsDeleted &&
+                    !e.Season.IsDeleted &&
+                    !e.Season.TvSeries.Media.IsDeleted)
                 .Select(e => (Guid?)e.Season.TvSeriesId)
                 .FirstOrDefaultAsync();
         }
@@ -290,14 +294,21 @@ public class RatingService : IRatingService
 
     private async Task EnsureSeasonExistsAsync(Guid seasonId)
     {
-        var exists = await _context.Seasons.AnyAsync(s => s.Id == seasonId && !s.IsDeleted);
+        var exists = await _context.Seasons.AnyAsync(s =>
+            s.Id == seasonId &&
+            !s.IsDeleted &&
+            !s.TvSeries.Media.IsDeleted);
         if (!exists)
             throw new KeyNotFoundException($"Season {seasonId} not found.");
     }
 
     private async Task EnsureEpisodeExistsAsync(Guid episodeId)
     {
-        var exists = await _context.Episodes.AnyAsync(e => e.Id == episodeId && !e.IsDeleted);
+        var exists = await _context.Episodes.AnyAsync(e =>
+            e.Id == episodeId &&
+            !e.IsDeleted &&
+            !e.Season.IsDeleted &&
+            !e.Season.TvSeries.Media.IsDeleted);
         if (!exists)
             throw new KeyNotFoundException($"Episode {episodeId} not found.");
     }

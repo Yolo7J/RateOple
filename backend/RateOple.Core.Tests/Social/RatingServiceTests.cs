@@ -166,6 +166,71 @@ public class RatingServiceTests
     }
 
     [Fact]
+    public async Task RateSeasonAsync_DeletedParentSeriesDoesNotCreateRatingInteractionOrTasteSignal()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var user = data.Users.Add(data.Users.Normal("deleted-parent-season-rating-user"));
+        var series = data.Media.TvSeries("Deleted Parent Rating Series", isDeleted: true);
+        await data.SaveAsync();
+        var season = await data.Media.CreateSeasonAsync(series);
+        var interaction = new SpyInteractionService();
+        var taste = new SpyUserTasteService();
+        var service = CreateService(db, interactionService: interaction, userTasteService: taste);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => service.RateSeasonAsync(user.Id, season.Id, 8));
+
+        Assert.Empty(db.Context.Ratings);
+        Assert.Empty(interaction.RatingCreatedCalls);
+        Assert.Empty(taste.RecalculateMediaContextCalls);
+    }
+
+    [Fact]
+    public async Task RateEpisodeAsync_DeletedSeasonDoesNotCreateRatingInteractionOrTasteSignal()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var user = data.Users.Add(data.Users.Normal("deleted-season-episode-rating-user"));
+        var series = data.Media.TvSeries("Deleted Season Rating Series");
+        await data.SaveAsync();
+        var season = await data.Media.CreateSeasonAsync(series, isDeleted: true);
+        var episode = await data.Media.CreateEpisodeAsync(season);
+        var interaction = new SpyInteractionService();
+        var taste = new SpyUserTasteService();
+        var service = CreateService(db, interactionService: interaction, userTasteService: taste);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => service.RateEpisodeAsync(user.Id, episode.Id, 8));
+
+        Assert.Empty(db.Context.Ratings);
+        Assert.Empty(interaction.RatingCreatedCalls);
+        Assert.Empty(taste.RecalculateMediaContextCalls);
+    }
+
+    [Fact]
+    public async Task RateEpisodeAsync_DeletedParentSeriesDoesNotCreateRatingInteractionOrTasteSignal()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var user = data.Users.Add(data.Users.Normal("deleted-parent-episode-rating-user"));
+        var series = data.Media.TvSeries("Deleted Parent Episode Rating Series", isDeleted: true);
+        await data.SaveAsync();
+        var season = await data.Media.CreateSeasonAsync(series);
+        var episode = await data.Media.CreateEpisodeAsync(season);
+        var interaction = new SpyInteractionService();
+        var taste = new SpyUserTasteService();
+        var service = CreateService(db, interactionService: interaction, userTasteService: taste);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => service.RateEpisodeAsync(user.Id, episode.Id, 8));
+
+        Assert.Empty(db.Context.Ratings);
+        Assert.Empty(interaction.RatingCreatedCalls);
+        Assert.Empty(taste.RecalculateMediaContextCalls);
+    }
+
+    [Fact]
     public async Task RateMediaAsync_FailedValidationDoesNotRecalculateTaste()
     {
         await using var db = await SqliteTestDb.CreateAsync();

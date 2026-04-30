@@ -83,7 +83,10 @@ public class InteractionService : IInteractionService
 
         if (seasonId.HasValue)
         {
-            var seasonExists = await _context.Seasons.AnyAsync(s => s.Id == seasonId.Value && !s.IsDeleted);
+            var seasonExists = await _context.Seasons.AnyAsync(s =>
+                s.Id == seasonId.Value &&
+                !s.IsDeleted &&
+                !s.TvSeries.Media.IsDeleted);
             if (!seasonExists)
                 throw new KeyNotFoundException($"Season {seasonId.Value} not found.");
             return;
@@ -91,7 +94,11 @@ public class InteractionService : IInteractionService
 
         if (episodeId.HasValue)
         {
-            var episodeExists = await _context.Episodes.AnyAsync(e => e.Id == episodeId.Value && !e.IsDeleted);
+            var episodeExists = await _context.Episodes.AnyAsync(e =>
+                e.Id == episodeId.Value &&
+                !e.IsDeleted &&
+                !e.Season.IsDeleted &&
+                !e.Season.TvSeries.Media.IsDeleted);
             if (!episodeExists)
                 throw new KeyNotFoundException($"Episode {episodeId.Value} not found.");
         }
@@ -105,7 +112,7 @@ public class InteractionService : IInteractionService
         if (seasonId.HasValue)
         {
             return await _context.Seasons
-                .Where(s => s.Id == seasonId.Value && !s.IsDeleted)
+                .Where(s => s.Id == seasonId.Value && !s.IsDeleted && !s.TvSeries.Media.IsDeleted)
                 .Select(s => (Guid?)s.TvSeriesId)
                 .FirstOrDefaultAsync();
         }
@@ -113,7 +120,11 @@ public class InteractionService : IInteractionService
         if (episodeId.HasValue)
         {
             return await _context.Episodes
-                .Where(e => e.Id == episodeId.Value && !e.IsDeleted)
+                .Where(e =>
+                    e.Id == episodeId.Value &&
+                    !e.IsDeleted &&
+                    !e.Season.IsDeleted &&
+                    !e.Season.TvSeries.Media.IsDeleted)
                 .Select(e => (Guid?)e.Season.TvSeriesId)
                 .FirstOrDefaultAsync();
         }
