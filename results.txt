@@ -1,205 +1,195 @@
-RateOple interaction and taste remediation report
+RateOple review/status signal-flow remediation report
 Generated: 2026-05-01
-Scope: InteractionService, UserTasteService, UserGenreScore, MediaInteraction, rating-driven taste recalculation, media-open interaction recording, deleted-media exclusion, TV season/episode taste rollups, deterministic recalculation behavior, and API interaction smoke tests.
+Scope: ReviewService, UserMediaStatusService, InteractionService, RatingService, review-created interactions, review-driven taste recalculation, status-change interactions, failed-write side-effect prevention, deleted media/season/episode/TV parent signal protection, API signal smoke tests, and final backend test verification.
 
 1. Files changed
 ================
 
 Test infrastructure:
-- backend/RateOple.Core.Tests/TestSupport/TestDiscovery.cs
-- backend/RateOple.Core.Tests/TestSupport/TestInteractions.cs
-- backend/RateOple.Core.Tests/TestSupport/SpyUserTasteService.cs
+- backend/RateOple.Core.Tests/TestSupport/SpyInteractionService.cs
+- backend/RateOple.Core.Tests/TestSupport/TestReviews.cs
 
 Core service tests:
+- backend/RateOple.Core.Tests/Social/ReviewServiceTests.cs
+- backend/RateOple.Core.Tests/Users/UserMediaStatusServiceTests.cs
 - backend/RateOple.Core.Tests/Social/InteractionServiceTests.cs
-- backend/RateOple.Core.Tests/Social/UserTasteServiceTests.cs
 - backend/RateOple.Core.Tests/Social/RatingServiceTests.cs
 
 API contract tests:
-- backend/RateOple.Api.Tests/Social/InteractionContractTests.cs
+- backend/RateOple.Api.Tests/Social/ReviewContractTests.cs
+- backend/RateOple.Api.Tests/Users/UserMediaStatusContractTests.cs
 
 Production code fixed:
+- backend/RateOple.Core/Social/Services/ReviewService.cs
+- backend/RateOple.Core/Users/Services/UserMediaStatusService.cs
 - backend/RateOple.Core/Social/Services/InteractionService.cs
-- backend/RateOple.Core/Social/Services/UserTasteService.cs
+- backend/RateOple.Core/Social/Services/RatingService.cs
+- backend/RateOple/Controllers/Media/MediaController.cs
 
 Report:
 - results.txt
 
-2. Interaction/taste test helpers added
-=======================================
+2. Test helpers/spies added
+===========================
 
-Added interaction helpers:
-- CreateMediaInteractionAsync
-- CreateSeasonInteractionAsync
-- CreateEpisodeInteractionAsync
+Added SpyInteractionService:
+- Captures MediaOpened, RatingCreated, ReviewCreated, and MediaStatusChanged calls.
+- Lets service tests assert side-effect intent without brittle database inspection.
 
-Added discovery/taste helpers:
-- CreateRatedMediaWithGenresAsync
-- CreateRatedSeasonWithSeriesGenresAsync
-- CreateRatedEpisodeWithSeriesGenresAsync
-- CreateDeletedRatedMediaWithGenresAsync
-
-Added spy test double:
-- SpyUserTasteService
+Extended TestReviews:
+- CreateSeasonRatingWithDeletedParentAsync
+- CreateEpisodeRatingWithDeletedParentAsync
 
 Helper behavior:
-- Creates explicit media interactions, genre scores, rated media, rated TV seasons, rated TV episodes, and deleted rated media.
-- Supports movies, books, TV series, seasons, and episodes.
-- Supports caller-controlled interaction type, points, timestamps, genres, rating values, and deleted state.
-- Avoids external APIs, local secrets, and hidden global state.
-- Keeps interaction and taste test data deterministic and readable.
+- Builds deterministic review targets for deleted parent TV series cases.
+- Avoids external APIs, secrets, and hidden global state.
+- Keeps failed-write signal assertions explicit and readable.
 
-3. InteractionService tests added
-=================================
-
-Added backend/RateOple.Core.Tests/Social/InteractionServiceTests.cs.
-
-Covered behavior:
-- Existing media can receive a MediaOpened interaction.
-- Anonymous interaction behavior is explicit: InteractionService has no anonymous API and unknown users are rejected.
-- Missing media cannot receive interactions.
-- Deleted media cannot receive interactions.
-- Stored interactions include user ID, media ID, interaction type, points, and timestamp.
-- Repeated same-user same-media opens append new interaction rows.
-- RatingCreated, ReviewCreated, and MediaStatusChanged interactions can coexist for the same user/media.
-- Movies, books, and TV series can receive media-open interactions.
-- Multiple or missing interaction targets are rejected.
-- Season rating interactions store SeasonId and recalculate taste for the parent TV series.
-- Episode review interactions store EpisodeId and recalculate taste for the parent TV series.
-
-Current interaction boundary documented:
-- Interactions are append-only.
-- There is no anonymous MediaInteraction row shape because MediaInteraction.UserId is required.
-- No clock abstraction exists; timestamp tests assert a bounded UTC range rather than an injected time.
-
-4. UserTasteService tests added
-===============================
-
-Added backend/RateOple.Core.Tests/Social/UserTasteServiceTests.cs.
-
-Covered behavior:
-- Rating media with genres creates user genre scores.
-- Multiple genres on one media split the rating value across genres.
-- Updating a rating recalculates the score.
-- Deleting a rating removes the stale score.
-- Multiple ratings in the same genre aggregate deterministically.
-- Repeated recalculation does not create duplicate UserGenreScore rows.
-- Low ratings contribute less than high ratings under the current positive-point formula.
-- Unrated media does not contribute.
-- Deleted media does not contribute.
-- Deleted media that previously had a stale UserGenreScore is removed on recalculation.
-- Reviews and interactions contribute to taste under the current formula.
-- Season ratings contribute to the parent TV series genres.
-- Episode ratings contribute to the parent TV series genres.
-- Deleted seasons do not contribute.
-- Deleted episodes do not contribute.
-- Deleted parent TV series prevent child ratings from contributing.
-- Recalculation is scoped to one user and does not mutate another user's scores.
-- Missing users are rejected.
-- Deleted media contexts are rejected.
-
-Current taste formula documented:
-- Rating points equal the rating value.
-- Review points are 6.
-- Interaction points use the interaction's stored Points value.
-- Points are distributed evenly across the resolved media's genres.
-- Only positive aggregate scores are persisted.
-
-5. RatingService signal-flow tests added
+3. ReviewService signal-flow tests added
 ========================================
 
-Expanded backend/RateOple.Core.Tests/Social/RatingServiceTests.cs.
+Expanded backend/RateOple.Core.Tests/Social/ReviewServiceTests.cs.
 
 Covered behavior:
-- Creating a media rating triggers taste recalculation for that media context.
-- Updating a media rating triggers taste recalculation.
-- Deleting an existing media rating triggers taste recalculation.
-- Deleting a missing rating does not trigger recalculation.
-- Creating a season rating triggers taste recalculation for the parent TV series.
-- Creating an episode rating triggers taste recalculation for the parent TV series.
-- Failed rating validation does not trigger recalculation.
-- Rating deleted media fails and does not trigger recalculation.
+- Creating a media review records a ReviewCreated interaction and recalculates taste after the interaction exists.
+- Creating a season review records SeasonId and recalculates taste for the parent TV series.
+- Creating an episode review records EpisodeId and recalculates taste for the parent TV series.
+- Missing rating create failure creates no review, interaction, or taste recalculation.
+- Another user's rating cannot be reviewed and creates no signals.
+- Deleted media, deleted season, deleted episode, and deleted TV parent targets cannot create review signals.
+- Duplicate review upsert updates the existing review, recalculates taste exactly once, and does not create a duplicate ReviewCreated interaction.
+- Updating review content recalculates taste and does not create a ReviewCreated interaction.
+- Updating a review rating value recalculates taste exactly once through RatingService.
+- Non-owner update failure creates no signals and does not mutate review content.
+- Updating a deleted target creates no signals and does not mutate review content.
+- Deleting review while keeping the rating recalculates taste exactly once.
+- Deleting review with deleteRating = true recalculates taste exactly once through RatingService.
+- Non-owner delete and missing review delete failures create no signals.
+- Deleting a review after its target is deleted either recalculates whole-user taste when keeping the rating, or rolls back safely with no signals when deleteRating = true.
 
-6. API interaction smoke tests added
-====================================
+4. UserMediaStatusService signal-flow tests added
+=================================================
 
-Added backend/RateOple.Api.Tests/Social/InteractionContractTests.cs.
+Expanded backend/RateOple.Core.Tests/Users/UserMediaStatusServiceTests.cs.
+
+Covered behavior:
+- Setting media status creates a MediaStatusChanged interaction.
+- Status-change interaction stores user ID, media ID, interaction type, points, and timestamp.
+- Status-change interaction triggers taste recalculation through InteractionService.
+- Updating an existing status records one status-change interaction.
+- Repeated same-status sets are explicit and append a new interaction each time.
+- Plan, On it, Done, and Dropped values are stored consistently and create status signals.
+- Movies, books, and TV series all create status-change signals.
+- Missing media, deleted media, and invalid status values create no status rows or interactions.
+- Invalid status updates do not mutate an existing status.
+
+5. API signal-flow tests added
+==============================
+
+Expanded backend/RateOple.Api.Tests/Social/ReviewContractTests.cs.
 
 Covered API behavior:
-- Anonymous GET /api/media/{id} works but does not record a MediaOpened interaction.
-- Authenticated GET /api/media/{id} records a MediaOpened interaction.
-- Authenticated media-open recording on GET does not require CSRF because it is a safe-method read route.
-- Deleted media returns 404 and does not record an interaction.
-- Missing media returns 404 and does not record an interaction.
-- Public trending reflects authenticated open interactions for non-deleted media only.
+- Authenticated review create records a ReviewCreated interaction.
+- Authenticated review create updates UserGenreScore through the review/rating/interaction taste formula.
+- Missing CSRF fails before review, interaction, or taste side effects.
+- Deleted media review failure creates no review, interaction, or taste side effects.
+- Non-owner update/delete failures create no interaction or taste side effects.
 
-No standalone POST/PUT interaction endpoint exists, so no missing-CSRF mutation test was added for interactions.
+Expanded backend/RateOple.Api.Tests/Users/UserMediaStatusContractTests.cs.
 
-7. Production bugs found and fixed
+Covered API behavior:
+- Authenticated status update records a MediaStatusChanged interaction.
+- Authenticated status update updates UserGenreScore through the status interaction.
+- Missing CSRF fails before status, interaction, or taste side effects.
+- Deleted media status failure creates no status, interaction, or taste side effects.
+- Invalid payload fails before status, interaction, or taste side effects.
+
+6. Production bugs found and fixed
 ==================================
 
+ReviewService:
+- Review create previously recalculated taste directly and then InteractionService recalculated again after ReviewCreated interaction creation. Create now relies on the interaction path so taste includes the review interaction and recalculates once.
+- Duplicate review upsert previously updated content without taste recalculation. It now recalculates taste once and does not create a duplicate ReviewCreated interaction.
+- Review update with UpdatedRatingValue previously recalculated through RatingService and again in ReviewService. It now recalculates once through RatingService.
+- Review delete with deleteRating = true previously recalculated once for review deletion and again through rating deletion. It now relies on RatingService for the combined recalculation.
+- Review create/update/delete now use transactions around write plus side-effect service calls.
+- Deleted-target review deletion is explicit: keeping the rating removes the review and recalculates whole-user taste; deleteRating = true rolls back safely if the deleted target prevents rating deletion.
+
+UserMediaStatusService:
+- Status-change interaction recording previously lived in MediaController. UserMediaStatusService now owns the business side effect.
+- MediaController no longer duplicates status-change orchestration for POST /api/media/{id}/status.
+- Status write plus interaction/taste side effects now run in a transaction.
+- Missing/deleted/invalid status attempts create no misleading status interaction.
+
 InteractionService:
-- Unknown users previously reached database FK failure behavior. InteractionService now rejects unknown users with KeyNotFoundException before mutation.
+- Season interactions now reject seasons whose parent TV media row is deleted.
+- Episode interactions now reject deleted episodes, deleted seasons, and deleted parent TV media rows before writing interactions or recalculating taste.
 
-UserTasteService:
-- Direct ratings/reviews/interactions for soft-deleted media could still contribute to UserGenreScore during recalculation. Deleted media is now filtered during media resolution and genre distribution.
-- Season ratings/interactions could resolve through a deleted parent TV series. Season resolution now requires an active parent media row.
-- Episode ratings/interactions could resolve through a deleted episode season or deleted parent TV series. Episode resolution now requires active episode, season, and parent media rows.
-- Stale UserGenreScore rows for deleted media are removed by recalculation when no active signals remain.
+RatingService:
+- Season ratings now reject seasons whose parent TV media row is deleted before writing ratings, interactions, aggregates, or taste.
+- Episode ratings now reject deleted episodes, deleted seasons, and deleted parent TV media rows before writing ratings, interactions, aggregates, or taste.
 
-Deleted signal protection:
-- Deleted media cannot receive new media-open interactions.
-- Deleted media cannot contribute direct rating/review/interaction taste signals.
-- Deleted seasons and episodes do not contribute child taste signals.
-- Deleted parent TV series prevents season/episode child ratings from contributing.
-- API media-open smoke tests verify deleted and missing media do not create interactions.
+7. Side-effect ownership decision
+=================================
+
+Review side effects:
+- ReviewService owns review writes and decides when a ReviewCreated interaction should be recorded.
+- Review create records ReviewCreated through InteractionService; InteractionService owns the post-interaction taste recalculation so review-created interaction points are included.
+- Review update/delete do not create ReviewCreated interactions.
+- Review update/delete trigger taste recalculation directly through ReviewService when only review presence/content changes.
+- Review delete with deleteRating = true delegates the final recalculation to RatingService so rating and review removal are reflected together.
+
+Media status side effects:
+- UserMediaStatusService owns MediaStatusChanged interaction recording for user status changes.
+- MediaController now calls one service method for user status writes.
+- Status changes do not call UserTasteService directly.
+- Status changes affect taste indirectly through the MediaStatusChanged interaction recorded by InteractionService.
 
 8. Tests run and results
 ========================
 
 Commands run during the task:
 - dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj
-- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter InteractionServiceTests
-- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter UserTasteServiceTests
-- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter RatingServiceTests
+- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter ReviewService
+- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter UserMediaStatus
+- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter "InteractionService|RatingService"
+- dotnet test backend/RateOple.Api.Tests/RateOple.Api.Tests.csproj --filter UserMediaStatus
 - dotnet test backend/RateOple.Api.Tests/RateOple.Api.Tests.csproj
 - dotnet test backend/RateOple.sln
 
 Latest verified full suite result before report update:
 - dotnet test backend/RateOple.sln passed.
-- RateOple.Core.Tests: 184 passed, 0 failed, 0 skipped.
-- RateOple.Api.Tests: 47 passed, 0 failed, 0 skipped.
-- Total: 231 passed, 0 failed, 0 skipped.
+- RateOple.Core.Tests: 219 passed, 0 failed, 0 skipped.
+- RateOple.Api.Tests: 49 passed, 0 failed, 0 skipped.
+- Total: 268 passed, 0 failed, 0 skipped.
 
 9. Commits created
 ==================
 
-- 7a9a098 Add interaction and taste test helpers
-- 6b6800c Add interaction service tests
-- e077280 Add user taste tests and fix stale score recalculation
-- 130e8a5 Cover rating-driven taste recalculation
-- fa6130f Add interaction API contract tests
+- 939c02e Add review and status signal test helpers
+- a9b7d96 Add review service signal-flow tests
+- d0eaa82 Move status-change signal recording into status service
+- 27c5e09 Reject deleted TV child signal targets
+- bb4609a Add review and status signal API tests
+- 3ed1b9f Cover deleted target review deletion signals
 
-10. Remaining interaction/taste/recommendation-signal gaps
-==========================================================
+10. Remaining signal-flow gaps
+==============================
 
 Still worth covering later:
-- ReviewService signal-flow tests for review create/update/delete taste recalculation and failed review operations.
-- UserMediaStatusService signal-flow tests if product requirements decide statuses should directly influence UserTasteService.
-- InteractionService tests for deleted parent TV series on season/episode interaction targets.
-- RatingService tests for deleted parent TV series when rating seasons/episodes.
-- Explicit API ProblemDetails contract for GET /api/media/{id} missing/deleted cases if that endpoint should return ProblemDetails instead of plain 404.
-- Query-shape/performance review for UserTasteService once rating/review/interaction volume grows.
-- Product decision on whether low ratings should subtract from genre preference rather than add smaller positive points.
-- Product decision on whether repeated media opens should be collapsed, decayed, or capped instead of append-only.
+- Explicit failure-injection tests for transaction rollback when InteractionService or UserTasteService throws after the primary write.
+- API smoke tests for season/episode review signal flows, not just media review flows.
+- API smoke tests for deleted TV parent season/episode review and rating targets if public endpoints expose those write paths.
+- Product decision on whether status-change interactions should be capped, deduplicated, or decayed instead of append-only.
+- Product decision on whether review updates should have their own interaction type instead of only recalculating taste.
+- Query-shape/performance review for repeated whole-user taste recalculation as review/status volume grows.
 
 11. Recommended next task
 =========================
 
-Add focused ReviewService and UserMediaStatusService signal-flow tests.
+Add transaction failure-injection tests around review, rating, interaction, and status side effects.
 
 Reason:
-- Ratings, interactions, and taste recalculation are now protected.
-- ReviewService also feeds UserTasteService and MediaInteraction.
-- UserMediaStatusService currently records status data, while MediaController separately records status-change interactions.
-- The next risk is ensuring review/status write failures never create misleading taste or interaction signals, and that deleted TV parent/child targets are consistently rejected across those workflows.
+- The main success/failure signal paths are now covered.
+- Review and status writes now use transactions for obvious partial-write protection.
+- The next risk is proving rollback behavior under injected side-effect failures instead of only validating normal validation failures.
