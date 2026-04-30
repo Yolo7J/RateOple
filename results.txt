@@ -1,207 +1,205 @@
-RateOple backend discovery remediation report
-Generated: 2026-04-30
-Scope: DiscoveryService, DiscoveryController, trending/popular/recommended/similar media behavior, deleted-media exclusion, deterministic ordering, sparse-data behavior, and API discovery contract smoke tests.
+RateOple interaction and taste remediation report
+Generated: 2026-05-01
+Scope: InteractionService, UserTasteService, UserGenreScore, MediaInteraction, rating-driven taste recalculation, media-open interaction recording, deleted-media exclusion, TV season/episode taste rollups, deterministic recalculation behavior, and API interaction smoke tests.
 
 1. Files changed
 ================
 
 Test infrastructure:
-- backend/RateOple.Core.Tests/TestSupport/TestDataFactory.cs
 - backend/RateOple.Core.Tests/TestSupport/TestDiscovery.cs
 - backend/RateOple.Core.Tests/TestSupport/TestInteractions.cs
+- backend/RateOple.Core.Tests/TestSupport/SpyUserTasteService.cs
 
 Core service tests:
-- backend/RateOple.Core.Tests/Media/DiscoveryServiceTests.cs
+- backend/RateOple.Core.Tests/Social/InteractionServiceTests.cs
+- backend/RateOple.Core.Tests/Social/UserTasteServiceTests.cs
+- backend/RateOple.Core.Tests/Social/RatingServiceTests.cs
 
 API contract tests:
-- backend/RateOple.Api.Tests/Discovery/DiscoveryContractTests.cs
+- backend/RateOple.Api.Tests/Social/InteractionContractTests.cs
 
 Production code fixed:
-- backend/RateOple.Core/Media/Services/DiscoveryService.cs
+- backend/RateOple.Core/Social/Services/InteractionService.cs
+- backend/RateOple.Core/Social/Services/UserTasteService.cs
 
 Report:
 - results.txt
 
-2. Discovery test helpers added
-===============================
+2. Interaction/taste test helpers added
+=======================================
 
 Added interaction helpers:
-- CreateInteraction
-- CreateInteractionAsync
+- CreateMediaInteractionAsync
+- CreateSeasonInteractionAsync
+- CreateEpisodeInteractionAsync
 
-Added discovery helpers:
-- CreateMediaWithRatingAsync
-- CreateMediaWithGenresAsync
-- CreateMediaWithTagsAsync
-- CreateInteractionAsync
-- CreateUserGenreScoreAsync
-- CreateRecentlyReviewedMediaAsync
-- CreatePopularMediaAsync
-- CreateDeletedDiscoverableMediaAsync
+Added discovery/taste helpers:
+- CreateRatedMediaWithGenresAsync
+- CreateRatedSeasonWithSeriesGenresAsync
+- CreateRatedEpisodeWithSeriesGenresAsync
+- CreateDeletedRatedMediaWithGenresAsync
+
+Added spy test double:
+- SpyUserTasteService
 
 Helper behavior:
-- Creates explicit media, ratings, reviews, interactions, genre scores, tags, and deleted-media candidates.
-- Supports movies, books, and TV series.
-- Supports caller-controlled ratings, counts, timestamps, genres, tags, and deleted state.
+- Creates explicit media interactions, genre scores, rated media, rated TV seasons, rated TV episodes, and deleted rated media.
+- Supports movies, books, TV series, seasons, and episodes.
+- Supports caller-controlled interaction type, points, timestamps, genres, rating values, and deleted state.
 - Avoids external APIs, local secrets, and hidden global state.
-- Keeps discovery test data deterministic and readable.
+- Keeps interaction and taste test data deterministic and readable.
 
-3. Trending tests added
-=======================
+3. InteractionService tests added
+=================================
 
-Added trending coverage in backend/RateOple.Core.Tests/Media/DiscoveryServiceTests.cs.
-
-Covered behavior:
-- Trending handles an empty database.
-- Trending returns non-deleted media only.
-- Trending excludes deleted media even when deleted media has strong rating/interaction signals.
-- Trending score behavior documents the current formula:
-  recent interaction points + recent rating count weight + average rating weight.
-- Trending ignores old interactions and old ratings outside the current 14-day window.
-- Trending uses deterministic title/id ordering when scores tie.
-- Trending respects the requested limit and returns an empty list for non-positive limits.
-- Trending includes movies, books, and TV series.
-- Trending DTO includes id, title, type, cover URL, release year, average rating, ratings count, genres, and tags.
-- Trending does not throw when media has no ratings, reviews, or interactions.
-
-4. Popular tests added
-======================
-
-Added popular coverage in backend/RateOple.Core.Tests/Media/DiscoveryServiceTests.cs.
+Added backend/RateOple.Core.Tests/Social/InteractionServiceTests.cs.
 
 Covered behavior:
-- Popular handles an empty database.
-- Popular orders by ratings count, then average rating.
-- Popular excludes deleted media.
-- Popular uses deterministic title/id ordering when popularity ties.
-- Popular respects the requested limit and returns an empty list for non-positive limits.
-- Popular includes movies, books, TV series, and sparse media with no ratings.
-- Popular does not return duplicate media when media has multiple genres/tags.
+- Existing media can receive a MediaOpened interaction.
+- Anonymous interaction behavior is explicit: InteractionService has no anonymous API and unknown users are rejected.
+- Missing media cannot receive interactions.
+- Deleted media cannot receive interactions.
+- Stored interactions include user ID, media ID, interaction type, points, and timestamp.
+- Repeated same-user same-media opens append new interaction rows.
+- RatingCreated, ReviewCreated, and MediaStatusChanged interactions can coexist for the same user/media.
+- Movies, books, and TV series can receive media-open interactions.
+- Multiple or missing interaction targets are rejected.
+- Season rating interactions store SeasonId and recalculate taste for the parent TV series.
+- Episode review interactions store EpisodeId and recalculate taste for the parent TV series.
 
-5. Personalized recommendation tests added
-==========================================
+Current interaction boundary documented:
+- Interactions are append-only.
+- There is no anonymous MediaInteraction row shape because MediaInteraction.UserId is required.
+- No clock abstraction exists; timestamp tests assert a bounded UTC range rather than an injected time.
 
-Added recommendation coverage in backend/RateOple.Core.Tests/Media/DiscoveryServiceTests.cs.
+4. UserTasteService tests added
+===============================
 
-Covered behavior:
-- New users with no taste data fall back to popular media.
-- Recommendations return non-deleted media only.
-- Deleted media with a strong genre match is still excluded.
-- Recommendations exclude media the user already rated.
-- Recommendations exclude media the user already marked Done.
-- Recommendations prefer genres with higher UserGenreScore values.
-- Recommendations include movies, books, and TV series when they match taste data.
-- Recommendations respect the requested limit and return an empty list for non-positive limits.
-- Recommendations use deterministic title/id ordering when scores tie.
-- Recommendations do not throw for nonexistent users with no data and no candidates.
-- Nonexistent users with candidates get the sparse popular fallback.
-
-6. Similar media tests added
-============================
-
-Added similar media coverage in backend/RateOple.Core.Tests/Media/DiscoveryServiceTests.cs.
+Added backend/RateOple.Core.Tests/Social/UserTasteServiceTests.cs.
 
 Covered behavior:
-- Similar media throws KeyNotFoundException for a missing source media id.
-- Similar media throws KeyNotFoundException for a deleted source media id.
-- Similar media returns an empty list when the source has no genres.
-- Similar media excludes the source media itself.
-- Similar media excludes deleted candidates.
-- Similar media prefers more shared genres before average-rating tie-breaks.
-- Similar media includes all media types that share genres.
-- Similar media respects the requested limit and returns an empty list for non-positive limits.
-- Similar media uses deterministic title/id ordering when scores tie.
-- Similar media does not return duplicate media.
+- Rating media with genres creates user genre scores.
+- Multiple genres on one media split the rating value across genres.
+- Updating a rating recalculates the score.
+- Deleting a rating removes the stale score.
+- Multiple ratings in the same genre aggregate deterministically.
+- Repeated recalculation does not create duplicate UserGenreScore rows.
+- Low ratings contribute less than high ratings under the current positive-point formula.
+- Unrated media does not contribute.
+- Deleted media does not contribute.
+- Deleted media that previously had a stale UserGenreScore is removed on recalculation.
+- Reviews and interactions contribute to taste under the current formula.
+- Season ratings contribute to the parent TV series genres.
+- Episode ratings contribute to the parent TV series genres.
+- Deleted seasons do not contribute.
+- Deleted episodes do not contribute.
+- Deleted parent TV series prevent child ratings from contributing.
+- Recalculation is scoped to one user and does not mutate another user's scores.
+- Missing users are rejected.
+- Deleted media contexts are rejected.
 
-Current similar-media boundary documented:
-- Similar media currently ranks by shared genres and average rating.
-- Shared tags are mapped in DTOs but are not yet part of the similar-media ranking algorithm.
+Current taste formula documented:
+- Rating points equal the rating value.
+- Review points are 6.
+- Interaction points use the interaction's stored Points value.
+- Points are distributed evenly across the resolved media's genres.
+- Only positive aggregate scores are persisted.
 
-7. Discovery API contract tests added
-=====================================
+5. RatingService signal-flow tests added
+========================================
 
-Added backend/RateOple.Api.Tests/Discovery/DiscoveryContractTests.cs.
+Expanded backend/RateOple.Core.Tests/Social/RatingServiceTests.cs.
+
+Covered behavior:
+- Creating a media rating triggers taste recalculation for that media context.
+- Updating a media rating triggers taste recalculation.
+- Deleting an existing media rating triggers taste recalculation.
+- Deleting a missing rating does not trigger recalculation.
+- Creating a season rating triggers taste recalculation for the parent TV series.
+- Creating an episode rating triggers taste recalculation for the parent TV series.
+- Failed rating validation does not trigger recalculation.
+- Rating deleted media fails and does not trigger recalculation.
+
+6. API interaction smoke tests added
+====================================
+
+Added backend/RateOple.Api.Tests/Social/InteractionContractTests.cs.
 
 Covered API behavior:
-- GET /api/discovery/trending works anonymously.
-- GET /api/discovery/trending excludes deleted media.
-- GET /api/discovery/popular works anonymously.
-- GET /api/discovery/popular respects limit.
-- GET /api/discovery/recommended requires authentication.
-- Authenticated GET /api/discovery/recommended returns personalized non-deleted results.
-- Authenticated recommendations exclude completed media.
-- GET /api/media/{id}/similar works anonymously.
-- GET /api/media/{id}/similar excludes the source and deleted media.
-- Missing source media for similar returns 404 ProblemDetails.
-- Negative discovery limit currently returns an empty 200 OK list.
-- API discovery responses include expected display fields.
+- Anonymous GET /api/media/{id} works but does not record a MediaOpened interaction.
+- Authenticated GET /api/media/{id} records a MediaOpened interaction.
+- Authenticated media-open recording on GET does not require CSRF because it is a safe-method read route.
+- Deleted media returns 404 and does not record an interaction.
+- Missing media returns 404 and does not record an interaction.
+- Public trending reflects authenticated open interactions for non-deleted media only.
 
-8. Production bugs found and fixed
+No standalone POST/PUT interaction endpoint exists, so no missing-CSRF mutation test was added for interactions.
+
+7. Production bugs found and fixed
 ==================================
 
-DiscoveryService:
-- Trending had no deterministic tie-breaker. It now orders tied scores by title and id.
-- Popular had no deterministic tie-breaker. It now orders tied popularity by title and id.
-- Recommended had no deterministic tie-breaker. It now orders tied scores by title and id.
-- Similar had no deterministic tie-breaker. It now orders tied scores by title and id.
-- Discovery methods accepted non-positive limits directly. They now return an empty result for non-positive limits and cap positive limits at 100.
-- Discovery DTO mapping omitted tags even though MediaListItemDto exposes Tags. Discovery now includes tags where loaded.
-- Recommended excluded rated media but did not exclude media already marked Done. It now excludes completed media statuses.
-- Recommended fallback for users with no taste data previously delegated to public popular results and could include completed media. It now applies the same per-user rated/completed exclusions before popularity fallback.
-- Similar returned an empty list for missing or deleted source media, making not-found indistinguishable from "source has no genres." It now throws KeyNotFoundException.
-- Similar ranking could allow a one-genre high-rating candidate to outrank a stronger multi-genre match. It now prioritizes genre overlap first, then rating-weighted score.
+InteractionService:
+- Unknown users previously reached database FK failure behavior. InteractionService now rejects unknown users with KeyNotFoundException before mutation.
 
-Deleted media protection:
-- Trending excludes deleted media.
-- Popular excludes deleted media.
-- Recommended excludes deleted media.
-- Similar excludes deleted source media and deleted candidates.
-- Public discovery API responses are covered for deleted-media exclusion.
+UserTasteService:
+- Direct ratings/reviews/interactions for soft-deleted media could still contribute to UserGenreScore during recalculation. Deleted media is now filtered during media resolution and genre distribution.
+- Season ratings/interactions could resolve through a deleted parent TV series. Season resolution now requires an active parent media row.
+- Episode ratings/interactions could resolve through a deleted episode season or deleted parent TV series. Episode resolution now requires active episode, season, and parent media rows.
+- Stale UserGenreScore rows for deleted media are removed by recalculation when no active signals remain.
 
-9. Tests run and results
+Deleted signal protection:
+- Deleted media cannot receive new media-open interactions.
+- Deleted media cannot contribute direct rating/review/interaction taste signals.
+- Deleted seasons and episodes do not contribute child taste signals.
+- Deleted parent TV series prevents season/episode child ratings from contributing.
+- API media-open smoke tests verify deleted and missing media do not create interactions.
+
+8. Tests run and results
 ========================
 
 Commands run during the task:
 - dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj
-- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter DiscoveryServiceTests
+- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter InteractionServiceTests
+- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter UserTasteServiceTests
+- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter RatingServiceTests
 - dotnet test backend/RateOple.Api.Tests/RateOple.Api.Tests.csproj
 - dotnet test backend/RateOple.sln
 
 Latest verified full suite result before report update:
 - dotnet test backend/RateOple.sln passed.
-- RateOple.Core.Tests: 151 passed, 0 failed, 0 skipped.
-- RateOple.Api.Tests: 42 passed, 0 failed, 0 skipped.
-- Total: 193 passed, 0 failed, 0 skipped.
+- RateOple.Core.Tests: 184 passed, 0 failed, 0 skipped.
+- RateOple.Api.Tests: 47 passed, 0 failed, 0 skipped.
+- Total: 231 passed, 0 failed, 0 skipped.
 
-10. Commits created
-===================
+9. Commits created
+==================
 
-- cd5f907 Add discovery test helpers
-- 3797934 Add discovery trending tests and stable ordering
-- 2af8bf6 Add popular media discovery tests
-- cde7915 Add personalized recommendation tests
-- 371dc21 Add similar media discovery tests
-- e5463f8 Add discovery API contract tests
+- 7a9a098 Add interaction and taste test helpers
+- 6b6800c Add interaction service tests
+- e077280 Add user taste tests and fix stale score recalculation
+- 130e8a5 Cover rating-driven taste recalculation
+- fa6130f Add interaction API contract tests
 
-11. Remaining discovery/recommendation gaps
-===========================================
+10. Remaining interaction/taste/recommendation-signal gaps
+==========================================================
 
 Still worth covering later:
-- Shared tag weighting in similar-media ranking.
-- Review recency in trending if reviews should be a first-class trending signal rather than only ratings/interactions.
-- Season and episode interaction/rating signals in trending and recommendations if discovery should roll those up.
-- Stronger recommendation exclusions for On it, Dropped, or collection membership if product requirements define those as already-seen signals.
-- More explicit user-existence policy for recommendations if nonexistent users should return 404 instead of sparse fallback.
-- API contract tests for maximum limit capping.
-- Query performance tests or query-shape review once discovery data volume grows.
-- Dedicated DTO contract snapshots if frontend clients become sensitive to response shape.
+- ReviewService signal-flow tests for review create/update/delete taste recalculation and failed review operations.
+- UserMediaStatusService signal-flow tests if product requirements decide statuses should directly influence UserTasteService.
+- InteractionService tests for deleted parent TV series on season/episode interaction targets.
+- RatingService tests for deleted parent TV series when rating seasons/episodes.
+- Explicit API ProblemDetails contract for GET /api/media/{id} missing/deleted cases if that endpoint should return ProblemDetails instead of plain 404.
+- Query-shape/performance review for UserTasteService once rating/review/interaction volume grows.
+- Product decision on whether low ratings should subtract from genre preference rather than add smaller positive points.
+- Product decision on whether repeated media opens should be collapsed, decayed, or capped instead of append-only.
 
-12. Recommended next task
+11. Recommended next task
 =========================
 
-Add focused tests for interaction and taste recalculation behavior across ratings, reviews, status changes, and media openings.
+Add focused ReviewService and UserMediaStatusService signal-flow tests.
 
 Reason:
-- Discovery now protects the read-side recommendation/trending/popular/similar boundaries.
-- The next risk is the write-side signal pipeline that feeds UserGenreScore and MediaInteraction data.
-- That pipeline should explicitly handle deleted media, season/episode rollups, deterministic recalculation, and sparse user histories.
+- Ratings, interactions, and taste recalculation are now protected.
+- ReviewService also feeds UserTasteService and MediaInteraction.
+- UserMediaStatusService currently records status data, while MediaController separately records status-change interactions.
+- The next risk is ensuring review/status write failures never create misleading taste or interaction signals, and that deleted TV parent/child targets are consistently rejected across those workflows.
