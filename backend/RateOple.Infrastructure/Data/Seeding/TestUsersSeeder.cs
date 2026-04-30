@@ -28,7 +28,7 @@ public static class TestUsersSeeder
 
                 var result = await userManager.CreateAsync(user, seed.Password!);
                 if (!result.Succeeded)
-                    throw new Exception($"Failed to create test user '{email}': {string.Join(", ", result.Errors.Select(e => e.Description))}");
+                    throw new InvalidOperationException($"Failed to create test user '{email}': {string.Join(", ", result.Errors.Select(e => e.Description))}");
             }
 
             var role = seed.Role!.Trim();

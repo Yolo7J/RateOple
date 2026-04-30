@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using RateOple.Constants.Enums;
 using RateOple.Core.Common;
 using RateOple.Core.Contracts;
@@ -13,11 +14,13 @@ public class MediaService : IMediaService
 {
     private readonly ApplicationDbContext _db;
     private readonly IOpenLibraryService _ol;
+    private readonly ILogger<MediaService> _logger;
 
-    public MediaService(ApplicationDbContext db, IOpenLibraryService ol)
+    public MediaService(ApplicationDbContext db, IOpenLibraryService ol, ILogger<MediaService> logger)
     {
         _db = db;
         _ol = ol;
+        _logger = logger;
     }
 
     // ── Read ──────────────────────────────────────────────────────────────────
@@ -116,9 +119,11 @@ public class MediaService : IMediaService
         }
         catch (Exception ex)
         {
-            // Log to console for now; in production use a logger
-            Console.WriteLine($"[MediaService.GetAllAsync] ERROR: {ex.Message}\n{ex.StackTrace}");
-            throw new Exception("A server error occurred while fetching media. Please check the server logs for details.", ex);
+            _logger.LogError(ex, "Failed to fetch media list with page {Page}, pageSize {PageSize}, search {Search}.",
+                query.Page,
+                query.PageSize,
+                query.Search);
+            throw;
         }
     }
 
@@ -454,6 +459,7 @@ public class MediaService : IMediaService
             try { result.Created.Add(await CreateMovieAsync(movie)); }
             catch (Exception ex)
             {
+                _logger.LogWarning(ex, "Bulk media create failed for movie {Title}.", movie.Title);
                 result.Errors.Add(new BulkCreateErrorDto { Title = movie.Title, Type = "Movie", Reason = ex.Message });
             }
         }
@@ -463,6 +469,7 @@ public class MediaService : IMediaService
             try { result.Created.Add(await CreateBookAsync(book)); }
             catch (Exception ex)
             {
+                _logger.LogWarning(ex, "Bulk media create failed for book {Title}.", book.Title);
                 result.Errors.Add(new BulkCreateErrorDto { Title = book.Title, Type = "Book", Reason = ex.Message });
             }
         }
@@ -472,6 +479,7 @@ public class MediaService : IMediaService
             try { result.Created.Add(await CreateTvSeriesAsync(series)); }
             catch (Exception ex)
             {
+                _logger.LogWarning(ex, "Bulk media create failed for TV series {Title}.", series.Title);
                 result.Errors.Add(new BulkCreateErrorDto { Title = series.Title, Type = "TvSeries", Reason = ex.Message });
             }
         }

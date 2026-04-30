@@ -18,7 +18,7 @@ public class TmdbImportService : ITmdbImportService
     public async Task<Guid> ImportSeriesAsync(int tmdbId)
     {
         var series = await _tmdb.GetSeriesDetailsAsync(tmdbId);
-        if (series == null) throw new Exception("TMDB series not found.");
+        if (series == null) throw new KeyNotFoundException("TMDB series not found.");
 
         var created = await _media.CreateTvSeriesAsync(new CreateTvSeriesDto
         {
