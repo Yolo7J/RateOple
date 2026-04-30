@@ -118,12 +118,17 @@ public class UserTasteService : IUserTasteService
     private async Task<Guid?> ResolveMediaIdAsync(Guid? mediaId, Guid? seasonId, Guid? episodeId)
     {
         if (mediaId.HasValue)
-            return mediaId.Value;
+        {
+            return await _context.Media
+                .Where(m => m.Id == mediaId.Value && !m.IsDeleted)
+                .Select(m => (Guid?)m.Id)
+                .FirstOrDefaultAsync();
+        }
 
         if (seasonId.HasValue)
         {
             return await _context.Seasons
-                .Where(s => s.Id == seasonId.Value && !s.IsDeleted)
+                .Where(s => s.Id == seasonId.Value && !s.IsDeleted && !s.TvSeries.Media.IsDeleted)
                 .Select(s => (Guid?)s.TvSeriesId)
                 .FirstOrDefaultAsync();
         }
@@ -131,7 +136,11 @@ public class UserTasteService : IUserTasteService
         if (episodeId.HasValue)
         {
             return await _context.Episodes
-                .Where(e => e.Id == episodeId.Value && !e.IsDeleted)
+                .Where(e =>
+                    e.Id == episodeId.Value &&
+                    !e.IsDeleted &&
+                    !e.Season.IsDeleted &&
+                    !e.Season.TvSeries.Media.IsDeleted)
                 .Select(e => (Guid?)e.Season.TvSeriesId)
                 .FirstOrDefaultAsync();
         }
@@ -143,7 +152,7 @@ public class UserTasteService : IUserTasteService
     {
         var genreIds = await _context.MediaGenres
             .AsNoTracking()
-            .Where(mg => mg.MediaId == mediaId)
+            .Where(mg => mg.MediaId == mediaId && !mg.Media.IsDeleted)
             .Select(mg => mg.GenreId)
             .ToListAsync();
 
