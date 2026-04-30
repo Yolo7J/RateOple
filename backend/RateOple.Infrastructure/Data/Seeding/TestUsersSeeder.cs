@@ -16,12 +16,14 @@ public static class TestUsersSeeder
         foreach (var seed in users)
         {
             var email = seed.Email!.Trim();
-            var user = await userManager.FindByEmailAsync(email);
+            var username = seed.Username!.Trim();
+            var user = await userManager.FindByEmailAsync(email)
+                ?? await userManager.FindByNameAsync(username);
             if (user == null)
             {
                 user = new User
                 {
-                    UserName = seed.Username!.Trim(),
+                    UserName = username,
                     Email = email,
                     EmailConfirmed = true
                 };
