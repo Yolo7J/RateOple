@@ -7,6 +7,7 @@ namespace RateOple.Core.Media.Services;
 
 public class DiscoveryService : IDiscoveryService
 {
+    private const int MaxLimit = 100;
     private readonly ApplicationDbContext _context;
 
     public DiscoveryService(ApplicationDbContext context)
@@ -16,11 +17,16 @@ public class DiscoveryService : IDiscoveryService
 
     public async Task<IReadOnlyList<MediaListItemDto>> GetTrendingAsync(int limit = 20)
     {
+        limit = NormalizeLimit(limit);
+        if (limit == 0)
+            return [];
+
         var since = DateTime.UtcNow.AddDays(-14);
 
         var media = await _context.Media
             .Where(m => !m.IsDeleted)
             .Include(m => m.MediaGenres).ThenInclude(mg => mg.Genre)
+            .Include(m => m.MediaTags).ThenInclude(mt => mt.Tag)
             .Select(m => new
             {
                 Media = m,
@@ -31,6 +37,8 @@ public class DiscoveryService : IDiscoveryService
                     .Count(r => r.MediaId == m.Id && r.UpdatedAt >= since)
             })
             .OrderByDescending(x => (x.InteractionScore * 1.0) + (x.RecentRatingCount * 5.0) + (x.Media.AverageRating * 2.0))
+            .ThenBy(x => x.Media.Title)
+            .ThenBy(x => x.Media.Id)
             .Take(limit)
             .ToListAsync();
 
@@ -39,11 +47,18 @@ public class DiscoveryService : IDiscoveryService
 
     public async Task<IReadOnlyList<MediaListItemDto>> GetPopularAsync(int limit = 20)
     {
+        limit = NormalizeLimit(limit);
+        if (limit == 0)
+            return [];
+
         var media = await _context.Media
             .Where(m => !m.IsDeleted)
             .Include(m => m.MediaGenres).ThenInclude(mg => mg.Genre)
+            .Include(m => m.MediaTags).ThenInclude(mt => mt.Tag)
             .OrderByDescending(m => m.RatingsCount)
             .ThenByDescending(m => m.AverageRating)
+            .ThenBy(m => m.Title)
+            .ThenBy(m => m.Id)
             .Take(limit)
             .ToListAsync();
 
@@ -52,6 +67,10 @@ public class DiscoveryService : IDiscoveryService
 
     public async Task<IReadOnlyList<MediaListItemDto>> GetRecommendedAsync(Guid userId, int limit = 20)
     {
+        limit = NormalizeLimit(limit);
+        if (limit == 0)
+            return [];
+
         var userTaste = await _context.UserGenreScores
             .AsNoTracking()
             .Where(x => x.UserId == userId)
@@ -71,6 +90,7 @@ public class DiscoveryService : IDiscoveryService
         var candidates = await _context.Media
             .Where(m => !m.IsDeleted && !ratedMediaIds.Contains(m.Id))
             .Include(m => m.MediaGenres).ThenInclude(mg => mg.Genre)
+            .Include(m => m.MediaTags).ThenInclude(mt => mt.Tag)
             .ToListAsync();
 
         var ranked = candidates
@@ -83,6 +103,8 @@ public class DiscoveryService : IDiscoveryService
                 return new { Media = m, Score = finalScore };
             })
             .OrderByDescending(x => x.Score)
+            .ThenBy(x => x.Media.Title)
+            .ThenBy(x => x.Media.Id)
             .Take(limit)
             .Select(x => Map(x.Media))
             .ToList();
@@ -92,6 +114,10 @@ public class DiscoveryService : IDiscoveryService
 
     public async Task<IReadOnlyList<MediaListItemDto>> GetSimilarAsync(Guid mediaId, int limit = 20)
     {
+        limit = NormalizeLimit(limit);
+        if (limit == 0)
+            return [];
+
         var sourceGenreIds = await _context.MediaGenres
             .AsNoTracking()
             .Where(mg => mg.MediaId == mediaId)
@@ -104,6 +130,7 @@ public class DiscoveryService : IDiscoveryService
         var candidates = await _context.Media
             .Where(m => !m.IsDeleted && m.Id != mediaId)
             .Include(m => m.MediaGenres).ThenInclude(mg => mg.Genre)
+            .Include(m => m.MediaTags).ThenInclude(mt => mt.Tag)
             .ToListAsync();
 
         var ranked = candidates
@@ -115,6 +142,8 @@ public class DiscoveryService : IDiscoveryService
             })
             .Where(x => x.Overlap > 0)
             .OrderByDescending(x => x.Score)
+            .ThenBy(x => x.Media.Title)
+            .ThenBy(x => x.Media.Id)
             .Take(limit)
             .Select(x => Map(x.Media))
             .ToList();
@@ -134,6 +163,18 @@ public class DiscoveryService : IDiscoveryService
         Genres = media.MediaGenres
             .Where(mg => mg.Genre != null)
             .Select(mg => mg.Genre.Name)
+            .ToList(),
+        Tags = media.MediaTags
+            .Where(mt => mt.Tag != null)
+            .Select(mt => mt.Tag.Name)
             .ToList()
     };
+
+    private static int NormalizeLimit(int limit)
+    {
+        if (limit <= 0)
+            return 0;
+
+        return Math.Min(limit, MaxLimit);
+    }
 }
