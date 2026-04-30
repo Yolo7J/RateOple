@@ -1,211 +1,207 @@
-RateOple backend review/media-status remediation report
+RateOple backend discovery remediation report
 Generated: 2026-04-30
-Scope: ReviewService, UserMediaStatusService, deleted review/status target behavior, review/status API contract smoke tests, and related production fixes.
+Scope: DiscoveryService, DiscoveryController, trending/popular/recommended/similar media behavior, deleted-media exclusion, deterministic ordering, sparse-data behavior, and API discovery contract smoke tests.
 
 1. Files changed
 ================
 
 Test infrastructure:
 - backend/RateOple.Core.Tests/TestSupport/TestDataFactory.cs
-- backend/RateOple.Core.Tests/TestSupport/TestReviews.cs
-- backend/RateOple.Core.Tests/TestSupport/TestStatuses.cs
+- backend/RateOple.Core.Tests/TestSupport/TestDiscovery.cs
+- backend/RateOple.Core.Tests/TestSupport/TestInteractions.cs
 
 Core service tests:
-- backend/RateOple.Core.Tests/Social/ReviewServiceTests.cs
-- backend/RateOple.Core.Tests/Users/UserMediaStatusServiceTests.cs
+- backend/RateOple.Core.Tests/Media/DiscoveryServiceTests.cs
 
 API contract tests:
-- backend/RateOple.Api.Tests/Social/ReviewContractTests.cs
-- backend/RateOple.Api.Tests/Users/UserMediaStatusContractTests.cs
+- backend/RateOple.Api.Tests/Discovery/DiscoveryContractTests.cs
 
 Production code fixed:
-- backend/RateOple.Core/Social/Services/ReviewService.cs
+- backend/RateOple.Core/Media/Services/DiscoveryService.cs
 
 Report:
 - results.txt
 
-2. Test infrastructure added
-============================
+2. Discovery test helpers added
+===============================
 
-Added review helpers:
-- RatingForMedia
-- RatingForSeason
-- RatingForEpisode
-- CreateRatingAsync
-- CreateSeasonRatingTargetAsync
-- CreateEpisodeRatingTargetAsync
-- Review
-- CreateReviewAsync
-- CreateDeletedMediaWithRatingTargetAsync
+Added interaction helpers:
+- CreateInteraction
+- CreateInteractionAsync
 
-Added media-status helpers:
-- MediaStatus
-- CreateMediaStatusAsync
+Added discovery helpers:
+- CreateMediaWithRatingAsync
+- CreateMediaWithGenresAsync
+- CreateMediaWithTagsAsync
+- CreateInteractionAsync
+- CreateUserGenreScoreAsync
+- CreateRecentlyReviewedMediaAsync
+- CreatePopularMediaAsync
+- CreateDeletedDiscoverableMediaAsync
 
 Helper behavior:
-- Creates explicit users/media/rating/review/status entities with caller-controlled target state.
-- Supports media, season, and episode rating targets.
-- Supports deleted media target setup for review negative-path coverage.
-- Supports status timestamps for deterministic query ordering tests.
+- Creates explicit media, ratings, reviews, interactions, genre scores, tags, and deleted-media candidates.
+- Supports movies, books, and TV series.
+- Supports caller-controlled ratings, counts, timestamps, genres, tags, and deleted state.
 - Avoids external APIs, local secrets, and hidden global state.
+- Keeps discovery test data deterministic and readable.
 
-3. ReviewService tests added
+3. Trending tests added
+=======================
+
+Added trending coverage in backend/RateOple.Core.Tests/Media/DiscoveryServiceTests.cs.
+
+Covered behavior:
+- Trending handles an empty database.
+- Trending returns non-deleted media only.
+- Trending excludes deleted media even when deleted media has strong rating/interaction signals.
+- Trending score behavior documents the current formula:
+  recent interaction points + recent rating count weight + average rating weight.
+- Trending ignores old interactions and old ratings outside the current 14-day window.
+- Trending uses deterministic title/id ordering when scores tie.
+- Trending respects the requested limit and returns an empty list for non-positive limits.
+- Trending includes movies, books, and TV series.
+- Trending DTO includes id, title, type, cover URL, release year, average rating, ratings count, genres, and tags.
+- Trending does not throw when media has no ratings, reviews, or interactions.
+
+4. Popular tests added
+======================
+
+Added popular coverage in backend/RateOple.Core.Tests/Media/DiscoveryServiceTests.cs.
+
+Covered behavior:
+- Popular handles an empty database.
+- Popular orders by ratings count, then average rating.
+- Popular excludes deleted media.
+- Popular uses deterministic title/id ordering when popularity ties.
+- Popular respects the requested limit and returns an empty list for non-positive limits.
+- Popular includes movies, books, TV series, and sparse media with no ratings.
+- Popular does not return duplicate media when media has multiple genres/tags.
+
+5. Personalized recommendation tests added
+==========================================
+
+Added recommendation coverage in backend/RateOple.Core.Tests/Media/DiscoveryServiceTests.cs.
+
+Covered behavior:
+- New users with no taste data fall back to popular media.
+- Recommendations return non-deleted media only.
+- Deleted media with a strong genre match is still excluded.
+- Recommendations exclude media the user already rated.
+- Recommendations exclude media the user already marked Done.
+- Recommendations prefer genres with higher UserGenreScore values.
+- Recommendations include movies, books, and TV series when they match taste data.
+- Recommendations respect the requested limit and return an empty list for non-positive limits.
+- Recommendations use deterministic title/id ordering when scores tie.
+- Recommendations do not throw for nonexistent users with no data and no candidates.
+- Nonexistent users with candidates get the sparse popular fallback.
+
+6. Similar media tests added
 ============================
 
-Added backend/RateOple.Core.Tests/Social/ReviewServiceTests.cs.
+Added similar media coverage in backend/RateOple.Core.Tests/Media/DiscoveryServiceTests.cs.
 
-Covered create behavior:
-- User can create a review for their own media rating.
-- User can create a review for their own season rating.
-- User can create a review for their own episode rating.
-- Creating a review requires an existing rating.
-- Creating a review with another user's rating is rejected.
-- Creating a review for deleted media is rejected.
-- Creating a review for deleted season is rejected.
-- Creating a review for deleted episode is rejected.
-- Creating a duplicate review for the same rating updates the existing review, matching current service behavior.
-- Review content is trimmed on create.
+Covered behavior:
+- Similar media throws KeyNotFoundException for a missing source media id.
+- Similar media throws KeyNotFoundException for a deleted source media id.
+- Similar media returns an empty list when the source has no genres.
+- Similar media excludes the source media itself.
+- Similar media excludes deleted candidates.
+- Similar media prefers more shared genres before average-rating tie-breaks.
+- Similar media includes all media types that share genres.
+- Similar media respects the requested limit and returns an empty list for non-positive limits.
+- Similar media uses deterministic title/id ordering when scores tie.
+- Similar media does not return duplicate media.
 
-Covered update behavior:
-- Owner can update review content.
-- Owner can update the linked rating value through review update.
-- Non-owner cannot update another user's review.
-- Updating a review whose target was later deleted is rejected.
-- Updating review preserves ownership.
-- Updating review does not corrupt the linked rating.
+Current similar-media boundary documented:
+- Similar media currently ranks by shared genres and average rating.
+- Shared tags are mapped in DTOs but are not yet part of the similar-media ranking algorithm.
 
-Covered delete behavior:
-- Owner can delete review while keeping the rating.
-- Owner can delete review and linked rating.
-- Deleting linked rating refreshes media aggregate fields.
-- Non-owner cannot delete another user's review.
-
-Covered query behavior:
-- Media review query returns active-media reviews.
-- Media review query orders by UpdatedAt descending.
-- Media review query includes display name when profile data exists.
-- Media review query returns an empty list for deleted media.
-
-4. UserMediaStatusService tests added
+7. Discovery API contract tests added
 =====================================
 
-Added backend/RateOple.Core.Tests/Users/UserMediaStatusServiceTests.cs.
+Added backend/RateOple.Api.Tests/Discovery/DiscoveryContractTests.cs.
 
-Covered set/upsert behavior:
-- User can set status for existing movie media.
-- Setting status creates a new status row when none exists.
-- Setting status updates the existing row for the same user/media.
-- Same user/media remains unique through the composite key and service upsert path.
-- Different users can track the same media independently.
-- Setting status for nonexistent media fails.
-- Setting status for deleted media fails.
-- Invalid status value fails.
-- Book progress stores only page progress.
-- TV series progress stores only season/episode progress.
-- Movie progress ignores book/TV progress fields.
-- Negative progress values are normalized to zero by current service behavior.
+Covered API behavior:
+- GET /api/discovery/trending works anonymously.
+- GET /api/discovery/trending excludes deleted media.
+- GET /api/discovery/popular works anonymously.
+- GET /api/discovery/popular respects limit.
+- GET /api/discovery/recommended requires authentication.
+- Authenticated GET /api/discovery/recommended returns personalized non-deleted results.
+- Authenticated recommendations exclude completed media.
+- GET /api/media/{id}/similar works anonymously.
+- GET /api/media/{id}/similar excludes the source and deleted media.
+- Missing source media for similar returns 404 ProblemDetails.
+- Negative discovery limit currently returns an empty 200 OK list.
+- API discovery responses include expected display fields.
 
-Covered query behavior:
-- User can query their own statuses.
-- Query does not leak another user's statuses.
-- Query supports status filtering.
-- Query excludes statuses attached to deleted media.
-- Query orders by UpdatedAt descending.
-- Query pagination is normalized.
-- Query DTO includes media id, media type, title, status, cover URL, progress fields, and updated timestamp.
-
-Current service boundary documented:
-- IUserMediaStatusService currently exposes set and query operations only.
-- There is no clear/remove status operation in the service contract yet, so delete/clear behavior was not added.
-- MediaStatusQueryDto currently has no media-type filter.
-
-5. API contract tests added
-===========================
-
-Added backend/RateOple.Api.Tests/Social/ReviewContractTests.cs.
-
-Covered reviews API:
-- Anonymous user cannot create review.
-- Authenticated user with CSRF can create review for own rating.
-- Missing CSRF fails before review mutation.
-- Non-owner cannot update another user's review.
-- Non-owner cannot delete another user's review.
-- Invalid payload returns validation ProblemDetails.
-- Deleted media target cannot be reviewed.
-- Public GET /api/media/{mediaId}/reviews can be read without auth.
-
-Added backend/RateOple.Api.Tests/Users/UserMediaStatusContractTests.cs.
-
-Covered user media status API:
-- Anonymous user cannot set media status.
-- Authenticated user with CSRF can set media status.
-- Missing CSRF fails before status mutation.
-- Deleted media cannot receive status.
-- Authenticated user can read own statuses.
-- Invalid payload returns validation ProblemDetails.
-
-6. Production bugs found and fixed
+8. Production bugs found and fixed
 ==================================
 
-ReviewService:
-- CreateReviewAsync allowed reviews for ratings whose media target was soft-deleted. It now rejects deleted media targets with KeyNotFoundException.
-- CreateReviewAsync allowed reviews for ratings whose season target was soft-deleted. It now rejects deleted season targets with KeyNotFoundException.
-- CreateReviewAsync allowed reviews for ratings whose episode target was soft-deleted. It now rejects deleted episode targets with KeyNotFoundException.
-- UpdateReviewAsync allowed editing reviews after their target was deleted. It now rejects updates when the linked media/season/episode target is deleted.
-- GetMediaReviewsAsync leaked reviews for deleted media. It now filters deleted media.
-- GetUserReviewsAsync leaked reviews for deleted media. It now filters deleted media.
-- Season/episode target validation also checks the owning TV series media is not deleted.
+DiscoveryService:
+- Trending had no deterministic tie-breaker. It now orders tied scores by title and id.
+- Popular had no deterministic tie-breaker. It now orders tied popularity by title and id.
+- Recommended had no deterministic tie-breaker. It now orders tied scores by title and id.
+- Similar had no deterministic tie-breaker. It now orders tied scores by title and id.
+- Discovery methods accepted non-positive limits directly. They now return an empty result for non-positive limits and cap positive limits at 100.
+- Discovery DTO mapping omitted tags even though MediaListItemDto exposes Tags. Discovery now includes tags where loaded.
+- Recommended excluded rated media but did not exclude media already marked Done. It now excludes completed media statuses.
+- Recommended fallback for users with no taste data previously delegated to public popular results and could include completed media. It now applies the same per-user rated/completed exclusions before popularity fallback.
+- Similar returned an empty list for missing or deleted source media, making not-found indistinguishable from "source has no genres." It now throws KeyNotFoundException.
+- Similar ranking could allow a one-genre high-rating candidate to outrank a stronger multi-genre match. It now prioritizes genre overlap first, then rating-weighted score.
 
-UserMediaStatusService:
-- No production changes were required.
-- Existing behavior already rejects nonexistent/deleted media on SetStatusAsync.
-- Existing behavior already hides deleted media from GetUserStatusesAsync.
-- Existing composite key and upsert path already prevent duplicate status rows for the same user/media.
+Deleted media protection:
+- Trending excludes deleted media.
+- Popular excludes deleted media.
+- Recommended excludes deleted media.
+- Similar excludes deleted source media and deleted candidates.
+- Public discovery API responses are covered for deleted-media exclusion.
 
-7. Tests run and results
+9. Tests run and results
 ========================
 
 Commands run during the task:
 - dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj
-- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter ReviewServiceTests
-- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter UserMediaStatusServiceTests
+- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter DiscoveryServiceTests
 - dotnet test backend/RateOple.Api.Tests/RateOple.Api.Tests.csproj
 - dotnet test backend/RateOple.sln
 
 Latest verified full suite result before report update:
 - dotnet test backend/RateOple.sln passed.
-- RateOple.Core.Tests: 117 passed, 0 failed, 0 skipped.
-- RateOple.Api.Tests: 35 passed, 0 failed, 0 skipped.
-- Total: 152 passed, 0 failed, 0 skipped.
+- RateOple.Core.Tests: 151 passed, 0 failed, 0 skipped.
+- RateOple.Api.Tests: 42 passed, 0 failed, 0 skipped.
+- Total: 193 passed, 0 failed, 0 skipped.
 
-8. Commits created
-==================
+10. Commits created
+===================
 
-- a881208 Add review and media status test helpers
-- fbaea4f Add review service tests and fix deleted target handling
-- 04d0e69 Add user media status service tests
-- e9e7adb Add review and media status API contract tests
+- cd5f907 Add discovery test helpers
+- 3797934 Add discovery trending tests and stable ordering
+- 2af8bf6 Add popular media discovery tests
+- cde7915 Add personalized recommendation tests
+- 371dc21 Add similar media discovery tests
+- e5463f8 Add discovery API contract tests
 
-9. Remaining review/status/social gaps
-======================================
+11. Remaining discovery/recommendation gaps
+===========================================
 
 Still worth covering later:
-- Review comments, if product requirements expect review comment workflows.
-- User review query API smoke tests for /api/users/me/reviews.
-- Rating API smoke tests for season and episode targets.
-- Review delete behavior when deleteRating=true and the target was deleted after review creation.
-- Review query pagination if ReviewService grows paged review endpoints.
-- Media-status clear/remove endpoint if product requirements need it.
-- Media-status media-type filtering if MediaStatusQueryDto gains that feature.
-- Stronger status progress rules if the product needs page/episode limits or completed-date consistency.
-- DiscoveryService recommendation/trending behavior that depends on ratings/reviews/statuses.
+- Shared tag weighting in similar-media ranking.
+- Review recency in trending if reviews should be a first-class trending signal rather than only ratings/interactions.
+- Season and episode interaction/rating signals in trending and recommendations if discovery should roll those up.
+- Stronger recommendation exclusions for On it, Dropped, or collection membership if product requirements define those as already-seen signals.
+- More explicit user-existence policy for recommendations if nonexistent users should return 404 instead of sparse fallback.
+- API contract tests for maximum limit capping.
+- Query performance tests or query-shape review once discovery data volume grows.
+- Dedicated DTO contract snapshots if frontend clients become sensitive to response shape.
 
-10. Recommended next task
+12. Recommended next task
 =========================
 
-Add focused tests for DiscoveryService and interaction-driven recommendation/trending behavior.
+Add focused tests for interaction and taste recalculation behavior across ratings, reviews, status changes, and media openings.
 
 Reason:
-- Ratings, reviews, media status, and interactions are now protected at their main service boundaries.
-- Discovery/recommendation logic is the next user-facing layer that consumes those signals.
-- It should explicitly exclude deleted media and produce deterministic results under sparse test data.
+- Discovery now protects the read-side recommendation/trending/popular/similar boundaries.
+- The next risk is the write-side signal pipeline that feeds UserGenreScore and MediaInteraction data.
+- That pipeline should explicitly handle deleted media, season/episode rollups, deterministic recalculation, and sparse user histories.
