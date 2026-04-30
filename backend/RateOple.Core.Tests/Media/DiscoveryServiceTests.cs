@@ -182,5 +182,114 @@ public class DiscoveryServiceTests
         Assert.Equal(0, item.RatingsCount);
     }
 
+    [Fact]
+    public async Task GetPopularAsync_HandlesEmptyDatabase()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var service = CreateService(db);
+
+        var result = await service.GetPopularAsync();
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task GetPopularAsync_OrdersByRatingsCountThenAverageRating()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var mostRated = await data.Discovery.CreatePopularMediaAsync("Most rated", averageRating: 6, ratingsCount: 10);
+        var bestRatedTieBreaker = await data.Discovery.CreatePopularMediaAsync("Best average", averageRating: 9, ratingsCount: 5);
+        var lowerAverageTie = await data.Discovery.CreatePopularMediaAsync("Lower average", averageRating: 7, ratingsCount: 5);
+        var service = CreateService(db);
+
+        var result = await service.GetPopularAsync();
+
+        Assert.Equal(
+            [mostRated.Id, bestRatedTieBreaker.Id, lowerAverageTie.Id],
+            result.Select(x => x.Id).ToList());
+    }
+
+    [Fact]
+    public async Task GetPopularAsync_ExcludesDeletedMedia()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var visible = await data.Discovery.CreatePopularMediaAsync("Visible popular", averageRating: 7, ratingsCount: 2);
+        var deleted = await data.Discovery.CreateDeletedDiscoverableMediaAsync("Deleted popular", averageRating: 10, ratingsCount: 100);
+        var service = CreateService(db);
+
+        var result = await service.GetPopularAsync();
+
+        Assert.Equal([visible.Id], result.Select(x => x.Id).ToList());
+        Assert.DoesNotContain(result, x => x.Id == deleted.Id);
+    }
+
+    [Fact]
+    public async Task GetPopularAsync_UsesDeterministicTitleOrderingWhenScoresTie()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        await data.Discovery.CreatePopularMediaAsync("Charlie", averageRating: 8, ratingsCount: 4);
+        await data.Discovery.CreatePopularMediaAsync("Alpha", averageRating: 8, ratingsCount: 4);
+        await data.Discovery.CreatePopularMediaAsync("Bravo", averageRating: 8, ratingsCount: 4);
+        var service = CreateService(db);
+
+        var result = await service.GetPopularAsync();
+
+        Assert.Equal(["Alpha", "Bravo", "Charlie"], result.Select(x => x.Title));
+    }
+
+    [Fact]
+    public async Task GetPopularAsync_RespectsLimitAndNormalizesNonPositiveLimit()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        await data.Discovery.CreatePopularMediaAsync("A", ratingsCount: 3);
+        await data.Discovery.CreatePopularMediaAsync("B", ratingsCount: 2);
+        await data.Discovery.CreatePopularMediaAsync("C", ratingsCount: 1);
+        var service = CreateService(db);
+
+        var limited = await service.GetPopularAsync(2);
+        var none = await service.GetPopularAsync(-1);
+
+        Assert.Equal(2, limited.Count);
+        Assert.Empty(none);
+    }
+
+    [Fact]
+    public async Task GetPopularAsync_IncludesAllMediaTypesAndSparseMedia()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        await data.Discovery.CreatePopularMediaAsync("Movie", MediaType.Movie, ratingsCount: 1);
+        await data.Discovery.CreatePopularMediaAsync("Book", MediaType.Book, ratingsCount: 1);
+        await data.Discovery.CreatePopularMediaAsync("Series", MediaType.TvSeries, ratingsCount: 1);
+        await data.Media.CreateMovieAsync("Sparse");
+        var service = CreateService(db);
+
+        var result = await service.GetPopularAsync();
+
+        Assert.Equal(["Book", "Movie", "Series", "Sparse"], result.Select(x => x.Title));
+        Assert.Equal(["Book", "Movie", "TvSeries", "Movie"], result.Select(x => x.Type));
+    }
+
+    [Fact]
+    public async Task GetPopularAsync_DoesNotReturnDuplicateMedia()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var drama = await data.Genres.CreateGenreAsync("Drama");
+        var mystery = await data.Genres.CreateGenreAsync("Mystery");
+        var tag = await data.Tags.CreateTagAsync("featured");
+        await data.Discovery.CreateMediaWithGenresAsync("Multi genre", [drama, mystery], ratingsCount: 5);
+        await data.Discovery.CreateMediaWithTagsAsync("Tagged", [tag], ratingsCount: 4);
+        var service = CreateService(db);
+
+        var result = await service.GetPopularAsync();
+
+        Assert.Equal(result.Count, result.Select(x => x.Id).Distinct().Count());
+    }
+
     private static DiscoveryService CreateService(SqliteTestDb db) => new(db.Context);
 }
