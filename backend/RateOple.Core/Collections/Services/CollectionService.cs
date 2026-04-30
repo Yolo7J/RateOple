@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 using RateOple.Constants.Enums;
 using RateOple.Core.Common;
 using RateOple.Core.Contracts;
@@ -55,6 +54,8 @@ public class CollectionService : ICollectionService
             .FirstOrDefaultAsync(c => c.Id == id);
         if (collection == null)
             return null;
+        if (!await CanViewAsync(collection, viewerId))
+            return null;
 
         return await GetRequiredDtoAsync(id);
     }
@@ -64,6 +65,8 @@ public class CollectionService : ICollectionService
         query ??= new CollectionQueryDto();
         var pagination = Pagination.Normalize(query.Page, query.PageSize);
         var q = _context.Collections.AsNoTracking().AsQueryable();
+
+        q = ApplyVisibilityFilter(q, viewerId);
 
         if (query.OwnerType.HasValue)
             q = q.Where(c => c.OwnerType == query.OwnerType.Value);
@@ -156,9 +159,13 @@ public class CollectionService : ICollectionService
             collection.Title = validatedName;
         }
         if (dto.Description != null) collection.Description = dto.Description.Trim();
-        if (dto.ParentCollectionId.HasValue && dto.ParentCollectionId != id)
+        if (dto.ParentCollectionId.HasValue)
         {
+            if (dto.ParentCollectionId == id)
+                throw new ArgumentException("Collection cannot be its own parent.");
+
             await EnsureParentExistsAsync(dto.ParentCollectionId.Value);
+            await EnsureParentIsNotDescendantAsync(id, dto.ParentCollectionId.Value);
             collection.ParentCollectionId = dto.ParentCollectionId;
         }
         if (dto.SortMode.HasValue) collection.SortMode = dto.SortMode.Value;
@@ -212,44 +219,24 @@ public class CollectionService : ICollectionService
         if (exists)
             return await GetRequiredDtoAsync(collectionId);
 
-        const int maxAttempts = 3;
-        for (var attempt = 0; attempt < maxAttempts; attempt++)
+        var nextOrder = dto.OrderIndex ?? (await _context.CollectionItems
+            .Where(i => i.CollectionId == collectionId)
+            .MaxAsync(i => (int?)i.OrderIndex) ?? 0) + 1;
+
+        _context.CollectionItems.Add(new CollectionItem
         {
-            var nextOrder = dto.OrderIndex ?? (await _context.CollectionItems
-                .Where(i => i.CollectionId == collectionId)
-                .MaxAsync(i => (int?)i.OrderIndex) ?? 0) + 1;
-            var itemId = Guid.NewGuid();
-            try
-            {
-                var inserted = await _context.Database.ExecuteSqlRawAsync(
-                    @"INSERT INTO ""CollectionItems"" (""Id"", ""CollectionId"", ""MediaId"", ""OrderIndex"", ""AddedAt"")
-                      VALUES ({0}, {1}, {2}, {3}, {4})
-                      ON CONFLICT (""CollectionId"", ""MediaId"") DO NOTHING;",
-                    itemId, collectionId, dto.MediaId, nextOrder, DateTime.UtcNow);
+            Id = Guid.NewGuid(),
+            CollectionId = collectionId,
+            MediaId = dto.MediaId,
+            OrderIndex = nextOrder,
+            AddedAt = DateTime.UtcNow
+        });
 
-                if (inserted > 0)
-                {
-                    if (shouldSetCover && !string.IsNullOrWhiteSpace(mediaInfo.CoverUrl))
-                    {
-                        collection.CoverImageUrl = mediaInfo.CoverUrl;
-                        await _context.SaveChangesAsync();
-                    }
+        if (shouldSetCover && !string.IsNullOrWhiteSpace(mediaInfo.CoverUrl))
+            collection.CoverImageUrl = mediaInfo.CoverUrl;
 
-                    return await GetRequiredDtoAsync(collectionId);
-                }
-            }
-            catch (PostgresException ex) when (ex.SqlState == "23505")
-            {
-                // OrderIndex conflict; retry with a new order number.
-            }
-
-            var nowExists = await _context.CollectionItems
-                .AnyAsync(i => i.CollectionId == collectionId && i.MediaId == dto.MediaId);
-            if (nowExists)
-                return await GetRequiredDtoAsync(collectionId);
-        }
-
-        throw new DbUpdateException("Could not add media to collection due to concurrent updates.");
+        await _context.SaveChangesAsync();
+        return await GetRequiredDtoAsync(collectionId);
     }
 
     public async Task<CollectionDto> RemoveItemAsync(Guid userId, Guid collectionId, Guid mediaId)
@@ -363,6 +350,65 @@ public class CollectionService : ICollectionService
     {
         var exists = await _context.Collections.AnyAsync(c => c.Id == parentId);
         if (!exists) throw new KeyNotFoundException("Parent collection not found.");
+    }
+
+    private async Task EnsureParentIsNotDescendantAsync(Guid collectionId, Guid parentId)
+    {
+        var currentParentId = parentId;
+        while (true)
+        {
+            var parent = await _context.Collections
+                .AsNoTracking()
+                .Where(c => c.Id == currentParentId)
+                .Select(c => new { c.Id, c.ParentCollectionId })
+                .FirstOrDefaultAsync();
+
+            if (parent == null)
+                return;
+            if (parent.Id == collectionId)
+                throw new ArgumentException("Collection hierarchy cannot contain cycles.");
+            if (!parent.ParentCollectionId.HasValue)
+                return;
+
+            currentParentId = parent.ParentCollectionId.Value;
+        }
+    }
+
+    private IQueryable<Collection> ApplyVisibilityFilter(IQueryable<Collection> query, Guid? viewerId)
+    {
+        if (!viewerId.HasValue)
+            return query.Where(c => c.Visibility == CollectionVisibility.Public);
+
+        var userId = viewerId.Value;
+        return query.Where(c =>
+            c.Visibility == CollectionVisibility.Public ||
+            (c.OwnerType == CollectionOwnerType.User && c.OwnerId == userId) ||
+            (c.Visibility == CollectionVisibility.Followers && c.Followers.Any(f => f.UserId == userId)) ||
+            (c.OwnerType == CollectionOwnerType.Group &&
+                c.OwnerId.HasValue &&
+                _context.GroupMemberships.Any(m => m.GroupId == c.OwnerId.Value && m.UserId == userId)));
+    }
+
+    private async Task<bool> CanViewAsync(Collection collection, Guid? viewerId)
+    {
+        if (collection.Visibility == CollectionVisibility.Public)
+            return true;
+        if (!viewerId.HasValue)
+            return false;
+        if (collection.OwnerType == CollectionOwnerType.User && collection.OwnerId == viewerId.Value)
+            return true;
+        if (collection.Visibility == CollectionVisibility.Followers)
+        {
+            return await _context.FollowCollections
+                .AnyAsync(f => f.CollectionId == collection.Id && f.UserId == viewerId.Value);
+        }
+        if (collection.OwnerType == CollectionOwnerType.Group && collection.OwnerId.HasValue)
+        {
+            return await _context.GroupMemberships
+                .AnyAsync(m => m.GroupId == collection.OwnerId.Value && m.UserId == viewerId.Value);
+        }
+
+        return false;
     }
 
     private async Task EnsureCanModifyAsync(Guid userId, Collection collection)
