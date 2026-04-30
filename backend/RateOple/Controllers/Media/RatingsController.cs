@@ -1,8 +1,8 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RateOple.Core.Contracts;
 using RateOple.Core.Social.DTOs;
+using RateOple.Extensions;
 
 namespace RateOple.Controllers;
 
@@ -62,82 +62,33 @@ public class RatingsController : ControllerBase
     [HttpGet("media/{mediaId:guid}/ratings/summary")]
     public async Task<ActionResult<MediaRatingSummaryDto>> GetMediaSummary(Guid mediaId)
     {
-        var result = await _ratingService.GetMediaRatingSummaryAsync(mediaId, GetOptionalUserId());
+        var result = await _ratingService.GetMediaRatingSummaryAsync(mediaId, User.GetUserIdOrNull());
         return Ok(result);
     }
 
     [HttpGet("seasons/{seasonId:guid}/ratings/summary")]
     public async Task<ActionResult<TargetRatingSummaryDto>> GetSeasonSummary(Guid seasonId)
     {
-        try
-        {
-            var result = await _ratingService.GetSeasonRatingSummaryAsync(seasonId, GetOptionalUserId());
-            return Ok(result);
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
+        var result = await _ratingService.GetSeasonRatingSummaryAsync(seasonId, User.GetUserIdOrNull());
+        return Ok(result);
     }
 
     [HttpGet("episodes/{episodeId:guid}/ratings/summary")]
     public async Task<ActionResult<TargetRatingSummaryDto>> GetEpisodeSummary(Guid episodeId)
     {
-        try
-        {
-            var result = await _ratingService.GetEpisodeRatingSummaryAsync(episodeId, GetOptionalUserId());
-            return Ok(result);
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
+        var result = await _ratingService.GetEpisodeRatingSummaryAsync(episodeId, User.GetUserIdOrNull());
+        return Ok(result);
     }
 
     private async Task<ActionResult<RatingDto>> HandleRate(Func<Guid, Task<RatingDto>> action)
     {
-        var userId = GetRequiredUserId();
-        if (!userId.HasValue)
-            return Unauthorized();
-
-        try
-        {
-            var result = await action(userId.Value);
-            return Ok(result);
-        }
-        catch (ArgumentOutOfRangeException ex)
-        {
-            return BadRequest(ex.Message);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ex.Message);
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
+        var result = await action(User.GetRequiredUserId());
+        return Ok(result);
     }
 
     private async Task<IActionResult> HandleDelete(Func<Guid, Task> action)
     {
-        var userId = GetRequiredUserId();
-        if (!userId.HasValue)
-            return Unauthorized();
-
-        await action(userId.Value);
+        await action(User.GetRequiredUserId());
         return NoContent();
-    }
-
-    private Guid? GetRequiredUserId()
-    {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        return string.IsNullOrWhiteSpace(userId) ? null : Guid.Parse(userId);
-    }
-
-    private Guid? GetOptionalUserId()
-    {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        return string.IsNullOrWhiteSpace(userId) ? null : Guid.Parse(userId);
     }
 }

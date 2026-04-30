@@ -1,6 +1,6 @@
 # RateOple Architecture (Current State)
 
-Last updated: **April 26, 2026**
+Last updated: **April 30, 2026**
 
 This document reflects the code currently present in the repository.
 
@@ -33,8 +33,8 @@ Runtime flow:
 Browser (React)
   -> Axios (withCredentials) + SignalR client
     -> ASP.NET Core API
-      -> Core Services
-        -> EF Core / PostgreSQL
+      -> Core application services
+        -> ApplicationDbContext / EF Core / PostgreSQL
         -> TMDB API
         -> Open Library API
 ```
@@ -181,7 +181,29 @@ Roles:
 - Global (Identity): `SuperAdmin`, `Admin`, `Moderator`, `User`
 - GroupMembership: `Owner`, `GroupAdmin`, `GroupModerator`, `Member`
 
-## 5. Layer Structure
+## 5. Layer Structure and Architecture Rules
+
+RateOple currently uses a pragmatic layered architecture. It is not a strict clean-architecture implementation.
+
+The intentional current model is:
+
+- `RateOple` is the API host. It owns controllers, auth setup, middleware, SignalR hubs, endpoint mapping, HTTP error shaping, and dependency injection.
+- `RateOple.Core` is an application/service layer. It owns DTOs, service interfaces, and business rules. Core services may inject `ApplicationDbContext` directly for now.
+- `RateOple.Infrastructure` owns EF Core persistence: entities, configurations, migrations, `ApplicationDbContext`, seeding, and infrastructure helpers.
+- `RateOple.Constants` owns cross-project enums/constants.
+
+This means `RateOple.Core` currently references `RateOple.Infrastructure`. That is an explicit tradeoff for this application, not an accidental claim of clean architecture. A large inversion that moves all entities and persistence boundaries into Core is not planned unless the project reaches a point where that cost clearly buys better testing or composition.
+
+### Architecture Rules
+
+- Controllers should stay thin: bind HTTP inputs, read the authenticated user, call services, and return normal success results.
+- Controllers should not repeat user ID parsing or map common service exceptions by hand.
+- Services own business rules, permission decisions that require domain data, and transaction-oriented behavior.
+- Infrastructure owns EF Core entities, configurations, migrations, database-specific behavior, and seeding.
+- Core services may use `ApplicationDbContext` directly while the project remains an EF-backed service layer.
+- Do not introduce repository abstractions unless they solve a concrete testing, composition, or persistence boundary problem.
+- New business logic must have targeted backend tests.
+- Keep API contracts stable unless the old contract is unsafe or impossible to validate correctly.
 
 ### 5.1 Core Layer (`RateOple.Core`)
 

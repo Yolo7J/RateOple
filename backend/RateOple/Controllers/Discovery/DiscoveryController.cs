@@ -1,8 +1,8 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RateOple.Core.Contracts;
 using RateOple.Core.Media.DTOs;
+using RateOple.Extensions;
 
 namespace RateOple.Controllers;
 
@@ -35,11 +35,7 @@ public class DiscoveryController : ControllerBase
     [Authorize]
     public async Task<ActionResult<IReadOnlyList<MediaListItemDto>>> GetRecommended([FromQuery] int limit = 20)
     {
-        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userIdClaim))
-            return Unauthorized();
-
-        var result = await _discoveryService.GetRecommendedAsync(Guid.Parse(userIdClaim), limit);
+        var result = await _discoveryService.GetRecommendedAsync(User.GetRequiredUserId(), limit);
         return Ok(result);
     }
 

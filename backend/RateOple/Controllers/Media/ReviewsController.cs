@@ -1,8 +1,8 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RateOple.Core.Contracts;
 using RateOple.Core.Social.DTOs;
+using RateOple.Extensions;
 
 namespace RateOple.Controllers;
 
@@ -35,23 +35,8 @@ public class ReviewsController : ControllerBase
     [Authorize]
     public async Task<IActionResult> DeleteReview(Guid reviewId, [FromQuery] bool deleteRating = false)
     {
-        var userId = GetRequiredUserId();
-        if (!userId.HasValue)
-            return Unauthorized();
-
-        try
-        {
-            await _reviewService.DeleteReviewAsync(userId.Value, reviewId, deleteRating);
-            return NoContent();
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
+        await _reviewService.DeleteReviewAsync(User.GetRequiredUserId(), reviewId, deleteRating);
+        return NoContent();
     }
 
     [HttpGet("media/{mediaId:guid}/reviews")]
@@ -63,32 +48,8 @@ public class ReviewsController : ControllerBase
 
     private async Task<ActionResult<ReviewDto>> HandleReviewAction(Func<Guid, Task<ReviewDto>> action)
     {
-        var userId = GetRequiredUserId();
-        if (!userId.HasValue)
-            return Unauthorized();
-
-        try
-        {
-            var result = await action(userId.Value);
-            return Ok(result);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ex.Message);
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
+        var result = await action(User.GetRequiredUserId());
+        return Ok(result);
     }
 
-    private Guid? GetRequiredUserId()
-    {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        return string.IsNullOrWhiteSpace(userId) ? null : Guid.Parse(userId);
-    }
 }

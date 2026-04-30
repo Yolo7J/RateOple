@@ -1,8 +1,8 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RateOple.Core.Contracts;
 using RateOple.Core.Users.DTOs;
+using RateOple.Extensions;
 
 namespace RateOple.Controllers;
 
@@ -21,43 +21,21 @@ public class NotificationsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<PagedNotificationsDto>> Get([FromQuery] NotificationQueryDto query)
     {
-        var userId = GetUserId();
-        if (!userId.HasValue) return Unauthorized();
-
-        var result = await _notificationService.GetForUserAsync(userId.Value, query);
+        var result = await _notificationService.GetForUserAsync(User.GetRequiredUserId(), query);
         return Ok(result);
     }
 
     [HttpPost("{id:guid}/read")]
     public async Task<IActionResult> MarkRead(Guid id)
     {
-        var userId = GetUserId();
-        if (!userId.HasValue) return Unauthorized();
-
-        try
-        {
-            await _notificationService.MarkAsReadAsync(userId.Value, id);
-            return NoContent();
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
+        await _notificationService.MarkAsReadAsync(User.GetRequiredUserId(), id);
+        return NoContent();
     }
 
     [HttpPost("read-all")]
     public async Task<IActionResult> MarkAllRead()
     {
-        var userId = GetUserId();
-        if (!userId.HasValue) return Unauthorized();
-
-        var count = await _notificationService.MarkAllAsReadAsync(userId.Value);
+        var count = await _notificationService.MarkAllAsReadAsync(User.GetRequiredUserId());
         return Ok(new { marked = count });
-    }
-
-    private Guid? GetUserId()
-    {
-        var claim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        return string.IsNullOrWhiteSpace(claim) ? null : Guid.Parse(claim);
     }
 }

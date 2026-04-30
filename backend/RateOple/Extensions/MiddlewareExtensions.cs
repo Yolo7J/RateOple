@@ -16,6 +16,7 @@ public static class MiddlewareExtensions
         }
 
         app.UseHttpsRedirection();
+        app.UseExceptionHandler();
         app.UseSecurityHeaders();
         app.UseDefaultFiles();
         app.UseStaticFiles();

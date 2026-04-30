@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 using RateOple.Core.Contracts;
 using RateOple.Core.Media.DTOs;
 using RateOple.Core.Users.DTOs;
+using RateOple.Extensions;
 
 namespace RateOple.Controllers;
 
@@ -47,10 +47,10 @@ public class MediaController : ControllerBase
     {
         var result = await _mediaService.GetByIdAsync(id);
 
-        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (result != null && !string.IsNullOrWhiteSpace(userIdClaim))
+        var userId = User.GetUserIdOrNull();
+        if (result != null && userId.HasValue)
         {
-            await _interactionService.TrackMediaOpenedAsync(Guid.Parse(userIdClaim), id);
+            await _interactionService.TrackMediaOpenedAsync(userId.Value, id);
         }
 
         return result == null ? NotFound() : Ok(result);
@@ -173,14 +173,9 @@ public class MediaController : ControllerBase
     [Authorize(Policy = "RequireAdmin")]
     public async Task<IActionResult> UpdateMovie(Guid id, [FromBody] UpdateMovieDto dto)
     {
-        try
-        {
-            var result = await _mediaService.UpdateMovieAsync(id, dto);
-            await TrackMediaStatusChangedAsync(id);
-            return Ok(result);
-        }
-        catch (KeyNotFoundException) { return NotFound(); }
-        catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
+        var result = await _mediaService.UpdateMovieAsync(id, dto);
+        await TrackMediaStatusChangedAsync(id);
+        return Ok(result);
     }
 
     // PUT /api/media/{id}/book
@@ -188,14 +183,9 @@ public class MediaController : ControllerBase
     [Authorize(Policy = "RequireAdmin")]
     public async Task<IActionResult> UpdateBook(Guid id, [FromBody] UpdateBookDto dto)
     {
-        try
-        {
-            var result = await _mediaService.UpdateBookAsync(id, dto);
-            await TrackMediaStatusChangedAsync(id);
-            return Ok(result);
-        }
-        catch (KeyNotFoundException) { return NotFound(); }
-        catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
+        var result = await _mediaService.UpdateBookAsync(id, dto);
+        await TrackMediaStatusChangedAsync(id);
+        return Ok(result);
     }
 
     // PUT /api/media/{id}/tvseries
@@ -203,38 +193,25 @@ public class MediaController : ControllerBase
     [Authorize(Policy = "RequireAdmin")]
     public async Task<IActionResult> UpdateTvSeries(Guid id, [FromBody] UpdateTvSeriesDto dto)
     {
-        try
-        {
-            var result = await _mediaService.UpdateTvSeriesAsync(id, dto);
-            await TrackMediaStatusChangedAsync(id);
-            return Ok(result);
-        }
-        catch (KeyNotFoundException) { return NotFound(); }
-        catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
+        var result = await _mediaService.UpdateTvSeriesAsync(id, dto);
+        await TrackMediaStatusChangedAsync(id);
+        return Ok(result);
     }
 
     [HttpPost("{id:guid}/tags")]
     [Authorize(Policy = "RequireAdmin")]
     public async Task<IActionResult> AddTags(Guid id, [FromBody] UpsertMediaTagsDto dto)
     {
-        try
-        {
-            var result = await _mediaService.AddTagsAsync(id, dto);
-            return Ok(result);
-        }
-        catch (KeyNotFoundException) { return NotFound(); }
+        var result = await _mediaService.AddTagsAsync(id, dto);
+        return Ok(result);
     }
 
     [HttpDelete("{id:guid}/tags/{tagId:int}")]
     [Authorize(Policy = "RequireAdmin")]
     public async Task<IActionResult> RemoveTag(Guid id, int tagId)
     {
-        try
-        {
-            var result = await _mediaService.RemoveTagAsync(id, tagId);
-            return Ok(result);
-        }
-        catch (KeyNotFoundException) { return NotFound(); }
+        var result = await _mediaService.RemoveTagAsync(id, tagId);
+        return Ok(result);
     }
 
     // ── Soft delete ───────────────────────────────────────────────────────────
@@ -244,12 +221,8 @@ public class MediaController : ControllerBase
     [Authorize(Policy = "RequireAdmin")]
     public async Task<IActionResult> SoftDelete(Guid id)
     {
-        try
-        {
-            await _mediaService.SoftDeleteAsync(id);
-            return NoContent();
-        }
-        catch (KeyNotFoundException) { return NotFound(); }
+        await _mediaService.SoftDeleteAsync(id);
+        return NoContent();
     }
 
     // ── User status tracking ──────────────────────────────────────────────────
@@ -259,24 +232,10 @@ public class MediaController : ControllerBase
     [Authorize]
     public async Task<IActionResult> SetStatus(Guid id, [FromBody] SetUserMediaStatusDto dto)
     {
-        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userIdClaim))
-            return Unauthorized();
-
-        try
-        {
-            var result = await _userMediaStatusService.SetStatusAsync(Guid.Parse(userIdClaim), id, dto);
-            await _interactionService.TrackMediaStatusChangedAsync(Guid.Parse(userIdClaim), id);
-            return Ok(result);
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        var userId = User.GetRequiredUserId();
+        var result = await _userMediaStatusService.SetStatusAsync(userId, id, dto);
+        await _interactionService.TrackMediaStatusChangedAsync(userId, id);
+        return Ok(result);
     }
 
     // ── Seasons (nested under media for intuitive routing) ────────────────────
@@ -285,12 +244,8 @@ public class MediaController : ControllerBase
     [HttpGet("{id:guid}/seasons")]
     public async Task<IActionResult> GetSeasons(Guid id)
     {
-        try
-        {
-            var result = await _tvSeriesService.GetSeasonsAsync(id);
-            return Ok(result);
-        }
-        catch (KeyNotFoundException) { return NotFound(); }
+        var result = await _tvSeriesService.GetSeasonsAsync(id);
+        return Ok(result);
     }
 
     // POST /api/media/{id}/seasons
@@ -298,13 +253,8 @@ public class MediaController : ControllerBase
     [Authorize(Policy = "RequireAdmin")]
     public async Task<IActionResult> AddSeason(Guid id, [FromBody] UpsertSeasonDto dto)
     {
-        try
-        {
-            var result = await _tvSeriesService.AddSeasonAsync(id, dto);
-            return CreatedAtAction(nameof(GetSeasons), new { id }, result);
-        }
-        catch (KeyNotFoundException) { return NotFound(); }
-        catch (InvalidOperationException ex) { return Conflict(ex.Message); }
+        var result = await _tvSeriesService.AddSeasonAsync(id, dto);
+        return CreatedAtAction(nameof(GetSeasons), new { id }, result);
     }
 
     // PUT /api/media/{id}/seasons/{seasonNumber}
@@ -312,13 +262,8 @@ public class MediaController : ControllerBase
     [Authorize(Policy = "RequireAdmin")]
     public async Task<IActionResult> UpdateSeason(Guid id, int seasonNumber, [FromBody] UpsertSeasonDto dto)
     {
-        try
-        {
-            var result = await _tvSeriesService.UpdateSeasonAsync(id, seasonNumber, dto);
-            return Ok(result);
-        }
-        catch (KeyNotFoundException) { return NotFound(); }
-        catch (InvalidOperationException ex) { return Conflict(ex.Message); }
+        var result = await _tvSeriesService.UpdateSeasonAsync(id, seasonNumber, dto);
+        return Ok(result);
     }
 
     // DELETE /api/media/{id}/seasons/{seasonNumber}
@@ -326,12 +271,8 @@ public class MediaController : ControllerBase
     [Authorize(Policy = "RequireAdmin")]
     public async Task<IActionResult> DeleteSeason(Guid id, int seasonNumber)
     {
-        try
-        {
-            await _tvSeriesService.DeleteSeasonAsync(id, seasonNumber);
-            return NoContent();
-        }
-        catch (KeyNotFoundException) { return NotFound(); }
+        await _tvSeriesService.DeleteSeasonAsync(id, seasonNumber);
+        return NoContent();
     }
 
     // ── Episodes (nested under seasons) ──────────────────────────────────────
@@ -341,13 +282,8 @@ public class MediaController : ControllerBase
     [Authorize(Policy = "RequireAdmin")]
     public async Task<IActionResult> AddEpisode(Guid id, int seasonNumber, [FromBody] UpsertEpisodeDto dto)
     {
-        try
-        {
-            var result = await _tvSeriesService.AddEpisodeAsync(id, seasonNumber, dto);
-            return CreatedAtAction(nameof(GetSeasons), new { id }, result);
-        }
-        catch (KeyNotFoundException) { return NotFound(); }
-        catch (InvalidOperationException ex) { return Conflict(ex.Message); }
+        var result = await _tvSeriesService.AddEpisodeAsync(id, seasonNumber, dto);
+        return CreatedAtAction(nameof(GetSeasons), new { id }, result);
     }
 
     // PUT /api/media/{id}/seasons/{seasonNumber}/episodes/{episodeNumber}
@@ -356,12 +292,8 @@ public class MediaController : ControllerBase
     public async Task<IActionResult> UpdateEpisode(
         Guid id, int seasonNumber, int episodeNumber, [FromBody] UpsertEpisodeDto dto)
     {
-        try
-        {
-            var result = await _tvSeriesService.UpdateEpisodeAsync(id, seasonNumber, episodeNumber, dto);
-            return Ok(result);
-        }
-        catch (KeyNotFoundException) { return NotFound(); }
+        var result = await _tvSeriesService.UpdateEpisodeAsync(id, seasonNumber, episodeNumber, dto);
+        return Ok(result);
     }
 
     // DELETE /api/media/{id}/seasons/{seasonNumber}/episodes/{episodeNumber}
@@ -369,20 +301,16 @@ public class MediaController : ControllerBase
     [Authorize(Policy = "RequireAdmin")]
     public async Task<IActionResult> DeleteEpisode(Guid id, int seasonNumber, int episodeNumber)
     {
-        try
-        {
-            await _tvSeriesService.DeleteEpisodeAsync(id, seasonNumber, episodeNumber);
-            return NoContent();
-        }
-        catch (KeyNotFoundException) { return NotFound(); }
+        await _tvSeriesService.DeleteEpisodeAsync(id, seasonNumber, episodeNumber);
+        return NoContent();
     }
 
     private async Task TrackMediaStatusChangedAsync(Guid mediaId)
     {
-        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userIdClaim))
+        var userId = User.GetUserIdOrNull();
+        if (!userId.HasValue)
             return;
 
-        await _interactionService.TrackMediaStatusChangedAsync(Guid.Parse(userIdClaim), mediaId);
+        await _interactionService.TrackMediaStatusChangedAsync(userId.Value, mediaId);
     }
 }

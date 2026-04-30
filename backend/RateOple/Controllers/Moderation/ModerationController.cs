@@ -1,10 +1,10 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RateOple.Constants.Constants;
 using RateOple.Constants.Enums;
 using RateOple.Core.Contracts;
 using RateOple.Core.Moderation.DTOs;
+using RateOple.Extensions;
 
 namespace RateOple.Controllers;
 
@@ -25,22 +25,8 @@ public class ModerationController : ControllerBase
     [Authorize]
     public async Task<ActionResult<ReportDto>> CreateReport([FromBody] CreateReportDto dto)
     {
-        var userId = GetRequiredUserId();
-        if (!userId.HasValue) return Unauthorized();
-
-        try
-        {
-            var report = await _moderationService.CreateReportAsync(userId.Value, dto);
-            return Ok(report);
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        var report = await _moderationService.CreateReportAsync(User.GetRequiredUserId(), dto);
+        return Ok(report);
     }
 
     [HttpGet("reports")]
@@ -55,40 +41,16 @@ public class ModerationController : ControllerBase
     [Authorize(Policy = PolicyConstants.CanModerateContent)]
     public async Task<ActionResult<ReportDto>> UpdateStatus(Guid id, [FromBody] UpdateReportStatusDto dto)
     {
-        var userId = GetRequiredUserId();
-        if (!userId.HasValue) return Unauthorized();
-
-        try
-        {
-            var report = await _moderationService.UpdateReportStatusAsync(userId.Value, id, dto);
-            return Ok(report);
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
+        var report = await _moderationService.UpdateReportStatusAsync(User.GetRequiredUserId(), id, dto);
+        return Ok(report);
     }
 
     [HttpPost("assignments")]
     [Authorize(Policy = PolicyConstants.RequireAdmin)]
     public async Task<ActionResult<ModeratorAssignmentDto>> CreateAssignment([FromBody] CreateModeratorAssignmentDto dto)
     {
-        var userId = GetRequiredUserId();
-        if (!userId.HasValue) return Unauthorized();
-
-        try
-        {
-            var assignment = await _moderationService.AssignModeratorAsync(userId.Value, dto);
-            return Ok(assignment);
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        var assignment = await _moderationService.AssignModeratorAsync(User.GetRequiredUserId(), dto);
+        return Ok(assignment);
     }
 
     [HttpGet("assignments")]
@@ -108,10 +70,7 @@ public class ModerationController : ControllerBase
         [FromQuery] ModeratorScopeType scopeType,
         [FromQuery] Guid? scopeId)
     {
-        var actorId = GetRequiredUserId();
-        if (!actorId.HasValue) return Unauthorized();
-
-        await _moderationService.RemoveAssignmentAsync(actorId.Value, userId, scopeType, scopeId);
+        await _moderationService.RemoveAssignmentAsync(User.GetRequiredUserId(), userId, scopeType, scopeId);
         return NoContent();
     }
 
@@ -123,9 +82,4 @@ public class ModerationController : ControllerBase
         return Ok(logs);
     }
 
-    private Guid? GetRequiredUserId()
-    {
-        var claim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        return string.IsNullOrWhiteSpace(claim) ? null : Guid.Parse(claim);
-    }
 }

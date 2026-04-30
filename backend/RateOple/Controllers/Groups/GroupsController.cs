@@ -1,8 +1,8 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RateOple.Core.Contracts;
 using RateOple.Core.Groups.DTOs;
+using RateOple.Extensions;
 
 namespace RateOple.Controllers;
 
@@ -20,14 +20,14 @@ public class GroupsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<PagedGroupsDto>> GetGroups([FromQuery] GroupQueryDto query)
     {
-        var result = await _groupService.GetGroupsAsync(query, GetOptionalUserId());
+        var result = await _groupService.GetGroupsAsync(query, User.GetUserIdOrNull());
         return Ok(result);
     }
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<GroupSummaryDto>> GetById(Guid id)
     {
-        var group = await _groupService.GetGroupByIdAsync(id, GetOptionalUserId());
+        var group = await _groupService.GetGroupByIdAsync(id, User.GetUserIdOrNull());
         return group == null ? NotFound() : Ok(group);
     }
 
@@ -35,12 +35,11 @@ public class GroupsController : ControllerBase
     [Authorize]
     public async Task<ActionResult<IReadOnlyList<GroupMemberDto>>> GetMembers(Guid id)
     {
-        var userId = GetRequiredUserId();
-        if (!userId.HasValue) return Unauthorized();
+        var userId = User.GetRequiredUserId();
 
         try
         {
-            var members = await _groupService.GetMembersAsync(id, userId.Value);
+            var members = await _groupService.GetMembersAsync(id, userId);
             return Ok(members);
         }
         catch (KeyNotFoundException)
@@ -57,12 +56,11 @@ public class GroupsController : ControllerBase
     [Authorize]
     public async Task<ActionResult<GroupSummaryDto>> Create([FromBody] CreateGroupDto dto)
     {
-        var userId = GetRequiredUserId();
-        if (!userId.HasValue) return Unauthorized();
+        var userId = User.GetRequiredUserId();
 
         try
         {
-            var created = await _groupService.CreateGroupAsync(userId.Value, dto);
+            var created = await _groupService.CreateGroupAsync(userId, dto);
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
         catch (ArgumentException ex)
@@ -75,12 +73,11 @@ public class GroupsController : ControllerBase
     [Authorize]
     public async Task<IActionResult> Join(Guid id)
     {
-        var userId = GetRequiredUserId();
-        if (!userId.HasValue) return Unauthorized();
+        var userId = User.GetRequiredUserId();
 
         try
         {
-            await _groupService.JoinGroupAsync(userId.Value, id);
+            await _groupService.JoinGroupAsync(userId, id);
             return NoContent();
         }
         catch (KeyNotFoundException)
@@ -97,12 +94,11 @@ public class GroupsController : ControllerBase
     [Authorize]
     public async Task<IActionResult> Leave(Guid id)
     {
-        var userId = GetRequiredUserId();
-        if (!userId.HasValue) return Unauthorized();
+        var userId = User.GetRequiredUserId();
 
         try
         {
-            await _groupService.LeaveGroupAsync(userId.Value, id);
+            await _groupService.LeaveGroupAsync(userId, id);
             return NoContent();
         }
         catch (InvalidOperationException ex)
@@ -115,12 +111,11 @@ public class GroupsController : ControllerBase
     [Authorize]
     public async Task<IActionResult> SetRole(Guid id, Guid userId, [FromBody] SetGroupMemberRoleDto dto)
     {
-        var actorId = GetRequiredUserId();
-        if (!actorId.HasValue) return Unauthorized();
+        var actorId = User.GetRequiredUserId();
 
         try
         {
-            await _groupService.SetMemberRoleAsync(actorId.Value, id, userId, dto);
+            await _groupService.SetMemberRoleAsync(actorId, id, userId, dto);
             return NoContent();
         }
         catch (KeyNotFoundException)
@@ -145,12 +140,11 @@ public class GroupsController : ControllerBase
     [Authorize]
     public async Task<ActionResult<GroupPostDto>> CreatePost(Guid id, [FromBody] CreateGroupPostDto dto)
     {
-        var userId = GetRequiredUserId();
-        if (!userId.HasValue) return Unauthorized();
+        var userId = User.GetRequiredUserId();
 
         try
         {
-            var post = await _groupService.CreatePostAsync(userId.Value, id, dto);
+            var post = await _groupService.CreatePostAsync(userId, id, dto);
             return Ok(post);
         }
         catch (KeyNotFoundException)
@@ -175,7 +169,7 @@ public class GroupsController : ControllerBase
     {
         try
         {
-            var posts = await _groupService.GetPostsAsync(id, page, pageSize, GetOptionalUserId());
+            var posts = await _groupService.GetPostsAsync(id, page, pageSize, User.GetUserIdOrNull());
             return Ok(posts);
         }
         catch (KeyNotFoundException)
@@ -193,7 +187,7 @@ public class GroupsController : ControllerBase
     {
         try
         {
-            var post = await _groupService.GetPostByIdAsync(id, postId, GetOptionalUserId());
+            var post = await _groupService.GetPostByIdAsync(id, postId, User.GetUserIdOrNull());
             return Ok(post);
         }
         catch (KeyNotFoundException)
@@ -210,12 +204,11 @@ public class GroupsController : ControllerBase
     [Authorize]
     public async Task<ActionResult<GroupPostDto>> VotePost(Guid id, Guid postId, [FromBody] GroupPostVoteDto dto)
     {
-        var userId = GetRequiredUserId();
-        if (!userId.HasValue) return Unauthorized();
+        var userId = User.GetRequiredUserId();
 
         try
         {
-            var post = await _groupService.VotePostAsync(userId.Value, id, postId, dto.Value);
+            var post = await _groupService.VotePostAsync(userId, id, postId, dto.Value);
             return Ok(post);
         }
         catch (KeyNotFoundException)
@@ -237,7 +230,7 @@ public class GroupsController : ControllerBase
     {
         try
         {
-            var comments = await _groupService.GetPostCommentsAsync(id, postId, GetOptionalUserId());
+            var comments = await _groupService.GetPostCommentsAsync(id, postId, User.GetUserIdOrNull());
             return Ok(comments);
         }
         catch (KeyNotFoundException)
@@ -257,12 +250,11 @@ public class GroupsController : ControllerBase
         Guid postId,
         [FromBody] CreateGroupPostCommentDto dto)
     {
-        var userId = GetRequiredUserId();
-        if (!userId.HasValue) return Unauthorized();
+        var userId = User.GetRequiredUserId();
 
         try
         {
-            var comment = await _groupService.CreatePostCommentAsync(userId.Value, id, postId, dto);
+            var comment = await _groupService.CreatePostCommentAsync(userId, id, postId, dto);
             return Ok(comment);
         }
         catch (KeyNotFoundException)
@@ -283,12 +275,11 @@ public class GroupsController : ControllerBase
     [Authorize]
     public async Task<IActionResult> DeletePostComment(Guid id, Guid postId, Guid commentId)
     {
-        var userId = GetRequiredUserId();
-        if (!userId.HasValue) return Unauthorized();
+        var userId = User.GetRequiredUserId();
 
         try
         {
-            await _groupService.DeletePostCommentAsync(userId.Value, id, postId, commentId);
+            await _groupService.DeletePostCommentAsync(userId, id, postId, commentId);
             return NoContent();
         }
         catch (KeyNotFoundException)
@@ -305,12 +296,11 @@ public class GroupsController : ControllerBase
     [Authorize]
     public async Task<ActionResult<GroupBanDto>> BanUser(Guid id, [FromBody] CreateGroupBanDto dto)
     {
-        var userId = GetRequiredUserId();
-        if (!userId.HasValue) return Unauthorized();
+        var userId = User.GetRequiredUserId();
 
         try
         {
-            var ban = await _groupService.BanUserAsync(userId.Value, id, dto);
+            var ban = await _groupService.BanUserAsync(userId, id, dto);
             return Ok(ban);
         }
         catch (KeyNotFoundException)
@@ -335,12 +325,11 @@ public class GroupsController : ControllerBase
     [Authorize]
     public async Task<IActionResult> UnbanUser(Guid id, Guid userId)
     {
-        var actorId = GetRequiredUserId();
-        if (!actorId.HasValue) return Unauthorized();
+        var actorId = User.GetRequiredUserId();
 
         try
         {
-            await _groupService.UnbanUserAsync(actorId.Value, id, userId);
+            await _groupService.UnbanUserAsync(actorId, id, userId);
             return NoContent();
         }
         catch (KeyNotFoundException)
@@ -357,12 +346,11 @@ public class GroupsController : ControllerBase
     [Authorize]
     public async Task<ActionResult<IReadOnlyList<GroupStaffMessageDto>>> GetStaffMessages(Guid id)
     {
-        var userId = GetRequiredUserId();
-        if (!userId.HasValue) return Unauthorized();
+        var userId = User.GetRequiredUserId();
 
         try
         {
-            var messages = await _groupService.GetStaffMessagesAsync(id, userId.Value);
+            var messages = await _groupService.GetStaffMessagesAsync(id, userId);
             return Ok(messages);
         }
         catch (KeyNotFoundException)
@@ -381,12 +369,11 @@ public class GroupsController : ControllerBase
         Guid id,
         [FromBody] CreateGroupStaffMessageDto dto)
     {
-        var userId = GetRequiredUserId();
-        if (!userId.HasValue) return Unauthorized();
+        var userId = User.GetRequiredUserId();
 
         try
         {
-            var message = await _groupService.CreateStaffMessageAsync(userId.Value, id, dto);
+            var message = await _groupService.CreateStaffMessageAsync(userId, id, dto);
             return Ok(message);
         }
         catch (KeyNotFoundException)
@@ -407,12 +394,11 @@ public class GroupsController : ControllerBase
     [Authorize]
     public async Task<IActionResult> AddPinnedMedia(Guid id, [FromBody] AddPinnedMediaDto dto)
     {
-        var userId = GetRequiredUserId();
-        if (!userId.HasValue) return Unauthorized();
+        var userId = User.GetRequiredUserId();
 
         try
         {
-            await _groupService.AddPinnedMediaAsync(userId.Value, id, dto.MediaId);
+            await _groupService.AddPinnedMediaAsync(userId, id, dto.MediaId);
             return NoContent();
         }
         catch (KeyNotFoundException)
@@ -439,15 +425,4 @@ public class GroupsController : ControllerBase
         }
     }
 
-    private Guid? GetRequiredUserId()
-    {
-        var claim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        return string.IsNullOrWhiteSpace(claim) ? null : Guid.Parse(claim);
-    }
-
-    private Guid? GetOptionalUserId()
-    {
-        var claim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        return string.IsNullOrWhiteSpace(claim) ? null : Guid.Parse(claim);
-    }
 }

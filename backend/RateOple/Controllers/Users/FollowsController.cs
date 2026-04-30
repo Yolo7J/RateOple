@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RateOple.Core.Contracts;
-using System.Security.Claims;
+using RateOple.Extensions;
 
 namespace RateOple.Controllers
 {
@@ -17,8 +17,7 @@ namespace RateOple.Controllers
             _followService = followService;
         }
 
-        private Guid CurrentUserId =>
-            Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        private Guid CurrentUserId => User.GetRequiredUserId();
 
         [HttpPost("{userId}")]
         public async Task<IActionResult> Follow(Guid userId)
