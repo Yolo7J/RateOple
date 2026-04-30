@@ -287,7 +287,13 @@ public class GroupService : IGroupService
 
         _context.GroupPosts.Add(post);
 
-        var mediaIds = dto.MediaIds.Distinct().ToList();
+        if (dto.MediaIds.Any(id => id == Guid.Empty))
+            throw new ArgumentException("Media ids must not contain empty GUID values.");
+
+        if (dto.MediaIds.Count != dto.MediaIds.Distinct().Count())
+            throw new ArgumentException("Media ids must not contain duplicates.");
+
+        var mediaIds = dto.MediaIds.ToList();
         if (mediaIds.Count > 0)
         {
             var existingMediaIds = await _context.Media
@@ -295,6 +301,9 @@ public class GroupService : IGroupService
                 .Where(m => mediaIds.Contains(m.Id) && !m.IsDeleted)
                 .Select(m => m.Id)
                 .ToListAsync();
+
+            if (existingMediaIds.Count != mediaIds.Count)
+                throw new KeyNotFoundException("One or more media items were not found.");
 
             var links = existingMediaIds.Select(mediaId => new PostMedia
             {
