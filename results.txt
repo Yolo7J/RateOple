@@ -1,259 +1,211 @@
-RateOple backend media/catalog test report
+RateOple backend review/media-status remediation report
 Generated: 2026-04-30
-Scope: MediaService, TvSeriesService, media DTO behavior, media admin API authorization, production fixes, and remaining catalog gaps.
+Scope: ReviewService, UserMediaStatusService, deleted review/status target behavior, review/status API contract smoke tests, and related production fixes.
 
 1. Files changed
 ================
 
-Media test infrastructure:
+Test infrastructure:
 - backend/RateOple.Core.Tests/TestSupport/TestDataFactory.cs
-- backend/RateOple.Core.Tests/TestSupport/TestMedia.cs
-- backend/RateOple.Core.Tests/TestSupport/TestGenres.cs
-- backend/RateOple.Core.Tests/TestSupport/TestTags.cs
-- backend/RateOple.Core.Tests/TestSupport/NoopOpenLibraryService.cs
+- backend/RateOple.Core.Tests/TestSupport/TestReviews.cs
+- backend/RateOple.Core.Tests/TestSupport/TestStatuses.cs
 
-Core media tests:
-- backend/RateOple.Core.Tests/Media/MediaServiceTests.cs
-- backend/RateOple.Core.Tests/Media/TvSeriesServiceTests.cs
+Core service tests:
+- backend/RateOple.Core.Tests/Social/ReviewServiceTests.cs
+- backend/RateOple.Core.Tests/Users/UserMediaStatusServiceTests.cs
 
-API media/admin tests:
-- backend/RateOple.Api.Tests/Media/MediaAdminContractTests.cs
+API contract tests:
+- backend/RateOple.Api.Tests/Social/ReviewContractTests.cs
+- backend/RateOple.Api.Tests/Users/UserMediaStatusContractTests.cs
 
 Production code fixed:
-- backend/RateOple.Core/Media/Services/MediaService.cs
-- backend/RateOple.Core/Media/Services/TvSeriesService.cs
+- backend/RateOple.Core/Social/Services/ReviewService.cs
 
 Report:
 - results.txt
 
-2. Media test infrastructure added
-==================================
+2. Test infrastructure added
+============================
 
-Added reusable media/catalog helpers:
-- CreateMovieAsync
-- CreateBookAsync
-- CreateTvSeriesAsync
-- CreateGenreAsync
-- CreateTagAsync
-- CreateSeasonAsync
-- CreateEpisodeAsync
-- CreateDeletedMediaAsync
-- CreateRatedMediaAsync
+Added review helpers:
+- RatingForMedia
+- RatingForSeason
+- RatingForEpisode
+- CreateRatingAsync
+- CreateSeasonRatingTargetAsync
+- CreateEpisodeRatingTargetAsync
+- Review
+- CreateReviewAsync
+- CreateDeletedMediaWithRatingTargetAsync
+
+Added media-status helpers:
+- MediaStatus
+- CreateMediaStatusAsync
 
 Helper behavior:
-- Creates valid minimal entities.
-- Allows title, type-specific setup, release year, deleted state, genres, tags, and rating aggregate overrides.
-- Keeps arrange sections readable without hidden global state.
-- Adds a NoopOpenLibraryService so MediaService tests never call external APIs.
+- Creates explicit users/media/rating/review/status entities with caller-controlled target state.
+- Supports media, season, and episode rating targets.
+- Supports deleted media target setup for review negative-path coverage.
+- Supports status timestamps for deterministic query ordering tests.
+- Avoids external APIs, local secrets, and hidden global state.
 
-3. MediaService create tests added
+3. ReviewService tests added
+============================
+
+Added backend/RateOple.Core.Tests/Social/ReviewServiceTests.cs.
+
+Covered create behavior:
+- User can create a review for their own media rating.
+- User can create a review for their own season rating.
+- User can create a review for their own episode rating.
+- Creating a review requires an existing rating.
+- Creating a review with another user's rating is rejected.
+- Creating a review for deleted media is rejected.
+- Creating a review for deleted season is rejected.
+- Creating a review for deleted episode is rejected.
+- Creating a duplicate review for the same rating updates the existing review, matching current service behavior.
+- Review content is trimmed on create.
+
+Covered update behavior:
+- Owner can update review content.
+- Owner can update the linked rating value through review update.
+- Non-owner cannot update another user's review.
+- Updating a review whose target was later deleted is rejected.
+- Updating review preserves ownership.
+- Updating review does not corrupt the linked rating.
+
+Covered delete behavior:
+- Owner can delete review while keeping the rating.
+- Owner can delete review and linked rating.
+- Deleting linked rating refreshes media aggregate fields.
+- Non-owner cannot delete another user's review.
+
+Covered query behavior:
+- Media review query returns active-media reviews.
+- Media review query orders by UpdatedAt descending.
+- Media review query includes display name when profile data exists.
+- Media review query returns an empty list for deleted media.
+
+4. UserMediaStatusService tests added
+=====================================
+
+Added backend/RateOple.Core.Tests/Users/UserMediaStatusServiceTests.cs.
+
+Covered set/upsert behavior:
+- User can set status for existing movie media.
+- Setting status creates a new status row when none exists.
+- Setting status updates the existing row for the same user/media.
+- Same user/media remains unique through the composite key and service upsert path.
+- Different users can track the same media independently.
+- Setting status for nonexistent media fails.
+- Setting status for deleted media fails.
+- Invalid status value fails.
+- Book progress stores only page progress.
+- TV series progress stores only season/episode progress.
+- Movie progress ignores book/TV progress fields.
+- Negative progress values are normalized to zero by current service behavior.
+
+Covered query behavior:
+- User can query their own statuses.
+- Query does not leak another user's statuses.
+- Query supports status filtering.
+- Query excludes statuses attached to deleted media.
+- Query orders by UpdatedAt descending.
+- Query pagination is normalized.
+- Query DTO includes media id, media type, title, status, cover URL, progress fields, and updated timestamp.
+
+Current service boundary documented:
+- IUserMediaStatusService currently exposes set and query operations only.
+- There is no clear/remove status operation in the service contract yet, so delete/clear behavior was not added.
+- MediaStatusQueryDto currently has no media-type filter.
+
+5. API contract tests added
+===========================
+
+Added backend/RateOple.Api.Tests/Social/ReviewContractTests.cs.
+
+Covered reviews API:
+- Anonymous user cannot create review.
+- Authenticated user with CSRF can create review for own rating.
+- Missing CSRF fails before review mutation.
+- Non-owner cannot update another user's review.
+- Non-owner cannot delete another user's review.
+- Invalid payload returns validation ProblemDetails.
+- Deleted media target cannot be reviewed.
+- Public GET /api/media/{mediaId}/reviews can be read without auth.
+
+Added backend/RateOple.Api.Tests/Users/UserMediaStatusContractTests.cs.
+
+Covered user media status API:
+- Anonymous user cannot set media status.
+- Authenticated user with CSRF can set media status.
+- Missing CSRF fails before status mutation.
+- Deleted media cannot receive status.
+- Authenticated user can read own statuses.
+- Invalid payload returns validation ProblemDetails.
+
+6. Production bugs found and fixed
 ==================================
 
-Covered:
-- CreateMovieAsync creates base Media plus Movie subtype row.
-- Movie fields are preserved: title, description, cover URL, release year, director, duration, TMDB ID.
-- Movie genres are attached.
-- CreateBookAsync creates base Media plus Book subtype row.
-- Book fields are preserved: author, page count, ISBN, Open Library ID.
-- Book genres are attached.
-- CreateTvSeriesAsync creates base Media plus TvSeries subtype row.
-- TV fields are preserved: release year, TMDB ID, season count, season/episode tree.
-- TV genres are attached.
-- Duplicate genre IDs are rejected.
-- Missing genre IDs are rejected.
-- Invalid create attempts do not leave orphan base media rows.
+ReviewService:
+- CreateReviewAsync allowed reviews for ratings whose media target was soft-deleted. It now rejects deleted media targets with KeyNotFoundException.
+- CreateReviewAsync allowed reviews for ratings whose season target was soft-deleted. It now rejects deleted season targets with KeyNotFoundException.
+- CreateReviewAsync allowed reviews for ratings whose episode target was soft-deleted. It now rejects deleted episode targets with KeyNotFoundException.
+- UpdateReviewAsync allowed editing reviews after their target was deleted. It now rejects updates when the linked media/season/episode target is deleted.
+- GetMediaReviewsAsync leaked reviews for deleted media. It now filters deleted media.
+- GetUserReviewsAsync leaked reviews for deleted media. It now filters deleted media.
+- Season/episode target validation also checks the owning TV series media is not deleted.
 
-4. MediaService update tests added
-==================================
+UserMediaStatusService:
+- No production changes were required.
+- Existing behavior already rejects nonexistent/deleted media on SetStatusAsync.
+- Existing behavior already hides deleted media from GetUserStatusesAsync.
+- Existing composite key and upsert path already prevent duplicate status rows for the same user/media.
 
-Covered:
-- UpdateMovieAsync changes base and movie-specific fields.
-- UpdateBookAsync changes base and book-specific fields.
-- UpdateTvSeriesAsync changes base fields and upserts season/episode metadata.
-- Updating genres replaces existing relationships.
-- Duplicate genre IDs are rejected.
-- Missing genre IDs are rejected.
-- Updating nonexistent media throws KeyNotFoundException.
-- Updating the wrong subtype throws InvalidOperationException.
-- Updating deleted media is rejected through the normal not-found path.
-- Rating aggregate fields are not reset during media metadata update.
-
-5. MediaService delete/soft-delete tests added
-==============================================
-
-Covered:
-- SoftDeleteAsync marks media as deleted instead of hard-deleting.
-- Deleted media is hidden from GetByIdAsync.
-- Deleted media is hidden from GetAllAsync items and total count.
-- Deleting TV series soft-deletes seasons and episodes.
-- Deleting nonexistent media throws KeyNotFoundException.
-- Deleting already-deleted media currently throws KeyNotFoundException.
-- Existing collection/group tests already cover deleted media rejection when adding media to collections/groups.
-- RatingService tests in TvSeriesService coverage verify deleted season/episode targets cannot be rated.
-
-6. Query/search/filter/sort tests added
-=======================================
-
-Covered GetAllAsync behavior:
-- Default query returns only non-deleted media.
-- Search by title works.
-- Search is case-insensitive for current SQLite-backed behavior.
-- Filter by media type works.
-- Filter by genre works.
-- Filter by tag works.
-- Sort by title works.
-- Sort by release year works.
-- Sort by rating remains the default.
-- Pagination is normalized.
-- Page item count and total count are correct.
-- Deleted media is excluded from count and items.
-- Empty result behavior is exercised through deleted-only query paths.
-
-Not implemented in current service:
-- Release year range filters are not part of MediaQueryDto yet.
-- Popularity-specific sorting is not separate from rating sorting yet.
-
-7. Tag/genre tests added
+7. Tests run and results
 ========================
 
-Covered:
-- GetGenresAsync returns genres ordered by name.
-- GetTagsAsync returns tags ordered by name.
-- AddTagsAsync creates tags and links them to media.
-- AddTagsAsync trims names and deduplicates names within a request case-insensitively.
-- Adding existing tags to the same media is idempotent.
-- Adding tags to nonexistent media fails.
-- Adding tags to deleted media fails.
-- RemoveTagAsync removes an existing tag link.
-- Removing a missing tag link is idempotent.
-- Removing tags from deleted media fails.
-
-Current tag behavior documented:
-- Tag usage counts are not implemented in the current entity/model.
-- Cross-request case normalization is only partially enforced by service logic and database collation; a dedicated normalized tag key would be needed for full consistency.
-
-8. Bulk create tests added
-==========================
-
-Covered:
-- Bulk create can create valid movies, books, and TV series in one request.
-- Bulk create with one invalid item returns partial success.
-- Per-item errors include title, type, and reason.
-- Invalid genre references are reported per item.
-- Successful items are still saved.
-- Invalid items do not leave base/subtype mismatches.
-- Bulk create reuses the single-create validation path.
-
-9. TvSeriesService tests added
-==============================
-
-Covered seasons:
-- Add season to TV series succeeds.
-- Add season to nonexistent media fails.
-- Add season to non-TV media fails.
-- Duplicate season number is rejected.
-- Season number must be positive.
-- Duplicate episode numbers in a season payload are rejected.
-- Update season works.
-- Updating nonexistent season fails.
-- Updating a season to an existing season number fails.
-- Delete season soft-deletes season and episodes.
-- Deleted season is hidden from normal season list.
-
-Covered episodes:
-- Add episode to season succeeds.
-- Add episode to nonexistent season fails.
-- Add episode to deleted/missing season fails through the not-found path.
-- Duplicate episode number in the same season is rejected.
-- Same episode number in different seasons is allowed.
-- Episode number must be positive.
-- Update episode works.
-- Update nonexistent/deleted episode fails.
-- Delete episode soft-deletes it.
-- Deleted episode is hidden from normal episode list.
-
-Covered aggregates/ratings:
-- Media rating aggregate survives season/episode metadata update.
-- Deleted season/episode cannot be rated because RatingService rejects deleted targets.
-
-10. API media/admin tests added
-===============================
-
-Added MediaAdminContractTests.
-
-Covered:
-- Anonymous user cannot create media.
-- Normal user cannot create media.
-- Admin can create movie with CSRF.
-- Admin can update movie with CSRF.
-- Admin can delete media with CSRF.
-- Missing CSRF fails before admin mutation.
-- Invalid payload returns validation ProblemDetails.
-- Wrong subtype update returns ProblemDetails.
-- Public GET /api/media does not require auth.
-- Deleted media does not appear in public media query.
-
-11. Production bugs found and fixed
-===================================
-
-MediaService:
-- Missing genre IDs were silently ignored on create/update. They now throw KeyNotFoundException.
-- Duplicate genre IDs could create nondeterministic relationship behavior. They now throw ArgumentException.
-- Non-positive genre IDs now throw ArgumentException.
-- TV-series episode upserts through MediaService used navigation collection adds that could surface EF concurrency/provider issues in tests. New episodes are now added through DbSet with explicit foreign keys.
-- TV-series upsert payloads now reject non-positive and duplicate season/episode numbers.
-
-TvSeriesService:
-- Season number validation was mostly API-only. Service now rejects non-positive season numbers.
-- Episode number validation was mostly API-only. Service now rejects non-positive episode numbers on add/update/delete paths.
-- Duplicate episode numbers in a season payload are rejected before persistence.
-- Adding an episode with a number already used by a soft-deleted episode now fails deterministically instead of depending on the database unique constraint.
-- New episodes are added through DbSet with explicit foreign keys to avoid navigation tracking/provider-specific concurrency failures.
-
-Test namespace issue fixed:
-- API media tests use namespace RateOple.Api.Tests.MediaTests to avoid shadowing the Media entity type used by existing tests.
-
-12. Tests run and results
-=========================
-
 Commands run during the task:
+- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj
+- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter ReviewServiceTests
+- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter UserMediaStatusServiceTests
+- dotnet test backend/RateOple.Api.Tests/RateOple.Api.Tests.csproj
 - dotnet test backend/RateOple.sln
-- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter UpdateTvSeriesAsync_ChangesBaseFieldsAndUpsertsSeasonEpisodes
 
-Latest full suite result:
+Latest verified full suite result before report update:
 - dotnet test backend/RateOple.sln passed.
-- RateOple.Core.Tests: 86 passed, 0 failed, 0 skipped.
-- RateOple.Api.Tests: 22 passed, 0 failed, 0 skipped.
-- Total: 108 passed, 0 failed, 0 skipped.
+- RateOple.Core.Tests: 117 passed, 0 failed, 0 skipped.
+- RateOple.Api.Tests: 35 passed, 0 failed, 0 skipped.
+- Total: 152 passed, 0 failed, 0 skipped.
 
-Commits created:
-- 0aeeb4e Add media test support helpers
-- b812acf Add media service behavior tests
-- ac4a81a Add TV series service tests
-- 342d46a Add media admin API contract tests
+8. Commits created
+==================
 
-13. Remaining media/catalog gaps
-================================
+- a881208 Add review and media status test helpers
+- fbaea4f Add review service tests and fix deleted target handling
+- 04d0e69 Add user media status service tests
+- e9e7adb Add review and media status API contract tests
+
+9. Remaining review/status/social gaps
+======================================
 
 Still worth covering later:
-- ReviewService media/season/episode review behavior and deleted target behavior.
-- UserMediaStatusService behavior for deleted media.
-- DiscoveryService recommendation/trending/popular/similar behavior.
-- TmdbService, OpenLibraryService, and TmdbImportService with mocked HTTP clients.
-- MediaController smoke tests for books, TV series, tags, bulk create, seasons, and episodes.
-- More branch coverage around Open Library proxy endpoints.
-- Explicit year-range filtering if MediaQueryDto gains that feature.
-- Dedicated popularity sort if product requirements separate it from rating sort.
-- Stronger tag normalization across requests, likely by adding a normalized tag key.
-- Restore behavior is not implemented; deleted media currently cannot be updated or retrieved through normal service paths.
+- Review comments, if product requirements expect review comment workflows.
+- User review query API smoke tests for /api/users/me/reviews.
+- Rating API smoke tests for season and episode targets.
+- Review delete behavior when deleteRating=true and the target was deleted after review creation.
+- Review query pagination if ReviewService grows paged review endpoints.
+- Media-status clear/remove endpoint if product requirements need it.
+- Media-status media-type filtering if MediaStatusQueryDto gains that feature.
+- Stronger status progress rules if the product needs page/episode limits or completed-date consistency.
+- DiscoveryService recommendation/trending behavior that depends on ratings/reviews/statuses.
 
-14. Recommended next task
+10. Recommended next task
 =========================
 
-Add ReviewService and UserMediaStatusService tests next.
+Add focused tests for DiscoveryService and interaction-driven recommendation/trending behavior.
 
 Reason:
-- They are the next user-facing media/catalog behaviors after create/query/TV management.
-- They depend on media, season, and episode target integrity.
-- They should explicitly protect deleted media/season/episode paths.
-- They will increase confidence that catalog state changes cannot leak into social/user workflows incorrectly.
+- Ratings, reviews, media status, and interactions are now protected at their main service boundaries.
+- Discovery/recommendation logic is the next user-facing layer that consumes those signals.
+- It should explicitly exclude deleted media and produce deterministic results under sparse test data.
