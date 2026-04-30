@@ -46,6 +46,7 @@ public class TvSeriesService : ITvSeriesService
     public async Task<SeasonDetailDto> AddSeasonAsync(Guid mediaId, UpsertSeasonDto dto)
     {
         var tvSeries = await GetTvSeriesAsync(mediaId);
+        ValidateSeasonDto(dto);
 
         // Check for duplicate season number (including soft-deleted — reactivate instead)
         var existing = await _db.Seasons
@@ -97,6 +98,8 @@ public class TvSeriesService : ITvSeriesService
     public async Task<SeasonDetailDto> UpdateSeasonAsync(Guid mediaId, int seasonNumber, UpsertSeasonDto dto)
     {
         await GetTvSeriesAsync(mediaId); // validates series exists
+        ValidateSeasonNumber(seasonNumber);
+        ValidateSeasonDto(dto);
 
         var season = await _db.Seasons
             .Include(s => s.Episodes)
@@ -135,7 +138,7 @@ public class TvSeriesService : ITvSeriesService
             else
             {
                 // New episode
-                season.Episodes.Add(new Episode
+                _db.Episodes.Add(new Episode
                 {
                     Id = Guid.NewGuid(),
                     SeasonId = season.Id,
@@ -153,6 +156,7 @@ public class TvSeriesService : ITvSeriesService
     public async Task DeleteSeasonAsync(Guid mediaId, int seasonNumber)
     {
         await GetTvSeriesAsync(mediaId);
+        ValidateSeasonNumber(seasonNumber);
 
         var season = await _db.Seasons
             .Include(s => s.Episodes)
@@ -178,9 +182,10 @@ public class TvSeriesService : ITvSeriesService
     public async Task<EpisodeDetailDto> AddEpisodeAsync(Guid mediaId, int seasonNumber, UpsertEpisodeDto dto)
     {
         var season = await GetSeasonAsync(mediaId, seasonNumber);
+        ValidateEpisodeDto(dto);
 
         var exists = season.Episodes
-            .Any(e => e.EpisodeNumber == dto.EpisodeNumber && !e.IsDeleted);
+            .Any(e => e.EpisodeNumber == dto.EpisodeNumber);
         if (exists)
             throw new InvalidOperationException($"Episode {dto.EpisodeNumber} already exists in season {seasonNumber}.");
 
@@ -193,7 +198,7 @@ public class TvSeriesService : ITvSeriesService
             Duration = dto.Duration,
         };
 
-        season.Episodes.Add(episode);
+        _db.Episodes.Add(episode);
         await _db.SaveChangesAsync();
 
         return MapEpisode(episode);
@@ -203,6 +208,9 @@ public class TvSeriesService : ITvSeriesService
         Guid mediaId, int seasonNumber, int episodeNumber, UpsertEpisodeDto dto)
     {
         var season = await GetSeasonAsync(mediaId, seasonNumber);
+        ValidateEpisodeNumber(episodeNumber);
+        if (dto.EpisodeNumber > 0 && dto.EpisodeNumber != episodeNumber)
+            throw new InvalidOperationException("Episode number cannot be changed through this endpoint.");
 
         var episode = season.Episodes
             .FirstOrDefault(e => e.EpisodeNumber == episodeNumber && !e.IsDeleted)
@@ -218,6 +226,7 @@ public class TvSeriesService : ITvSeriesService
     public async Task DeleteEpisodeAsync(Guid mediaId, int seasonNumber, int episodeNumber)
     {
         var season = await GetSeasonAsync(mediaId, seasonNumber);
+        ValidateEpisodeNumber(episodeNumber);
 
         var episode = season.Episodes
             .FirstOrDefault(e => e.EpisodeNumber == episodeNumber && !e.IsDeleted)
@@ -249,6 +258,7 @@ public class TvSeriesService : ITvSeriesService
     private async Task<Season> GetSeasonAsync(Guid mediaId, int seasonNumber)
     {
         await GetTvSeriesAsync(mediaId);
+        ValidateSeasonNumber(seasonNumber);
 
         return await _db.Seasons
             .Include(s => s.Episodes)
@@ -281,4 +291,31 @@ public class TvSeriesService : ITvSeriesService
         Title = e.Title,
         Duration = e.Duration,
     };
+
+    private static void ValidateSeasonDto(UpsertSeasonDto dto)
+    {
+        ValidateSeasonNumber(dto.SeasonNumber);
+        var episodeNumbers = dto.Episodes.Select(e => e.EpisodeNumber).ToList();
+        if (episodeNumbers.Any(n => n <= 0))
+            throw new ArgumentException("Episode numbers must be positive.");
+        if (episodeNumbers.Distinct().Count() != episodeNumbers.Count)
+            throw new ArgumentException("Episode numbers must not contain duplicates within a season.");
+    }
+
+    private static void ValidateEpisodeDto(UpsertEpisodeDto dto)
+    {
+        ValidateEpisodeNumber(dto.EpisodeNumber);
+    }
+
+    private static void ValidateSeasonNumber(int seasonNumber)
+    {
+        if (seasonNumber <= 0)
+            throw new ArgumentException("Season number must be positive.");
+    }
+
+    private static void ValidateEpisodeNumber(int episodeNumber)
+    {
+        if (episodeNumber <= 0)
+            throw new ArgumentException("Episode number must be positive.");
+    }
 }
