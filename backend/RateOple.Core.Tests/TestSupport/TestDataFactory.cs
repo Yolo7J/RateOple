@@ -17,6 +17,8 @@ public sealed class TestDataFactory
         Groups = new TestGroups(context);
         Collections = new TestCollections(context);
         Moderation = new TestModeration(context);
+        Reviews = new TestReviews(context);
+        Statuses = new TestStatuses(context);
     }
 
     public TestUsers Users { get; }
@@ -26,6 +28,8 @@ public sealed class TestDataFactory
     public TestGroups Groups { get; }
     public TestCollections Collections { get; }
     public TestModeration Moderation { get; }
+    public TestReviews Reviews { get; }
+    public TestStatuses Statuses { get; }
 
     public async Task SaveAsync()
     {
