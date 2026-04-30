@@ -11,6 +11,8 @@ public sealed class TestDataFactory
     {
         _context = context;
         Users = new TestUsers(context);
+        Genres = new TestGenres(context);
+        Tags = new TestTags(context);
         Media = new TestMedia(context);
         Groups = new TestGroups(context);
         Collections = new TestCollections(context);
@@ -18,6 +20,8 @@ public sealed class TestDataFactory
     }
 
     public TestUsers Users { get; }
+    public TestGenres Genres { get; }
+    public TestTags Tags { get; }
     public TestMedia Media { get; }
     public TestGroups Groups { get; }
     public TestCollections Collections { get; }
