@@ -32,6 +32,10 @@ public class ModerationService : IModerationService
     {
         if (string.IsNullOrWhiteSpace(dto.Reason))
             throw new ArgumentException("Reason is required.");
+        if (dto.TargetId == Guid.Empty)
+            throw new ArgumentException("Report target is required.");
+        if (!Enum.IsDefined(dto.TargetType))
+            throw new ArgumentException("Report target type is invalid.");
 
         var targetExists = await CheckTargetExistsAsync(dto.TargetType, dto.TargetId);
         if (!targetExists)
@@ -131,6 +135,8 @@ public class ModerationService : IModerationService
         var userExists = await _context.Users.AnyAsync(u => u.Id == targetUserId);
         if (!userExists)
             throw new KeyNotFoundException("User not found.");
+
+        await EnsureScopeExistsAsync(dto.ScopeType, normalizedScopeId);
 
         var assignment = await _context.ModeratorAssignments
             .FirstOrDefaultAsync(x =>
@@ -510,6 +516,21 @@ public class ModerationService : IModerationService
         }
 
         return scopeId ?? throw new ArgumentException("ScopeId is required for non-global assignments.");
+    }
+
+    private async Task EnsureScopeExistsAsync(ModeratorScopeType scopeType, Guid scopeId)
+    {
+        var exists = scopeType switch
+        {
+            ModeratorScopeType.Global => true,
+            ModeratorScopeType.Group => await _context.Groups.AnyAsync(g => g.Id == scopeId),
+            ModeratorScopeType.Collection => await _context.Collections.AnyAsync(c => c.Id == scopeId),
+            ModeratorScopeType.Media => await _context.Media.AnyAsync(m => m.Id == scopeId && !m.IsDeleted),
+            _ => throw new ArgumentException("Moderator scope type is invalid.")
+        };
+
+        if (!exists)
+            throw new KeyNotFoundException("Moderator assignment scope not found.");
     }
 
     private async Task<Guid> ResolveUserIdAsync(Guid userId, string? userIdentifier)
