@@ -80,6 +80,14 @@ public sealed class TestDiscovery
         DateTime? createdAt = null) =>
         _interactions.CreateInteractionAsync(user, media, interactionType, points, createdAt);
 
+    public Task<MediaInteraction> CreateMediaInteractionAsync(
+        User user,
+        MediaEntity media,
+        InteractionType interactionType = InteractionType.MediaOpened,
+        int points = 1,
+        DateTime? createdAt = null) =>
+        _interactions.CreateMediaInteractionAsync(user, media, interactionType, points, createdAt);
+
     public async Task<UserGenreScore> CreateUserGenreScoreAsync(
         User user,
         Genre genre,
@@ -98,6 +106,62 @@ public sealed class TestDiscovery
         await _context.SaveChangesAsync();
         return userGenreScore;
     }
+
+    public async Task<(MediaEntity Media, Rating Rating)> CreateRatedMediaWithGenresAsync(
+        User user,
+        IEnumerable<Genre> genres,
+        string title = "Rated Genre Movie",
+        int ratingValue = 8,
+        MediaType type = MediaType.Movie,
+        bool isDeleted = false)
+    {
+        var media = CreateByType(title, type, genres: genres, isDeleted: isDeleted);
+        var rating = _reviews.RatingForMedia(user, media, ratingValue);
+        await _context.SaveChangesAsync();
+        return (media, rating);
+    }
+
+    public async Task<(MediaEntity Series, Season Season, Rating Rating)> CreateRatedSeasonWithSeriesGenresAsync(
+        User user,
+        IEnumerable<Genre> genres,
+        string title = "Rated Season Series",
+        int ratingValue = 8,
+        bool isSeriesDeleted = false,
+        bool isSeasonDeleted = false)
+    {
+        var series = _media.TvSeries(title, isDeleted: isSeriesDeleted, genres: genres);
+        await _context.SaveChangesAsync();
+        var season = await _media.CreateSeasonAsync(series, isDeleted: isSeasonDeleted);
+        var rating = _reviews.RatingForSeason(user, season, ratingValue);
+        await _context.SaveChangesAsync();
+        return (series, season, rating);
+    }
+
+    public async Task<(MediaEntity Series, Season Season, Episode Episode, Rating Rating)> CreateRatedEpisodeWithSeriesGenresAsync(
+        User user,
+        IEnumerable<Genre> genres,
+        string title = "Rated Episode Series",
+        int ratingValue = 8,
+        bool isSeriesDeleted = false,
+        bool isSeasonDeleted = false,
+        bool isEpisodeDeleted = false)
+    {
+        var series = _media.TvSeries(title, isDeleted: isSeriesDeleted, genres: genres);
+        await _context.SaveChangesAsync();
+        var season = await _media.CreateSeasonAsync(series, isDeleted: isSeasonDeleted);
+        var episode = await _media.CreateEpisodeAsync(season, isDeleted: isEpisodeDeleted);
+        var rating = _reviews.RatingForEpisode(user, episode, ratingValue);
+        await _context.SaveChangesAsync();
+        return (series, season, episode, rating);
+    }
+
+    public Task<(MediaEntity Media, Rating Rating)> CreateDeletedRatedMediaWithGenresAsync(
+        User user,
+        IEnumerable<Genre> genres,
+        string title = "Deleted Rated Genre Movie",
+        int ratingValue = 8,
+        MediaType type = MediaType.Movie) =>
+        CreateRatedMediaWithGenresAsync(user, genres, title, ratingValue, type, isDeleted: true);
 
     public async Task<MediaEntity> CreateRecentlyReviewedMediaAsync(
         User user,
