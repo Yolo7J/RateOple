@@ -12,14 +12,18 @@ namespace RateOple.Core.Users.Services;
 public class UserMediaStatusService : IUserMediaStatusService
 {
     private readonly ApplicationDbContext _context;
+    private readonly IInteractionService _interactionService;
 
-    public UserMediaStatusService(ApplicationDbContext context)
+    public UserMediaStatusService(ApplicationDbContext context, IInteractionService interactionService)
     {
         _context = context;
+        _interactionService = interactionService;
     }
 
     public async Task<UserMediaStatusDto> SetStatusAsync(Guid userId, Guid mediaId, SetUserMediaStatusDto dto)
     {
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+
         var media = await _context.Media
             .AsNoTracking()
             .FirstOrDefaultAsync(m => m.Id == mediaId && !m.IsDeleted)
@@ -63,6 +67,8 @@ public class UserMediaStatusService : IUserMediaStatusService
         }
 
         await _context.SaveChangesAsync();
+        await _interactionService.TrackMediaStatusChangedAsync(userId, mediaId);
+        await transaction.CommitAsync();
         return Map(status, media);
     }
 

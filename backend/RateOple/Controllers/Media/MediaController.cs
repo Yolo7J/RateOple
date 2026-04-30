@@ -234,7 +234,6 @@ public class MediaController : ControllerBase
     {
         var userId = User.GetRequiredUserId();
         var result = await _userMediaStatusService.SetStatusAsync(userId, id, dto);
-        await _interactionService.TrackMediaStatusChangedAsync(userId, id);
         return Ok(result);
     }
 

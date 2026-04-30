@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using RateOple.Constants.Enums;
+using RateOple.Core.Contracts;
+using RateOple.Core.Social.Services;
 using RateOple.Core.Tests.TestSupport;
 using RateOple.Core.Users.DTOs;
 using RateOple.Core.Users.Services;
@@ -33,6 +35,33 @@ public class UserMediaStatusServiceTests
         Assert.Null(status.ProgressSeason);
         Assert.Null(status.ProgressEpisode);
         Assert.Single(await db.Context.UserMediaStatuses.ToListAsync());
+    }
+
+    [Fact]
+    public async Task SetStatusAsync_CreatesStatusChangeInteractionAndRecalculatesTasteThroughInteraction()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var user = data.Users.Add(data.Users.Normal("status-signal-user"));
+        var movie = data.Media.Movie("Status Signal Movie");
+        await data.SaveAsync();
+        var taste = new SpyUserTasteService();
+        var service = CreateService(db, new InteractionService(db.Context, taste));
+        var before = DateTime.UtcNow;
+
+        await service.SetStatusAsync(user.Id, movie.Id, new SetUserMediaStatusDto
+        {
+            Status = "On it"
+        });
+
+        var after = DateTime.UtcNow;
+        var interaction = await db.Context.MediaInteractions.SingleAsync();
+        Assert.Equal(user.Id, interaction.UserId);
+        Assert.Equal(movie.Id, interaction.MediaId);
+        Assert.Equal(InteractionType.MediaStatusChanged, interaction.InteractionType);
+        Assert.Equal(4, interaction.Points);
+        Assert.InRange(interaction.CreatedAt, before.AddSeconds(-1), after.AddSeconds(1));
+        Assert.Equal((user.Id, movie.Id), Assert.Single(taste.RecalculateMediaContextCalls));
     }
 
     [Fact]
@@ -106,6 +135,89 @@ public class UserMediaStatusServiceTests
     }
 
     [Fact]
+    public async Task SetStatusAsync_UpdatingExistingStatusCreatesOneStatusChangeInteraction()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var user = data.Users.Add(data.Users.Normal("status-signal-updater"));
+        var book = data.Media.Book("Tracked Signal Book");
+        await data.Statuses.CreateMediaStatusAsync(user, book, MediaProgressStatus.Plan, progressPages: 10);
+        var interaction = new SpyInteractionService();
+        var service = CreateService(db, interaction);
+
+        await service.SetStatusAsync(user.Id, book.Id, new SetUserMediaStatusDto
+        {
+            Status = "Done",
+            ProgressPages = 321
+        });
+
+        Assert.Equal((user.Id, book.Id), Assert.Single(interaction.MediaStatusChangedCalls));
+        Assert.Single(await db.Context.UserMediaStatuses.ToListAsync());
+    }
+
+    [Fact]
+    public async Task SetStatusAsync_RepeatedSameStatusRecordsEachExplicitStatusSet()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var user = data.Users.Add(data.Users.Normal("status-repeat-user"));
+        var movie = data.Media.Movie("Repeated Status Movie");
+        await data.SaveAsync();
+        var interaction = new SpyInteractionService();
+        var service = CreateService(db, interaction);
+
+        await service.SetStatusAsync(user.Id, movie.Id, new SetUserMediaStatusDto { Status = "Plan" });
+        await service.SetStatusAsync(user.Id, movie.Id, new SetUserMediaStatusDto { Status = "Plan" });
+
+        Assert.Equal(2, interaction.MediaStatusChangedCalls.Count);
+        Assert.All(interaction.MediaStatusChangedCalls, call => Assert.Equal((user.Id, movie.Id), call));
+        Assert.Single(await db.Context.UserMediaStatuses.ToListAsync());
+    }
+
+    [Theory]
+    [InlineData("Plan", MediaProgressStatus.Plan)]
+    [InlineData("On it", MediaProgressStatus.OnIt)]
+    [InlineData("Done", MediaProgressStatus.Done)]
+    [InlineData("Dropped", MediaProgressStatus.Dropped)]
+    public async Task SetStatusAsync_DifferentStatusValuesCreateConsistentStatusSignals(
+        string statusValue,
+        MediaProgressStatus expectedStatus)
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var user = data.Users.Add(data.Users.Normal($"status-value-{expectedStatus}"));
+        var movie = data.Media.Movie($"Status Value {expectedStatus}");
+        await data.SaveAsync();
+        var interaction = new SpyInteractionService();
+        var service = CreateService(db, interaction);
+
+        await service.SetStatusAsync(user.Id, movie.Id, new SetUserMediaStatusDto { Status = statusValue });
+
+        Assert.Equal((user.Id, movie.Id), Assert.Single(interaction.MediaStatusChangedCalls));
+        Assert.Equal(expectedStatus, (await db.Context.UserMediaStatuses.SingleAsync()).Status);
+    }
+
+    [Fact]
+    public async Task SetStatusAsync_MoviesBooksAndTvSeriesAllCreateStatusSignals()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var user = data.Users.Add(data.Users.Normal("all-status-media-user"));
+        var movie = data.Media.Movie("Status Movie Signal");
+        var book = data.Media.Book("Status Book Signal");
+        var series = data.Media.TvSeries("Status Series Signal");
+        await data.SaveAsync();
+        var interaction = new SpyInteractionService();
+        var service = CreateService(db, interaction);
+
+        await service.SetStatusAsync(user.Id, movie.Id, new SetUserMediaStatusDto { Status = "Plan" });
+        await service.SetStatusAsync(user.Id, book.Id, new SetUserMediaStatusDto { Status = "Plan" });
+        await service.SetStatusAsync(user.Id, series.Id, new SetUserMediaStatusDto { Status = "Plan" });
+
+        Assert.Equal(new[] { movie.Id, book.Id, series.Id }, interaction.MediaStatusChangedCalls.Select(x => x.MediaId));
+    }
+
+    [Fact]
     public async Task SetStatusAsync_DifferentUsersCanTrackSameMediaIndependently()
     {
         await using var db = await SqliteTestDb.CreateAsync();
@@ -141,6 +253,25 @@ public class UserMediaStatusServiceTests
     }
 
     [Fact]
+    public async Task SetStatusAsync_NonexistentMediaDoesNotCreateStatusOrInteraction()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var user = data.Users.Add(data.Users.Normal("missing-status-signal-user"));
+        await data.SaveAsync();
+        var interaction = new SpyInteractionService();
+        var service = CreateService(db, interaction);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => service.SetStatusAsync(user.Id, Guid.NewGuid(), new SetUserMediaStatusDto
+        {
+            Status = "Plan"
+        }));
+
+        Assert.Empty(interaction.MediaStatusChangedCalls);
+        Assert.Empty(await db.Context.UserMediaStatuses.ToListAsync());
+    }
+
+    [Fact]
     public async Task SetStatusAsync_RejectsDeletedMedia()
     {
         await using var db = await SqliteTestDb.CreateAsync();
@@ -157,6 +288,26 @@ public class UserMediaStatusServiceTests
     }
 
     [Fact]
+    public async Task SetStatusAsync_DeletedMediaDoesNotCreateStatusOrInteraction()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var user = data.Users.Add(data.Users.Normal("deleted-status-signal-user"));
+        var deleted = data.Media.Movie("Deleted Status Signal Movie", isDeleted: true);
+        await data.SaveAsync();
+        var interaction = new SpyInteractionService();
+        var service = CreateService(db, interaction);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => service.SetStatusAsync(user.Id, deleted.Id, new SetUserMediaStatusDto
+        {
+            Status = "Plan"
+        }));
+
+        Assert.Empty(interaction.MediaStatusChangedCalls);
+        Assert.Empty(await db.Context.UserMediaStatuses.ToListAsync());
+    }
+
+    [Fact]
     public async Task SetStatusAsync_RejectsInvalidStatusValue()
     {
         await using var db = await SqliteTestDb.CreateAsync();
@@ -170,6 +321,26 @@ public class UserMediaStatusServiceTests
         {
             Status = "finished"
         }));
+    }
+
+    [Fact]
+    public async Task SetStatusAsync_InvalidStatusDoesNotMutateExistingStatusOrCreateInteraction()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var user = data.Users.Add(data.Users.Normal("invalid-status-signal-user"));
+        var movie = data.Media.Movie("Invalid Status Signal Movie");
+        await data.Statuses.CreateMediaStatusAsync(user, movie, MediaProgressStatus.Plan);
+        var interaction = new SpyInteractionService();
+        var service = CreateService(db, interaction);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => service.SetStatusAsync(user.Id, movie.Id, new SetUserMediaStatusDto
+        {
+            Status = "finished"
+        }));
+
+        Assert.Empty(interaction.MediaStatusChangedCalls);
+        Assert.Equal(MediaProgressStatus.Plan, (await db.Context.UserMediaStatuses.SingleAsync()).Status);
     }
 
     [Fact]
@@ -292,5 +463,9 @@ public class UserMediaStatusServiceTests
         Assert.Single(statuses);
     }
 
-    private static UserMediaStatusService CreateService(SqliteTestDb db) => new(db.Context);
+    private static UserMediaStatusService CreateService(
+        SqliteTestDb db,
+        IInteractionService? interactionService = null) => new(
+            db.Context,
+            interactionService ?? new NoopInteractionService());
 }
