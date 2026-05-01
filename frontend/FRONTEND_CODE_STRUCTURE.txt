@@ -10,10 +10,9 @@ public/vite.svg - Static logo asset used in starter/branding UI.
 src/ - Frontend application source code.
 src/App.jsx - Main app shell component composition.
 src/app/ - App-level routing and composition setup.
-src/app/AppRouter.jsx - Router wrapper that renders configured routes.
+src/app/AppRouter.jsx - Router wrapper that renders the active router component.
 src/app/providers.jsx - Global provider composition (query/auth/theme/language).
-src/app/router.jsx - Router instance creation and configuration.
-src/app/routes.jsx - Central route-to-page mapping configuration.
+src/app/router.jsx - Active route definition and router component for the frontend.
 src/assets/ - Bundled static assets imported by the app.
 src/assets/react.svg - Static logo asset used in starter/branding UI.
 src/context/ - React context providers for global state.
@@ -259,6 +258,7 @@ src/shared/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
 src/shared/api/ - Shared API clients and interceptors.
 src/shared/api/apiClient.js - Base axios client.
 src/shared/api/authInterceptor.js - Auth + CSRF axios interceptor.
+src/shared/api/lookupApi.js - Shared lookup request helper used by picker workflows.
 src/shared/api/queryClient.js - React Query client setup.
 src/shared/components/ - Global shared components.
 src/shared/components/Footer/ - Footer component folder.
@@ -274,6 +274,9 @@ src/shared/constants/mediaTypes.js - Media type constants.
 src/shared/constants/statusTypes.js - Media status constants.
 src/shared/ui/ - Reusable UI primitives.
 src/shared/ui/Container.jsx - Container layout primitive.
+src/shared/ui/EntityPicker/ - Shared entity picker primitives for searchable relation selection.
+src/shared/ui/EntityPicker/EntityPicker.jsx - Single-entity picker used across admin/group/moderation flows.
+src/shared/ui/EntityPicker/MultiEntityPicker.jsx - Multi-select picker for attaching multiple related entities.
 src/shared/ui/Flex.jsx - Flexbox layout primitive.
 src/shared/ui/Grid.jsx - Grid layout primitive.
 src/shared/ui/Stack.jsx - Stack layout primitive.
@@ -291,4 +294,22 @@ src/shared/utils/formatDate.js - Date formatting helper.
 src/shared/utils/formatRating.js - Rating formatting helper.
 src/styles/ - Global styles module placeholder folder.
 src/styles/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
+tests/e2e/ - Playwright smoke tests for routing, search, and picker workflows.
 vite.config.js - Vite configuration.
+
+Architecture audit notes - 2026-04-26
+-------------------------------------
+
+Current frontend structure is feature-based React + Vite:
+- src/app owns provider composition and the active router in src/app/router.jsx, rendered by src/app/AppRouter.jsx.
+- src/context owns global auth/theme/language/media-cart state.
+- src/features owns page/components/query/service modules by domain.
+- src/shared owns API clients, layout primitives, shared UI pieces, signalR, constants, and utility helpers.
+
+Important quality issues to address:
+- The global SearchBar currently logs to console instead of navigating/searching. Make it route to /media?search=...
+- Several screens ask users/admins for raw IDs: GroupDetailPage pinned media, GroupDetailPage post media IDs, ModerationPage scope ID, ModerationReportRow group/user ban controls. Replace with reusable searchable entity pickers.
+- UI is visually inconsistent because most pages define local Tailwind style dictionaries. Introduce shared Button, Field, Select, Dialog, DataTable, Badge, EmptyState, Tabs, and EntityPicker primitives.
+- Admin/moderation screens need dense operational workflows rather than decorative card grids: search, pagination, filters, target previews, accessible confirmations, and summary counts.
+- GroupsPage has client-side media/tag filters that inspect group text, not real metadata. Remove them or add backend-supported group tags/categories.
+- Playwright smoke tests live under tests/e2e and currently cover route/search/picker flows with mocked network data rather than a seeded full-stack environment.
