@@ -39,25 +39,11 @@ const styles = {
 function GroupsPage() {
   const { user } = useAuth();
   const [search, setSearch] = useState('');
-  const [sortMode, setSortMode] = useState('members');
-  const [mediaTypeFilter, setMediaTypeFilter] = useState('all');
-  const [tagFilter, setTagFilter] = useState('all');
+  const [visibility, setVisibility] = useState('');
 
-  const { data, loading, error } = useGroupsQuery({ search, page: 1, pageSize: 30 });
+  const { data, loading, error } = useGroupsQuery({ search, visibility, page: 1, pageSize: 30 });
 
   const items = Array.isArray(data?.items) ? data.items : [];
-  const filtered = items.filter((group) => {
-    const haystack = `${group.name} ${group.description ?? ''}`.toLowerCase();
-    if (mediaTypeFilter !== 'all' && !haystack.includes(mediaTypeFilter)) return false;
-    if (tagFilter !== 'all' && !haystack.includes(tagFilter)) return false;
-    return true;
-  });
-
-  const sortedItems = [...filtered].sort((a, b) => {
-    if (sortMode === 'posts') return (b.postsCount ?? 0) - (a.postsCount ?? 0);
-    if (sortMode === 'newest') return new Date(b.createdAt ?? 0) - new Date(a.createdAt ?? 0);
-    return (b.membersCount ?? 0) - (a.membersCount ?? 0);
-  });
 
   return (
     <PageLayout>
@@ -81,46 +67,29 @@ function GroupsPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <select
                   className={styles.select}
-                  value={sortMode}
-                  onChange={(e) => setSortMode(e.target.value)}
+                  value={visibility}
+                  onChange={(e) => setVisibility(e.target.value)}
+                  aria-label="Group visibility"
                 >
-                  <option value="members">Most members</option>
-                  <option value="posts">Most posts</option>
-                  <option value="newest">Newest</option>
+                  <option value="">All visible groups</option>
+                  <option value="Public">Public groups</option>
+                  <option value="Private">Private groups</option>
                 </select>
-                <select
-                  className={styles.select}
-                  value={mediaTypeFilter}
-                  onChange={(e) => setMediaTypeFilter(e.target.value)}
-                >
-                  <option value="all">All media types</option>
-                  <option value="movie">Movies</option>
-                  <option value="book">Books</option>
-                  <option value="tv">TV Shows</option>
-                </select>
-                <select
-                  className={styles.select}
-                  value={tagFilter}
-                  onChange={(e) => setTagFilter(e.target.value)}
-                >
-                  <option value="all">All tags</option>
-                  <option value="action">Action</option>
-                  <option value="adventure">Adventure</option>
-                  <option value="drama">Drama</option>
-                  <option value="fantasy">Fantasy</option>
-                </select>
+                <p className={`${styles.muted} text-sm`}>
+                  More discovery filters will be added when groups support tags or categories.
+                </p>
               </div>
               {loading ? <p className={styles.muted}>Loading groups...</p> : null}
               {error ? <p className={styles.error}>Failed to load groups.</p> : null}
               {!loading && !error ? (
                 <Grid variant="cards" className={styles.grid}>
-                  {sortedItems.map((group) => (
+                  {items.map((group) => (
                     <GroupCard key={group.id} group={group} />
                   ))}
-                  {sortedItems.length === 0 ? <p className={styles.muted}>No groups found.</p> : null}
+                  {items.length === 0 ? <p className={styles.muted}>No groups found.</p> : null}
                 </Grid>
               ) : null}
             </Stack>
