@@ -619,7 +619,7 @@ const Header = () => {
             </button>
           </div>
           <div className="px-5 py-5">
-            <SearchBar />
+            <SearchBar onSearchComplete={() => setIsMobileSearchOpen(false)} />
           </div>
         </div>
       </div>
