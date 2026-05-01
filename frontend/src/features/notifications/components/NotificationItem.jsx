@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import { useState } from 'react';
 
 const styles = {
   item: [
@@ -26,9 +27,10 @@ const NOTIFICATION_LABELS = {
 };
 
 function NotificationItem({ notification, onMarkRead, disabled = false }) {
+  const [now] = useState(() => Date.now());
   const label = NOTIFICATION_LABELS[notification.type] || `Notification type ${notification.type}`;
   const createdAtMs = new Date(notification.createdAt).getTime();
-  const isRecent = Number.isFinite(createdAtMs) && Date.now() - createdAtMs < 60000;
+  const isRecent = Number.isFinite(createdAtMs) && now - createdAtMs < 60000;
 
   return (
     <article className={clsx(styles.item, !notification.read && styles.unread, isRecent && styles.highlight)}>

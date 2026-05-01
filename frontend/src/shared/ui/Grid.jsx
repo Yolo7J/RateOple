@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import { createElement } from 'react';
 
 const GRID_VARIANTS = {
   cards: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
@@ -15,13 +16,13 @@ const Grid = ({
   children,
   ...props
 }) => {
-  return (
-    <Component
-      className={clsx('grid', gap, variant ? GRID_VARIANTS[variant] : cols, className)}
-      {...props}
-    >
-      {children}
-    </Component>
+  return createElement(
+    Component,
+    {
+      className: clsx('grid', gap, variant ? GRID_VARIANTS[variant] : cols, className),
+      ...props,
+    },
+    children,
   );
 };
 

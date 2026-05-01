@@ -72,7 +72,7 @@ function GroupPostDetailPage() {
   const viewerRole = group?.viewerRole ?? null;
   const canModerate = viewerRole === GROUP_ROLE.Owner || viewerRole === GROUP_ROLE.GroupAdmin || viewerRole === GROUP_ROLE.GroupModerator;
 
-  const comments = Array.isArray(commentsData) ? commentsData : [];
+  const comments = useMemo(() => (Array.isArray(commentsData) ? commentsData : []), [commentsData]);
 
   const commentTree = useMemo(() => {
     const byParent = new Map();

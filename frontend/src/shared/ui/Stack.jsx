@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import { createElement } from 'react';
 
 const Stack = ({
   as: Component = 'div',
@@ -7,11 +8,7 @@ const Stack = ({
   children,
   ...props
 }) => {
-  return (
-    <Component className={clsx('flex flex-col', gap, className)} {...props}>
-      {children}
-    </Component>
-  );
+  return createElement(Component, { className: clsx('flex flex-col', gap, className), ...props }, children);
 };
 
 export default Stack;

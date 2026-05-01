@@ -48,10 +48,13 @@ const Header = () => {
   useEffect(() => {
     const prev = prevUnreadRef.current;
     if (unreadCount > prev) {
-      setBadgePulse(true);
-      const timer = setTimeout(() => setBadgePulse(false), 700);
+      const startTimer = setTimeout(() => setBadgePulse(true), 0);
+      const endTimer = setTimeout(() => setBadgePulse(false), 700);
       prevUnreadRef.current = unreadCount;
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(startTimer);
+        clearTimeout(endTimer);
+      };
     }
     prevUnreadRef.current = unreadCount;
     return undefined;

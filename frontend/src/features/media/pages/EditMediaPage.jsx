@@ -84,7 +84,7 @@ const EditMediaPage = () => {
   const navigate = useNavigate();
   const { data: media, loading, error } = useMediaDetailsQuery(id);
   const { data: genresData, loading: genresLoading } = useMediaGenresQuery();
-  const genres = Array.isArray(genresData) ? genresData : [];
+  const genres = useMemo(() => (Array.isArray(genresData) ? genresData : []), [genresData]);
 
   const [form, setForm] = useState(() => createFormState(null, []));
   const [initialized, setInitialized] = useState(false);

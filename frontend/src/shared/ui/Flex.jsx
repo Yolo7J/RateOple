@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import { createElement } from 'react';
 
 const DIRECTION_CLASSES = {
   row: 'flex-row',
@@ -35,9 +36,10 @@ const Flex = ({
   children,
   ...props
 }) => {
-  return (
-    <Component
-      className={clsx(
+  return createElement(
+    Component,
+    {
+      className: clsx(
         'flex',
         gap,
         DIRECTION_CLASSES[direction],
@@ -45,11 +47,10 @@ const Flex = ({
         JUSTIFY_CLASSES[justify],
         wrap ? 'flex-wrap' : 'flex-nowrap',
         className,
-      )}
-      {...props}
-    >
-      {children}
-    </Component>
+      ),
+      ...props,
+    },
+    children,
   );
 };
 

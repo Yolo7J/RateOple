@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import { createElement } from 'react';
 
 const SIZE_CLASSES = {
   sm: 'max-w-3xl',
@@ -16,17 +17,17 @@ const Container = ({
   children,
   ...props
 }) => {
-  return (
-    <Component
-      className={clsx(
+  return createElement(
+    Component,
+    {
+      className: clsx(
         'w-full mx-auto px-4 sm:px-6 lg:px-8',
         SIZE_CLASSES[size] ?? SIZE_CLASSES.xl,
         className,
-      )}
-      {...props}
-    >
-      {children}
-    </Component>
+      ),
+      ...props,
+    },
+    children,
   );
 };
 

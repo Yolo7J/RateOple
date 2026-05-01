@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import { createElement } from 'react';
 
 const PageLayout = ({
   as: Component = 'main',
@@ -6,11 +7,7 @@ const PageLayout = ({
   children,
   ...props
 }) => {
-  return (
-    <Component className={clsx('py-6 sm:py-8 lg:py-10', className)} {...props}>
-      {children}
-    </Component>
-  );
+  return createElement(Component, { className: clsx('py-6 sm:py-8 lg:py-10', className), ...props }, children);
 };
 
 export default PageLayout;

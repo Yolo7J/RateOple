@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import EntityPicker from './EntityPicker';
 import SelectedEntityPill from './SelectedEntityPill';
 
@@ -17,7 +17,7 @@ export default function MultiEntityPicker({
   disabled = false,
   emptySelectionText = 'No selections yet.',
 }) {
-  const selected = Array.isArray(value) ? value : [];
+  const selected = useMemo(() => (Array.isArray(value) ? value : []), [value]);
 
   const handleAdd = useCallback((option) => {
     if (!option || selected.some((item) => item.id === option.id)) return;

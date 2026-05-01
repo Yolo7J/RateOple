@@ -19,6 +19,8 @@ const SCOPE_LABELS = {
 };
 
 function ModeratorAssignmentList({ assignments, onRemove, disabled = false }) {
+  const [now] = useState(() => Date.now());
+
   if (!assignments.length) {
     return <p className={styles.muted}>No assignments.</p>;
   }
@@ -27,7 +29,7 @@ function ModeratorAssignmentList({ assignments, onRemove, disabled = false }) {
     <div className={styles.list}>
       {assignments.map((assignment) => {
         const assignedAtMs = new Date(assignment.assignedAt).getTime();
-        const isRecent = Number.isFinite(assignedAtMs) && Date.now() - assignedAtMs < 60000;
+        const isRecent = Number.isFinite(assignedAtMs) && now - assignedAtMs < 60000;
         const moderatorName = assignment.userDisplayName || 'Unknown user';
         const assignedByName = assignment.assignedByDisplayName || 'Unknown user';
         const scopeName = assignment.scopeName || SCOPE_LABELS[assignment.scopeType] || 'Scope';
@@ -68,3 +70,4 @@ function ModeratorAssignmentList({ assignments, onRemove, disabled = false }) {
 }
 
 export default ModeratorAssignmentList;
+import { useState } from 'react';
