@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Authorization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using RateOple.Auth;
+using RateOple.Extensions;
 
 namespace RateOple.Controllers
 {
@@ -107,7 +108,7 @@ namespace RateOple.Controllers
             if (!IsGoogleConfigured())
                 return Redirect(BuildExternalLoginRedirect(returnUrl, success: false, error: "not_configured"));
 
-            var redirectUri = Url.Action(nameof(GoogleCallback), "Auth", new { returnUrl });
+            var redirectUri = Url.Action(nameof(GoogleComplete), "Auth", new { returnUrl });
             var properties = new AuthenticationProperties
             {
                 RedirectUri = redirectUri
@@ -116,8 +117,8 @@ namespace RateOple.Controllers
             return Challenge(properties, GoogleDefaults.AuthenticationScheme);
         }
 
-        [HttpGet("google/callback")]
-        public async Task<IActionResult> GoogleCallback([FromQuery] string? returnUrl = "/")
+        [HttpGet("google/complete")]
+        public async Task<IActionResult> GoogleComplete([FromQuery] string? returnUrl = "/")
         {
             if (!IsGoogleConfigured())
                 return Redirect(BuildExternalLoginRedirect(returnUrl, success: false, error: "not_configured"));
@@ -276,12 +277,43 @@ namespace RateOple.Controllers
 
         private string BuildExternalLoginRedirect(string? returnUrl, bool success, string? error = null)
         {
-            var path = Url.IsLocalUrl(returnUrl) ? returnUrl! : "/";
+            var path = ResolveAllowedExternalLoginReturnUrl(returnUrl);
             var separator = path.Contains('?') ? "&" : "?";
             var errorPart = !string.IsNullOrWhiteSpace(error)
                 ? $"&error={Uri.EscapeDataString(error)}"
                 : string.Empty;
             return $"{path}{separator}externalLogin={(success ? "success" : "failed")}{errorPart}";
+        }
+
+        private string ResolveAllowedExternalLoginReturnUrl(string? returnUrl)
+        {
+            if (Url.IsLocalUrl(returnUrl))
+                return returnUrl!;
+
+            if (string.IsNullOrWhiteSpace(returnUrl))
+                return "/";
+
+            if (!Uri.TryCreate(returnUrl, UriKind.Absolute, out var absoluteUri))
+                return "/";
+
+            if (!string.Equals(absoluteUri.AbsolutePath, "/auth/callback", StringComparison.Ordinal))
+                return "/";
+
+            if (IsAllowedFrontendOrigin(absoluteUri))
+                return absoluteUri.GetLeftPart(UriPartial.Path) + absoluteUri.Query;
+
+            return "/";
+        }
+
+        private bool IsAllowedFrontendOrigin(Uri absoluteUri)
+        {
+            var requestOrigin = $"{Request.Scheme}://{Request.Host}";
+            if (string.Equals(absoluteUri.GetLeftPart(UriPartial.Authority), requestOrigin, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            return CorsExtensions.DevelopmentFrontendOrigins.Contains(
+                absoluteUri.GetLeftPart(UriPartial.Authority),
+                StringComparer.OrdinalIgnoreCase);
         }
 
         private async Task<string> BuildUniqueUsernameAsync(string baseName)
