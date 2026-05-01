@@ -12,6 +12,8 @@ import PageLayout from '../../../layouts/PageLayout';
 import Container from '../../../shared/ui/Container';
 import Grid from '../../../shared/ui/Grid';
 import Stack from '../../../shared/ui/Stack';
+import { EntityPicker, MultiEntityPicker } from '../../../shared/ui/EntityPicker';
+import { searchMedia } from '../../media/services/mediaLookupService';
 
 const styles = {
   pageStack: 'gap-6',
@@ -80,8 +82,9 @@ function GroupDetailPage() {
   const members = Array.isArray(membersData) ? membersData : [];
   const staffMessages = Array.isArray(staffData) ? staffData : [];
 
-  const [postForm, setPostForm] = useState({ title: '', content: '', mediaIds: '' });
-  const [pinMediaId, setPinMediaId] = useState('');
+  const [postForm, setPostForm] = useState({ title: '', content: '' });
+  const [postMedia, setPostMedia] = useState([]);
+  const [pinMedia, setPinMedia] = useState(null);
   const [staffMessage, setStaffMessage] = useState('');
   const [actionError, setActionError] = useState('');
 
@@ -109,19 +112,15 @@ function GroupDetailPage() {
     e.preventDefault();
     if (!id) return;
 
-    const mediaIds = postForm.mediaIds
-      .split(',')
-      .map((x) => x.trim())
-      .filter(Boolean);
-
     setActionError('');
     try {
       await createPost(id, {
         title: postForm.title.trim(),
         content: postForm.content.trim(),
-        mediaIds,
+        mediaIds: postMedia.map((item) => item.id),
       });
-      setPostForm({ title: '', content: '', mediaIds: '' });
+      setPostForm({ title: '', content: '' });
+      setPostMedia([]);
     } catch (err) {
       setActionError(err?.response?.data?.message || 'Could not create post.');
     }
@@ -129,13 +128,13 @@ function GroupDetailPage() {
 
   const handlePinMedia = async (e) => {
     e.preventDefault();
-    if (!id || !pinMediaId.trim()) return;
+    if (!id || !pinMedia?.id) return;
     setActionError('');
     try {
-      await addPinnedMedia(id, pinMediaId.trim());
-      setPinMediaId('');
+      await addPinnedMedia(id, pinMedia.id);
+      setPinMedia(null);
     } catch (err) {
-      setActionError(err?.response?.data?.message || 'Could not pin media.');
+      setActionError(err?.response?.data?.message || `Could not pin ${pinMedia.label}.`);
     }
   };
 
@@ -213,14 +212,16 @@ function GroupDetailPage() {
               <h2 className={styles.sectionTitle}>Pinned Media</h2>
               {canModerate ? (
                 <form className={styles.form} onSubmit={handlePinMedia}>
-                  <input
-                    className={styles.input}
-                    placeholder="Media ID to pin"
-                    value={pinMediaId}
-                    onChange={(e) => setPinMediaId(e.target.value)}
+                  <EntityPicker
+                    label="Media to pin"
+                    placeholder="Search media by title"
+                    value={pinMedia}
+                    onChange={setPinMedia}
+                    searchFn={searchMedia}
+                    disabled={mutating}
                   />
-                  <button className={styles.button} type="submit" disabled={mutating}>
-                    Pin Media
+                  <button className={styles.button} type="submit" disabled={mutating || !pinMedia}>
+                    Pin {pinMedia?.label ?? 'Media'}
                   </button>
                 </form>
               ) : null}
@@ -256,11 +257,14 @@ function GroupDetailPage() {
                     onChange={(e) => setPostForm((prev) => ({ ...prev, content: e.target.value }))}
                     required
                   />
-                  <input
-                    className={styles.input}
-                    placeholder="Media IDs (comma separated, optional)"
-                    value={postForm.mediaIds}
-                    onChange={(e) => setPostForm((prev) => ({ ...prev, mediaIds: e.target.value }))}
+                  <MultiEntityPicker
+                    label="Attached media"
+                    placeholder="Search media by title"
+                    value={postMedia}
+                    onChange={setPostMedia}
+                    searchFn={searchMedia}
+                    disabled={mutating}
+                    emptySelectionText="No media attached."
                   />
                   <button className={styles.button} type="submit" disabled={mutating}>
                     Publish Post
