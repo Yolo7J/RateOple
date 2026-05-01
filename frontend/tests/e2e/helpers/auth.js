@@ -17,6 +17,10 @@ export async function mockAuth(page, user = adminUser) {
     await route.fulfill({ json: { token: 'e2e-csrf-token' } });
   });
 
+  await page.route('**/api/notifications**', async (route) => {
+    await route.fulfill({ json: { items: [], totalCount: 0, page: 1, pageSize: 1 } });
+  });
+
   await page.route('**/hubs/notifications/negotiate**', async (route) => {
     await route.fulfill({ status: 204, body: '' });
   });
