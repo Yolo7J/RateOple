@@ -1,6 +1,6 @@
 # RateOple Architecture (Current State)
 
-Last updated: **April 30, 2026**
+Last updated: **May 1, 2026**
 
 This document reflects the code currently present in the repository.
 
@@ -204,6 +204,22 @@ This means `RateOple.Core` currently references `RateOple.Infrastructure`. That 
 - Do not introduce repository abstractions unless they solve a concrete testing, composition, or persistence boundary problem.
 - New business logic must have targeted backend tests.
 - Keep API contracts stable unless the old contract is unsafe or impossible to validate correctly.
+
+### Transactional Side Effects
+
+Mandatory side effects run in the same EF Core transaction as the user-visible mutation when they are performed synchronously:
+
+- rating aggregate refreshes for media, season, and episode rating changes
+- rating-created and review-created interactions
+- media-status-changed interactions
+- synchronous taste recalculation caused by rating, review, interaction, and status writes
+- moderation audit logs for moderation mutations
+- persisted moderation notifications created as part of report status and assignment changes
+
+Best-effort side effects should happen after the database transaction commits:
+
+- realtime SignalR delivery for moderation updates and notification fanout
+- future non-persistent delivery integrations such as email or push notifications
 
 ### 5.1 Core Layer (`RateOple.Core`)
 
