@@ -1,16 +1,150 @@
-# React + Vite
+# RateOple Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The RateOple frontend is a React 19 + Vite application that talks to the ASP.NET Core backend over cookie-authenticated HTTP APIs and SignalR. In development it runs on the Vite dev server. In production the compiled Vite output can be copied into `backend/RateOple/wwwroot` and served by the backend.
 
-Currently, two official plugins are available:
+## Prerequisites
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Node.js `^20.19.0 || >=22.12.0` to match the installed Vite 7 toolchain
+- npm
+- The backend API running locally at `http://localhost:5113/api` unless you override `VITE_API_BASE_URL`
+- Playwright browser binaries installed before the first e2e run:
 
-## React Compiler
+```bash
+npx playwright install chromium
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Environment Variables
 
-## Expanding the ESLint configuration
+Create a local `.env` file or export variables in your shell when needed:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+VITE_API_BASE_URL=http://localhost:5113/api
+```
+
+- `src/shared/api/apiClient.js` falls back to `http://localhost:5113/api` when `VITE_API_BASE_URL` is omitted.
+- The current CSRF interceptor also fetches `/api/csrf` from the same local backend host, so keep the frontend pointed at the backend that owns your auth cookies.
+- In production the frontend is expected to run same-origin with the backend, with compiled assets served from `backend/RateOple/wwwroot`.
+
+## Local Development
+
+Install dependencies and start the Vite dev server:
+
+```bash
+npm install
+npm run dev
+```
+
+Expected backend API base URL during local development:
+
+```text
+http://localhost:5113/api
+```
+
+The backend must also allow the Vite dev origin in its development CORS policy when you are using cookie auth across origins.
+
+## Auth and CSRF Model
+
+RateOple uses HttpOnly cookie authentication.
+
+- Axios requests use `withCredentials: true` in `src/shared/api/apiClient.js`.
+- Access and refresh tokens are not stored in `localStorage`.
+- Mutating requests use the shared interceptor in `src/shared/api/authInterceptor.js`.
+- The interceptor fetches a CSRF token from `GET /api/csrf`.
+- Mutating requests send the token in the `X-CSRF-TOKEN` header.
+- On `401` responses, the shared client can attempt `/auth/refresh` before retrying the original request.
+
+Use the shared API client for authenticated feature work instead of creating ad hoc `fetch` or Axios instances.
+
+## API Client Conventions
+
+Shared HTTP behavior lives here:
+
+- `src/shared/api/apiClient.js`
+- `src/shared/api/authInterceptor.js`
+- `src/shared/api/lookupApi.js`
+
+Conventions:
+
+- Feature services should import and use the shared client.
+- Keep cookie, CSRF, and refresh logic centralized in the shared API layer.
+- Lookup services used by picker workflows should wrap `lookupApi` instead of duplicating endpoint normalization.
+- Existing lookup helpers cover media, public users, moderation users, groups, collections, and moderation scopes.
+
+## Routing
+
+The active router is `src/app/router.jsx`, and `src/app/AppRouter.jsx` renders it.
+
+- Do not add parallel route maps or duplicate routing sources of truth.
+- Keep route definitions in `router.jsx`.
+- Use query params for route state such as search, filters, sort, and pagination where that improves deep linking and reload behavior.
+- Production frontend routes are served through the backend SPA fallback after `build:backend`.
+
+## EntityPicker and Lookup Workflows
+
+Do not build user-facing forms that ask for raw GUIDs.
+
+Use lookup endpoints, feature lookup services, and the shared picker UI:
+
+- `src/shared/ui/EntityPicker`
+- `src/shared/api/lookupApi.js`
+- `src/features/media/services/mediaLookupService.js`
+- `src/features/users/services/userLookupService.js`
+- `src/features/groups/services/groupLookupService.js`
+- `src/features/collections/services/collectionLookupService.js`
+- `src/features/moderation/services/scopeLookupService.js`
+
+Use `EntityPicker` or `MultiEntityPicker` for workflows that select existing media, users, groups, collections, or moderation scopes.
+
+## Testing
+
+Available scripts:
+
+```bash
+npm run lint
+npm run build
+npm run test:e2e
+npm run test:e2e:ui
+npm run test:e2e:headed
+```
+
+Notes:
+
+- Playwright smoke tests currently rely on route mocks for fast browser coverage rather than a seeded full-stack environment.
+- If browser binaries are missing, run `npx playwright install chromium`.
+- `playwright.config.js` starts the Vite dev server automatically for e2e runs.
+
+## Production Build
+
+Build the standalone frontend:
+
+```bash
+npm run build
+```
+
+Build and copy the compiled frontend into the backend host:
+
+```bash
+npm run build:backend
+```
+
+`build:backend` runs Vite, then copies `frontend/dist` into `backend/RateOple/wwwroot`. React source remains in `frontend/`; `wwwroot` is compiled deployment output only.
+
+## Project Structure
+
+- `src/app` - router and provider composition
+- `src/features` - feature pages, components, services, queries, and realtime hooks
+- `src/shared/api` - Axios client, auth/CSRF interceptor, React Query client, and lookup API helpers
+- `src/shared/ui` - shared UI primitives including `EntityPicker`
+- `src/shared/components` - shared composite components such as header, footer, and media cards
+- `src/context` - auth, theme, language, and media cart contexts
+- `src/layouts` - main/auth/group/admin layout shells
+- `src/locales` - translation dictionaries
+- `tests/e2e` - Playwright smoke tests
+
+## Common Troubleshooting
+
+- CORS or credential failures: verify `VITE_API_BASE_URL`, backend development CORS origins, and that requests use the shared client with `withCredentials`.
+- CSRF `400` errors: confirm `GET /api/csrf` is reachable from the frontend and that the request goes through the shared API client/interceptor path.
+- Auth appears logged out after refresh: inspect browser cookies and confirm the backend host matches the cookie and API base URL expectations.
+- Playwright browsers missing: run `npx playwright install chromium`.
+- Large bundle warning during `npm run build`: known issue; frontend bundle splitting remains future work.
