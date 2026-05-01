@@ -1,119 +1,131 @@
-RateOple frontend README and route cleanup report
+RateOple frontend structure notes and bundle splitting report
 Generated: 2026-05-01
-Scope: Audit and retire the stale frontend route artifact, replace the default frontend README with RateOple-specific workflow documentation, update architecture notes to match the routing cleanup, run required verification, and record final results.
+Scope: Align `frontend/FRONTEND_CODE_STRUCTURE.txt` with the active router, add route-level code splitting for major frontend pages, verify the build/test surface, and record final results.
 
 1. Files changed
 ================
 
-Routing cleanup:
-- frontend/src/app/routes.jsx
-
 Frontend docs:
-- frontend/README.md
+- frontend/FRONTEND_CODE_STRUCTURE.txt
 
-Architecture/report:
-- PROJECT_ARCHITECTURE.md
+Frontend routing/performance:
+- frontend/src/app/router.jsx
+- frontend/src/shared/ui/RouteFallback.jsx
+
+Report:
 - results.txt
 
-2. Route artifact decision
+2. FRONTEND_CODE_STRUCTURE.txt updates
+======================================
+
+Updated `frontend/FRONTEND_CODE_STRUCTURE.txt` to match the current frontend runtime structure.
+
+- Removed the stale `src/app/routes.jsx` entry.
+- Clarified that `src/app/router.jsx` is the active route definition.
+- Clarified that `src/app/AppRouter.jsx` renders the active router.
+- Added `src/shared/api/lookupApi.js` to the shared API section.
+- Added `src/shared/ui/EntityPicker/*` entries for the shared picker workflow.
+- Added `tests/e2e/` as the Playwright smoke test location.
+- Updated the appended architecture audit notes so they no longer describe the deleted route artifact or the old default frontend README state.
+- Kept the file concise as a structure reference rather than expanding it into a second README.
+
+3. Bundle analysis summary
 ==========================
 
-Decision: delete `frontend/src/app/routes.jsx`.
+Before route splitting:
+- Main JS chunk: `dist/assets/index-BrEXyMAm.js` at `596.59 kB` minified (`168.03 kB` gzip).
+- Vite emitted the `>500 kB` chunk warning.
+- `frontend/src/app/router.jsx` eagerly imported every major route page, including admin, moderation, media detail/edit/add, group detail/post, collections, auth, notifications, account, and watchlist pages.
 
-- Searched for runtime imports and references to `src/app/routes.jsx` and `routes.jsx`.
-- No active frontend code imported the file.
-- `frontend/src/app/router.jsx` remains the active route definition.
-- `frontend/src/app/AppRouter.jsx` still renders the active router without behavior changes.
-- Removing the duplicate route map eliminates routing ambiguity without changing runtime navigation.
+Findings:
+- The main bundle was dominated by eager route-page imports rather than a single obvious oversized library.
+- SignalR is still part of the authenticated app path through `src/context/AuthContext.jsx`, but route splitting alone was enough to remove the Vite warning for this pass.
+- No extra bundle analyzer was added.
 
-3. README sections added
-========================
+4. Code splitting changes
+=========================
 
-Replaced the default Vite template README with a RateOple-specific frontend guide.
+Added practical low-risk route-level splitting in `frontend/src/app/router.jsx`.
 
-Added sections for:
-- RateOple Frontend overview
-- Prerequisites
-- Environment Variables
-- Local Development
-- Auth and CSRF Model
-- API Client Conventions
-- Routing
-- EntityPicker and Lookup Workflows
-- Testing
-- Production Build
-- Project Structure
-- Common Troubleshooting
+- Replaced eager page imports with `React.lazy(...)` imports for major route pages.
+- Kept layouts and auth/role guards eager so route protection behavior stays unchanged.
+- Wrapped page elements in a shared `Suspense` fallback helper.
+- Added `frontend/src/shared/ui/RouteFallback.jsx` as a small accessible loading state for lazy route transitions.
+- Applied lazy loading to discovery, media, collections, auth, groups, notifications, account/watchlist, admin, and moderation route pages.
+- Preserved route params, query-string behavior, and existing route structure.
 
-Documented current frontend behavior and workflows:
-- React 19 + Vite frontend with ASP.NET Core backend integration
-- `VITE_API_BASE_URL=http://localhost:5113/api`
-- local fallback API base URL behavior in `src/shared/api/apiClient.js`
-- cookie auth with `withCredentials`
-- CSRF fetch from `GET /api/csrf` and `X-CSRF-TOKEN` header usage
-- shared client/interceptor expectations in `src/shared/api/apiClient.js` and `src/shared/api/authInterceptor.js`
-- active router ownership in `src/app/router.jsx` and `src/app/AppRouter.jsx`
-- query-param route state guidance for search/filter workflows
-- EntityPicker and lookup-service expectations for media, users, groups, collections, and moderation scopes
-- exact frontend scripts present in `package.json`
-- `build:backend` copying compiled Vite output into `backend/RateOple/wwwroot`
+No additional heavy feature split was required after the route-level pass because the entry chunk dropped below the warning threshold.
 
-4. Architecture docs updated
-============================
+5. Bundle results
+=================
 
-Updated `PROJECT_ARCHITECTURE.md` to reflect the routing cleanup:
+Before:
+- Main chunk: `596.59 kB`
 
-- Removed `routes.jsx` from the documented `frontend/src/app` file list.
-- Removed the note that described `frontend/src/app/routes.jsx` as an inactive artifact.
-- Removed the stale route artifact from the remaining-risks list.
-- Kept `router.jsx` and `AppRouter.jsx` documented as the active routing path.
+After:
+- Main chunk: `417.51 kB`
 
-5. Commands run and results
+Change:
+- Reduced the main chunk by `179.08 kB` minified.
+
+Notable generated route chunks:
+- `MediaDetailPage`: `20.92 kB`
+- `SeasonManagerPage`: `20.60 kB`
+- `AddMediaPage`: `17.85 kB`
+- `ModerationPage`: `14.04 kB`
+- `GroupDetailPage`: `11.45 kB`
+- `CollectionDetailPage`: `9.78 kB`
+- `AdminMediaPage`: `5.71 kB`
+- `NotificationsPage`: `3.34 kB`
+
+Vite warning status:
+- The `>500 kB` warning no longer remains after route splitting.
+
+Build notes that still remain:
+- Rollup still strips non-actionable PURE annotations from the SignalR dependency comments.
+- Playwright/Node still prints `NO_COLOR`/`FORCE_COLOR` warnings; tests pass.
+
+6. Commands run and results
 ===========================
 
-Audit:
-- `rg -n "src/app/routes\\.jsx|routes\\.jsx|..." frontend` confirmed no active runtime imports of `frontend/src/app/routes.jsx`.
-- `node -p "require('./frontend/node_modules/vite/package.json').engines"` returned `^20.19.0 || >=22.12.0`, used for README Node.js guidance.
+Step verification after structure note update:
+- `cd frontend && npm run lint` passed.
+- `cd frontend && npm run build` passed.
 
-Step verification:
-- `npm run lint` passed after removing the stale route artifact and updating architecture docs.
-- `npm run build` passed after removing the stale route artifact and updating architecture docs.
+Bundle analysis / code splitting verification:
+- `cd frontend && npm run build` before splitting produced a `596.59 kB` main chunk and the Vite warning.
+- `cd frontend && npm run lint` passed after route splitting.
+- `cd frontend && npm run build` passed after route splitting and produced a `417.51 kB` main chunk without the Vite warning.
 
 Final verification:
 - `dotnet test backend/RateOple.sln` passed.
   - `RateOple.Core.Tests`: 250 passed, 0 failed, 0 skipped.
   - `RateOple.Api.Tests`: 53 passed, 0 failed, 0 skipped.
   - Total backend tests: 303 passed, 0 failed, 0 skipped.
-- `npm run lint` passed.
-- `npm run build` passed.
-- `npm run test:e2e` passed: 27 passed, 9 skipped.
+- `cd frontend && npm run lint` passed.
+- `cd frontend && npm run build` passed.
+- `cd frontend && npm run test:e2e` passed: 27 passed, 9 skipped.
 
-Build/test notes:
-- Vite still warns that the main frontend chunk is larger than 500 kB.
-- Rollup still strips non-actionable PURE annotations from the SignalR dependency comments.
-- Playwright/Node still prints `NO_COLOR`/`FORCE_COLOR` warnings; tests pass.
-
-6. Commits created
+7. Commits created
 ==================
 
-- `469f3ec` Remove stale frontend route artifact
-- `6b2996c` Replace frontend README with RateOple guide
+- `6b243ed` Update frontend structure notes
+- `d91562d` Add route-level code splitting
 
 Final report commit:
-- Document frontend README and route cleanup results
+- Document frontend bundle splitting results
 
-7. Remaining docs/frontend gaps
-===============================
+8. Remaining frontend performance/documentation gaps
+====================================================
 
-- Playwright coverage still uses route mocks rather than a seeded full-stack browser environment.
+- SignalR notification bootstrap is still imported through the authenticated app path and could be split further if future bundle pressure returns.
+- Playwright coverage still uses mocked browser flows rather than a seeded full-stack environment.
 - Google OAuth frontend polish remains.
 - Admin/moderation operational UI still needs richer queue, audit, and staff workflows.
 - Shared design primitives are still incomplete.
-- Frontend bundle splitting remains.
 - Demo seed data can be richer.
-- `frontend/FRONTEND_CODE_STRUCTURE.txt` still needs separate cleanup to match the active router documentation.
 
-8. Recommended next task
+9. Recommended next task
 ========================
 
-Bring `frontend/FRONTEND_CODE_STRUCTURE.txt` in line with the active `src/app/router.jsx` structure and then tackle frontend bundle splitting so the main Vite chunk drops below the current warning threshold.
+If bundle pressure returns, move the authenticated notification realtime bootstrap behind a lazy authenticated boundary so the SignalR client stays out of the initial app payload for anonymous sessions.
