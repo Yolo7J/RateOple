@@ -87,6 +87,8 @@
     "confirmPassword": "Повтори паролата",
     "username": "Потребителско име",
     "google": "Продължи с Google",
+    "googleRedirecting": "Пренасочване към Google...",
+    "googleCompleting": "Завършване на входа с Google...",
     "noAccount": "Нямате акаунт?",
     "haveAccount": "Вече имате акаунт?",
     "or": "или"

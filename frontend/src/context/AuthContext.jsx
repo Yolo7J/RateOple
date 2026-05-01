@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { authService } from "../features/auth/services/authService";
+import { authService, loadAuthSession } from "../features/auth/services/authService";
 import { useAuthSessionQuery } from "../features/auth/queries/useAuthSessionQuery";
 import { startNotificationHub, stopNotificationHub } from "../shared/signalr/signalrClient";
 import { useNotificationRealtime } from "../features/notifications/realtime/useNotificationRealtime";
@@ -44,6 +44,12 @@ export const AuthProvider = ({ children }) => {
         await authService.register({ email, username, password });
     };
 
+    const refreshSession = async () => {
+        const session = await loadAuthSession();
+        queryClient.setQueryData(["auth", "session"], session);
+        return session;
+    };
+
     const logout = async () => {
         await authService.logout();
         queryClient.setQueryData(["auth", "session"], null);
@@ -52,7 +58,7 @@ export const AuthProvider = ({ children }) => {
     if (isLoading) return null;
 
     return (
-        <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+        <AuthContext.Provider value={{ user, isLoading, login, register, logout, refreshSession }}>
             {children}
         </AuthContext.Provider>
     );

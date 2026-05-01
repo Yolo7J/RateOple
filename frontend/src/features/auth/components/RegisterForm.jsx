@@ -1,7 +1,13 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useLanguage } from "../../../hooks/useLanguage";
 import { useAuth } from "../../../context/AuthContext";
+import { getAuthErrorMessage } from "../services/authService";
+import {
+    buildAuthEntryUrl,
+    normalizeLocalReturnUrl,
+    startGoogleLogin,
+} from "../services/googleAuthService";
 
 const styles = {
     form: 'flex flex-col gap-4',
@@ -26,6 +32,10 @@ const RegisterForm = () => {
     const { t } = useLanguage();
     const { register } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
+    const [searchParams] = useSearchParams();
+    const returnUrl = normalizeLocalReturnUrl(searchParams.get("returnUrl") || location.state?.from);
+    const loginUrl = buildAuthEntryUrl("/login", returnUrl);
 
     const [form, setForm] = useState({
         email: "",
@@ -33,7 +43,8 @@ const RegisterForm = () => {
         password: "",
         confirmPassword: "",
     });
-    const [error, setError] = useState("");
+    const [error, setError] = useState(location.state?.authError ?? "");
+    const [startingGoogle, setStartingGoogle] = useState(false);
 
     const validatePassword = (password) => {
         const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{6,}$/;
@@ -60,15 +71,15 @@ const RegisterForm = () => {
             });
 
             // Redirect to login and pre-fill email so the user can sign in immediately
-            navigate("/login", { state: { email: form.email } });
+            navigate(loginUrl, { state: { email: form.email } });
         } catch (err) {
-            const errors = err.response?.data;
-            if (Array.isArray(errors)) {
-                setError(errors.map((e) => e.description).join(" "));
-            } else {
-                setError("Registration failed");
-            }
+            setError(getAuthErrorMessage(err, "Registration failed"));
         }
+    };
+
+    const handleGoogleLogin = () => {
+        setStartingGoogle(true);
+        startGoogleLogin(returnUrl);
     };
 
     return (
@@ -108,11 +119,16 @@ const RegisterForm = () => {
                 {t("auth.register")}
             </button>
             <div className={styles.divider}>{t("auth.or")}</div>
-            <button type="button" className={styles.secondaryButton}>
-                {t("auth.google")}
+            <button
+                type="button"
+                className={styles.secondaryButton}
+                onClick={handleGoogleLogin}
+                disabled={startingGoogle}
+            >
+                {startingGoogle ? t("auth.googleRedirecting") : t("auth.google")}
             </button>
             <p className={styles.switch}>
-                {t("auth.haveAccount")} <Link to="/login">{t("auth.login")}</Link>
+                {t("auth.haveAccount")} <Link to={loginUrl}>{t("auth.login")}</Link>
             </p>
         </form>
     );

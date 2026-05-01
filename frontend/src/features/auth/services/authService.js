@@ -24,3 +24,47 @@ export const authService = {
     return response.data;
   },
 };
+
+export const loadAuthSession = async () => {
+  try {
+    return await authService.me();
+  } catch {
+    try {
+      return await authService.refresh();
+    } catch {
+      return null;
+    }
+  }
+};
+
+export const getAuthErrorMessage = (error, fallback = 'Authentication failed.') => {
+  const responseData = error?.response?.data;
+
+  if (Array.isArray(responseData)) {
+    const messages = responseData
+      .map((item) => item?.description || item?.message || item?.title || item?.detail)
+      .filter(Boolean);
+
+    if (messages.length > 0) {
+      return messages.join(' ');
+    }
+  }
+
+  if (typeof responseData === 'string' && responseData.trim()) {
+    return responseData;
+  }
+
+  if (typeof responseData?.message === 'string' && responseData.message.trim()) {
+    return responseData.message;
+  }
+
+  if (typeof responseData?.detail === 'string' && responseData.detail.trim()) {
+    return responseData.detail;
+  }
+
+  if (typeof responseData?.title === 'string' && responseData.title.trim()) {
+    return responseData.title;
+  }
+
+  return fallback;
+};

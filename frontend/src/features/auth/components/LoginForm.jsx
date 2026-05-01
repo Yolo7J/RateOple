@@ -1,7 +1,13 @@
 import { useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useLanguage } from "../../../hooks/useLanguage";
 import { useAuth } from "../../../context/AuthContext";
+import { getAuthErrorMessage } from "../services/authService";
+import {
+    buildAuthEntryUrl,
+    normalizeLocalReturnUrl,
+    startGoogleLogin,
+} from "../services/googleAuthService";
 
 const styles = {
     form: 'flex flex-col gap-4',
@@ -27,11 +33,15 @@ const LoginForm = () => {
     const { login } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
+    const [searchParams] = useSearchParams();
+    const returnUrl = normalizeLocalReturnUrl(searchParams.get("returnUrl") || location.state?.from);
+    const registerUrl = buildAuthEntryUrl("/register", returnUrl);
 
     // Pre-fill email if redirected from registration
     const [email, setEmail] = useState(location.state?.email ?? "");
     const [password, setPassword] = useState("");
-    const [error, setError] = useState("");
+    const [error, setError] = useState(location.state?.authError ?? "");
+    const [startingGoogle, setStartingGoogle] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -39,10 +49,15 @@ const LoginForm = () => {
 
         try {
             await login(email, password);
-            navigate(location.state?.from || "/");
+            navigate(returnUrl, { replace: true });
         } catch (err) {
-            setError(err.response?.data || "Invalid credentials");
+            setError(getAuthErrorMessage(err, "Invalid credentials"));
         }
+    };
+
+    const handleGoogleLogin = () => {
+        setStartingGoogle(true);
+        startGoogleLogin(returnUrl);
     };
 
     return (
@@ -68,11 +83,16 @@ const LoginForm = () => {
                 {t("auth.login")}
             </button>
             <div className={styles.divider}>{t("auth.or")}</div>
-            <button type="button" className={styles.secondaryButton}>
-                {t("auth.google")}
+            <button
+                type="button"
+                className={styles.secondaryButton}
+                onClick={handleGoogleLogin}
+                disabled={startingGoogle}
+            >
+                {startingGoogle ? t("auth.googleRedirecting") : t("auth.google")}
             </button>
             <p className={styles.switch}>
-                {t("auth.noAccount")} <Link to="/register">{t("auth.register")}</Link>
+                {t("auth.noAccount")} <Link to={registerUrl}>{t("auth.register")}</Link>
             </p>
         </form>
     );

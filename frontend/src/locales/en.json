@@ -90,6 +90,8 @@
     "confirmPassword": "Confirm Password",
     "username": "Username",
     "google": "Continue with Google",
+    "googleRedirecting": "Redirecting to Google...",
+    "googleCompleting": "Completing Google sign-in...",
     "noAccount": "Don't have an account?",
     "haveAccount": "Already have an account?",
     "or": "or"

@@ -16,6 +16,7 @@ const CreateGroupPage = lazy(() => import('../features/groups/pages/CreateGroupP
 const GroupPostDetailPage = lazy(() => import('../features/groups/pages/GroupPostDetailPage'));
 const LoginPage = lazy(() => import('../features/auth/pages/LoginPage'));
 const RegisterPage = lazy(() => import('../features/auth/pages/RegisterPage'));
+const ExternalLoginCallbackPage = lazy(() => import('../features/auth/pages/ExternalLoginCallbackPage'));
 const MediaListPage = lazy(() => import('../features/media/pages/MediaListPage'));
 const MediaDetailPage = lazy(() => import('../features/media/pages/MediaDetailPage'));
 const CollectionsPage = lazy(() => import('../features/collections/pages/CollectionsPage'));
@@ -64,6 +65,10 @@ const Router = () => {
           <Route path="/login" element={renderLazyRoute(LoginPage)} />
           <Route path="/register" element={renderLazyRoute(RegisterPage)} />
         </Route>
+      </Route>
+
+      <Route element={<AuthLayout />}>
+        <Route path="/auth/callback" element={renderLazyRoute(ExternalLoginCallbackPage)} />
       </Route>
 
       <Route element={<GroupLayout />}>

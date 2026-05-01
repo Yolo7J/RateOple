@@ -105,7 +105,7 @@ namespace RateOple.Controllers
         public IActionResult GoogleLogin([FromQuery] string? returnUrl = "/")
         {
             if (!IsGoogleConfigured())
-                return NotFound("Google authentication is not configured.");
+                return Redirect(BuildExternalLoginRedirect(returnUrl, success: false, error: "not_configured"));
 
             var redirectUri = Url.Action(nameof(GoogleCallback), "Auth", new { returnUrl });
             var properties = new AuthenticationProperties
@@ -120,7 +120,7 @@ namespace RateOple.Controllers
         public async Task<IActionResult> GoogleCallback([FromQuery] string? returnUrl = "/")
         {
             if (!IsGoogleConfigured())
-                return NotFound("Google authentication is not configured.");
+                return Redirect(BuildExternalLoginRedirect(returnUrl, success: false, error: "not_configured"));
 
             var external = await HttpContext.AuthenticateAsync(IdentityConstants.ExternalScheme);
             if (!external.Succeeded || external.Principal == null)
@@ -274,11 +274,14 @@ namespace RateOple.Controllers
                 && !string.IsNullOrWhiteSpace(_configuration["Authentication:Google:ClientSecret"]);
         }
 
-        private string BuildExternalLoginRedirect(string? returnUrl, bool success)
+        private string BuildExternalLoginRedirect(string? returnUrl, bool success, string? error = null)
         {
             var path = Url.IsLocalUrl(returnUrl) ? returnUrl! : "/";
             var separator = path.Contains('?') ? "&" : "?";
-            return $"{path}{separator}externalLogin={(success ? "success" : "failed")}";
+            var errorPart = !string.IsNullOrWhiteSpace(error)
+                ? $"&error={Uri.EscapeDataString(error)}"
+                : string.Empty;
+            return $"{path}{separator}externalLogin={(success ? "success" : "failed")}{errorPart}";
         }
 
         private async Task<string> BuildUniqueUsernameAsync(string baseName)
