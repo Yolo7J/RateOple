@@ -36,6 +36,7 @@ appsettings.Development.json
 appsettings.Staging.json
 appsettings.Production.json
 Properties/launchSettings.json
+backend/RateOple/wwwroot/
 
 ####################################
 # Node / Frontend
@@ -48,12 +49,19 @@ out/
 .cache/
 .parcel-cache/
 .npm
+playwright-report/
+test-results/
+blob-report/
+frontend/playwright-report/
+frontend/test-results/
+frontend/blob-report/
 
 ####################################
 # Logs & temp
 ####################################
 logs/
 *.log
+*.txt
 tmp/
 temp/
 
@@ -62,8 +70,11 @@ temp/
 ####################################
 .env
 .env.*
+!frontend/.env.http.example
+!frontend/.env.https.example
 
 ####################################
 # Agent
 ####################################
 .devcontainer
+.codex/

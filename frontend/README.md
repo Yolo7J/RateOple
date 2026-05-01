@@ -22,8 +22,15 @@ VITE_API_BASE_URL=http://localhost:5113/api
 ```
 
 - `src/shared/api/apiClient.js` falls back to `http://localhost:5113/api` when `VITE_API_BASE_URL` is omitted.
-- The current CSRF interceptor also fetches `/api/csrf` from the same local backend host, so keep the frontend pointed at the backend that owns your auth cookies.
+- The shared API config keeps CSRF, Google OAuth entry URLs, and API requests on the same backend origin as `VITE_API_BASE_URL`.
 - In production the frontend is expected to run same-origin with the backend, with compiled assets served from `backend/RateOple/wwwroot`.
+
+Switching between local HTTP and HTTPS backends:
+
+- Use `frontend/.env.http.example` as the template when running the backend on `http://localhost:5113`
+- Use `frontend/.env.https.example` as the template when running the backend on `https://localhost:7167`
+- Copy the one you want to `frontend/.env.local`
+- When the frontend is served by the backend from `backend/RateOple/wwwroot`, the shared API config falls back to same-origin `/api` automatically, so no frontend env override is required
 
 ## Local Development
 
@@ -41,6 +48,14 @@ http://localhost:5113/api
 ```
 
 The backend must also allow the Vite dev origin in its development CORS policy when you are using cookie auth across origins.
+
+If you want to test Google auth or same-origin cookies over HTTPS instead, set:
+
+```text
+https://localhost:7167/api
+```
+
+and run the backend HTTPS launch profile.
 
 ## Auth and CSRF Model
 

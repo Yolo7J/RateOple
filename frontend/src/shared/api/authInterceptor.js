@@ -1,3 +1,5 @@
+import { getCsrfUrl } from './apiConfig';
+
 const CSRF_HEADER = 'X-CSRF-TOKEN';
 const MUTATING_METHODS = new Set(['post', 'put', 'patch', 'delete']);
 const REFRESH_PATH = '/auth/refresh';
@@ -11,7 +13,7 @@ const ensureCsrfToken = async () => {
   if (csrfToken) return csrfToken;
   if (csrfTokenPromise) return csrfTokenPromise;
 
-  csrfTokenPromise = fetch('http://localhost:5113/api/csrf', {
+  csrfTokenPromise = fetch(getCsrfUrl(), {
     method: 'GET',
     credentials: 'include',
     headers: { Accept: 'application/json' },

@@ -1,8 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const port = Number(process.env.PLAYWRIGHT_PORT ?? 5173);
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${port}`;
-const apiBaseURL = process.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:5113/api';
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://localhost:${port}`;
+const apiBaseURL = process.env.VITE_API_BASE_URL ?? 'http://localhost:5113/api';
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -17,7 +17,7 @@ export default defineConfig({
     video: 'retain-on-failure',
   },
   webServer: {
-    command: `npm run dev -- --host 127.0.0.1 --port ${port}`,
+    command: `npm run dev -- --host localhost --port ${port}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     env: {

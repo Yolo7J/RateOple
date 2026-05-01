@@ -1,4 +1,5 @@
-const FALLBACK_API_BASE_URL = 'http://localhost:5113/api';
+import { getApiBaseUrl } from '../../../shared/api/apiConfig';
+
 const GOOGLE_LOGIN_PATH = '/auth/google/login';
 const OAUTH_CALLBACK_PATH = '/auth/callback';
 
@@ -38,11 +39,12 @@ export const buildAuthEntryUrl = (path, returnUrl = '/') => {
 };
 
 export const buildGoogleLoginUrl = (returnUrl = '/') => {
-  const apiBaseUrl = new URL(import.meta.env.VITE_API_BASE_URL || FALLBACK_API_BASE_URL, window.location.origin);
+  const apiBaseUrl = new URL(getApiBaseUrl(), window.location.origin);
   const callbackPath = buildAuthEntryUrl(OAUTH_CALLBACK_PATH, returnUrl);
+  const callbackUrl = new URL(callbackPath, window.location.origin);
   const loginUrl = new URL(joinUrlPath(apiBaseUrl.pathname, GOOGLE_LOGIN_PATH), apiBaseUrl.origin);
 
-  loginUrl.searchParams.set('returnUrl', callbackPath);
+  loginUrl.searchParams.set('returnUrl', callbackUrl.toString());
   return loginUrl.toString();
 };
 
