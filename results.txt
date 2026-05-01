@@ -1,248 +1,247 @@
-RateOple entity picker remediation report
+RateOple Playwright picker smoke remediation report
 Generated: 2026-05-01
-Scope: Remove user-facing raw GUID workflows by adding lookup endpoints, frontend lookup services, reusable EntityPicker components, and humane group/collection/moderation picker flows.
+Scope: Add targeted Playwright smoke coverage for EntityPicker workflows, group picker flows, moderation picker flows, collection add-media picker flow, mobile 360px picker behavior, and architecture/report updates.
 
 1. Files changed
 ================
 
-Backend lookup contracts:
-- backend/RateOple.Core/Common/LookupDtos.cs
-- backend/RateOple/Controllers/LookupController.cs
-- backend/RateOple.Api.Tests/Lookup/LookupContractTests.cs
+Playwright setup:
+- frontend/package.json
+- frontend/package-lock.json
+- frontend/playwright.config.js
+- frontend/eslint.config.js
 
-Frontend lookup services:
-- frontend/src/shared/api/apiClient.js
-- frontend/src/shared/api/lookupApi.js
-- frontend/src/features/media/services/mediaLookupService.js
-- frontend/src/features/users/services/userLookupService.js
-- frontend/src/features/groups/services/groupLookupService.js
-- frontend/src/features/collections/services/collectionLookupService.js
-- frontend/src/features/moderation/services/scopeLookupService.js
+Playwright helpers:
+- frontend/tests/e2e/helpers/auth.js
+- frontend/tests/e2e/helpers/lookupMocks.js
+- frontend/tests/e2e/helpers/routes.js
+- frontend/tests/e2e/helpers/assertions.js
 
-Reusable picker UI:
+Playwright specs:
+- frontend/tests/e2e/entity-picker.spec.js
+- frontend/tests/e2e/group-pickers.spec.js
+- frontend/tests/e2e/moderation-pickers.spec.js
+- frontend/tests/e2e/collection-picker.spec.js
+- frontend/tests/e2e/mobile-pickers.spec.js
+
+Frontend behavior fixes found by smoke tests:
 - frontend/src/shared/ui/EntityPicker/EntityPicker.jsx
-- frontend/src/shared/ui/EntityPicker/EntityPickerModal.jsx
-- frontend/src/shared/ui/EntityPicker/EntityPickerOption.jsx
-- frontend/src/shared/ui/EntityPicker/MultiEntityPicker.jsx
-- frontend/src/shared/ui/EntityPicker/SelectedEntityPill.jsx
-- frontend/src/shared/ui/EntityPicker/index.js
-
-Workflow replacements:
-- frontend/src/features/groups/pages/GroupDetailPage.jsx
-- frontend/src/features/moderation/pages/ModerationPage.jsx
-- frontend/src/features/moderation/components/ModerationReportRow.jsx
-- frontend/src/features/collections/pages/CollectionDetailPage.jsx
-- frontend/src/features/media/pages/SeasonManagerPage.jsx
-
-Frontend lint cleanup:
-- frontend/src/shared/ui/Container.jsx
-- frontend/src/shared/ui/Grid.jsx
-- frontend/src/shared/ui/Stack.jsx
-- frontend/src/shared/ui/Flex.jsx
-- frontend/src/layouts/PageLayout.jsx
-- frontend/src/features/moderation/components/ModeratorAssignmentList.jsx
-- frontend/src/features/notifications/components/NotificationItem.jsx
 - frontend/src/shared/components/Header/Header.jsx
-- frontend/src/features/groups/pages/GroupPostDetailPage.jsx
-- frontend/src/features/media/pages/EditMediaPage.jsx
 
-Report:
+Docs/report:
+- PROJECT_ARCHITECTURE.md
 - results.txt
 
-2. Backend lookup endpoints added
-=================================
-
-Added:
-- GET /api/media/lookup?search=&type=&page=&pageSize=
-- GET /api/users/lookup?search=&page=&pageSize=
-- GET /api/admin/users/lookup?search=&page=&pageSize=
-- GET /api/groups/lookup?search=&visibility=&page=&pageSize=
-- GET /api/collections/lookup?search=&page=&pageSize=
-- GET /api/moderation/scopes/lookup?scopeType=&search=&page=&pageSize=
-
-Lookup behavior:
-- Media lookup excludes deleted media, supports title search, optional type filtering, deterministic ordering, normalized pagination, and display-rich subtitles.
-- Public user lookup searches username/display name only and does not expose email.
-- Admin/moderator user lookup requires moderator policy and can search email without returning email in the DTO.
-- Group lookup shows public groups to anonymous users and private groups only to members.
-- Collection lookup shows public collections to anonymous users and follower/private-visible collections only to allowed users.
-- Moderation scope lookup requires admin policy and returns unified Group/Collection/Media/Global picker options.
-
-3. Lookup tests added
-=====================
-
-Added backend/RateOple.Api.Tests/Lookup/LookupContractTests.cs.
-
-Covered:
-- Deleted media are excluded from media lookup.
-- Lookup pagination normalizes invalid page/pageSize values.
-- Public user lookup does not search or leak email.
-- Moderator user lookup can search email while still returning privacy-safe DTOs.
-- Private groups are hidden from anonymous users and visible to members.
-- Follower-only collections are hidden from anonymous users and visible to followers.
-
-4. Frontend lookup services added
-=================================
-
-Added a shared lookup client:
-- frontend/src/shared/api/lookupApi.js
-
-Added feature wrappers:
-- searchMedia
-- searchUsers
-- searchModerationUsers
-- searchGroups
-- searchCollections
-- searchModerationScopes
-
-Also updated apiClient:
-- VITE_API_BASE_URL is now supported.
-- Existing localhost API fallback is preserved.
-
-5. EntityPicker components added
-================================
-
-Added reusable picker primitives:
-- EntityPicker
-- MultiEntityPicker
-- EntityPickerOption
-- SelectedEntityPill
-- EntityPickerModal
-
-Supported behavior:
-- single select
-- multi select
-- async debounced search
-- selected preview
-- remove/clear selection
-- loading state
-- empty state
-- error state
-- disabled state
-- keyboard basics: Escape closes, Enter selects first result
-- reusable display shape: id, label, subtitle, imageUrl, type, meta
-
-6. Group raw-ID workflows replaced
-==================================
-
-Updated frontend/src/features/groups/pages/GroupDetailPage.jsx.
-
-Before:
-- Staff pinned media by typing a media ID.
-- Group post attachments used comma-separated media IDs.
-
-After:
-- Staff pins media with an EntityPicker and sees media title/metadata.
-- Group post attachments use MultiEntityPicker.
-- Selected attachments render as removable pills.
-- API payloads still send mediaIds internally.
-- No group page form asks for a media GUID.
-
-7. Moderation raw-ID workflows replaced
-=======================================
-
-Updated:
-- frontend/src/features/moderation/pages/ModerationPage.jsx
-- frontend/src/features/moderation/components/ModerationReportRow.jsx
-
-Before:
-- Moderator assignment accepted raw username/email plus raw scope ID.
-- Group ban controls asked for group ID and user ID.
-- Confirmations displayed raw IDs.
-
-After:
-- Moderator assignment uses UserPicker and scope-type-aware picker.
-- Global assignment hides the scope picker.
-- Group, Collection, and Media scopes use moderation scope lookup.
-- Group ban/unban uses group and user pickers.
-- Confirmations display user and group names, not GUIDs.
-- API payloads still send userId/scopeId/groupId internally.
-
-8. Collection picker consolidation
-==================================
-
-Updated frontend/src/features/collections/pages/CollectionDetailPage.jsx.
-
-Before:
-- Collection add-media used a one-off media search result grid.
-
-After:
-- Collection add-media uses the shared EntityPicker.
-- Existing Add Current Media behavior from route context is preserved.
-- Duplicate media is blocked by selected item state before submit.
-
-9. Raw-ID copy cleanup
-======================
-
-Removed remaining raw GUID developer-facing copy from frontend workflow code.
-
-Current frontend raw-ID search status:
-- No user-facing "Media ID", "User ID", "Group ID", "Collection ID", "Scope ID", "GUID", or "Guid" form copy remains.
-- Remaining "comma-separated" copy is for favorite genre text input, not database IDs.
-- Remaining id/mediaId/userId references are internal route, state, service, or payload plumbing.
-
-10. Frontend lint cleanup
+2. Playwright setup added
 =========================
 
-npm run lint initially exposed existing lint errors plus one new picker hook warning.
+Added @playwright/test and frontend scripts:
+- npm run test:e2e
+- npm run test:e2e:ui
+- npm run test:e2e:headed
 
-Fixed:
-- polymorphic layout primitives no longer trip no-unused-vars.
-- Date.now render purity issues were removed from notification and moderation assignment components.
-- Header badge pulse effect no longer synchronously sets state inside the effect body.
-- Existing hook dependency warnings in group post and media edit pages were cleaned up.
-- MultiEntityPicker selected state is memoized.
+Added frontend/playwright.config.js:
+- Uses Vite dev server as webServer.
+- Uses frontend dev server as baseURL.
+- Passes VITE_API_BASE_URL into the Vite server.
+- Defines Chromium desktop and mobile Chromium projects.
+- Mobile project uses a 360px-wide viewport.
+- Retains screenshots, video, and traces only on failure.
 
-11. Tests/builds run and results
+Playwright Chromium browser was installed locally with:
+- npx playwright install chromium
+
+3. Mocking strategy
+===================
+
+The E2E suite uses Playwright route mocks rather than backend fixture setup.
+
+Mocks cover:
+- /api/auth/me
+- /api/auth/refresh
+- /api/csrf
+- /api/notifications
+- media lookup
+- public/admin user lookup
+- group lookup
+- collection lookup
+- moderation scope lookup
+- group detail, posts, pinned media, members, staff messages
+- collection detail, child collection list, add-item mutation
+- moderation reports, assignments, and group ban mutation
+
+Mutation assertions inspect outgoing request bodies so tests verify that the UI selects humane labels while still sending internal IDs in API payloads.
+
+4. EntityPicker tests added
+===========================
+
+Added frontend/tests/e2e/entity-picker.spec.js.
+
+Covered:
+- picker opens
+- user can type search
+- mocked result appears with label/subtitle
+- clicking result selects it
+- selected preview/pill appears
+- selected item can be removed
+- Escape closes the picker
+- Enter selects the first result
+- empty state appears
+- API error state appears
+- mobile 360px picker opens and has no horizontal overflow
+
+5. Group picker tests added
+===========================
+
+Added frontend/tests/e2e/group-pickers.spec.js.
+
+Covered:
+- staff/admin renders group detail
+- pin media picker search/select flow
+- pin submit sends selected media ID
+- post attachment MultiEntityPicker selects multiple media items
+- selected attachments render as removable pills
+- removing one attachment updates submit payload
+- create post sends mediaIds array
+- raw Media ID and comma-separated media ID inputs are absent
+- desktop and mobile Chromium coverage
+
+6. Moderation picker tests added
 ================================
 
-Backend:
-- dotnet test backend/RateOple.Api.Tests/RateOple.Api.Tests.csproj --filter LookupContractTests passed.
+Added frontend/tests/e2e/moderation-pickers.spec.js.
+
+Covered:
+- admin/moderator renders moderation page
+- moderator assignment user picker
+- Global scope hides scope picker
+- Group scope picker appears and selects group scope
+- Collection scope picker appears and selects collection scope
+- Media scope picker appears and selects media scope
+- assignment submit sends userId, scopeType, and scopeId
+- assignment UI shows human-readable moderator/scope labels
+- group ban controls select group and user through pickers
+- group ban submit sends internal IDs
+- UI displays names instead of GUIDs
+- raw scope/group/user ID inputs are absent
+- desktop and mobile Chromium coverage
+
+7. Collection picker tests added
+================================
+
+Added frontend/tests/e2e/collection-picker.spec.js.
+
+Covered:
+- owner renders collection detail
+- add-media picker search/select flow
+- selected media title/subtitle display
+- submit sends selected media ID
+- existing media selection is blocked before submit
+- raw media ID input is absent
+- desktop and mobile Chromium coverage
+
+8. Mobile coverage added
+========================
+
+Added frontend/tests/e2e/mobile-pickers.spec.js and mobile project coverage across the picker specs.
+
+Covered at 360px:
+- shared EntityPicker opens, shows results, selects/removes pills, and has no horizontal overflow
+- group post media picker selects an item
+- moderation assignment switches scope type
+- group, collection, and moderation picker specs also run in mobile Chromium
+
+9. Architecture docs updated
+============================
+
+Updated PROJECT_ARCHITECTURE.md.
+
+Added:
+- Entity picker and lookup workflow status section
+- lookup endpoint status for media, users, groups, collections, and moderation scopes
+- shared EntityPicker / MultiEntityPicker status
+- group, collection, and moderation raw-ID workflow replacement status
+- IDs remain internal route/API payload values, not manual user inputs
+- future workflows must use lookup/picker patterns
+- Playwright picker smoke tests now guard the behavior
+
+Updated remaining risks:
+- raw GUID workflow risk is resolved/guardrail
+- global search TODO remains
+- group filters remain
+- Google OAuth frontend polish remains
+- admin/moderation operational UI remains
+- bundle warning remains
+
+10. Fixes made
+==============
+
+Smoke tests found and fixed:
+- EntityPicker Escape now prevents the browser search-input cancel behavior from reopening the picker.
+- Closed mobile header drawers now use display:none instead of off-screen transforms, preventing hidden drawers from contributing to horizontal document overflow.
+- ESLint config now supports Playwright config Node globals and underscore-prefixed intentionally unused test args.
+- Picker result helper now scopes result selection to the active listbox to avoid clicking same-named content elsewhere on the page.
+
+11. Commands run and results
+============================
+
+Setup checks:
+- npm install -D @playwright/test passed; 0 vulnerabilities.
+- npm run build passed.
+- npx playwright --version returned Version 1.59.1.
+- npx playwright install chromium passed.
+
+Targeted E2E checks:
+- npm run test:e2e -- tests/e2e/entity-picker.spec.js passed: 7 passed, 1 skipped.
+- npm run test:e2e -- tests/e2e/group-pickers.spec.js passed: 4 passed.
+- npm run test:e2e -- tests/e2e/moderation-pickers.spec.js passed: 4 passed.
+- npm run test:e2e -- tests/e2e/collection-picker.spec.js passed: 4 passed.
+- npm run test:e2e -- tests/e2e/mobile-pickers.spec.js passed: 2 passed, 2 skipped.
+
+Final verification:
 - dotnet test backend/RateOple.sln passed.
 - RateOple.Core.Tests: 250 passed, 0 failed, 0 skipped.
 - RateOple.Api.Tests: 53 passed, 0 failed, 0 skipped.
 - Total backend tests: 303 passed, 0 failed, 0 skipped.
-
-Frontend:
-- npm install passed; 0 vulnerabilities.
 - npm run lint passed.
 - npm run build passed.
+- npm run test:e2e passed: 21 passed, 3 skipped.
 
 Build notes:
 - Vite still warns that the main chunk is larger than 500 kB.
 - Rollup still strips non-actionable PURE annotations from SignalR dependency comments.
+- Playwright/Node prints NO_COLOR/FORCE_COLOR warnings during e2e runs; tests still pass.
 
 12. Commits created
 ===================
 
-- c4ee713 Add lookup endpoints for entity pickers
-- ce5e9be Add frontend lookup API services
-- 489281e Add reusable entity picker components
-- 9810523 Replace group media ID inputs with entity pickers
-- eeea136 Replace moderation raw ID workflows with entity pickers
-- d3b2d1c Consolidate collection media picker
-- 62f18ba Remove raw ID form copy from frontend workflows
-- 9530bd3 Fix frontend lint issues
+- b466c6d Add Playwright smoke test setup
+- 5f447b8 Add Playwright smoke test helpers
+- 5746b6c Add EntityPicker Playwright smoke tests
+- 43a40e3 Add group picker flow smoke tests
+- 92c8d88 Add moderation picker flow smoke tests
+- 4c96ef5 Add collection picker flow smoke tests
+- cb04161 Add mobile picker smoke coverage
+- 6be5be0 Update architecture docs for picker smoke coverage
+- 5265b31 Fix Playwright lint configuration
 
 Final report commit:
-- Document entity picker remediation results
+- Document Playwright picker smoke remediation results
 
-13. Remaining raw-ID/UI gaps
-============================
+13. Remaining E2E/frontend QA gaps
+==================================
 
 Known remaining gaps:
-- Playwright smoke tests were not added because no Playwright setup exists yet.
-- Some route URLs still contain entity IDs internally, as expected for implementation routing.
-- Account page still has a comma-separated favorite genres field; this is not a GUID workflow, but it should eventually become a tag/genre picker.
-- Admin dashboards may still display technical identifiers if future debug tables are added; they should stay metadata-only and not become copy/paste workflows.
-- Large frontend bundle warning remains and should be handled by code splitting later.
+- Playwright tests use route mocks, not a seeded full-stack backend/browser environment.
+- Visual regression coverage is not included.
+- Accessibility audits are not included.
+- Global search remains a TODO.
+- Group browsing filters remain limited.
+- Google OAuth frontend polish remains.
+- Admin/moderation operational UI can still be made richer.
+- Large frontend bundle warning remains and should be handled by route/feature code splitting later.
 
 14. Recommended next task
 =========================
 
-Add Playwright smoke coverage for the new picker workflows:
-- group pin media picker
-- group post media attachments
-- moderation assignment scope switching
-- moderation group ban user/group selection
-- collection add-media picker
+Add a seeded full-stack Playwright smoke lane for authentication and one happy-path CRUD workflow, while keeping the current mocked picker suite as the fast guardrail for picker regressions.
