@@ -1,134 +1,119 @@
-RateOple global search and group filter remediation report
+RateOple frontend README and route cleanup report
 Generated: 2026-05-01
-Scope: Implement global header search, wire media results to search query params, remove misleading group media/tag filters, add Playwright smoke coverage, update architecture risk docs, and run final verification.
+Scope: Audit and retire the stale frontend route artifact, replace the default frontend README with RateOple-specific workflow documentation, update architecture notes to match the routing cleanup, run required verification, and record final results.
 
 1. Files changed
 ================
 
-Frontend behavior:
-- frontend/src/shared/ui/SearchBar/SearchBar.jsx
-- frontend/src/shared/components/Header/Header.jsx
-- frontend/src/features/media/pages/MediaListPage.jsx
-- frontend/src/features/groups/pages/GroupsPage.jsx
+Routing cleanup:
+- frontend/src/app/routes.jsx
 
-Playwright specs:
-- frontend/tests/e2e/global-search.spec.js
-- frontend/tests/e2e/groups-browse.spec.js
+Frontend docs:
+- frontend/README.md
 
-Docs/report:
+Architecture/report:
 - PROJECT_ARCHITECTURE.md
 - results.txt
 
-2. Global search behavior implemented
-=====================================
+2. Route artifact decision
+==========================
 
-- Header search no longer logs to the console or leaves TODO behavior.
-- Desktop and mobile header search submit to /media?search=<encoded query>.
-- Search text is trimmed before navigation.
-- Empty header search navigates to /media.
-- The search icon is now a submit button, so Enter and click submission both work.
-- Mobile search closes the search sheet after submit.
-- Header search reflects the current /media search query when the URL contains search=...
+Decision: delete `frontend/src/app/routes.jsx`.
 
-3. Media results query-param behavior implemented
-=================================================
+- Searched for runtime imports and references to `src/app/routes.jsx` and `routes.jsx`.
+- No active frontend code imported the file.
+- `frontend/src/app/router.jsx` remains the active route definition.
+- `frontend/src/app/AppRouter.jsx` still renders the active router without behavior changes.
+- Removing the duplicate route map eliminates routing ambiguity without changing runtime navigation.
 
-- MediaListPage now treats URL query params as route state for search, type filters, genre filters, sort, and page.
-- /media?search=inception calls the media list query with search=inception.
-- The local media search input reflects the search query param.
-- Clearing search removes search from the URL and refreshes results.
-- Pagination updates page in the URL while preserving search/filter params.
-- Empty search results show a query-specific empty state.
-- Backend media search already supported title search and deleted media exclusion, so no backend rewrite was needed.
+3. README sections added
+========================
 
-4. Group filter decision and changes
-====================================
+Replaced the default Vite template README with a RateOple-specific frontend guide.
 
-Decision: remove fake filters.
+Added sections for:
+- RateOple Frontend overview
+- Prerequisites
+- Environment Variables
+- Local Development
+- Auth and CSRF Model
+- API Client Conventions
+- Routing
+- EntityPicker and Lookup Workflows
+- Testing
+- Production Build
+- Project Structure
+- Common Troubleshooting
 
-- Groups do not currently have real backend media-type or tag/category metadata.
-- Removed the media type and tag dropdowns that previously filtered group name/description text.
-- Removed the client-only sort control so the page does not imply unsupported server sorting.
-- Kept backend-supported search.
-- Added backend-supported visibility filtering.
-- Added honest future-facing copy that discovery filters can return when groups support tags or categories.
+Documented current frontend behavior and workflows:
+- React 19 + Vite frontend with ASP.NET Core backend integration
+- `VITE_API_BASE_URL=http://localhost:5113/api`
+- local fallback API base URL behavior in `src/shared/api/apiClient.js`
+- cookie auth with `withCredentials`
+- CSRF fetch from `GET /api/csrf` and `X-CSRF-TOKEN` header usage
+- shared client/interceptor expectations in `src/shared/api/apiClient.js` and `src/shared/api/authInterceptor.js`
+- active router ownership in `src/app/router.jsx` and `src/app/AppRouter.jsx`
+- query-param route state guidance for search/filter workflows
+- EntityPicker and lookup-service expectations for media, users, groups, collections, and moderation scopes
+- exact frontend scripts present in `package.json`
+- `build:backend` copying compiled Vite output into `backend/RateOple/wwwroot`
 
-5. Tests added or updated
-=========================
-
-Added frontend/tests/e2e/global-search.spec.js:
-- Desktop header search navigates to /media?search=...
-- Search results request includes the search query.
-- Empty media result state appears when the API returns no items.
-- Mobile header search submits, closes the search sheet, and has no 360px horizontal overflow.
-
-Added frontend/tests/e2e/groups-browse.spec.js:
-- Group search sends the real search query to /api/groups.
-- Visibility filter sends the real visibility query to /api/groups.
-- Removed fake media/tag filters are not visible.
-- Empty group state appears when the API returns no groups.
-- Mobile 360px group browse has no obvious horizontal overflow.
-
-6. Architecture docs updated
+4. Architecture docs updated
 ============================
 
-Updated PROJECT_ARCHITECTURE.md:
-- CSRF is no longer listed as unresolved; it is documented as a resolved guardrail for mutating cookie-auth API endpoints, with SignalR as the documented exemption.
-- Seeded privileged/demo accounts are no longer listed as unresolved; Seed:Mode and production rejection of Demo/placeholder privileged credentials are documented as guardrails.
-- Raw GUID picker remediation remains documented as a resolved guardrail.
-- Global search and honest group filters are now documented as resolved guardrails with Playwright coverage.
-- Remaining risks now focus on stale src/app/routes.jsx, Google OAuth frontend polish, admin/moderation operational UI, shared design primitives, frontend bundle splitting, richer demo seed data, and replacing the default frontend README.
+Updated `PROJECT_ARCHITECTURE.md` to reflect the routing cleanup:
 
-7. Commands run and results
+- Removed `routes.jsx` from the documented `frontend/src/app` file list.
+- Removed the note that described `frontend/src/app/routes.jsx` as an inactive artifact.
+- Removed the stale route artifact from the remaining-risks list.
+- Kept `router.jsx` and `AppRouter.jsx` documented as the active routing path.
+
+5. Commands run and results
 ===========================
 
-Targeted checks:
-- npm run lint passed after global search navigation changes.
-- npm run lint passed after media query-param changes.
-- npm run test:e2e -- tests/e2e/global-search.spec.js passed: 3 passed, 3 skipped.
-- npm run lint passed after group filter changes.
-- npm run test:e2e -- tests/e2e/groups-browse.spec.js passed: 3 passed, 3 skipped.
+Audit:
+- `rg -n "src/app/routes\\.jsx|routes\\.jsx|..." frontend` confirmed no active runtime imports of `frontend/src/app/routes.jsx`.
+- `node -p "require('./frontend/node_modules/vite/package.json').engines"` returned `^20.19.0 || >=22.12.0`, used for README Node.js guidance.
+
+Step verification:
+- `npm run lint` passed after removing the stale route artifact and updating architecture docs.
+- `npm run build` passed after removing the stale route artifact and updating architecture docs.
 
 Final verification:
-- dotnet test backend/RateOple.sln passed.
-  - RateOple.Core.Tests: 250 passed, 0 failed, 0 skipped.
-  - RateOple.Api.Tests: 53 passed, 0 failed, 0 skipped.
+- `dotnet test backend/RateOple.sln` passed.
+  - `RateOple.Core.Tests`: 250 passed, 0 failed, 0 skipped.
+  - `RateOple.Api.Tests`: 53 passed, 0 failed, 0 skipped.
   - Total backend tests: 303 passed, 0 failed, 0 skipped.
-- npm run lint passed.
-- npm run build passed.
-- npm run test:e2e passed: 27 passed, 9 skipped.
+- `npm run lint` passed.
+- `npm run build` passed.
+- `npm run test:e2e` passed: 27 passed, 9 skipped.
 
 Build/test notes:
 - Vite still warns that the main frontend chunk is larger than 500 kB.
-- Rollup still strips non-actionable PURE annotations from SignalR dependency comments.
-- Playwright/Node still prints NO_COLOR/FORCE_COLOR warnings; tests pass.
+- Rollup still strips non-actionable PURE annotations from the SignalR dependency comments.
+- Playwright/Node still prints `NO_COLOR`/`FORCE_COLOR` warnings; tests pass.
 
-8. Commits created
+6. Commits created
 ==================
 
-- 058e869 Implement global search navigation
-- 7aab374 Wire media page to search query params
-- 0122f4e Add global search smoke tests
-- 66b75ec Remove misleading group filters
-- fadca00 Add group browsing smoke tests
-- ea2dc7a Update architecture audit after search and filter remediation
+- `469f3ec` Remove stale frontend route artifact
+- `6b2996c` Replace frontend README with RateOple guide
 
 Final report commit:
-- Document search and group filter remediation results
+- Document frontend README and route cleanup results
 
-9. Remaining frontend/product gaps
-==================================
+7. Remaining docs/frontend gaps
+===============================
 
-- Playwright tests use route mocks, not a seeded full-stack backend/browser environment.
+- Playwright coverage still uses route mocks rather than a seeded full-stack browser environment.
 - Google OAuth frontend polish remains.
 - Admin/moderation operational UI still needs richer queue, audit, and staff workflows.
 - Shared design primitives are still incomplete.
 - Frontend bundle splitting remains.
 - Demo seed data can be richer.
-- src/app/routes.jsx remains a stale routing artifact.
-- frontend/README.md is still the default Vite template.
+- `frontend/FRONTEND_CODE_STRUCTURE.txt` still needs separate cleanup to match the active router documentation.
 
-10. Recommended next task
-=========================
+8. Recommended next task
+========================
 
-Replace frontend/README.md with RateOple-specific setup, auth/CSRF, environment, testing, and routing documentation, then remove or clearly retire the stale src/app/routes.jsx artifact.
+Bring `frontend/FRONTEND_CODE_STRUCTURE.txt` in line with the active `src/app/router.jsx` structure and then tackle frontend bundle splitting so the main Vite chunk drops below the current warning threshold.
