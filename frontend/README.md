@@ -52,6 +52,10 @@ RateOple uses HttpOnly cookie authentication.
 - The interceptor fetches a CSRF token from `GET /api/csrf`.
 - Mutating requests send the token in the `X-CSRF-TOKEN` header.
 - On `401` responses, the shared client can attempt `/auth/refresh` before retrying the original request.
+- Google OAuth is backend-mediated only. The frontend starts the flow by navigating the browser to `GET /api/auth/google/login`.
+- The backend handles the Google challenge/callback, issues the normal RateOple HttpOnly cookies, and redirects back to the frontend callback route at `/auth/callback`.
+- The frontend callback route refreshes `GET /api/auth/me` and then navigates to the intended local route.
+- The frontend never receives or stores Google access tokens.
 
 Use the shared API client for authenticated feature work instead of creating ad hoc `fetch` or Axios instances.
 
@@ -76,6 +80,7 @@ The active router is `src/app/router.jsx`, and `src/app/AppRouter.jsx` renders i
 
 - Do not add parallel route maps or duplicate routing sources of truth.
 - Keep route definitions in `router.jsx`.
+- Auth redirects preserve safe local `returnUrl` values through the login/register pages and the `/auth/callback` route.
 - Use query params for route state such as search, filters, sort, and pagination where that improves deep linking and reload behavior.
 - Production frontend routes are served through the backend SPA fallback after `build:backend`.
 
@@ -110,6 +115,7 @@ npm run test:e2e:headed
 Notes:
 
 - Playwright smoke tests currently rely on route mocks for fast browser coverage rather than a seeded full-stack environment.
+- `tests/e2e/auth-google.spec.js` covers the frontend Google OAuth entry points and callback handling with route mocks rather than a real Google login.
 - If browser binaries are missing, run `npx playwright install chromium`.
 - `playwright.config.js` starts the Vite dev server automatically for e2e runs.
 
@@ -146,5 +152,6 @@ npm run build:backend
 - CORS or credential failures: verify `VITE_API_BASE_URL`, backend development CORS origins, and that requests use the shared client with `withCredentials`.
 - CSRF `400` errors: confirm `GET /api/csrf` is reachable from the frontend and that the request goes through the shared API client/interceptor path.
 - Auth appears logged out after refresh: inspect browser cookies and confirm the backend host matches the cookie and API base URL expectations.
+- Google sign-in returns to login with an error: verify `Authentication:Google:ClientId` and `Authentication:Google:ClientSecret` are configured on the backend, and confirm the frontend is pointing at that backend host.
 - Playwright browsers missing: run `npx playwright install chromium`.
-- Large bundle warning during `npm run build`: known issue; frontend bundle splitting remains future work.
+- Large bundle warning during `npm run build`: route-level splitting should keep the main chunk below the old warning threshold; if the warning returns, inspect authenticated realtime imports and newly eager route dependencies.
