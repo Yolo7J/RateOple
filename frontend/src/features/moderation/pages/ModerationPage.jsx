@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { useModerationReportsQuery } from '../queries/useModerationReportsQuery';
 import { useModeratorAssignmentsQuery } from '../queries/useModeratorAssignmentsQuery';
@@ -11,6 +11,9 @@ import PageLayout from '../../../layouts/PageLayout';
 import Container from '../../../shared/ui/Container';
 import Grid from '../../../shared/ui/Grid';
 import Stack from '../../../shared/ui/Stack';
+import { EntityPicker } from '../../../shared/ui/EntityPicker';
+import { searchModerationUsers } from '../../users/services/userLookupService';
+import { searchModerationScopes } from '../services/scopeLookupService';
 
 const styles = {
   pageStack: 'gap-6',
@@ -27,7 +30,7 @@ const styles = {
     'min-w-[150px] rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2',
     'text-sm text-[var(--text-primary)]',
   ].join(' '),
-  form: 'flex flex-wrap items-center gap-3',
+  form: 'grid gap-3 max-w-2xl',
   input: [
     'min-w-[150px] rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2',
     'text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)]',
@@ -61,7 +64,9 @@ function ModerationPage() {
   const hasModerationAccess = roles.some((role) => ['Admin', 'SuperAdmin', 'Moderator'].includes(role));
 
   const [statusFilter, setStatusFilter] = useState('1');
-  const [assignmentForm, setAssignmentForm] = useState({ userIdentifier: '', scopeType: '1', scopeId: '' });
+  const [assignmentForm, setAssignmentForm] = useState({ scopeType: '1' });
+  const [assignmentUser, setAssignmentUser] = useState(null);
+  const [assignmentScope, setAssignmentScope] = useState(null);
   const [actionError, setActionError] = useState('');
 
   const { data: reportsData, loading: reportsLoading, error: reportsError } = useModerationReportsQuery({
@@ -85,6 +90,10 @@ function ModerationPage() {
   const reports = Array.isArray(reportsData?.items) ? reportsData.items : [];
   const assignments = Array.isArray(assignmentsData) ? assignmentsData : [];
 
+  const searchAssignmentScope = useCallback((params) => (
+    searchModerationScopes({ ...params, scopeType: Number(assignmentForm.scopeType) })
+  ), [assignmentForm.scopeType]);
+
   const handleUpdateStatus = async (reportId, nextStatus) => {
     setActionError('');
     try {
@@ -96,26 +105,24 @@ function ModerationPage() {
 
   const handleCreateAssignment = async (e) => {
     e.preventDefault();
-    if (!assignmentForm.userIdentifier.trim()) return;
-    if (assignmentForm.scopeType !== '1' && !assignmentForm.scopeId.trim()) {
-      setActionError('Scope ID is required for non-global assignments.');
+    if (!assignmentUser?.id) return;
+    if (assignmentForm.scopeType !== '1' && !assignmentScope?.id) {
+      setActionError('Select a scope for non-global assignments.');
       return;
     }
 
     setActionError('');
     try {
-      const identifier = assignmentForm.userIdentifier.trim();
-      const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
-
       await createAssignment({
-        ...(isGuid ? { userId: identifier } : { userIdentifier: identifier }),
+        userId: assignmentUser.id,
         scopeType: Number(assignmentForm.scopeType),
-        ...(assignmentForm.scopeType === '1' || !assignmentForm.scopeId.trim()
+        ...(assignmentForm.scopeType === '1'
           ? {}
-          : { scopeId: assignmentForm.scopeId.trim() }),
+          : { scopeId: assignmentScope.id }),
       });
 
-      setAssignmentForm((prev) => ({ ...prev, userIdentifier: '', scopeId: '' }));
+      setAssignmentUser(null);
+      setAssignmentScope(null);
     } catch (err) {
       setActionError(err?.response?.data?.message || 'Could not assign moderator.');
     }
@@ -204,17 +211,21 @@ function ModerationPage() {
               <Stack className="gap-4">
                 <h2 className={styles.sectionTitle}>Moderator assignments</h2>
                 <form className={styles.form} onSubmit={handleCreateAssignment}>
-                  <input
-                    className={styles.input}
-                    placeholder="Username or email"
-                    value={assignmentForm.userIdentifier}
-                    onChange={(e) => setAssignmentForm((prev) => ({ ...prev, userIdentifier: e.target.value }))}
-                    required
+                  <EntityPicker
+                    label="Moderator"
+                    placeholder="Search users by name, username, or email"
+                    value={assignmentUser}
+                    onChange={setAssignmentUser}
+                    searchFn={searchModerationUsers}
+                    disabled={isMutating}
                   />
                   <select
                     className={styles.select}
                     value={assignmentForm.scopeType}
-                    onChange={(e) => setAssignmentForm((prev) => ({ ...prev, scopeType: e.target.value }))}
+                    onChange={(e) => {
+                      setAssignmentForm((prev) => ({ ...prev, scopeType: e.target.value }));
+                      setAssignmentScope(null);
+                    }}
                   >
                     {SCOPE_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -222,13 +233,29 @@ function ModerationPage() {
                       </option>
                     ))}
                   </select>
-                  <input
-                    className={styles.input}
-                    placeholder="Scope ID (optional for Global)"
-                    value={assignmentForm.scopeId}
-                    onChange={(e) => setAssignmentForm((prev) => ({ ...prev, scopeId: e.target.value }))}
-                  />
-                  <button className={styles.button} type="submit" disabled={isMutating}>
+                  {assignmentForm.scopeType !== '1' ? (
+                    <EntityPicker
+                      label={`${SCOPE_OPTIONS.find((option) => option.value === assignmentForm.scopeType)?.label ?? 'Scope'} scope`}
+                      placeholder="Search scope by name"
+                      value={assignmentScope}
+                      onChange={setAssignmentScope}
+                      searchFn={searchAssignmentScope}
+                      disabled={isMutating}
+                    />
+                  ) : (
+                    <p className={styles.muted}>Global assignments apply across all moderation scopes.</p>
+                  )}
+                  {assignmentUser ? (
+                    <p className={styles.muted}>
+                      Assign {assignmentUser.label} as moderator for{' '}
+                      {assignmentForm.scopeType === '1' ? 'Global' : assignmentScope?.label ?? 'selected scope'}.
+                    </p>
+                  ) : null}
+                  <button
+                    className={styles.button}
+                    type="submit"
+                    disabled={isMutating || !assignmentUser || (assignmentForm.scopeType !== '1' && !assignmentScope)}
+                  >
                     Assign moderator
                   </button>
                 </form>

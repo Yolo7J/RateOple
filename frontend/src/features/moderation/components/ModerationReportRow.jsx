@@ -1,5 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { formatDate } from '../../../shared/utils/formatDate';
+import { EntityPicker } from '../../../shared/ui/EntityPicker';
+import { searchModerationUsers } from '../../users/services/userLookupService';
+import { searchModerationScopes } from '../services/scopeLookupService';
 
 const styles = {
   card: 'flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-4',
@@ -15,7 +18,7 @@ const styles = {
     'text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)]',
   ].join(' '),
   banSection: 'mt-2 grid gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] p-3',
-  banRow: 'flex flex-wrap items-center gap-2',
+  banRow: 'grid gap-3',
   error: 'text-sm text-[#ff7f7f]',
   button: [
     'inline-flex items-center justify-center rounded-lg border border-[var(--border)]',
@@ -49,7 +52,7 @@ function ModerationReportRow({
   const updatedAtMs = updatedAtValue ? new Date(updatedAtValue).getTime() : 0;
   const isRecent = Number.isFinite(updatedAtMs) && Date.now() - updatedAtMs < 60000;
   const [confirming, setConfirming] = useState(false);
-  const [banForm, setBanForm] = useState({ groupId: '', userId: '', reason: '' });
+  const [banForm, setBanForm] = useState({ group: null, user: null, reason: '' });
   const [banError, setBanError] = useState('');
   const [banPending, setBanPending] = useState(false);
   const targetLabel = TARGET_LABELS[report.targetType] || `Type ${report.targetType}`;
@@ -60,6 +63,9 @@ function ModerationReportRow({
   const isRejected = Number(report.status) === 4;
   const isActionLocked = disabled || confirming || isResolved || isRejected;
   const isGroupRelated = useMemo(() => [2, 3].includes(Number(report.targetType)), [report.targetType]);
+  const searchGroups = useCallback((params) => (
+    searchModerationScopes({ ...params, scopeType: 2 })
+  ), []);
 
   const handleAction = async (status, label) => {
     if (isActionLocked) return;
@@ -75,18 +81,16 @@ function ModerationReportRow({
 
   const handleBan = async () => {
     if (!onBanUser) return;
-    const groupId = banForm.groupId.trim();
-    const userId = banForm.userId.trim();
     const reason = banForm.reason.trim();
-    if (!groupId || !userId) {
-      setBanError('Group ID and user ID are required to ban.');
+    if (!banForm.group?.id || !banForm.user?.id) {
+      setBanError('Select a group and user to ban.');
       return;
     }
-    if (!window.confirm(`Ban user ${userId} from group ${groupId}?`)) return;
+    if (!window.confirm(`Ban ${banForm.user.label} from ${banForm.group.label}?`)) return;
     setBanError('');
     setBanPending(true);
     try {
-      await onBanUser({ groupId, userId, reason: reason || undefined });
+      await onBanUser({ groupId: banForm.group.id, userId: banForm.user.id, reason: reason || undefined });
     } catch (err) {
       setBanError(err?.response?.data?.message || 'Could not ban user from group.');
     } finally {
@@ -96,17 +100,15 @@ function ModerationReportRow({
 
   const handleUnban = async () => {
     if (!onUnbanUser) return;
-    const groupId = banForm.groupId.trim();
-    const userId = banForm.userId.trim();
-    if (!groupId || !userId) {
-      setBanError('Group ID and user ID are required to unban.');
+    if (!banForm.group?.id || !banForm.user?.id) {
+      setBanError('Select a group and user to unban.');
       return;
     }
-    if (!window.confirm(`Unban user ${userId} from group ${groupId}?`)) return;
+    if (!window.confirm(`Unban ${banForm.user.label} from ${banForm.group.label}?`)) return;
     setBanError('');
     setBanPending(true);
     try {
-      await onUnbanUser({ groupId, userId });
+      await onUnbanUser({ groupId: banForm.group.id, userId: banForm.user.id });
     } catch (err) {
       setBanError(err?.response?.data?.message || 'Could not unban user from group.');
     } finally {
@@ -160,17 +162,21 @@ function ModerationReportRow({
         <div className={styles.banSection}>
           <p className={styles.meta}>Group ban controls (for group-related reports)</p>
           <div className={styles.banRow}>
-            <input
-              className={styles.input}
-              placeholder="Group ID"
-              value={banForm.groupId}
-              onChange={(e) => setBanForm((prev) => ({ ...prev, groupId: e.target.value }))}
+            <EntityPicker
+              label="Group"
+              placeholder="Search groups by name"
+              value={banForm.group}
+              onChange={(group) => setBanForm((prev) => ({ ...prev, group }))}
+              searchFn={searchGroups}
+              disabled={disabled || banPending}
             />
-            <input
-              className={styles.input}
-              placeholder="User ID"
-              value={banForm.userId}
-              onChange={(e) => setBanForm((prev) => ({ ...prev, userId: e.target.value }))}
+            <EntityPicker
+              label="User"
+              placeholder="Search users by name, username, or email"
+              value={banForm.user}
+              onChange={(nextUser) => setBanForm((prev) => ({ ...prev, user: nextUser }))}
+              searchFn={searchModerationUsers}
+              disabled={disabled || banPending}
             />
             <input
               className={styles.input}
@@ -181,7 +187,7 @@ function ModerationReportRow({
             <button
               className={styles.button}
               type="button"
-              disabled={disabled || banPending || !banForm.groupId.trim() || !banForm.userId.trim()}
+              disabled={disabled || banPending || !banForm.group || !banForm.user}
               onClick={handleBan}
             >
               {banPending ? 'Processing...' : 'Ban user (group)'}
@@ -189,7 +195,7 @@ function ModerationReportRow({
             <button
               className={styles.button}
               type="button"
-              disabled={disabled || banPending || !banForm.groupId.trim() || !banForm.userId.trim()}
+              disabled={disabled || banPending || !banForm.group || !banForm.user}
               onClick={handleUnban}
             >
               {banPending ? 'Processing...' : 'Unban user'}
