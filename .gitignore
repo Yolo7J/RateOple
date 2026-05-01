@@ -77,4 +77,5 @@ temp/
 # Agent
 ####################################
 .devcontainer
+.codex
 .codex/
