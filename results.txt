@@ -1,195 +1,233 @@
-RateOple review/status signal-flow remediation report
+RateOple transaction rollback remediation report
 Generated: 2026-05-01
-Scope: ReviewService, UserMediaStatusService, InteractionService, RatingService, review-created interactions, review-driven taste recalculation, status-change interactions, failed-write side-effect prevention, deleted media/season/episode/TV parent signal protection, API signal smoke tests, and final backend test verification.
+Scope: Failure-injection tests and minimal backend transaction fixes for review, rating, interaction, media status, and moderation side-effect rollback behavior.
 
 1. Files changed
 ================
 
 Test infrastructure:
-- backend/RateOple.Core.Tests/TestSupport/SpyInteractionService.cs
-- backend/RateOple.Core.Tests/TestSupport/TestReviews.cs
+- backend/RateOple.Core.Tests/TestSupport/ThrowingInteractionService.cs
+- backend/RateOple.Core.Tests/TestSupport/ThrowingUserTasteService.cs
+- backend/RateOple.Core.Tests/TestSupport/ThrowingRatingService.cs
+- backend/RateOple.Core.Tests/TestSupport/ThrowingNotificationService.cs
+- backend/RateOple.Core.Tests/TestSupport/ThrowingModerationAuditService.cs
 
-Core service tests:
-- backend/RateOple.Core.Tests/Social/ReviewServiceTests.cs
-- backend/RateOple.Core.Tests/Users/UserMediaStatusServiceTests.cs
-- backend/RateOple.Core.Tests/Social/InteractionServiceTests.cs
-- backend/RateOple.Core.Tests/Social/RatingServiceTests.cs
-
-API contract tests:
-- backend/RateOple.Api.Tests/Social/ReviewContractTests.cs
-- backend/RateOple.Api.Tests/Users/UserMediaStatusContractTests.cs
+Core transaction tests:
+- backend/RateOple.Core.Tests/Social/ReviewServiceTransactionTests.cs
+- backend/RateOple.Core.Tests/Social/RatingServiceTransactionTests.cs
+- backend/RateOple.Core.Tests/Social/InteractionServiceTransactionTests.cs
+- backend/RateOple.Core.Tests/Users/UserMediaStatusTransactionTests.cs
+- backend/RateOple.Core.Tests/Moderation/ModerationTransactionTests.cs
 
 Production code fixed:
-- backend/RateOple.Core/Social/Services/ReviewService.cs
-- backend/RateOple.Core/Users/Services/UserMediaStatusService.cs
-- backend/RateOple.Core/Social/Services/InteractionService.cs
 - backend/RateOple.Core/Social/Services/RatingService.cs
-- backend/RateOple/Controllers/Media/MediaController.cs
+- backend/RateOple.Core/Social/Services/InteractionService.cs
+- backend/RateOple.Core/Moderation/Services/ModerationService.cs
+
+Documentation:
+- PROJECT_ARCHITECTURE.md
 
 Report:
 - results.txt
 
-2. Test helpers/spies added
-===========================
-
-Added SpyInteractionService:
-- Captures MediaOpened, RatingCreated, ReviewCreated, and MediaStatusChanged calls.
-- Lets service tests assert side-effect intent without brittle database inspection.
-
-Extended TestReviews:
-- CreateSeasonRatingWithDeletedParentAsync
-- CreateEpisodeRatingWithDeletedParentAsync
-
-Helper behavior:
-- Builds deterministic review targets for deleted parent TV series cases.
-- Avoids external APIs, secrets, and hidden global state.
-- Keeps failed-write signal assertions explicit and readable.
-
-3. ReviewService signal-flow tests added
-========================================
-
-Expanded backend/RateOple.Core.Tests/Social/ReviewServiceTests.cs.
-
-Covered behavior:
-- Creating a media review records a ReviewCreated interaction and recalculates taste after the interaction exists.
-- Creating a season review records SeasonId and recalculates taste for the parent TV series.
-- Creating an episode review records EpisodeId and recalculates taste for the parent TV series.
-- Missing rating create failure creates no review, interaction, or taste recalculation.
-- Another user's rating cannot be reviewed and creates no signals.
-- Deleted media, deleted season, deleted episode, and deleted TV parent targets cannot create review signals.
-- Duplicate review upsert updates the existing review, recalculates taste exactly once, and does not create a duplicate ReviewCreated interaction.
-- Updating review content recalculates taste and does not create a ReviewCreated interaction.
-- Updating a review rating value recalculates taste exactly once through RatingService.
-- Non-owner update failure creates no signals and does not mutate review content.
-- Updating a deleted target creates no signals and does not mutate review content.
-- Deleting review while keeping the rating recalculates taste exactly once.
-- Deleting review with deleteRating = true recalculates taste exactly once through RatingService.
-- Non-owner delete and missing review delete failures create no signals.
-- Deleting a review after its target is deleted either recalculates whole-user taste when keeping the rating, or rolls back safely with no signals when deleteRating = true.
-
-4. UserMediaStatusService signal-flow tests added
-=================================================
-
-Expanded backend/RateOple.Core.Tests/Users/UserMediaStatusServiceTests.cs.
-
-Covered behavior:
-- Setting media status creates a MediaStatusChanged interaction.
-- Status-change interaction stores user ID, media ID, interaction type, points, and timestamp.
-- Status-change interaction triggers taste recalculation through InteractionService.
-- Updating an existing status records one status-change interaction.
-- Repeated same-status sets are explicit and append a new interaction each time.
-- Plan, On it, Done, and Dropped values are stored consistently and create status signals.
-- Movies, books, and TV series all create status-change signals.
-- Missing media, deleted media, and invalid status values create no status rows or interactions.
-- Invalid status updates do not mutate an existing status.
-
-5. API signal-flow tests added
-==============================
-
-Expanded backend/RateOple.Api.Tests/Social/ReviewContractTests.cs.
-
-Covered API behavior:
-- Authenticated review create records a ReviewCreated interaction.
-- Authenticated review create updates UserGenreScore through the review/rating/interaction taste formula.
-- Missing CSRF fails before review, interaction, or taste side effects.
-- Deleted media review failure creates no review, interaction, or taste side effects.
-- Non-owner update/delete failures create no interaction or taste side effects.
-
-Expanded backend/RateOple.Api.Tests/Users/UserMediaStatusContractTests.cs.
-
-Covered API behavior:
-- Authenticated status update records a MediaStatusChanged interaction.
-- Authenticated status update updates UserGenreScore through the status interaction.
-- Missing CSRF fails before status, interaction, or taste side effects.
-- Deleted media status failure creates no status, interaction, or taste side effects.
-- Invalid payload fails before status, interaction, or taste side effects.
-
-6. Production bugs found and fixed
+2. Failure-injection helpers added
 ==================================
 
-ReviewService:
-- Review create previously recalculated taste directly and then InteractionService recalculated again after ReviewCreated interaction creation. Create now relies on the interaction path so taste includes the review interaction and recalculates once.
-- Duplicate review upsert previously updated content without taste recalculation. It now recalculates taste once and does not create a duplicate ReviewCreated interaction.
-- Review update with UpdatedRatingValue previously recalculated through RatingService and again in ReviewService. It now recalculates once through RatingService.
-- Review delete with deleteRating = true previously recalculated once for review deletion and again through rating deletion. It now relies on RatingService for the combined recalculation.
-- Review create/update/delete now use transactions around write plus side-effect service calls.
-- Deleted-target review deletion is explicit: keeping the rating removes the review and recalculates whole-user taste; deleteRating = true rolls back safely if the deleted target prevents rating deletion.
+Added configurable throwing doubles:
+- ThrowingInteractionService
+- ThrowingUserTasteService
+- ThrowingRatingService
+- ThrowingNotificationService
+- ThrowingModerationAuditService
 
-UserMediaStatusService:
-- Status-change interaction recording previously lived in MediaController. UserMediaStatusService now owns the business side effect.
-- MediaController no longer duplicates status-change orchestration for POST /api/media/{id}/status.
-- Status write plus interaction/taste side effects now run in a transaction.
-- Missing/deleted/invalid status attempts create no misleading status interaction.
+Helper behavior:
+- Throws predictable InvalidOperationException messages.
+- Tracks per-method call counts.
+- Keeps failure behavior explicit with per-method flags.
+- Uses no external APIs, secrets, or global state.
 
-InteractionService:
-- Season interactions now reject seasons whose parent TV media row is deleted.
-- Episode interactions now reject deleted episodes, deleted seasons, and deleted parent TV media rows before writing interactions or recalculating taste.
-
-RatingService:
-- Season ratings now reject seasons whose parent TV media row is deleted before writing ratings, interactions, aggregates, or taste.
-- Episode ratings now reject deleted episodes, deleted seasons, and deleted parent TV media rows before writing ratings, interactions, aggregates, or taste.
-
-7. Side-effect ownership decision
+3. Review transaction tests added
 =================================
 
-Review side effects:
-- ReviewService owns review writes and decides when a ReviewCreated interaction should be recorded.
-- Review create records ReviewCreated through InteractionService; InteractionService owns the post-interaction taste recalculation so review-created interaction points are included.
-- Review update/delete do not create ReviewCreated interactions.
-- Review update/delete trigger taste recalculation directly through ReviewService when only review presence/content changes.
-- Review delete with deleteRating = true delegates the final recalculation to RatingService so rating and review removal are reflected together.
+Added backend/RateOple.Core.Tests/Social/ReviewServiceTransactionTests.cs.
 
-Media status side effects:
-- UserMediaStatusService owns MediaStatusChanged interaction recording for user status changes.
-- MediaController now calls one service method for user status writes.
-- Status changes do not call UserTasteService directly.
-- Status changes affect taste indirectly through the MediaStatusChanged interaction recorded by InteractionService.
+Covered rollback behavior:
+- Review create rolls back when ReviewCreated interaction recording throws.
+- Review create rolls back review and interaction rows when interaction taste recalculation throws.
+- Duplicate review upsert rolls back content changes when taste recalculation throws.
+- Review content update rolls back when taste recalculation throws.
+- Review update with UpdatedRatingValue rolls back review content, rating value, aggregate changes, and taste side effects when downstream taste recalculation throws.
+- Review delete while keeping rating rolls back when taste recalculation throws.
+- Review delete with deleteRating = true rolls back review, rating, aggregate changes, and taste side effects when rating deletion/taste recalculation throws.
 
-8. Tests run and results
-========================
+Result:
+- Tests passed without additional ReviewService production changes.
+- Existing ReviewService transaction boundaries correctly cover nested interaction/rating side effects.
+
+4. Rating transaction tests added
+=================================
+
+Added backend/RateOple.Core.Tests/Social/RatingServiceTransactionTests.cs.
+
+Covered rollback behavior:
+- Media rating create rolls back rating and aggregate when RatingCreated interaction recording throws.
+- Media rating create rolls back rating, interaction, aggregate, and taste state when interaction taste recalculation throws.
+- Existing media rating update rolls back rating value and aggregate when taste recalculation throws.
+- Rating delete rolls back rating removal and aggregate when taste recalculation throws.
+- Missing rating delete does not call taste or interaction side effects.
+- Season rating failure rolls back season rating row, parent series aggregate, interaction, and taste side effects.
+- Episode rating failure rolls back episode rating row, parent series aggregate, interaction, and taste side effects.
+
+Production fix:
+- RatingService now opens an EF transaction for upsert/delete when no outer transaction exists.
+- RatingService reuses an existing transaction when called from ReviewService.
+- Rating row writes, aggregate refresh, taste recalculation, and rating-created interaction recording are atomic.
+
+5. Interaction transaction tests added
+======================================
+
+Added backend/RateOple.Core.Tests/Social/InteractionServiceTransactionTests.cs.
+
+Covered rollback behavior:
+- MediaOpened interaction insert rolls back when taste recalculation throws.
+- ReviewCreated interaction insert rolls back when taste recalculation throws.
+- MediaStatusChanged interaction insert rolls back when taste recalculation throws.
+- Season interaction insert rolls back when parent-series taste recalculation throws.
+- Episode interaction insert rolls back when parent-series taste recalculation throws.
+- Failed target validation does not call taste side effects.
+- Successful media-open interaction still persists and recalculates taste.
+
+Production fix:
+- InteractionService now opens an EF transaction for interaction writes when no outer transaction exists.
+- InteractionService reuses an existing transaction when called from ReviewService, RatingService, or UserMediaStatusService.
+- Interaction rows cannot persist if synchronous taste recalculation fails.
+
+6. UserMediaStatus transaction tests added
+==========================================
+
+Added backend/RateOple.Core.Tests/Users/UserMediaStatusTransactionTests.cs.
+
+Covered rollback behavior:
+- New status create rolls back when status-change interaction recording throws.
+- New status create rolls back status and interaction rows when interaction taste recalculation throws.
+- Existing status update rolls back status and progress fields when interaction recording throws.
+- Existing TV status update rolls back status, progress fields, interaction rows, and taste side effects when taste recalculation throws.
+- Missing media validation does not call interaction side effects.
+- Deleted media validation does not call interaction side effects.
+
+Result:
+- Tests passed with existing UserMediaStatusService transaction behavior plus the InteractionService transaction fix.
+
+7. Moderation transaction tests added
+=====================================
+
+Added backend/RateOple.Core.Tests/Moderation/ModerationTransactionTests.cs.
+
+Covered rollback behavior:
+- Report status update rolls back when moderation audit logging throws.
+- Report status update rolls back status and audit log when persisted notification creation throws.
+- Moderator assignment rolls back when persisted notification creation throws.
+- Moderator assignment removal rolls back when audit logging throws.
+
+Production fix:
+- ModerationService now wraps report status updates, assignment creation, assignment removal, audit logging, and persisted moderation notification creation in one EF transaction.
+- Realtime moderation publishing now occurs after the database transaction commits.
+
+Policy decision:
+- Moderation audit logs are mandatory.
+- Persisted moderation notifications are mandatory for tested moderation mutations.
+- Realtime delivery is best-effort after commit.
+
+8. Production bugs found and fixed
+==================================
+
+RatingService:
+- Rating rows and media aggregates could commit before later interaction or taste failures.
+- Rating deletes could commit before later taste failures.
+- Fixed by adding transaction boundaries that are skipped when an outer transaction already exists.
+
+InteractionService:
+- MediaInteraction rows could commit before taste recalculation failed.
+- This could leave false interaction signals affecting discovery/recommendations.
+- Fixed by adding transaction boundaries that are skipped when an outer transaction already exists.
+
+ModerationService:
+- Report status and moderator assignment mutations could commit before audit or notification failures.
+- Realtime notifications were invoked before an explicit transaction policy existed.
+- Fixed by making audit/persisted notification side effects transactional and moving realtime publish calls after commit.
+
+ReviewService:
+- No new production fix required in this pass.
+- Existing explicit transactions cover review writes and nested side-effect calls.
+
+UserMediaStatusService:
+- No new production fix required in this pass.
+- Existing explicit transactions cover status writes and nested status-change interaction calls.
+
+9. Transaction side-effect policy documented
+============================================
+
+Updated PROJECT_ARCHITECTURE.md.
+
+Mandatory transactional side effects:
+- rating aggregate refreshes
+- rating-created and review-created interactions
+- media-status-changed interactions
+- synchronous taste recalculation from rating/review/interaction/status writes
+- moderation audit logs
+- persisted moderation notifications for report status and assignment changes
+
+Best-effort side effects after commit:
+- realtime SignalR delivery for moderation updates and notification fanout
+- future non-persistent delivery integrations such as email or push notifications
+
+10. Tests run and results
+=========================
 
 Commands run during the task:
 - dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj
-- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter ReviewService
+- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter ReviewServiceTransactionTests
+- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter RatingServiceTransactionTests
+- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter RatingService
+- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter InteractionServiceTransactionTests
+- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter InteractionService
+- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter UserMediaStatusTransactionTests
 - dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter UserMediaStatus
-- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter "InteractionService|RatingService"
-- dotnet test backend/RateOple.Api.Tests/RateOple.Api.Tests.csproj --filter UserMediaStatus
-- dotnet test backend/RateOple.Api.Tests/RateOple.Api.Tests.csproj
+- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter ModerationTransactionTests
+- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter Moderation
 - dotnet test backend/RateOple.sln
 
-Latest verified full suite result before report update:
+Latest verified full suite result after report update:
 - dotnet test backend/RateOple.sln passed.
-- RateOple.Core.Tests: 219 passed, 0 failed, 0 skipped.
+- RateOple.Core.Tests: 250 passed, 0 failed, 0 skipped.
 - RateOple.Api.Tests: 49 passed, 0 failed, 0 skipped.
-- Total: 268 passed, 0 failed, 0 skipped.
+- Total: 299 passed, 0 failed, 0 skipped.
 
-9. Commits created
-==================
+11. Commits created
+===================
 
-- 939c02e Add review and status signal test helpers
-- a9b7d96 Add review service signal-flow tests
-- d0eaa82 Move status-change signal recording into status service
-- 27c5e09 Reject deleted TV child signal targets
-- bb4609a Add review and status signal API tests
-- 3ed1b9f Cover deleted target review deletion signals
+- 6bc01d0 Add failure-injection service test doubles
+- daac649 Add review transaction rollback tests
+- c517b4d Add rating transaction rollback tests
+- c1e3c59 Add interaction transaction rollback tests
+- 61c58cb Add media status transaction rollback tests
+- 2787f07 Add moderation transaction policy tests
+- 72628ca Document backend transaction side-effect policy
 
-10. Remaining signal-flow gaps
-==============================
+Final report commit:
+- Document transaction rollback remediation results
+
+12. Remaining transaction/atomicity gaps
+========================================
 
 Still worth covering later:
-- Explicit failure-injection tests for transaction rollback when InteractionService or UserTasteService throws after the primary write.
-- API smoke tests for season/episode review signal flows, not just media review flows.
-- API smoke tests for deleted TV parent season/episode review and rating targets if public endpoints expose those write paths.
-- Product decision on whether status-change interactions should be capped, deduplicated, or decayed instead of append-only.
-- Product decision on whether review updates should have their own interaction type instead of only recalculating taste.
-- Query-shape/performance review for repeated whole-user taste recalculation as review/status volume grows.
+- API-level failure-injection coverage is still absent; current rollback proof is at Core service level.
+- NotificationService publisher failure behavior is not separately tested. Current policy documents realtime delivery as best-effort, but NotificationService itself may need explicit publisher-failure handling if a real publisher can throw.
+- Execution strategy retry behavior was not added; current tests use SQLite and existing provider behavior.
+- Other service domains with SaveChanges plus downstream effects, such as groups/collections/follows, were outside this task.
+- Concurrent update isolation was not stress-tested.
 
-11. Recommended next task
+13. Recommended next task
 =========================
 
-Add transaction failure-injection tests around review, rating, interaction, and status side effects.
-
-Reason:
-- The main success/failure signal paths are now covered.
-- Review and status writes now use transactions for obvious partial-write protection.
-- The next risk is proving rollback behavior under injected side-effect failures instead of only validating normal validation failures.
+Add targeted failure-injection tests for NotificationService publisher behavior and any remaining social/group side effects that combine primary writes with notifications or realtime delivery.
