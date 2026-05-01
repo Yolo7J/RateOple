@@ -110,7 +110,7 @@ const styles = {
 };
 
 export default function SeasonManagerPage() {
-  const { id } = useParams();        // mediaId (Guid)
+  const { id } = useParams();
   const navigate = useNavigate();
   const {
     getTmdbSeriesDetails,
