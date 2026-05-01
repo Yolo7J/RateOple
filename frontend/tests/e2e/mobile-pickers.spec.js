@@ -10,7 +10,7 @@ import {
 import { groupId, mockGroupDetailPage, mockModerationPage } from './helpers/routes';
 
 test.describe('mobile picker smoke coverage', () => {
-  test.beforeEach(async ({}, testInfo) => {
+  test.beforeEach(async ({ page: _page }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile-chromium', 'Mobile-only picker coverage.');
   });
 
