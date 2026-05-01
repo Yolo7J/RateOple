@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using RateOple.Constants.Enums;
 using RateOple.Core.Common;
 using RateOple.Core.Contracts;
@@ -95,6 +96,8 @@ public class ModerationService : IModerationService
 
     public async Task<ReportDto> UpdateReportStatusAsync(Guid reviewerId, Guid reportId, UpdateReportStatusDto dto)
     {
+        await using var transaction = await BeginTransactionIfNeededAsync();
+
         var report = await _context.Reports.FirstOrDefaultAsync(r => r.Id == reportId)
             ?? throw new KeyNotFoundException("Report not found.");
 
@@ -115,6 +118,9 @@ public class ModerationService : IModerationService
 
         await _auditService.LogAsync(action, reviewerId, report.Id);
         await _notificationService.CreateAsync(report.ReporterId, NotificationType.ReportStatusChanged, report.Id);
+
+        if (transaction != null)
+            await transaction.CommitAsync();
 
         var updatedReport = await MapReportAsync(report);
         await _realtimePublisher.ReportUpdatedAsync(updatedReport);
@@ -146,6 +152,8 @@ public class ModerationService : IModerationService
 
         if (assignment == null)
         {
+            await using var transaction = await BeginTransactionIfNeededAsync();
+
             assignment = new ModeratorAssignment
             {
                 UserId = targetUserId,
@@ -164,6 +172,9 @@ public class ModerationService : IModerationService
                 assignment.UserId,
                 assignment.ScopeType,
                 assignment.ScopeId);
+
+            if (transaction != null)
+                await transaction.CommitAsync();
 
             var assignmentDto = await MapAssignmentAsync(assignment);
             await _realtimePublisher.AssignmentUpdatedAsync(new ModeratorAssignmentUpdateDto
@@ -207,6 +218,8 @@ public class ModerationService : IModerationService
         if (assignment == null)
             return;
 
+        await using var transaction = await BeginTransactionIfNeededAsync();
+
         _context.ModeratorAssignments.Remove(assignment);
         await _context.SaveChangesAsync();
 
@@ -217,6 +230,9 @@ public class ModerationService : IModerationService
             assignment.ScopeType,
             assignment.ScopeId);
 
+        if (transaction != null)
+            await transaction.CommitAsync();
+
         await _realtimePublisher.AssignmentUpdatedAsync(new ModeratorAssignmentUpdateDto
         {
             Action = "Removed",
@@ -226,6 +242,13 @@ public class ModerationService : IModerationService
                 ? null
                 : assignment.ScopeId
         });
+    }
+
+    private async Task<IDbContextTransaction?> BeginTransactionIfNeededAsync()
+    {
+        return _context.Database.CurrentTransaction == null
+            ? await _context.Database.BeginTransactionAsync()
+            : null;
     }
 
     private async Task<bool> CheckTargetExistsAsync(ReportTargetType targetType, Guid targetId)
