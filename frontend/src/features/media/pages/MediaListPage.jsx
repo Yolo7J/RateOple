@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { MEDIA_TYPES } from '../../../shared/constants/mediaTypes';
@@ -36,6 +36,10 @@ const styles = {
     'h-11 rounded-r-xl border border-[var(--border)] bg-[var(--btn-bg)] px-4 text-sm',
     'text-[var(--text-primary)] transition hover:bg-[var(--btn-hover)]',
   ].join(' '),
+  clearButton: [
+    'h-11 rounded-xl border border-[var(--border)] bg-transparent px-4 text-sm',
+    'text-[var(--text-primary)] transition hover:bg-[var(--btn-hover)]',
+  ].join(' '),
   sortSelect: [
     'h-11 min-w-[160px] rounded-xl border border-[var(--border)] bg-[var(--input-bg)] px-3 text-sm',
     'text-[var(--text-primary)]',
@@ -62,6 +66,7 @@ const styles = {
     'rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card-bg)] p-12 text-center',
     'text-[var(--text-muted)]',
   ].join(' '),
+  resultHeading: 'text-lg font-semibold text-[var(--text-primary)]',
   error: 'text-[#ff6d75]',
   pagination: 'flex items-center justify-center gap-3',
   pageButton: [
@@ -69,6 +74,23 @@ const styles = {
     'text-[var(--text-primary)] transition hover:bg-[var(--btn-hover)] disabled:opacity-50',
   ].join(' '),
   pageInfo: 'text-sm text-[var(--text-muted)]',
+};
+
+const parseTypes = (value) => {
+  const types = value?.split(',').filter((type) => MEDIA_TYPES.includes(type)) ?? MEDIA_TYPES;
+  return types.length > 0 ? types : MEDIA_TYPES;
+};
+
+const parseGenres = (value) => (
+  value
+    ?.split(',')
+    .map(Number)
+    .filter((id) => Number.isInteger(id) && id > 0) ?? []
+);
+
+const parsePage = (value) => {
+  const parsed = Number(value ?? 1);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 1;
 };
 
 const MediaListPage = () => {
@@ -79,19 +101,11 @@ const MediaListPage = () => {
     ? user.roles.some((role) => ['Admin', 'SuperAdmin'].includes(role))
     : false;
 
-  const initialTypes = searchParams.get('types')?.split(',').filter(Boolean) ?? MEDIA_TYPES;
-  const initialGenres = searchParams.get('genres')?.split(',').map(Number).filter(Boolean) ?? [];
-  const initialSearch = searchParams.get('search') ?? '';
-  const initialSort = searchParams.get('sort') ?? 'rating:desc';
-  const parsedPage = Number(searchParams.get('page') ?? 1);
-  const initialPage = Number.isFinite(parsedPage) && parsedPage > 0 ? Math.floor(parsedPage) : 1;
-
-  const [selectedTypes, setSelectedTypes] = useState(initialTypes);
-  const [selectedGenres, setSelectedGenres] = useState(initialGenres);
-  const [search, setSearch] = useState(initialSearch);
-  const [searchInput, setSearchInput] = useState(initialSearch);
-  const [sort, setSort] = useState(initialSort);
-  const [page, setPage] = useState(initialPage);
+  const selectedTypes = parseTypes(searchParams.get('types'));
+  const selectedGenres = parseGenres(searchParams.get('genres'));
+  const search = searchParams.get('search')?.trim() ?? '';
+  const sort = searchParams.get('sort') ?? 'rating:desc';
+  const page = parsePage(searchParams.get('page'));
 
   const [sortBy, sortDir] = sort.split(':');
   const { data: genresData, error: genresError } = useMediaGenresQuery();
@@ -112,35 +126,57 @@ const MediaListPage = () => {
     }
   }, [genresError, navigate]);
 
-  useEffect(() => {
-    const params = {};
-    if (selectedTypes.length < 3) params.types = selectedTypes.join(',');
-    if (selectedGenres.length > 0) params.genres = selectedGenres.join(',');
-    if (search) params.search = search;
-    if (sort !== 'rating:desc') params.sort = sort;
-    if (page > 1) params.page = page;
-    setSearchParams(params, { replace: true });
-  }, [selectedTypes, selectedGenres, search, sort, page, setSearchParams]);
-
   const errorMessage = error ? (error?.response?.data?.message || 'Failed to load media.') : null;
 
+  const updateSearchParams = (updates) => {
+    const params = new URLSearchParams(searchParams);
+
+    Object.entries(updates).forEach(([key, value]) => {
+      if (
+        value === undefined ||
+        value === null ||
+        value === '' ||
+        (Array.isArray(value) && value.length === 0)
+      ) {
+        params.delete(key);
+        return;
+      }
+
+      params.set(key, Array.isArray(value) ? value.join(',') : String(value));
+    });
+
+    if ((params.get('types')?.split(',').filter(Boolean).length ?? MEDIA_TYPES.length) >= MEDIA_TYPES.length) {
+      params.delete('types');
+    }
+    if (params.get('sort') === 'rating:desc') params.delete('sort');
+    if (params.get('page') === '1') params.delete('page');
+
+    setSearchParams(params);
+  };
+
   const toggleType = (type) => {
-    setPage(1);
-    setSelectedTypes((prev) =>
-      prev.includes(type) ? (prev.length > 1 ? prev.filter((t) => t !== type) : prev) : [...prev, type],
-    );
+    const nextTypes = selectedTypes.includes(type)
+      ? (selectedTypes.length > 1 ? selectedTypes.filter((t) => t !== type) : selectedTypes)
+      : [...selectedTypes, type];
+
+    updateSearchParams({ types: nextTypes, page: 1 });
   };
 
   const toggleGenre = (id) => {
-    setPage(1);
-    setSelectedGenres((prev) => (prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id]));
+    const nextGenres = selectedGenres.includes(id)
+      ? selectedGenres.filter((g) => g !== id)
+      : [...selectedGenres, id];
+
+    updateSearchParams({ genres: nextGenres, page: 1 });
   };
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    setPage(1);
-    setSearch(searchInput);
+    const formData = new FormData(e.currentTarget);
+    updateSearchParams({ search: String(formData.get('search') ?? '').trim(), page: 1 });
   };
+
+  const clearSearch = () => updateSearchParams({ search: '', page: 1 });
 
   return (
     <PageLayout>
@@ -150,18 +186,25 @@ const MediaListPage = () => {
             <form className={styles.searchForm} onSubmit={handleSearchSubmit}>
               <input
                 type="text"
+                name="search"
+                key={search}
                 className={styles.searchInput}
                 placeholder="Search titles..."
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
+                defaultValue={search}
               />
               <button type="submit" className={styles.searchButton}>Search</button>
             </form>
 
+            {search ? (
+              <button type="button" className={styles.clearButton} onClick={clearSearch}>
+                Clear search
+              </button>
+            ) : null}
+
             <select
               className={styles.sortSelect}
               value={sort}
-              onChange={(e) => { setSort(e.target.value); setPage(1); }}
+              onChange={(e) => updateSearchParams({ sort: e.target.value, page: 1 })}
             >
               {SORT_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -211,6 +254,10 @@ const MediaListPage = () => {
             </aside>
 
             <main className={styles.gridArea}>
+              {search ? (
+                <h2 className={styles.resultHeading}>Search results for "{search}"</h2>
+              ) : null}
+
               {errorMessage ? <p className={styles.error}>{errorMessage}</p> : null}
 
               {loading ? (
@@ -221,7 +268,11 @@ const MediaListPage = () => {
                 </Grid>
               ) : (result?.items?.length ?? 0) === 0 ? (
                 <div className={styles.empty}>
-                  <p>No media found. Try adjusting your filters.</p>
+                  <p>
+                    {search
+                      ? `No media found for "${search}". Try another search or clear filters.`
+                      : 'No media found. Try adjusting your filters.'}
+                  </p>
                 </div>
               ) : (
                 <Grid cols={styles.grid}>
@@ -233,14 +284,18 @@ const MediaListPage = () => {
 
               {(result?.totalPages ?? 1) > 1 ? (
                 <div className={styles.pagination}>
-                  <button className={styles.pageButton} disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+                  <button
+                    className={styles.pageButton}
+                    disabled={page <= 1}
+                    onClick={() => updateSearchParams({ page: page - 1 })}
+                  >
                     ← Prev
                   </button>
                   <span className={styles.pageInfo}>Page {page} of {result?.totalPages ?? 1}</span>
                   <button
                     className={styles.pageButton}
                     disabled={page >= (result?.totalPages ?? 1)}
-                    onClick={() => setPage((p) => p + 1)}
+                    onClick={() => updateSearchParams({ page: page + 1 })}
                   >
                     Next →
                   </button>
