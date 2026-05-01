@@ -5,13 +5,13 @@ import { buildImageUrl } from '../../../shared/utils/buildImageUrl';
 import { useCollectionDetailsQuery } from '../queries/useCollectionDetailsQuery';
 import { useCollectionsQuery } from '../queries/useCollectionsQuery';
 import { useCollectionMutations } from '../queries/useCollectionMutations';
-import { useMediaListQuery } from '../../media/queries/useMediaListQuery';
-import { MEDIA_TYPES } from '../../../shared/constants/mediaTypes';
+import { searchMedia } from '../../media/services/mediaLookupService';
 import CollectionTree from '../components/CollectionTree';
 import PageLayout from '../../../layouts/PageLayout';
 import Container from '../../../shared/ui/Container';
 import Grid from '../../../shared/ui/Grid';
 import Stack from '../../../shared/ui/Stack';
+import { EntityPicker } from '../../../shared/ui/EntityPicker';
 
 const styles = {
   pageStack: 'gap-6',
@@ -55,10 +55,6 @@ const styles = {
     'flex-1 min-w-[220px] rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2',
     'text-[var(--text-primary)] placeholder:text-[var(--text-muted)]',
   ].join(' '),
-  searchResults: 'gap-3',
-  searchCard: 'rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] p-3',
-  searchTitle: 'text-sm font-semibold text-[var(--text-primary)]',
-  searchMeta: 'text-xs text-[var(--text-muted)]',
 };
 
 const SORT_MODES = {
@@ -72,8 +68,7 @@ function CollectionDetailPage() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const mediaId = searchParams.get('mediaId');
-  const [searchInput, setSearchInput] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedMedia, setSelectedMedia] = useState(null);
   const [childName, setChildName] = useState('');
   const [childDescription, setChildDescription] = useState('');
   const [childError, setChildError] = useState('');
@@ -95,21 +90,6 @@ function CollectionDetailPage() {
     unfollowCollection,
     loading: mutating,
   } = useCollectionMutations();
-  const {
-    data: searchResult,
-    loading: searchLoading,
-    error: searchError,
-  } = useMediaListQuery({
-    types: MEDIA_TYPES,
-    genreIds: [],
-    search: searchTerm,
-    sortBy: 'title',
-    sortDir: 'asc',
-    page: 1,
-    pageSize: 8,
-    enabled: Boolean(searchTerm.trim()),
-  });
-
   const childCollections = Array.isArray(childData?.items) ? childData.items : [];
   const items = Array.isArray(collection?.items) ? collection.items : [];
   const canManageCollection = Boolean(user) && (
@@ -117,7 +97,6 @@ function CollectionDetailPage() {
     collection?.ownerType === 3
   );
   const existingMediaIds = new Set(items.map((item) => item.mediaId));
-  const searchItems = Array.isArray(searchResult?.items) ? searchResult.items : [];
   const [addError, setAddError] = useState('');
 
   const handleAddMedia = async () => {
@@ -140,9 +119,16 @@ function CollectionDetailPage() {
     await unfollowCollection(id);
   };
 
-  const handleSearchSubmit = (e) => {
+  const handleAddSelectedMedia = async (e) => {
     e.preventDefault();
-    setSearchTerm(searchInput.trim());
+    if (!id || !selectedMedia?.id || existingMediaIds.has(selectedMedia.id)) return;
+    try {
+      setAddError('');
+      await addItemToCollection(id, selectedMedia.id);
+      setSelectedMedia(null);
+    } catch (err) {
+      setAddError(err?.response?.data?.message || `Could not add ${selectedMedia.label} to collection.`);
+    }
   };
 
   const handleCreateChild = async (e) => {
@@ -337,63 +323,27 @@ function CollectionDetailPage() {
             <section className={styles.section}>
               <Stack className="gap-4">
                 <h2 className={styles.sectionTitle}>Add Media</h2>
-                <form className={styles.searchForm} onSubmit={handleSearchSubmit}>
-                  <input
-                    className={styles.searchInput}
-                    value={searchInput}
-                    onChange={(e) => setSearchInput(e.target.value)}
-                    placeholder="Search by title..."
+                <form className="grid gap-3 max-w-2xl" onSubmit={handleAddSelectedMedia}>
+                  <EntityPicker
+                    label="Media"
+                    placeholder="Search media by title"
+                    value={selectedMedia}
+                    onChange={setSelectedMedia}
+                    searchFn={searchMedia}
+                    disabled={mutating}
                   />
-                  <button className={styles.button} type="submit" disabled={mutating}>
-                    Search
+                  <button
+                    className={styles.button}
+                    type="submit"
+                    disabled={mutating || !selectedMedia || existingMediaIds.has(selectedMedia.id)}
+                  >
+                    {selectedMedia && existingMediaIds.has(selectedMedia.id)
+                      ? 'Already in Collection'
+                      : mutating
+                        ? 'Saving...'
+                        : `Add ${selectedMedia?.label ?? 'Media'}`}
                   </button>
                 </form>
-                {searchTerm ? (
-                  <>
-                    {searchLoading ? <p className={styles.muted}>Searching media...</p> : null}
-                    {searchError ? <p className={styles.error}>Failed to search media.</p> : null}
-                    {!searchLoading && !searchError ? (
-                      <Grid variant="cards" className={styles.searchResults}>
-                        {searchItems.map((media) => {
-                          const alreadyAdded = existingMediaIds.has(media.id);
-                          return (
-                            <article key={media.id} className={styles.searchCard}>
-                              <img
-                                className={styles.itemImage}
-                                src={buildImageUrl(media.coverUrl)}
-                                alt={media.title}
-                              />
-                              <p className={styles.searchTitle}>{media.title}</p>
-                              <p className={styles.searchMeta}>
-                                {media.type} · {media.releaseYear ?? 'N/A'}
-                              </p>
-                              <button
-                                className={styles.button}
-                                type="button"
-                                disabled={alreadyAdded || mutating}
-                                onClick={async () => {
-                                  try {
-                                    setAddError('');
-                                    await addItemToCollection(id, media.id);
-                                  } catch (err) {
-                                    setAddError(err?.response?.data?.message || 'Could not add media to collection.');
-                                  }
-                                }}
-                              >
-                                {alreadyAdded ? 'Already in Collection' : mutating ? 'Saving...' : 'Add Media'}
-                              </button>
-                            </article>
-                          );
-                        })}
-                        {searchItems.length === 0 ? (
-                          <p className={styles.muted}>No media found.</p>
-                        ) : null}
-                      </Grid>
-                    ) : null}
-                  </>
-                ) : (
-                  <p className={styles.muted}>Search for a title to add it to your collection.</p>
-                )}
                 {addError ? <p className={styles.error}>{addError}</p> : null}
               </Stack>
             </section>
