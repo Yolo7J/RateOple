@@ -1,131 +1,177 @@
-RateOple frontend structure notes and bundle splitting report
+RateOple Google OAuth frontend polish report
 Generated: 2026-05-01
-Scope: Align `frontend/FRONTEND_CODE_STRUCTURE.txt` with the active router, add route-level code splitting for major frontend pages, verify the build/test surface, and record final results.
+Scope: Polish the backend-mediated Google OAuth frontend flow, preserve safe local auth redirects, refresh session state after callback success, add Google auth smoke coverage, update docs, run required verification, and record final results.
 
 1. Files changed
 ================
 
-Frontend docs:
-- frontend/FRONTEND_CODE_STRUCTURE.txt
+Backend auth redirect polish:
+- backend/RateOple/Controllers/Auth/AuthController.cs
 
-Frontend routing/performance:
+Frontend auth flow:
 - frontend/src/app/router.jsx
-- frontend/src/shared/ui/RouteFallback.jsx
+- frontend/src/context/AuthContext.jsx
+- frontend/src/features/auth/components/LoginForm.jsx
+- frontend/src/features/auth/components/RegisterForm.jsx
+- frontend/src/features/auth/components/RequireAuth.jsx
+- frontend/src/features/auth/pages/ExternalLoginCallbackPage.jsx
+- frontend/src/features/auth/queries/useAuthSessionQuery.js
+- frontend/src/features/auth/services/authService.js
+- frontend/src/features/auth/services/googleAuthService.js
+- frontend/src/locales/en.json
+- frontend/src/locales/bg.json
+
+Playwright smoke coverage:
+- frontend/tests/e2e/auth-google.spec.js
+
+Docs:
+- frontend/README.md
+- PROJECT_ARCHITECTURE.md
 
 Report:
 - results.txt
 
-2. FRONTEND_CODE_STRUCTURE.txt updates
-======================================
+2. Google auth helper changes
+=============================
 
-Updated `frontend/FRONTEND_CODE_STRUCTURE.txt` to match the current frontend runtime structure.
+Added `frontend/src/features/auth/services/googleAuthService.js`.
 
-- Removed the stale `src/app/routes.jsx` entry.
-- Clarified that `src/app/router.jsx` is the active route definition.
-- Clarified that `src/app/AppRouter.jsx` renders the active router.
-- Added `src/shared/api/lookupApi.js` to the shared API section.
-- Added `src/shared/ui/EntityPicker/*` entries for the shared picker workflow.
-- Added `tests/e2e/` as the Playwright smoke test location.
-- Updated the appended architecture audit notes so they no longer describe the deleted route artifact or the old default frontend README state.
-- Kept the file concise as a structure reference rather than expanding it into a second README.
+Implemented:
+- backend Google login URL generation from `VITE_API_BASE_URL`
+- safe local `returnUrl` normalization
+- auth entry URL helpers for `/login`, `/register`, and `/auth/callback`
+- full-page browser redirect via `window.location.assign(...)`
+- Google-specific friendly error message mapping
 
-3. Bundle analysis summary
-==========================
+Behavior:
+- The frontend still starts Google auth by navigating to backend `GET /api/auth/google/login`.
+- The frontend does not use Axios for the Google challenge redirect.
+- Only local frontend paths are preserved as `returnUrl`; unsafe external URLs fall back to `/`.
 
-Before route splitting:
-- Main JS chunk: `dist/assets/index-BrEXyMAm.js` at `596.59 kB` minified (`168.03 kB` gzip).
-- Vite emitted the `>500 kB` chunk warning.
-- `frontend/src/app/router.jsx` eagerly imported every major route page, including admin, moderation, media detail/edit/add, group detail/post, collections, auth, notifications, account, and watchlist pages.
+3. Login/register UI changes
+============================
 
-Findings:
-- The main bundle was dominated by eager route-page imports rather than a single obvious oversized library.
-- SignalR is still part of the authenticated app path through `src/context/AuthContext.jsx`, but route splitting alone was enough to remove the Vite warning for this pass.
-- No extra bundle analyzer was added.
+Updated the existing auth forms instead of redesigning them.
 
-4. Code splitting changes
+- The Login page now has a working `Continue with Google` button.
+- The Register page now has a working `Continue with Google` button.
+- Existing email/password login and register submission paths remain intact.
+- Login and register links preserve safe local `returnUrl` query params.
+- Login still pre-fills email after successful registration.
+- Google button copy now uses localized strings for the redirecting/completing states.
+
+4. OAuth redirect result handling
+=================================
+
+Added a dedicated frontend callback route:
+- `/auth/callback`
+
+Flow:
+- Backend redirects back to `/auth/callback?returnUrl=...&externalLogin=success|failed[&error=...]`
+- `ExternalLoginCallbackPage.jsx` refreshes frontend auth state through `AuthContext.refreshSession()`
+- On success, the frontend redirects to the intended safe local route and removes callback params from the address bar
+- On failure, the frontend redirects to login with a friendly message in navigation state instead of leaving OAuth params in the URL
+
+Other auth redirect updates:
+- `RequireAuth` now preserves `pathname + search + hash` through a safe `returnUrl` query param
+- `useAuthSessionQuery` and `AuthContext` now share the same session refresh helper
+
+Backend callback polish:
+- `AuthController.GoogleLogin` now redirects back with `externalLogin=failed&error=not_configured` when Google auth is not configured instead of leaving the user on a backend `404` response
+- `AuthController.GoogleCallback` uses the same fallback when Google auth is unavailable
+
+5. Error handling changes
 =========================
 
-Added practical low-risk route-level splitting in `frontend/src/app/router.jsx`.
+Improved auth error extraction in `frontend/src/features/auth/services/authService.js`.
 
-- Replaced eager page imports with `React.lazy(...)` imports for major route pages.
-- Kept layouts and auth/role guards eager so route protection behavior stays unchanged.
-- Wrapped page elements in a shared `Suspense` fallback helper.
-- Added `frontend/src/shared/ui/RouteFallback.jsx` as a small accessible loading state for lazy route transitions.
-- Applied lazy loading to discovery, media, collections, auth, groups, notifications, account/watchlist, admin, and moderation route pages.
-- Preserved route params, query-string behavior, and existing route structure.
+Supported error shapes:
+- string response bodies
+- `error.response?.data?.message`
+- `error.response?.data?.detail`
+- `error.response?.data?.title`
+- validation arrays with `description` values
 
-No additional heavy feature split was required after the route-level pass because the entry chunk dropped below the warning threshold.
+User-facing Google auth failures now distinguish:
+- generic Google sign-in failure
+- backend-not-configured Google sign-in failure
 
-5. Bundle results
-=================
+6. Playwright tests added
+=========================
 
-Before:
-- Main chunk: `596.59 kB`
+Added `frontend/tests/e2e/auth-google.spec.js`.
 
-After:
-- Main chunk: `417.51 kB`
+Covered flows:
+- Login page shows `Continue with Google`
+- Register page shows `Continue with Google`
+- Clicking Google sign-in targets backend `/api/auth/google/login`
+- safe local `returnUrl` values are preserved
+- unsafe external `returnUrl` values are dropped
+- `externalLogin=failed` returns to login with a friendly message
+- `error=not_configured` shows a specific fallback message
+- `externalLogin=success` refreshes `/api/auth/me` and redirects to the intended route
+- existing email/password login/register buttons remain visible
+- mobile auth page stays free of horizontal overflow
 
-Change:
-- Reduced the main chunk by `179.08 kB` minified.
+7. Docs updated
+===============
 
-Notable generated route chunks:
-- `MediaDetailPage`: `20.92 kB`
-- `SeasonManagerPage`: `20.60 kB`
-- `AddMediaPage`: `17.85 kB`
-- `ModerationPage`: `14.04 kB`
-- `GroupDetailPage`: `11.45 kB`
-- `CollectionDetailPage`: `9.78 kB`
-- `AdminMediaPage`: `5.71 kB`
-- `NotificationsPage`: `3.34 kB`
+Updated `frontend/README.md`:
+- documented backend-mediated Google OAuth
+- documented `/auth/callback`
+- documented frontend `/api/auth/me` refresh after callback success
+- documented Playwright Google auth smoke coverage
+- updated troubleshooting for backend Google configuration
+- corrected the stale bundle-warning note from the previous task
 
-Vite warning status:
-- The `>500 kB` warning no longer remains after route splitting.
+Updated `PROJECT_ARCHITECTURE.md`:
+- documented `/auth/callback` as the current frontend callback route that refreshes auth session state and navigates to the intended route
 
-Build notes that still remain:
-- Rollup still strips non-actionable PURE annotations from the SignalR dependency comments.
-- Playwright/Node still prints `NO_COLOR`/`FORCE_COLOR` warnings; tests pass.
-
-6. Commands run and results
+8. Commands run and results
 ===========================
 
-Step verification after structure note update:
-- `cd frontend && npm run lint` passed.
-- `cd frontend && npm run build` passed.
-
-Bundle analysis / code splitting verification:
-- `cd frontend && npm run build` before splitting produced a `596.59 kB` main chunk and the Vite warning.
-- `cd frontend && npm run lint` passed after route splitting.
-- `cd frontend && npm run build` passed after route splitting and produced a `417.51 kB` main chunk without the Vite warning.
+Targeted implementation verification:
+- `cd frontend && npm run lint` passed
+- `cd frontend && npm run build` passed
+- `dotnet test backend/RateOple.sln` passed
+- `cd frontend && npx playwright test tests/e2e/auth-google.spec.js` passed with escalated local dev-server execution
+  - 7 passed, 7 skipped
 
 Final verification:
-- `dotnet test backend/RateOple.sln` passed.
-  - `RateOple.Core.Tests`: 250 passed, 0 failed, 0 skipped.
-  - `RateOple.Api.Tests`: 53 passed, 0 failed, 0 skipped.
-  - Total backend tests: 303 passed, 0 failed, 0 skipped.
-- `cd frontend && npm run lint` passed.
-- `cd frontend && npm run build` passed.
-- `cd frontend && npm run test:e2e` passed: 27 passed, 9 skipped.
+- `dotnet test backend/RateOple.sln` passed
+  - `RateOple.Core.Tests`: 250 passed, 0 failed, 0 skipped
+  - `RateOple.Api.Tests`: 53 passed, 0 failed, 0 skipped
+  - Total backend tests: 303 passed, 0 failed, 0 skipped
+- `cd frontend && npm run lint` passed
+- `cd frontend && npm run build` passed
+  - main chunk after auth polish: `419.55 kB`
+  - Vite `>500 kB` warning did not return
+- `cd frontend && npm run test:e2e` passed with escalated local dev-server execution
+  - 34 passed, 16 skipped
 
-7. Commits created
+Build/test notes:
+- Rollup still strips non-actionable PURE annotations from the SignalR dependency comments
+- Playwright/Node still prints `NO_COLOR`/`FORCE_COLOR` warnings; tests pass
+
+9. Commits created
 ==================
 
-- `6b243ed` Update frontend structure notes
-- `d91562d` Add route-level code splitting
+- `636dbe9` Handle Google OAuth redirect results
+- `0c5d580` Add Google auth Playwright smoke tests
+- `e41e06b` Document Google auth frontend flow
 
 Final report commit:
-- Document frontend bundle splitting results
+- Document Google auth frontend polish results
 
-8. Remaining frontend performance/documentation gaps
-====================================================
+10. Remaining auth gaps
+=======================
 
-- SignalR notification bootstrap is still imported through the authenticated app path and could be split further if future bundle pressure returns.
-- Playwright coverage still uses mocked browser flows rather than a seeded full-stack environment.
-- Google OAuth frontend polish remains.
-- Admin/moderation operational UI still needs richer queue, audit, and staff workflows.
-- Shared design primitives are still incomplete.
-- Demo seed data can be richer.
+- There is still no seeded full-stack OAuth browser test; Playwright coverage remains route-mocked
+- Google account-linking UX is functional but still minimal; there is no dedicated post-link success screen
+- Auth pages still use simple inline messages rather than a shared toast/flash pattern
+- SignalR notification bootstrap is still outside the scope of this auth polish and remains part of the authenticated app path
 
-9. Recommended next task
-========================
+11. Recommended next task
+=========================
 
-If bundle pressure returns, move the authenticated notification realtime bootstrap behind a lazy authenticated boundary so the SignalR client stays out of the initial app payload for anonymous sessions.
+Add a small shared flash-message pattern for auth and mutation success/error states so OAuth, login, registration, and account actions can surface consistent feedback without keeping one-off inline message logic inside each form.
