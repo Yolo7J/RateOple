@@ -1,233 +1,248 @@
-RateOple transaction rollback remediation report
+RateOple entity picker remediation report
 Generated: 2026-05-01
-Scope: Failure-injection tests and minimal backend transaction fixes for review, rating, interaction, media status, and moderation side-effect rollback behavior.
+Scope: Remove user-facing raw GUID workflows by adding lookup endpoints, frontend lookup services, reusable EntityPicker components, and humane group/collection/moderation picker flows.
 
 1. Files changed
 ================
 
-Test infrastructure:
-- backend/RateOple.Core.Tests/TestSupport/ThrowingInteractionService.cs
-- backend/RateOple.Core.Tests/TestSupport/ThrowingUserTasteService.cs
-- backend/RateOple.Core.Tests/TestSupport/ThrowingRatingService.cs
-- backend/RateOple.Core.Tests/TestSupport/ThrowingNotificationService.cs
-- backend/RateOple.Core.Tests/TestSupport/ThrowingModerationAuditService.cs
+Backend lookup contracts:
+- backend/RateOple.Core/Common/LookupDtos.cs
+- backend/RateOple/Controllers/LookupController.cs
+- backend/RateOple.Api.Tests/Lookup/LookupContractTests.cs
 
-Core transaction tests:
-- backend/RateOple.Core.Tests/Social/ReviewServiceTransactionTests.cs
-- backend/RateOple.Core.Tests/Social/RatingServiceTransactionTests.cs
-- backend/RateOple.Core.Tests/Social/InteractionServiceTransactionTests.cs
-- backend/RateOple.Core.Tests/Users/UserMediaStatusTransactionTests.cs
-- backend/RateOple.Core.Tests/Moderation/ModerationTransactionTests.cs
+Frontend lookup services:
+- frontend/src/shared/api/apiClient.js
+- frontend/src/shared/api/lookupApi.js
+- frontend/src/features/media/services/mediaLookupService.js
+- frontend/src/features/users/services/userLookupService.js
+- frontend/src/features/groups/services/groupLookupService.js
+- frontend/src/features/collections/services/collectionLookupService.js
+- frontend/src/features/moderation/services/scopeLookupService.js
 
-Production code fixed:
-- backend/RateOple.Core/Social/Services/RatingService.cs
-- backend/RateOple.Core/Social/Services/InteractionService.cs
-- backend/RateOple.Core/Moderation/Services/ModerationService.cs
+Reusable picker UI:
+- frontend/src/shared/ui/EntityPicker/EntityPicker.jsx
+- frontend/src/shared/ui/EntityPicker/EntityPickerModal.jsx
+- frontend/src/shared/ui/EntityPicker/EntityPickerOption.jsx
+- frontend/src/shared/ui/EntityPicker/MultiEntityPicker.jsx
+- frontend/src/shared/ui/EntityPicker/SelectedEntityPill.jsx
+- frontend/src/shared/ui/EntityPicker/index.js
 
-Documentation:
-- PROJECT_ARCHITECTURE.md
+Workflow replacements:
+- frontend/src/features/groups/pages/GroupDetailPage.jsx
+- frontend/src/features/moderation/pages/ModerationPage.jsx
+- frontend/src/features/moderation/components/ModerationReportRow.jsx
+- frontend/src/features/collections/pages/CollectionDetailPage.jsx
+- frontend/src/features/media/pages/SeasonManagerPage.jsx
+
+Frontend lint cleanup:
+- frontend/src/shared/ui/Container.jsx
+- frontend/src/shared/ui/Grid.jsx
+- frontend/src/shared/ui/Stack.jsx
+- frontend/src/shared/ui/Flex.jsx
+- frontend/src/layouts/PageLayout.jsx
+- frontend/src/features/moderation/components/ModeratorAssignmentList.jsx
+- frontend/src/features/notifications/components/NotificationItem.jsx
+- frontend/src/shared/components/Header/Header.jsx
+- frontend/src/features/groups/pages/GroupPostDetailPage.jsx
+- frontend/src/features/media/pages/EditMediaPage.jsx
 
 Report:
 - results.txt
 
-2. Failure-injection helpers added
-==================================
-
-Added configurable throwing doubles:
-- ThrowingInteractionService
-- ThrowingUserTasteService
-- ThrowingRatingService
-- ThrowingNotificationService
-- ThrowingModerationAuditService
-
-Helper behavior:
-- Throws predictable InvalidOperationException messages.
-- Tracks per-method call counts.
-- Keeps failure behavior explicit with per-method flags.
-- Uses no external APIs, secrets, or global state.
-
-3. Review transaction tests added
+2. Backend lookup endpoints added
 =================================
 
-Added backend/RateOple.Core.Tests/Social/ReviewServiceTransactionTests.cs.
+Added:
+- GET /api/media/lookup?search=&type=&page=&pageSize=
+- GET /api/users/lookup?search=&page=&pageSize=
+- GET /api/admin/users/lookup?search=&page=&pageSize=
+- GET /api/groups/lookup?search=&visibility=&page=&pageSize=
+- GET /api/collections/lookup?search=&page=&pageSize=
+- GET /api/moderation/scopes/lookup?scopeType=&search=&page=&pageSize=
 
-Covered rollback behavior:
-- Review create rolls back when ReviewCreated interaction recording throws.
-- Review create rolls back review and interaction rows when interaction taste recalculation throws.
-- Duplicate review upsert rolls back content changes when taste recalculation throws.
-- Review content update rolls back when taste recalculation throws.
-- Review update with UpdatedRatingValue rolls back review content, rating value, aggregate changes, and taste side effects when downstream taste recalculation throws.
-- Review delete while keeping rating rolls back when taste recalculation throws.
-- Review delete with deleteRating = true rolls back review, rating, aggregate changes, and taste side effects when rating deletion/taste recalculation throws.
+Lookup behavior:
+- Media lookup excludes deleted media, supports title search, optional type filtering, deterministic ordering, normalized pagination, and display-rich subtitles.
+- Public user lookup searches username/display name only and does not expose email.
+- Admin/moderator user lookup requires moderator policy and can search email without returning email in the DTO.
+- Group lookup shows public groups to anonymous users and private groups only to members.
+- Collection lookup shows public collections to anonymous users and follower/private-visible collections only to allowed users.
+- Moderation scope lookup requires admin policy and returns unified Group/Collection/Media/Global picker options.
 
-Result:
-- Tests passed without additional ReviewService production changes.
-- Existing ReviewService transaction boundaries correctly cover nested interaction/rating side effects.
+3. Lookup tests added
+=====================
 
-4. Rating transaction tests added
+Added backend/RateOple.Api.Tests/Lookup/LookupContractTests.cs.
+
+Covered:
+- Deleted media are excluded from media lookup.
+- Lookup pagination normalizes invalid page/pageSize values.
+- Public user lookup does not search or leak email.
+- Moderator user lookup can search email while still returning privacy-safe DTOs.
+- Private groups are hidden from anonymous users and visible to members.
+- Follower-only collections are hidden from anonymous users and visible to followers.
+
+4. Frontend lookup services added
 =================================
 
-Added backend/RateOple.Core.Tests/Social/RatingServiceTransactionTests.cs.
+Added a shared lookup client:
+- frontend/src/shared/api/lookupApi.js
 
-Covered rollback behavior:
-- Media rating create rolls back rating and aggregate when RatingCreated interaction recording throws.
-- Media rating create rolls back rating, interaction, aggregate, and taste state when interaction taste recalculation throws.
-- Existing media rating update rolls back rating value and aggregate when taste recalculation throws.
-- Rating delete rolls back rating removal and aggregate when taste recalculation throws.
-- Missing rating delete does not call taste or interaction side effects.
-- Season rating failure rolls back season rating row, parent series aggregate, interaction, and taste side effects.
-- Episode rating failure rolls back episode rating row, parent series aggregate, interaction, and taste side effects.
+Added feature wrappers:
+- searchMedia
+- searchUsers
+- searchModerationUsers
+- searchGroups
+- searchCollections
+- searchModerationScopes
 
-Production fix:
-- RatingService now opens an EF transaction for upsert/delete when no outer transaction exists.
-- RatingService reuses an existing transaction when called from ReviewService.
-- Rating row writes, aggregate refresh, taste recalculation, and rating-created interaction recording are atomic.
+Also updated apiClient:
+- VITE_API_BASE_URL is now supported.
+- Existing localhost API fallback is preserved.
 
-5. Interaction transaction tests added
-======================================
+5. EntityPicker components added
+================================
 
-Added backend/RateOple.Core.Tests/Social/InteractionServiceTransactionTests.cs.
+Added reusable picker primitives:
+- EntityPicker
+- MultiEntityPicker
+- EntityPickerOption
+- SelectedEntityPill
+- EntityPickerModal
 
-Covered rollback behavior:
-- MediaOpened interaction insert rolls back when taste recalculation throws.
-- ReviewCreated interaction insert rolls back when taste recalculation throws.
-- MediaStatusChanged interaction insert rolls back when taste recalculation throws.
-- Season interaction insert rolls back when parent-series taste recalculation throws.
-- Episode interaction insert rolls back when parent-series taste recalculation throws.
-- Failed target validation does not call taste side effects.
-- Successful media-open interaction still persists and recalculates taste.
+Supported behavior:
+- single select
+- multi select
+- async debounced search
+- selected preview
+- remove/clear selection
+- loading state
+- empty state
+- error state
+- disabled state
+- keyboard basics: Escape closes, Enter selects first result
+- reusable display shape: id, label, subtitle, imageUrl, type, meta
 
-Production fix:
-- InteractionService now opens an EF transaction for interaction writes when no outer transaction exists.
-- InteractionService reuses an existing transaction when called from ReviewService, RatingService, or UserMediaStatusService.
-- Interaction rows cannot persist if synchronous taste recalculation fails.
-
-6. UserMediaStatus transaction tests added
-==========================================
-
-Added backend/RateOple.Core.Tests/Users/UserMediaStatusTransactionTests.cs.
-
-Covered rollback behavior:
-- New status create rolls back when status-change interaction recording throws.
-- New status create rolls back status and interaction rows when interaction taste recalculation throws.
-- Existing status update rolls back status and progress fields when interaction recording throws.
-- Existing TV status update rolls back status, progress fields, interaction rows, and taste side effects when taste recalculation throws.
-- Missing media validation does not call interaction side effects.
-- Deleted media validation does not call interaction side effects.
-
-Result:
-- Tests passed with existing UserMediaStatusService transaction behavior plus the InteractionService transaction fix.
-
-7. Moderation transaction tests added
-=====================================
-
-Added backend/RateOple.Core.Tests/Moderation/ModerationTransactionTests.cs.
-
-Covered rollback behavior:
-- Report status update rolls back when moderation audit logging throws.
-- Report status update rolls back status and audit log when persisted notification creation throws.
-- Moderator assignment rolls back when persisted notification creation throws.
-- Moderator assignment removal rolls back when audit logging throws.
-
-Production fix:
-- ModerationService now wraps report status updates, assignment creation, assignment removal, audit logging, and persisted moderation notification creation in one EF transaction.
-- Realtime moderation publishing now occurs after the database transaction commits.
-
-Policy decision:
-- Moderation audit logs are mandatory.
-- Persisted moderation notifications are mandatory for tested moderation mutations.
-- Realtime delivery is best-effort after commit.
-
-8. Production bugs found and fixed
+6. Group raw-ID workflows replaced
 ==================================
 
-RatingService:
-- Rating rows and media aggregates could commit before later interaction or taste failures.
-- Rating deletes could commit before later taste failures.
-- Fixed by adding transaction boundaries that are skipped when an outer transaction already exists.
+Updated frontend/src/features/groups/pages/GroupDetailPage.jsx.
 
-InteractionService:
-- MediaInteraction rows could commit before taste recalculation failed.
-- This could leave false interaction signals affecting discovery/recommendations.
-- Fixed by adding transaction boundaries that are skipped when an outer transaction already exists.
+Before:
+- Staff pinned media by typing a media ID.
+- Group post attachments used comma-separated media IDs.
 
-ModerationService:
-- Report status and moderator assignment mutations could commit before audit or notification failures.
-- Realtime notifications were invoked before an explicit transaction policy existed.
-- Fixed by making audit/persisted notification side effects transactional and moving realtime publish calls after commit.
+After:
+- Staff pins media with an EntityPicker and sees media title/metadata.
+- Group post attachments use MultiEntityPicker.
+- Selected attachments render as removable pills.
+- API payloads still send mediaIds internally.
+- No group page form asks for a media GUID.
 
-ReviewService:
-- No new production fix required in this pass.
-- Existing explicit transactions cover review writes and nested side-effect calls.
+7. Moderation raw-ID workflows replaced
+=======================================
 
-UserMediaStatusService:
-- No new production fix required in this pass.
-- Existing explicit transactions cover status writes and nested status-change interaction calls.
+Updated:
+- frontend/src/features/moderation/pages/ModerationPage.jsx
+- frontend/src/features/moderation/components/ModerationReportRow.jsx
 
-9. Transaction side-effect policy documented
-============================================
+Before:
+- Moderator assignment accepted raw username/email plus raw scope ID.
+- Group ban controls asked for group ID and user ID.
+- Confirmations displayed raw IDs.
 
-Updated PROJECT_ARCHITECTURE.md.
+After:
+- Moderator assignment uses UserPicker and scope-type-aware picker.
+- Global assignment hides the scope picker.
+- Group, Collection, and Media scopes use moderation scope lookup.
+- Group ban/unban uses group and user pickers.
+- Confirmations display user and group names, not GUIDs.
+- API payloads still send userId/scopeId/groupId internally.
 
-Mandatory transactional side effects:
-- rating aggregate refreshes
-- rating-created and review-created interactions
-- media-status-changed interactions
-- synchronous taste recalculation from rating/review/interaction/status writes
-- moderation audit logs
-- persisted moderation notifications for report status and assignment changes
+8. Collection picker consolidation
+==================================
 
-Best-effort side effects after commit:
-- realtime SignalR delivery for moderation updates and notification fanout
-- future non-persistent delivery integrations such as email or push notifications
+Updated frontend/src/features/collections/pages/CollectionDetailPage.jsx.
 
-10. Tests run and results
+Before:
+- Collection add-media used a one-off media search result grid.
+
+After:
+- Collection add-media uses the shared EntityPicker.
+- Existing Add Current Media behavior from route context is preserved.
+- Duplicate media is blocked by selected item state before submit.
+
+9. Raw-ID copy cleanup
+======================
+
+Removed remaining raw GUID developer-facing copy from frontend workflow code.
+
+Current frontend raw-ID search status:
+- No user-facing "Media ID", "User ID", "Group ID", "Collection ID", "Scope ID", "GUID", or "Guid" form copy remains.
+- Remaining "comma-separated" copy is for favorite genre text input, not database IDs.
+- Remaining id/mediaId/userId references are internal route, state, service, or payload plumbing.
+
+10. Frontend lint cleanup
 =========================
 
-Commands run during the task:
-- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj
-- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter ReviewServiceTransactionTests
-- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter RatingServiceTransactionTests
-- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter RatingService
-- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter InteractionServiceTransactionTests
-- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter InteractionService
-- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter UserMediaStatusTransactionTests
-- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter UserMediaStatus
-- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter ModerationTransactionTests
-- dotnet test backend/RateOple.Core.Tests/RateOple.Core.Tests.csproj --filter Moderation
-- dotnet test backend/RateOple.sln
+npm run lint initially exposed existing lint errors plus one new picker hook warning.
 
-Latest verified full suite result after report update:
+Fixed:
+- polymorphic layout primitives no longer trip no-unused-vars.
+- Date.now render purity issues were removed from notification and moderation assignment components.
+- Header badge pulse effect no longer synchronously sets state inside the effect body.
+- Existing hook dependency warnings in group post and media edit pages were cleaned up.
+- MultiEntityPicker selected state is memoized.
+
+11. Tests/builds run and results
+================================
+
+Backend:
+- dotnet test backend/RateOple.Api.Tests/RateOple.Api.Tests.csproj --filter LookupContractTests passed.
 - dotnet test backend/RateOple.sln passed.
 - RateOple.Core.Tests: 250 passed, 0 failed, 0 skipped.
-- RateOple.Api.Tests: 49 passed, 0 failed, 0 skipped.
-- Total: 299 passed, 0 failed, 0 skipped.
+- RateOple.Api.Tests: 53 passed, 0 failed, 0 skipped.
+- Total backend tests: 303 passed, 0 failed, 0 skipped.
 
-11. Commits created
+Frontend:
+- npm install passed; 0 vulnerabilities.
+- npm run lint passed.
+- npm run build passed.
+
+Build notes:
+- Vite still warns that the main chunk is larger than 500 kB.
+- Rollup still strips non-actionable PURE annotations from SignalR dependency comments.
+
+12. Commits created
 ===================
 
-- 6bc01d0 Add failure-injection service test doubles
-- daac649 Add review transaction rollback tests
-- c517b4d Add rating transaction rollback tests
-- c1e3c59 Add interaction transaction rollback tests
-- 61c58cb Add media status transaction rollback tests
-- 2787f07 Add moderation transaction policy tests
-- 72628ca Document backend transaction side-effect policy
+- c4ee713 Add lookup endpoints for entity pickers
+- ce5e9be Add frontend lookup API services
+- 489281e Add reusable entity picker components
+- 9810523 Replace group media ID inputs with entity pickers
+- eeea136 Replace moderation raw ID workflows with entity pickers
+- d3b2d1c Consolidate collection media picker
+- 62f18ba Remove raw ID form copy from frontend workflows
+- 9530bd3 Fix frontend lint issues
 
 Final report commit:
-- Document transaction rollback remediation results
+- Document entity picker remediation results
 
-12. Remaining transaction/atomicity gaps
-========================================
+13. Remaining raw-ID/UI gaps
+============================
 
-Still worth covering later:
-- API-level failure-injection coverage is still absent; current rollback proof is at Core service level.
-- NotificationService publisher failure behavior is not separately tested. Current policy documents realtime delivery as best-effort, but NotificationService itself may need explicit publisher-failure handling if a real publisher can throw.
-- Execution strategy retry behavior was not added; current tests use SQLite and existing provider behavior.
-- Other service domains with SaveChanges plus downstream effects, such as groups/collections/follows, were outside this task.
-- Concurrent update isolation was not stress-tested.
+Known remaining gaps:
+- Playwright smoke tests were not added because no Playwright setup exists yet.
+- Some route URLs still contain entity IDs internally, as expected for implementation routing.
+- Account page still has a comma-separated favorite genres field; this is not a GUID workflow, but it should eventually become a tag/genre picker.
+- Admin dashboards may still display technical identifiers if future debug tables are added; they should stay metadata-only and not become copy/paste workflows.
+- Large frontend bundle warning remains and should be handled by code splitting later.
 
-13. Recommended next task
+14. Recommended next task
 =========================
 
-Add targeted failure-injection tests for NotificationService publisher behavior and any remaining social/group side effects that combine primary writes with notifications or realtime delivery.
+Add Playwright smoke coverage for the new picker workflows:
+- group pin media picker
+- group post media attachments
+- moderation assignment scope switching
+- moderation group ban user/group selection
+- collection add-media picker
