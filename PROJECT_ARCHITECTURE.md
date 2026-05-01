@@ -64,8 +64,8 @@ backend/
   RateOple.Constants/                # enums and constants
 
 frontend/
-  src/app/                           # router + provider composition
-    AppRouter.jsx router.jsx routes.jsx providers.jsx
+  src/app/                           # active router + provider composition
+    AppRouter.jsx router.jsx providers.jsx
   src/layouts/                       # Admin/Auth/Group/Main/Page/Sidebar layouts
   src/context/                       # global contexts (auth/theme/language/media cart)
   src/hooks/                         # shared hooks (useTheme/useLanguage/useQueryResource)
@@ -507,7 +507,6 @@ SignalR hubs:
 ## 9. Frontend Contract Snapshot
 
 - Primary routing is in `frontend/src/app/router.jsx` (rendered by `AppRouter.jsx`).
-- `frontend/src/app/routes.jsx` exists as a route map artifact but is not the active router.
 - Providers are composed in `frontend/src/app/providers.jsx`:
   Theme -> Language -> React Query -> BrowserRouter -> Auth -> MediaCart.
 - API access goes through `frontend/src/shared/api/apiClient.js` with:
@@ -651,13 +650,12 @@ Resolved guardrails:
 
 Remaining risks:
 
-- Frontend routing has a stale route map artifact (`src/app/routes.jsx`) while `src/app/router.jsx` is the active router.
 - Google OAuth works through the backend, but the frontend flow still needs polish.
 - Admin/moderation operational UI still needs richer queue, audit, and staff workflows.
 - Shared frontend design primitives are still incomplete across buttons, fields, dialogs, data tables, badges, and empty states.
 - The main frontend bundle remains larger than Vite's 500 kB warning threshold and should be split later.
 - Demo seed data remains thin for media, tags, collections, groups, posts, reports, assignments, notifications, and ratings.
-- `frontend/README.md` is still the default Vite template and should be replaced with RateOple-specific setup and testing notes.
+- `frontend/README.md` should stay aligned with the active Vite, auth, CSRF, routing, and test workflows as those evolve.
 
 Documentation note: the full prioritized critique and remediation backlog lives in `PROJECT_CRITIQUE_AND_RECOMMENDATIONS.txt`.
 
