@@ -1,247 +1,134 @@
-RateOple Playwright picker smoke remediation report
+RateOple global search and group filter remediation report
 Generated: 2026-05-01
-Scope: Add targeted Playwright smoke coverage for EntityPicker workflows, group picker flows, moderation picker flows, collection add-media picker flow, mobile 360px picker behavior, and architecture/report updates.
+Scope: Implement global header search, wire media results to search query params, remove misleading group media/tag filters, add Playwright smoke coverage, update architecture risk docs, and run final verification.
 
 1. Files changed
 ================
 
-Playwright setup:
-- frontend/package.json
-- frontend/package-lock.json
-- frontend/playwright.config.js
-- frontend/eslint.config.js
-
-Playwright helpers:
-- frontend/tests/e2e/helpers/auth.js
-- frontend/tests/e2e/helpers/lookupMocks.js
-- frontend/tests/e2e/helpers/routes.js
-- frontend/tests/e2e/helpers/assertions.js
+Frontend behavior:
+- frontend/src/shared/ui/SearchBar/SearchBar.jsx
+- frontend/src/shared/components/Header/Header.jsx
+- frontend/src/features/media/pages/MediaListPage.jsx
+- frontend/src/features/groups/pages/GroupsPage.jsx
 
 Playwright specs:
-- frontend/tests/e2e/entity-picker.spec.js
-- frontend/tests/e2e/group-pickers.spec.js
-- frontend/tests/e2e/moderation-pickers.spec.js
-- frontend/tests/e2e/collection-picker.spec.js
-- frontend/tests/e2e/mobile-pickers.spec.js
-
-Frontend behavior fixes found by smoke tests:
-- frontend/src/shared/ui/EntityPicker/EntityPicker.jsx
-- frontend/src/shared/components/Header/Header.jsx
+- frontend/tests/e2e/global-search.spec.js
+- frontend/tests/e2e/groups-browse.spec.js
 
 Docs/report:
 - PROJECT_ARCHITECTURE.md
 - results.txt
 
-2. Playwright setup added
+2. Global search behavior implemented
+=====================================
+
+- Header search no longer logs to the console or leaves TODO behavior.
+- Desktop and mobile header search submit to /media?search=<encoded query>.
+- Search text is trimmed before navigation.
+- Empty header search navigates to /media.
+- The search icon is now a submit button, so Enter and click submission both work.
+- Mobile search closes the search sheet after submit.
+- Header search reflects the current /media search query when the URL contains search=...
+
+3. Media results query-param behavior implemented
+=================================================
+
+- MediaListPage now treats URL query params as route state for search, type filters, genre filters, sort, and page.
+- /media?search=inception calls the media list query with search=inception.
+- The local media search input reflects the search query param.
+- Clearing search removes search from the URL and refreshes results.
+- Pagination updates page in the URL while preserving search/filter params.
+- Empty search results show a query-specific empty state.
+- Backend media search already supported title search and deleted media exclusion, so no backend rewrite was needed.
+
+4. Group filter decision and changes
+====================================
+
+Decision: remove fake filters.
+
+- Groups do not currently have real backend media-type or tag/category metadata.
+- Removed the media type and tag dropdowns that previously filtered group name/description text.
+- Removed the client-only sort control so the page does not imply unsupported server sorting.
+- Kept backend-supported search.
+- Added backend-supported visibility filtering.
+- Added honest future-facing copy that discovery filters can return when groups support tags or categories.
+
+5. Tests added or updated
 =========================
 
-Added @playwright/test and frontend scripts:
-- npm run test:e2e
-- npm run test:e2e:ui
-- npm run test:e2e:headed
+Added frontend/tests/e2e/global-search.spec.js:
+- Desktop header search navigates to /media?search=...
+- Search results request includes the search query.
+- Empty media result state appears when the API returns no items.
+- Mobile header search submits, closes the search sheet, and has no 360px horizontal overflow.
 
-Added frontend/playwright.config.js:
-- Uses Vite dev server as webServer.
-- Uses frontend dev server as baseURL.
-- Passes VITE_API_BASE_URL into the Vite server.
-- Defines Chromium desktop and mobile Chromium projects.
-- Mobile project uses a 360px-wide viewport.
-- Retains screenshots, video, and traces only on failure.
+Added frontend/tests/e2e/groups-browse.spec.js:
+- Group search sends the real search query to /api/groups.
+- Visibility filter sends the real visibility query to /api/groups.
+- Removed fake media/tag filters are not visible.
+- Empty group state appears when the API returns no groups.
+- Mobile 360px group browse has no obvious horizontal overflow.
 
-Playwright Chromium browser was installed locally with:
-- npx playwright install chromium
-
-3. Mocking strategy
-===================
-
-The E2E suite uses Playwright route mocks rather than backend fixture setup.
-
-Mocks cover:
-- /api/auth/me
-- /api/auth/refresh
-- /api/csrf
-- /api/notifications
-- media lookup
-- public/admin user lookup
-- group lookup
-- collection lookup
-- moderation scope lookup
-- group detail, posts, pinned media, members, staff messages
-- collection detail, child collection list, add-item mutation
-- moderation reports, assignments, and group ban mutation
-
-Mutation assertions inspect outgoing request bodies so tests verify that the UI selects humane labels while still sending internal IDs in API payloads.
-
-4. EntityPicker tests added
-===========================
-
-Added frontend/tests/e2e/entity-picker.spec.js.
-
-Covered:
-- picker opens
-- user can type search
-- mocked result appears with label/subtitle
-- clicking result selects it
-- selected preview/pill appears
-- selected item can be removed
-- Escape closes the picker
-- Enter selects the first result
-- empty state appears
-- API error state appears
-- mobile 360px picker opens and has no horizontal overflow
-
-5. Group picker tests added
-===========================
-
-Added frontend/tests/e2e/group-pickers.spec.js.
-
-Covered:
-- staff/admin renders group detail
-- pin media picker search/select flow
-- pin submit sends selected media ID
-- post attachment MultiEntityPicker selects multiple media items
-- selected attachments render as removable pills
-- removing one attachment updates submit payload
-- create post sends mediaIds array
-- raw Media ID and comma-separated media ID inputs are absent
-- desktop and mobile Chromium coverage
-
-6. Moderation picker tests added
-================================
-
-Added frontend/tests/e2e/moderation-pickers.spec.js.
-
-Covered:
-- admin/moderator renders moderation page
-- moderator assignment user picker
-- Global scope hides scope picker
-- Group scope picker appears and selects group scope
-- Collection scope picker appears and selects collection scope
-- Media scope picker appears and selects media scope
-- assignment submit sends userId, scopeType, and scopeId
-- assignment UI shows human-readable moderator/scope labels
-- group ban controls select group and user through pickers
-- group ban submit sends internal IDs
-- UI displays names instead of GUIDs
-- raw scope/group/user ID inputs are absent
-- desktop and mobile Chromium coverage
-
-7. Collection picker tests added
-================================
-
-Added frontend/tests/e2e/collection-picker.spec.js.
-
-Covered:
-- owner renders collection detail
-- add-media picker search/select flow
-- selected media title/subtitle display
-- submit sends selected media ID
-- existing media selection is blocked before submit
-- raw media ID input is absent
-- desktop and mobile Chromium coverage
-
-8. Mobile coverage added
-========================
-
-Added frontend/tests/e2e/mobile-pickers.spec.js and mobile project coverage across the picker specs.
-
-Covered at 360px:
-- shared EntityPicker opens, shows results, selects/removes pills, and has no horizontal overflow
-- group post media picker selects an item
-- moderation assignment switches scope type
-- group, collection, and moderation picker specs also run in mobile Chromium
-
-9. Architecture docs updated
+6. Architecture docs updated
 ============================
 
-Updated PROJECT_ARCHITECTURE.md.
+Updated PROJECT_ARCHITECTURE.md:
+- CSRF is no longer listed as unresolved; it is documented as a resolved guardrail for mutating cookie-auth API endpoints, with SignalR as the documented exemption.
+- Seeded privileged/demo accounts are no longer listed as unresolved; Seed:Mode and production rejection of Demo/placeholder privileged credentials are documented as guardrails.
+- Raw GUID picker remediation remains documented as a resolved guardrail.
+- Global search and honest group filters are now documented as resolved guardrails with Playwright coverage.
+- Remaining risks now focus on stale src/app/routes.jsx, Google OAuth frontend polish, admin/moderation operational UI, shared design primitives, frontend bundle splitting, richer demo seed data, and replacing the default frontend README.
 
-Added:
-- Entity picker and lookup workflow status section
-- lookup endpoint status for media, users, groups, collections, and moderation scopes
-- shared EntityPicker / MultiEntityPicker status
-- group, collection, and moderation raw-ID workflow replacement status
-- IDs remain internal route/API payload values, not manual user inputs
-- future workflows must use lookup/picker patterns
-- Playwright picker smoke tests now guard the behavior
+7. Commands run and results
+===========================
 
-Updated remaining risks:
-- raw GUID workflow risk is resolved/guardrail
-- global search TODO remains
-- group filters remain
-- Google OAuth frontend polish remains
-- admin/moderation operational UI remains
-- bundle warning remains
-
-10. Fixes made
-==============
-
-Smoke tests found and fixed:
-- EntityPicker Escape now prevents the browser search-input cancel behavior from reopening the picker.
-- Closed mobile header drawers now use display:none instead of off-screen transforms, preventing hidden drawers from contributing to horizontal document overflow.
-- ESLint config now supports Playwright config Node globals and underscore-prefixed intentionally unused test args.
-- Picker result helper now scopes result selection to the active listbox to avoid clicking same-named content elsewhere on the page.
-
-11. Commands run and results
-============================
-
-Setup checks:
-- npm install -D @playwright/test passed; 0 vulnerabilities.
-- npm run build passed.
-- npx playwright --version returned Version 1.59.1.
-- npx playwright install chromium passed.
-
-Targeted E2E checks:
-- npm run test:e2e -- tests/e2e/entity-picker.spec.js passed: 7 passed, 1 skipped.
-- npm run test:e2e -- tests/e2e/group-pickers.spec.js passed: 4 passed.
-- npm run test:e2e -- tests/e2e/moderation-pickers.spec.js passed: 4 passed.
-- npm run test:e2e -- tests/e2e/collection-picker.spec.js passed: 4 passed.
-- npm run test:e2e -- tests/e2e/mobile-pickers.spec.js passed: 2 passed, 2 skipped.
+Targeted checks:
+- npm run lint passed after global search navigation changes.
+- npm run lint passed after media query-param changes.
+- npm run test:e2e -- tests/e2e/global-search.spec.js passed: 3 passed, 3 skipped.
+- npm run lint passed after group filter changes.
+- npm run test:e2e -- tests/e2e/groups-browse.spec.js passed: 3 passed, 3 skipped.
 
 Final verification:
 - dotnet test backend/RateOple.sln passed.
-- RateOple.Core.Tests: 250 passed, 0 failed, 0 skipped.
-- RateOple.Api.Tests: 53 passed, 0 failed, 0 skipped.
-- Total backend tests: 303 passed, 0 failed, 0 skipped.
+  - RateOple.Core.Tests: 250 passed, 0 failed, 0 skipped.
+  - RateOple.Api.Tests: 53 passed, 0 failed, 0 skipped.
+  - Total backend tests: 303 passed, 0 failed, 0 skipped.
 - npm run lint passed.
 - npm run build passed.
-- npm run test:e2e passed: 21 passed, 3 skipped.
+- npm run test:e2e passed: 27 passed, 9 skipped.
 
-Build notes:
-- Vite still warns that the main chunk is larger than 500 kB.
+Build/test notes:
+- Vite still warns that the main frontend chunk is larger than 500 kB.
 - Rollup still strips non-actionable PURE annotations from SignalR dependency comments.
-- Playwright/Node prints NO_COLOR/FORCE_COLOR warnings during e2e runs; tests still pass.
+- Playwright/Node still prints NO_COLOR/FORCE_COLOR warnings; tests pass.
 
-12. Commits created
-===================
+8. Commits created
+==================
 
-- b466c6d Add Playwright smoke test setup
-- 5f447b8 Add Playwright smoke test helpers
-- 5746b6c Add EntityPicker Playwright smoke tests
-- 43a40e3 Add group picker flow smoke tests
-- 92c8d88 Add moderation picker flow smoke tests
-- 4c96ef5 Add collection picker flow smoke tests
-- cb04161 Add mobile picker smoke coverage
-- 6be5be0 Update architecture docs for picker smoke coverage
-- 5265b31 Fix Playwright lint configuration
+- 058e869 Implement global search navigation
+- 7aab374 Wire media page to search query params
+- 0122f4e Add global search smoke tests
+- 66b75ec Remove misleading group filters
+- fadca00 Add group browsing smoke tests
+- ea2dc7a Update architecture audit after search and filter remediation
 
 Final report commit:
-- Document Playwright picker smoke remediation results
+- Document search and group filter remediation results
 
-13. Remaining E2E/frontend QA gaps
+9. Remaining frontend/product gaps
 ==================================
 
-Known remaining gaps:
 - Playwright tests use route mocks, not a seeded full-stack backend/browser environment.
-- Visual regression coverage is not included.
-- Accessibility audits are not included.
-- Global search remains a TODO.
-- Group browsing filters remain limited.
 - Google OAuth frontend polish remains.
-- Admin/moderation operational UI can still be made richer.
-- Large frontend bundle warning remains and should be handled by route/feature code splitting later.
+- Admin/moderation operational UI still needs richer queue, audit, and staff workflows.
+- Shared design primitives are still incomplete.
+- Frontend bundle splitting remains.
+- Demo seed data can be richer.
+- src/app/routes.jsx remains a stale routing artifact.
+- frontend/README.md is still the default Vite template.
 
-14. Recommended next task
+10. Recommended next task
 =========================
 
-Add a seeded full-stack Playwright smoke lane for authentication and one happy-path CRUD workflow, while keeping the current mocked picker suite as the fast guardrail for picker regressions.
+Replace frontend/README.md with RateOple-specific setup, auth/CSRF, environment, testing, and routing documentation, then remove or clearly retire the stale src/app/routes.jsx artifact.
