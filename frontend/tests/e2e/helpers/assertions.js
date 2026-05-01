@@ -24,7 +24,7 @@ export async function expectNoHorizontalOverflow(page) {
 }
 
 export async function waitForPickerResult(page, label) {
-  const result = page.getByRole('button', { name: new RegExp(label, 'i') }).last();
+  const result = page.getByRole('listbox').getByRole('button', { name: new RegExp(label, 'i') }).first();
   await expect(result).toBeVisible();
   return result;
 }
