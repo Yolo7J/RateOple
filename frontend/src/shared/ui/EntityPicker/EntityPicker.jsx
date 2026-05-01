@@ -115,7 +115,10 @@ export default function EntityPicker({
           setOpen(true);
         }}
         onKeyDown={(event) => {
-          if (event.key === 'Escape') setOpen(false);
+          if (event.key === 'Escape') {
+            event.preventDefault();
+            setOpen(false);
+          }
           if (event.key === 'Enter' && options.length > 0) {
             event.preventDefault();
             handleSelect(options[0]);

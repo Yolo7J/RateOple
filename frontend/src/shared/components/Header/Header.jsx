@@ -327,7 +327,7 @@ const Header = () => {
 
       <div
         className={`md:hidden fixed inset-0 z-50 transition ${
-          isMobileMenuOpen ? 'pointer-events-auto' : 'pointer-events-none'
+          isMobileMenuOpen ? 'block pointer-events-auto' : 'hidden pointer-events-none'
         }`}
         aria-hidden={!isMobileMenuOpen}
       >
@@ -590,7 +590,7 @@ const Header = () => {
 
       <div
         className={`md:hidden fixed inset-0 z-50 transition ${
-          isMobileSearchOpen ? 'pointer-events-auto' : 'pointer-events-none'
+          isMobileSearchOpen ? 'block pointer-events-auto' : 'hidden pointer-events-none'
         }`}
         aria-hidden={!isMobileSearchOpen}
       >
@@ -626,7 +626,7 @@ const Header = () => {
 
       <div
         className={`md:hidden fixed inset-0 z-50 transition ${
-          isMobileUserOpen ? 'pointer-events-auto' : 'pointer-events-none'
+          isMobileUserOpen ? 'block pointer-events-auto' : 'hidden pointer-events-none'
         }`}
         aria-hidden={!isMobileUserOpen}
       >
