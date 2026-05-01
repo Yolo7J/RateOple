@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using RateOple.Core.Contracts;
 using RateOple.Core.Social.DTOs;
 using RateOple.Infrastructure.Data;
@@ -115,6 +116,8 @@ public class RatingService : IRatingService
         if (episodeId.HasValue)
             await EnsureEpisodeExistsAsync(episodeId.Value);
 
+        await using var transaction = await BeginTransactionIfNeededAsync();
+
         var existingRating = await _context.Ratings.FirstOrDefaultAsync(r =>
             r.UserId == userId &&
             r.MediaId == mediaId &&
@@ -154,6 +157,9 @@ public class RatingService : IRatingService
         if (isNewRating)
             await _interactionService.TrackRatingCreatedAsync(userId, mediaId, seasonId, episodeId);
 
+        if (transaction != null)
+            await transaction.CommitAsync();
+
         return MapToDto(existingRating);
     }
 
@@ -174,6 +180,8 @@ public class RatingService : IRatingService
         if (episodeId.HasValue)
             await EnsureEpisodeExistsAsync(episodeId.Value);
 
+        await using var transaction = await BeginTransactionIfNeededAsync();
+
         var rating = await _context.Ratings.FirstOrDefaultAsync(r =>
             r.UserId == userId &&
             r.MediaId == mediaId &&
@@ -191,6 +199,16 @@ public class RatingService : IRatingService
             await RefreshMediaAggregateAsync(ownerMediaId.Value);
         if (ownerMediaId.HasValue)
             await _userTasteService.RecalculateForMediaContextAsync(userId, ownerMediaId.Value);
+
+        if (transaction != null)
+            await transaction.CommitAsync();
+    }
+
+    private async Task<IDbContextTransaction?> BeginTransactionIfNeededAsync()
+    {
+        return _context.Database.CurrentTransaction == null
+            ? await _context.Database.BeginTransactionAsync()
+            : null;
     }
 
     private async Task<TargetRatingSummaryDto> GetSummaryAsync(
