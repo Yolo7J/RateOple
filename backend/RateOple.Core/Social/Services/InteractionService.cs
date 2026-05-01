@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using RateOple.Constants.Enums;
 using RateOple.Core.Contracts;
 using RateOple.Infrastructure.Data;
@@ -44,6 +45,8 @@ public class InteractionService : IInteractionService
         await EnsureUserExistsAsync(userId);
         await EnsureTargetExistsAsync(mediaId, seasonId, episodeId);
 
+        await using var transaction = await BeginTransactionIfNeededAsync();
+
         var interaction = new MediaInteraction
         {
             Id = Guid.NewGuid(),
@@ -62,6 +65,16 @@ public class InteractionService : IInteractionService
         var ownerMediaId = await ResolveMediaIdAsync(mediaId, seasonId, episodeId);
         if (ownerMediaId.HasValue)
             await _userTasteService.RecalculateForMediaContextAsync(userId, ownerMediaId.Value);
+
+        if (transaction != null)
+            await transaction.CommitAsync();
+    }
+
+    private async Task<IDbContextTransaction?> BeginTransactionIfNeededAsync()
+    {
+        return _context.Database.CurrentTransaction == null
+            ? await _context.Database.BeginTransactionAsync()
+            : null;
     }
 
     private async Task EnsureUserExistsAsync(Guid userId)
