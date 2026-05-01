@@ -91,6 +91,8 @@ export async function mockCollectionDetailPage(page, options = {}) {
 }
 
 export async function mockModerationPage(page, options = {}) {
+  const assignments = [...(options.assignments ?? [])];
+
   await page.route('**/api/moderation/reports**', async (route) => {
     if (route.request().method() === 'GET') {
       await route.fulfill({
@@ -102,18 +104,31 @@ export async function mockModerationPage(page, options = {}) {
   });
   await page.route('**/api/moderation/assignments**', async (route) => {
     if (route.request().method() === 'POST') {
+      const payload = route.request().postDataJSON();
+      assignments.push({
+        userId: payload.userId,
+        userDisplayName: payload.userId === 'user-moderator-2' ? 'Mira Moderator' : payload.userId,
+        assignedByDisplayName: 'Admin',
+        scopeType: payload.scopeType,
+        scopeId: payload.scopeId ?? null,
+        scopeName: {
+          1: 'Global',
+          2: 'Cinema Club',
+          3: 'Modern Classics',
+          4: 'Arrival',
+        }[payload.scopeType],
+        assignedAt: '2026-05-01T09:00:00Z',
+      });
       await route.fulfill({
         json: {
-          userId: 'user-moderator-2',
-          userName: 'Mira Moderator',
-          scopeType: 2,
-          scopeId: 'group-cinema',
-          scopeName: 'Cinema Club',
+          userId: payload.userId,
+          scopeType: payload.scopeType,
+          scopeId: payload.scopeId ?? null,
         },
       });
       return;
     }
-    await route.fulfill({ json: options.assignments ?? [] });
+    await route.fulfill({ json: assignments });
   });
   await page.route('**/api/groups/group-cinema/bans', async (route) => {
     await route.fulfill({ json: { groupId: 'group-cinema', userId: 'user-reported-3' } });
