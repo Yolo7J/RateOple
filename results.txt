@@ -1,203 +1,95 @@
-RateOple shared frontend visual system report
 Generated date: 2026-05-02
 
 Scope
-=====
-
-Built a lightweight shared frontend visual foundation for RateOple using the existing React/Vite/Tailwind/CSS stack. The work focused on reusable primitives, design tokens, layout shells, shared components, global UI states, and basic accessibility/responsiveness. No backend contracts or product routes were changed.
+- Applied the shared RateOple UI foundation across high-traffic user pages, admin/media workflows, moderation workflows, group workflows, and collection detail surfaces.
+- Kept backend contracts, routing, and core product flows intact.
+- Focused on page-level polish, reusable primitive adoption, consistent operational density, and standardized loading/empty/error/confirmation patterns.
 
 Files changed
-=============
-
-Frontend design/system files:
-- frontend/src/index.css
-- frontend/src/shared/ui/Badge.jsx
-- frontend/src/shared/ui/Button.jsx
-- frontend/src/shared/ui/Checkbox.jsx
-- frontend/src/shared/ui/DataTable.jsx
-- frontend/src/shared/ui/Dialog.jsx
-- frontend/src/shared/ui/EmptyState.jsx
-- frontend/src/shared/ui/FormField.jsx
-- frontend/src/shared/ui/InlineMessage.jsx
-- frontend/src/shared/ui/Input.jsx
-- frontend/src/shared/ui/LoadingState.jsx
-- frontend/src/shared/ui/PageHeader.jsx
-- frontend/src/shared/ui/Panel.jsx
-- frontend/src/shared/ui/SectionCard.jsx
-- frontend/src/shared/ui/Select.jsx
-- frontend/src/shared/ui/StatCard.jsx
-- frontend/src/shared/ui/Tabs.jsx
-- frontend/src/shared/ui/Textarea.jsx
-- frontend/src/shared/ui/Toggle.jsx
-- frontend/src/shared/ui/index.js
-
-Layouts and shared app chrome:
-- frontend/src/layouts/AdminLayout.jsx
-- frontend/src/layouts/AuthLayout.jsx
-- frontend/src/layouts/GroupLayout.jsx
-- frontend/src/layouts/MainLayout.jsx
-- frontend/src/layouts/PageLayout.jsx
-- frontend/src/layouts/SidebarLayout.jsx
-- frontend/src/shared/components/Header/Header.jsx
-- frontend/src/shared/components/Header/NavigationDropdown.jsx
-- frontend/src/shared/components/Footer/Footer.jsx
-- frontend/src/shared/components/MediaCard/MediaCard.jsx
-- frontend/src/shared/ui/SearchBar/SearchBar.jsx
-- frontend/src/shared/ui/RouteFallback.jsx
-
-Shared/cross-feature polish:
-- frontend/src/shared/ui/EntityPicker/EntityPicker.jsx
-- frontend/src/shared/ui/EntityPicker/EntityPickerModal.jsx
-- frontend/src/shared/ui/EntityPicker/EntityPickerOption.jsx
-- frontend/src/shared/ui/EntityPicker/SelectedEntityPill.jsx
-- frontend/src/shared/ui/RatingStars/RatingStars.jsx
-- frontend/src/features/admin/pages/AdminDashboardPage.jsx
-- frontend/src/features/auth/components/AuthCard.jsx
-- frontend/src/features/auth/components/LoginForm.jsx
-- frontend/src/features/auth/components/RegisterForm.jsx
-- frontend/src/features/collections/components/CollectionCard.jsx
-- frontend/src/features/collections/pages/CollectionsPage.jsx
-- frontend/src/features/discovery/components/DiscoverySection.jsx
-- frontend/src/features/discovery/components/MediaRow.jsx
-- frontend/src/features/groups/components/GroupCard.jsx
-- frontend/src/features/groups/components/GroupPostCard.jsx
-- frontend/src/features/groups/pages/GroupsPage.jsx
-- frontend/src/features/media/pages/AdminMediaPage.jsx
+- frontend/src/features/collections/pages/CollectionDetailPage.jsx
+- frontend/src/features/groups/pages/CreateGroupPage.jsx
+- frontend/src/features/groups/pages/GroupDetailPage.jsx
+- frontend/src/features/groups/pages/GroupPostDetailPage.jsx
+- frontend/src/features/media/components/MediaStatusSelector.jsx
+- frontend/src/features/media/pages/AddMediaPage.jsx
+- frontend/src/features/media/pages/CartPage.jsx
+- frontend/src/features/media/pages/EditMediaPage.jsx
+- frontend/src/features/media/pages/MediaDetailPage.jsx
+- frontend/src/features/media/pages/MediaListPage.jsx
+- frontend/src/features/media/pages/SeasonManagerPage.jsx
 - frontend/src/features/moderation/components/ModerationReportRow.jsx
 - frontend/src/features/moderation/components/ModeratorAssignmentList.jsx
 - frontend/src/features/moderation/pages/AuditLogPage.jsx
 - frontend/src/features/moderation/pages/ModerationPage.jsx
-- frontend/src/features/notifications/components/NotificationItem.jsx
-- frontend/src/features/notifications/pages/NotificationsPage.jsx
-- frontend/src/features/users/components/AccountSection.jsx
-
-Test/config support:
-- frontend/src/app/providers.jsx
-- frontend/playwright.config.js
-- frontend/tests/e2e/shared-ui.spec.js
+- frontend/src/features/users/pages/AccountPage.jsx
+- frontend/src/features/users/pages/WatchlistPage.jsx
 - results.txt
 
-Shared design language changes
-==============================
+User-facing page polish
+- Media list now uses shared PageHeader, Button, Input, Select, Checkbox, Badge, Skeleton, EmptyState, and InlineMessage patterns.
+- Media detail now uses shared tabs, badges, cards, loading/error states, and cleaner season/episode panels.
+- Group creation now uses PageHeader, SectionCard, FormField, Input, Textarea, Select, Button, and InlineMessage.
+- Account page now uses shared page header, form fields, inputs, textareas, badges, empty states, loading/error states, and a Dialog for account deletion confirmation.
+- Watchlist now uses PageHeader, SectionCard, Badge, EmptyState, LoadingState, and InlineMessage.
+- Group detail and group post detail now use shared headers, panels, buttons, loading/error/empty states, and dialogs for destructive/reporting actions.
+- Collection detail now uses shared headers, buttons, select styling, inline errors, loading/error/empty states, and a dialog for removing collection items.
 
-- Added semantic CSS variables for focus rings, radii, elevation, and status colors.
-- Added reusable component classes for surfaces, cards, buttons, fields, badges, messages, empty states, tables, and skeletons.
-- Normalized page and section title scale with `ui-page-title` and `ui-section-title`.
-- Kept the visual direction calm and practical: mostly flat surfaces, restrained elevation, clear borders, limited accent use, no heavy decorative gradients.
-- Improved table density and mobile behavior with a shared scroll-safe table wrapper.
+Admin page polish
+- Add media now uses the shared page rhythm, PageHeader, shared card/button/input classes, calmer type selection cards, and cleaner search/form presentation.
+- Edit media now uses PageHeader, SectionCard, FormField, Input, Textarea, Checkbox, Button, InlineMessage, and LoadingState.
+- Media cart now uses PageHeader, Badge, Button, Dialog, EmptyState, FormField, Input, Textarea, InlineMessage, and SectionCard.
+- Season manager now uses shared page headers, cards, panels, buttons, badges, empty/loading/error states, and Dialog confirmation for deletes.
+- Media status selector now uses shared Select and Button styling.
 
-Shared primitives added/updated
-===============================
+Moderation page polish
+- Moderation page filters and assignment form controls now use shared Select and Button primitives.
+- Moderation report rows now use Dialog confirmations for status changes and group ban/unban actions instead of browser confirms.
+- Moderator assignment removal now uses a shared Dialog confirmation and clearer badge labeling.
+- Audit log filters now use shared Select, and audit cards now include status/scope badges for faster scanning.
+- Group moderation actions now use shared confirmation and feedback patterns.
 
-Added:
-- Button
-- Input
-- Textarea
-- Select
-- Checkbox
-- Toggle
-- Badge
-- InlineMessage
-- EmptyState
-- LoadingState
-- Skeleton
-- PageHeader
-- SectionCard
-- Panel
-- StatCard
-- FormField
-- DataTable
-- Tabs
-- Dialog
-- shared UI barrel export
-
-Updated:
-- RouteFallback now uses the shared loading state.
-- EntityPicker now uses normalized input/pill/dialog styling.
-- SearchBar now uses the shared focus and density language.
-- RatingStars has improved focus/ARIA behavior and shared accent coloring.
-
-Layout shell changes
-====================
-
-- MainLayout, AuthLayout, and GroupLayout now share consistent background, text color, and min-width behavior.
-- PageLayout has a consistent page rhythm and min-width handling.
-- SidebarLayout now frames sidebar navigation as a shared panel with sticky desktop behavior.
-- AdminLayout sidebar navigation now has consistent active/hover states and hierarchy.
-- Header visual treatment was simplified and made more layout-safe.
-- Footer was normalized to use Container, real links, badges, and a calmer surface.
-
-Shared component changes
-========================
-
-- MediaCard is now a semantic link instead of a click-only article, improving keyboard access.
-- CollectionCard, GroupCard, GroupPostCard, NotificationItem, AccountSection, and admin cards now use the shared card/button/badge language.
-- AdminMediaPage now uses shared PageHeader, DataTable, Dialog, EmptyState, LoadingState, InlineMessage, and Button primitives.
-- Moderation and audit pages now use shared headers, cards, loading/empty/error states, and badges.
-- Auth forms now use shared Input, Button, and InlineMessage primitives.
-- Discovery sections and media rows now use shared loading and empty states.
-
-Global state pattern changes
-============================
-
-- Standardized common loading UI through LoadingState.
-- Standardized no-data UI through EmptyState.
-- Standardized error/info/success feedback through InlineMessage.
-- Standardized confirmation modal behavior through Dialog.
-- Added a mocked Playwright smoke test for shared UI rendering and horizontal overflow.
+Shared feedback/dialog state improvements
+- Replaced raw browser prompt/confirm patterns in touched moderation and group-post workflows with shared Dialog flows.
+- Standardized error presentation with InlineMessage on major touched pages.
+- Standardized no-data presentation with EmptyState on media, account, watchlist, group, collection, moderation, and season-management surfaces.
+- Standardized loading presentation with LoadingState on major touched pages.
 
 Accessibility/responsiveness improvements
-=========================================
+- Improved visible focus consistency by routing more controls through shared primitives and global ui-* classes.
+- Added proper dialog affordances for destructive actions instead of native browser confirms/prompts.
+- Improved mobile behavior by using wrapping action rows, responsive card grids, and shared density primitives.
+- Preserved keyboard activation behavior on collection item cards.
 
-- Added consistent visible focus treatment for links, buttons, form controls, and focusable role elements.
-- Improved keyboard navigation for shared media cards by using links.
-- Improved EntityPicker ARIA roles for combobox/listbox/option behavior.
-- Improved modal escape handling and background scroll locking in Dialog.
-- Added header min-width and overflow protections.
-- Added Playwright coverage for desktop and mobile discovery rendering without horizontal overflow.
-- Disabled React Query devtools during e2e runs to avoid test-only viewport overflow.
+Playwright updates
+- No Playwright selector updates were needed.
+- Existing shared UI smoke coverage continued to pass on desktop and mobile Chromium.
 
 Commands run and results
-========================
-
-Final required verification:
-- dotnet test backend/RateOple.sln
-  Result: Passed. RateOple.Core.Tests: 250 passed. RateOple.Api.Tests: 53 passed.
-- cd frontend && npm run lint
-  Result: Passed.
-- cd frontend && npm run build
-  Result: Passed. Vite build completed. Rollup emitted existing SignalR PURE annotation warnings only.
-- cd frontend && npm run test:e2e
-  Result: Passed. 2 Playwright tests passed across chromium and mobile-chromium.
-
-Intermediate checks:
-- npm run lint
-  Result: Passed after fixing initial primitive lint issues.
-- npm run build
-  Result: Passed after each frontend batch.
-- npm run test:e2e
-  Initial result: Failed because no tests existed in the configured testDir.
-  Follow-up result: Failed once because the new overflow assertion exposed desktop overflow.
-  Final result: Passed after adding smoke coverage, disabling devtools during e2e, and tightening header/row overflow behavior.
+- npm run lint: passed after user-facing batch.
+- npm run build: passed after user-facing batch.
+- npm run test:e2e: passed after user-facing batch, 2 passed.
+- npm run lint: passed after admin/media batch.
+- npm run build: passed after admin/media batch.
+- npm run test:e2e: passed after admin/media batch, 2 passed.
+- npm run lint: passed after moderation/group/collection batch.
+- npm run build: passed after moderation/group/collection batch.
+- npm run test:e2e: passed after moderation/group/collection batch, 2 passed.
+- dotnet test backend/RateOple.sln: passed, 303 total tests passed.
+- cd frontend && npm run lint: passed.
+- cd frontend && npm run build: passed.
+- cd frontend && npm run test:e2e: passed, 2 passed.
 
 Commits created
-===============
+- cbda825 Apply shared UI to user-facing pages
+- 23b22c3 Polish admin media workflows
+- 7e2279d Polish moderation and group workflows
+- Report commit: Record frontend UI polish results
 
-- cfa4ee4 Add shared UI design primitives
-- 4b78acd Polish shared layouts and global UI states
-- a93362d Add shared UI smoke coverage
-- Report commit: created separately after this file was overwritten.
-
-Remaining UI polish gaps
-========================
-
-- Some deeper feature pages still have local one-off form/button styles, especially media add/edit/cart/season manager and detail-heavy group/collection pages.
-- Some legacy confirmation flows still use `window.confirm` or `window.prompt` and should move to Dialog-driven flows.
-- Tables/lists beyond AdminMediaPage can migrate to DataTable or shared list primitives.
-- A full keyboard/focus trap implementation for Dialog would be stronger than the current lightweight Escape/scroll-lock behavior.
-- Review/rating and watchlist surfaces can be further normalized with SectionCard, FormField, and Tabs.
+Remaining frontend polish gaps
+- Some page internals still use local class maps and could be further decomposed into smaller shared form/card/list components.
+- Collections and groups are visually improved, but a deeper interaction pass could refine rename/follow/unfollow feedback and member-role workflows.
+- Season manager still has dense operational controls; it is more cohesive now, but could benefit from a dedicated compact episode table component.
+- The smoke test suite is intentionally lightweight and does not yet cover the newly polished admin/moderation mutation dialogs.
 
 Recommended next task
-=====================
-
-Run a focused page-by-page polish pass using the new primitives, starting with media add/edit/cart/season manager and then group/collection detail pages. Prioritize replacing one-off forms, confirmation prompts, and dense admin/moderation action clusters with the shared primitives introduced here.
+- Add targeted Playwright smoke coverage for admin media edit/cart, moderation report status dialogs, moderator assignment removal, group ban confirmation, and collection item removal.
