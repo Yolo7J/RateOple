@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import EmptyState from '../../../shared/ui/EmptyState';
 import Button from '../../../shared/ui/Button';
+import Badge from '../../../shared/ui/Badge';
+import Dialog from '../../../shared/ui/Dialog';
 
 const styles = {
   list: 'grid gap-3',
@@ -18,12 +20,30 @@ const SCOPE_LABELS = {
 
 function ModeratorAssignmentList({ assignments, onRemove, disabled = false }) {
   const [now] = useState(() => Date.now());
+  const [removeTarget, setRemoveTarget] = useState(null);
+  const [removing, setRemoving] = useState(false);
 
   if (!assignments.length) {
     return <EmptyState title="No assignments" className="py-6" />;
   }
 
+  const confirmRemove = async () => {
+    if (!removeTarget) return;
+    setRemoving(true);
+    try {
+      await onRemove({
+        userId: removeTarget.userId,
+        scopeType: removeTarget.scopeType,
+        scopeId: removeTarget.scopeId,
+      });
+      setRemoveTarget(null);
+    } finally {
+      setRemoving(false);
+    }
+  };
+
   return (
+    <>
     <div className={styles.list}>
       {assignments.map((assignment) => {
         const assignedAtMs = new Date(assignment.assignedAt).getTime();
@@ -41,6 +61,8 @@ function ModeratorAssignmentList({ assignments, onRemove, disabled = false }) {
           </p>
           <p>
             <strong>Scope:</strong> {scopeName}
+            {' '}
+            <Badge>{SCOPE_LABELS[assignment.scopeType] || 'Scope'}</Badge>
           </p>
           <p className={styles.meta}>
             Assigned by: {assignedByName}
@@ -49,13 +71,8 @@ function ModeratorAssignmentList({ assignments, onRemove, disabled = false }) {
           <Button
             size="sm"
             disabled={disabled}
-            onClick={() =>
-              onRemove({
-                userId: assignment.userId,
-                scopeType: assignment.scopeType,
-                scopeId: assignment.scopeId,
-              })
-            }
+            variant="danger"
+            onClick={() => setRemoveTarget(assignment)}
           >
             Remove assignment
           </Button>
@@ -63,6 +80,23 @@ function ModeratorAssignmentList({ assignments, onRemove, disabled = false }) {
         );
       })}
     </div>
+    <Dialog
+      open={Boolean(removeTarget)}
+      title="Remove moderator assignment?"
+      description={`Remove ${removeTarget?.userDisplayName || 'this moderator'} from ${removeTarget?.scopeName || SCOPE_LABELS[removeTarget?.scopeType] || 'this scope'}?`}
+      onClose={() => {
+        if (!removing) setRemoveTarget(null);
+      }}
+      actions={(
+        <>
+          <Button variant="ghost" onClick={() => setRemoveTarget(null)} disabled={removing}>Cancel</Button>
+          <Button variant="danger" onClick={confirmRemove} disabled={removing}>
+            {removing ? 'Removing...' : 'Remove assignment'}
+          </Button>
+        </>
+      )}
+    />
+    </>
   );
 }
 

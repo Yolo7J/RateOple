@@ -14,37 +14,32 @@ import Grid from '../../../shared/ui/Grid';
 import Stack from '../../../shared/ui/Stack';
 import { EntityPicker, MultiEntityPicker } from '../../../shared/ui/EntityPicker';
 import { searchMedia } from '../../media/services/mediaLookupService';
+import Button from '../../../shared/ui/Button';
+import Dialog from '../../../shared/ui/Dialog';
+import EmptyState from '../../../shared/ui/EmptyState';
+import InlineMessage from '../../../shared/ui/InlineMessage';
+import LoadingState from '../../../shared/ui/LoadingState';
+import PageHeader from '../../../shared/ui/PageHeader';
+import Textarea from '../../../shared/ui/Textarea';
 
 const styles = {
   pageStack: 'gap-6',
-  title: 'text-3xl font-semibold text-[var(--text-primary)]',
   description: 'text-[var(--text-secondary)]',
   muted: 'text-[var(--text-muted)]',
-  error: 'text-[#ff7f7f]',
   controls: 'flex flex-wrap gap-2',
-  button: [
-    'inline-flex items-center justify-center rounded-lg border border-[var(--border)]',
-    'bg-[var(--button-bg)] px-4 py-2 text-sm font-medium text-[var(--text-primary)]',
-    'transition hover:bg-[var(--button-hover-bg)] disabled:opacity-60',
-  ].join(' '),
-  section: [
-    'rounded-2xl border border-[var(--border)] bg-[var(--card-bg)]',
-    'p-4 sm:p-6',
-  ].join(' '),
-  sectionTitle: 'text-xl font-semibold',
+  button: 'ui-button',
+  section: 'ui-card p-4 sm:p-6',
+  sectionTitle: 'ui-section-title',
   form: 'grid gap-3 max-w-2xl',
-  input: [
-    'w-full rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2',
-    'text-[var(--text-primary)] placeholder:text-[var(--text-muted)]',
-  ].join(' '),
+  input: 'ui-input',
   pinnedGrid: 'gap-3',
   pinnedItem: 'rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] p-3',
   posts: 'grid gap-4',
   staffGrid: 'grid gap-3',
-  staffMessage: 'rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] p-3',
+  staffMessage: 'ui-panel p-3',
   staffHeader: 'flex flex-wrap items-center justify-between gap-2',
-  memberRow: 'flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] p-3',
-  roleBadge: 'rounded-full bg-[var(--bg-secondary)] px-2 py-1 text-xs text-[var(--text-muted)]',
+  memberRow: 'ui-panel flex flex-wrap items-center justify-between gap-2 p-3',
+  roleBadge: 'ui-badge',
   actionRow: 'flex flex-wrap gap-2',
 };
 
@@ -86,6 +81,7 @@ function GroupDetailPage() {
   const [postMedia, setPostMedia] = useState([]);
   const [pinMedia, setPinMedia] = useState(null);
   const [staffMessage, setStaffMessage] = useState('');
+  const [banTarget, setBanTarget] = useState(null);
   const [actionError, setActionError] = useState('');
 
   const handleJoin = async () => {
@@ -148,11 +144,13 @@ function GroupDetailPage() {
     }
   };
 
-  const handleBanUser = async (userId) => {
+  const handleBanUser = async () => {
     if (!id) return;
+    if (!banTarget) return;
     setActionError('');
     try {
-      await banUser(id, { userId });
+      await banUser(id, { userId: banTarget.userId });
+      setBanTarget(null);
     } catch (err) {
       setActionError(err?.response?.data?.message || 'Could not ban user.');
     }
@@ -162,7 +160,7 @@ function GroupDetailPage() {
     return (
       <PageLayout>
         <Container>
-          <p className={styles.muted}>Loading group...</p>
+          <LoadingState label="Loading group..." />
         </Container>
       </PageLayout>
     );
@@ -172,7 +170,7 @@ function GroupDetailPage() {
     return (
       <PageLayout>
         <Container>
-          <p className={styles.error}>Group not found.</p>
+          <InlineMessage tone="error">Group not found.</InlineMessage>
         </Container>
       </PageLayout>
     );
@@ -183,29 +181,29 @@ function GroupDetailPage() {
       <Container>
         <Stack className={styles.pageStack}>
           <Stack className="gap-2">
-            <h1 className={styles.title}>{group.name}</h1>
+            <PageHeader
+              title={group.name}
+              subtitle={`${group.membersCount ?? 0} members · ${group.postsCount ?? 0} posts`}
+            />
             {group.description ? <p className={styles.description}>{group.description}</p> : null}
-            <p className={styles.muted}>
-              {group.membersCount ?? 0} members · {group.postsCount ?? 0} posts
-            </p>
           </Stack>
 
           {user ? (
             <div className={styles.controls}>
               {!isMember ? (
-                <button className={styles.button} type="button" onClick={handleJoin} disabled={mutating}>
+                <Button type="button" onClick={handleJoin} disabled={mutating}>
                   Join Group
-                </button>
+                </Button>
               ) : null}
               {isMember && viewerRole !== GROUP_ROLE.Owner ? (
-                <button className={styles.button} type="button" onClick={handleLeave} disabled={mutating}>
+                <Button type="button" variant="ghost" onClick={handleLeave} disabled={mutating}>
                   Leave Group
-                </button>
+                </Button>
               ) : null}
             </div>
           ) : null}
 
-          {actionError ? <p className={styles.error}>{actionError}</p> : null}
+          {actionError ? <InlineMessage tone="error">{actionError}</InlineMessage> : null}
 
           <section className={styles.section}>
             <Stack className="gap-4">
@@ -220,9 +218,9 @@ function GroupDetailPage() {
                     searchFn={searchMedia}
                     disabled={mutating}
                   />
-                  <button className={styles.button} type="submit" disabled={mutating || !pinMedia}>
+                  <Button type="submit" disabled={mutating || !pinMedia}>
                     Pin {pinMedia?.label ?? 'Media'}
-                  </button>
+                  </Button>
                 </form>
               ) : null}
               <Grid cols="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" className={styles.pinnedGrid}>
@@ -232,7 +230,7 @@ function GroupDetailPage() {
                     <p className={styles.muted}>{new Date(item.addedAt).toLocaleDateString()}</p>
                   </article>
                 ))}
-                {pinned.length === 0 ? <p className={styles.muted}>No pinned media yet.</p> : null}
+                {pinned.length === 0 ? <EmptyState title="No pinned media yet" description="Moderators can pin media for group context." /> : null}
               </Grid>
             </Stack>
           </section>
@@ -249,8 +247,7 @@ function GroupDetailPage() {
                     onChange={(e) => setPostForm((prev) => ({ ...prev, title: e.target.value }))}
                     required
                   />
-                  <textarea
-                    className={styles.input}
+                  <Textarea
                     rows={4}
                     placeholder="Post content"
                     value={postForm.content}
@@ -266,9 +263,9 @@ function GroupDetailPage() {
                     disabled={mutating}
                     emptySelectionText="No media attached."
                   />
-                  <button className={styles.button} type="submit" disabled={mutating}>
+                  <Button type="submit" disabled={mutating}>
                     Publish Post
-                  </button>
+                  </Button>
                 </form>
               ) : (
                 <p className={styles.muted}>Join the group to create posts.</p>
@@ -337,7 +334,7 @@ function GroupDetailPage() {
                             <button
                               className={styles.button}
                               type="button"
-                              onClick={() => handleBanUser(member.userId)}
+                              onClick={() => setBanTarget(member)}
                               disabled={mutating}
                             >
                               Ban
@@ -371,16 +368,15 @@ function GroupDetailPage() {
                     }
                   }}
                 >
-                  <textarea
-                    className={styles.input}
+                  <Textarea
                     rows={3}
                     placeholder="Share a note with admins/mods..."
                     value={staffMessage}
                     onChange={(e) => setStaffMessage(e.target.value)}
                   />
-                  <button className={styles.button} type="submit" disabled={mutating}>
+                  <Button type="submit" disabled={mutating}>
                     Send
-                  </button>
+                  </Button>
                 </form>
                 <div className={styles.staffGrid}>
                   {staffMessages.map((message) => (
@@ -394,7 +390,7 @@ function GroupDetailPage() {
                       <p className="text-sm text-[var(--text-secondary)]">{message.content}</p>
                     </article>
                   ))}
-                  {staffMessages.length === 0 ? <p className={styles.muted}>No staff messages yet.</p> : null}
+                  {staffMessages.length === 0 ? <EmptyState title="No staff messages yet" /> : null}
                 </div>
               </Stack>
             </section>
@@ -403,18 +399,32 @@ function GroupDetailPage() {
           <section className={styles.section}>
             <Stack className="gap-4">
               <h2 className={styles.sectionTitle}>Feed</h2>
-              {postsLoading ? <p className={styles.muted}>Loading posts...</p> : null}
-              {postsError ? <p className={styles.error}>Failed to load posts.</p> : null}
+              {postsLoading ? <LoadingState label="Loading posts..." /> : null}
+              {postsError ? <InlineMessage tone="error">Failed to load posts.</InlineMessage> : null}
               {!postsLoading && !postsError ? (
                 <div className={styles.posts}>
                   {posts.map((post) => (
                     <GroupPostCard key={post.id} post={post} />
                   ))}
-                  {posts.length === 0 ? <p className={styles.muted}>No posts yet.</p> : null}
+                  {posts.length === 0 ? <EmptyState title="No posts yet" description="Create the first post to start the group feed." /> : null}
                 </div>
               ) : null}
             </Stack>
           </section>
+          <Dialog
+            open={Boolean(banTarget)}
+            title="Ban group member?"
+            description={`Ban ${banTarget?.userName || 'this user'} from ${group.name}?`}
+            onClose={() => setBanTarget(null)}
+            actions={(
+              <>
+                <Button variant="ghost" onClick={() => setBanTarget(null)}>Cancel</Button>
+                <Button variant="danger" onClick={handleBanUser} disabled={mutating}>
+                  {mutating ? 'Banning...' : 'Ban member'}
+                </Button>
+              </>
+            )}
+          />
         </Stack>
       </Container>
     </PageLayout>

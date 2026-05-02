@@ -10,6 +10,13 @@ import { buildImageUrl } from '../../../shared/utils/buildImageUrl';
 import PageLayout from '../../../layouts/PageLayout';
 import Container from '../../../shared/ui/Container';
 import Stack from '../../../shared/ui/Stack';
+import Button from '../../../shared/ui/Button';
+import Dialog from '../../../shared/ui/Dialog';
+import EmptyState from '../../../shared/ui/EmptyState';
+import InlineMessage from '../../../shared/ui/InlineMessage';
+import LoadingState from '../../../shared/ui/LoadingState';
+import PageHeader from '../../../shared/ui/PageHeader';
+import Textarea from '../../../shared/ui/Textarea';
 
 const REPORT_TARGET = {
   Comment: 2,
@@ -24,19 +31,9 @@ const GROUP_ROLE = {
 
 const styles = {
   pageStack: 'gap-6',
-  title: 'text-3xl font-semibold text-[var(--text-primary)]',
   muted: 'text-[var(--text-muted)]',
-  error: 'text-[#ff7f7f]',
   meta: 'text-sm text-[var(--text-muted)]',
-  section: [
-    'rounded-2xl border border-[var(--border)] bg-[var(--card-bg)]',
-    'p-4 sm:p-6',
-  ].join(' '),
-  button: [
-    'inline-flex items-center justify-center rounded-lg border border-[var(--border)]',
-    'bg-[var(--button-bg)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)]',
-    'transition hover:bg-[var(--button-hover-bg)] disabled:opacity-60',
-  ].join(' '),
+  section: 'ui-card p-4 sm:p-6',
   voteRow: 'flex flex-wrap items-center gap-2',
   voteCount: 'text-sm font-semibold text-[var(--text-primary)]',
   mediaGrid: 'mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2',
@@ -44,12 +41,8 @@ const styles = {
   mediaImage: 'mb-1 w-full rounded-md object-cover aspect-[2/3]',
   mediaTitle: 'text-xs text-[var(--text-secondary)]',
   form: 'grid gap-3',
-  input: [
-    'w-full rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2',
-    'text-[var(--text-primary)] placeholder:text-[var(--text-muted)]',
-  ].join(' '),
   comments: 'grid gap-3',
-  commentCard: 'rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] p-3',
+  commentCard: 'ui-panel p-3',
   commentHeader: 'flex flex-wrap items-center justify-between gap-2',
   commentMeta: 'text-xs text-[var(--text-muted)]',
   commentActions: 'flex flex-wrap gap-2',
@@ -68,6 +61,9 @@ function GroupPostDetailPage() {
 
   const [commentText, setCommentText] = useState('');
   const [replyTo, setReplyTo] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [reportTarget, setReportTarget] = useState(null);
+  const [reportReason, setReportReason] = useState('');
   const [actionError, setActionError] = useState('');
   const viewerRole = group?.viewerRole ?? null;
   const canModerate = viewerRole === GROUP_ROLE.Owner || viewerRole === GROUP_ROLE.GroupAdmin || viewerRole === GROUP_ROLE.GroupModerator;
@@ -111,21 +107,23 @@ function GroupPostDetailPage() {
     }
   };
 
-  const handleDeleteComment = async (commentId) => {
-    if (!groupId || !postId) return;
+  const handleDeleteComment = async () => {
+    if (!groupId || !postId || !deleteTarget) return;
     setActionError('');
     try {
-      await deletePostComment(groupId, postId, commentId);
+      await deletePostComment(groupId, postId, deleteTarget.id);
+      setDeleteTarget(null);
     } catch (err) {
       setActionError(err?.response?.data?.message || 'Could not delete comment.');
     }
   };
 
-  const handleReportComment = async (commentId) => {
-    const reason = window.prompt('Why are you reporting this comment?');
-    if (!reason) return;
+  const handleReportComment = async () => {
+    if (!reportTarget || !reportReason.trim()) return;
     try {
-      await createReport({ targetType: REPORT_TARGET.Comment, targetId: commentId, reason });
+      await createReport({ targetType: REPORT_TARGET.Comment, targetId: reportTarget.id, reason: reportReason.trim() });
+      setReportTarget(null);
+      setReportReason('');
     } catch (err) {
       setActionError(err?.response?.data?.message || 'Could not submit report.');
     }
@@ -146,29 +144,29 @@ function GroupPostDetailPage() {
               </div>
               <div className={styles.commentActions}>
                 {user ? (
-                  <button
-                    className={styles.button}
+                  <Button
+                    size="sm"
                     type="button"
                     onClick={() => setReplyTo(comment.id)}
                   >
                     Reply
-                  </button>
+                  </Button>
                 ) : null}
                 {canDelete ? (
                   <button
-                    className={styles.button}
+                    className="ui-button px-3 py-1.5 text-xs"
                     type="button"
                     disabled={mutating}
-                    onClick={() => handleDeleteComment(comment.id)}
+                    onClick={() => setDeleteTarget(comment)}
                   >
                     Delete
                   </button>
                 ) : null}
                 {user ? (
                   <button
-                    className={styles.button}
+                    className="ui-button px-3 py-1.5 text-xs"
                     type="button"
-                    onClick={() => handleReportComment(comment.id)}
+                    onClick={() => setReportTarget(comment)}
                   >
                     Report
                   </button>
@@ -187,7 +185,7 @@ function GroupPostDetailPage() {
     return (
       <PageLayout>
         <Container>
-          <p className={styles.muted}>Loading post...</p>
+          <LoadingState label="Loading post..." />
         </Container>
       </PageLayout>
     );
@@ -197,7 +195,7 @@ function GroupPostDetailPage() {
     return (
       <PageLayout>
         <Container>
-          <p className={styles.error}>Post not found.</p>
+          <InlineMessage tone="error">Post not found.</InlineMessage>
         </Container>
       </PageLayout>
     );
@@ -214,20 +212,19 @@ function GroupPostDetailPage() {
           </Link>
           <section className={styles.section}>
             <Stack className="gap-3">
-              <h1 className={styles.title}>{post.title}</h1>
-              <p className={styles.meta}>{new Date(post.createdAt).toLocaleString()}</p>
+              <PageHeader title={post.title} subtitle={new Date(post.createdAt).toLocaleString()} />
               <p className="text-[var(--text-secondary)]">{post.content}</p>
               <div className={styles.voteRow}>
-                <button className={styles.button} type="button" onClick={() => handleVote(1)} disabled={mutating}>
+                <Button size="sm" type="button" onClick={() => handleVote(1)} disabled={mutating}>
                   {post.userVote === 1 ? 'Upvoted' : 'Upvote'}
-                </button>
-                <button className={styles.button} type="button" onClick={() => handleVote(-1)} disabled={mutating}>
+                </Button>
+                <Button size="sm" type="button" onClick={() => handleVote(-1)} disabled={mutating}>
                   {post.userVote === -1 ? 'Downvoted' : 'Downvote'}
-                </button>
+                </Button>
                 {user ? (
-                  <button className={styles.button} type="button" onClick={() => handleVote(0)} disabled={mutating}>
+                  <Button size="sm" type="button" onClick={() => handleVote(0)} disabled={mutating}>
                     Clear
-                  </button>
+                  </Button>
                 ) : null}
                 <span className={styles.voteCount}>
                   {post.upvotes - post.downvotes} score · {post.commentCount ?? 0} comments
@@ -254,41 +251,86 @@ function GroupPostDetailPage() {
                   {replyTo ? (
                     <p className={styles.meta}>
                       Replying to comment {replyTo}.{' '}
-                      <button
-                        className={styles.button}
+                      <Button
+                        size="sm"
                         type="button"
                         onClick={() => setReplyTo(null)}
                       >
                         Cancel
-                      </button>
+                      </Button>
                     </p>
                   ) : null}
-                  <textarea
-                    className={styles.input}
+                  <Textarea
                     rows={3}
                     placeholder="Write a comment..."
                     value={commentText}
                     onChange={(e) => setCommentText(e.target.value)}
                     required
                   />
-                  <button className={styles.button} type="submit" disabled={mutating}>
+                  <Button type="submit" disabled={mutating}>
                     Post comment
-                  </button>
+                  </Button>
                 </form>
               ) : (
                 <p className={styles.muted}>Sign in to comment.</p>
               )}
-              {commentsLoading ? <p className={styles.muted}>Loading comments...</p> : null}
-              {commentsError ? <p className={styles.error}>Failed to load comments.</p> : null}
+              {commentsLoading ? <LoadingState label="Loading comments..." /> : null}
+              {commentsError ? <InlineMessage tone="error">Failed to load comments.</InlineMessage> : null}
               {!commentsLoading && !commentsError ? (
                 <div className={styles.comments}>
                   {renderComments()}
-                  {comments.length === 0 ? <p className={styles.muted}>No comments yet.</p> : null}
+                  {comments.length === 0 ? <EmptyState title="No comments yet" description="Start the discussion with the first comment." /> : null}
                 </div>
               ) : null}
-              {actionError ? <p className={styles.error}>{actionError}</p> : null}
+              {actionError ? <InlineMessage tone="error">{actionError}</InlineMessage> : null}
             </Stack>
           </section>
+          <Dialog
+            open={Boolean(deleteTarget)}
+            title="Delete comment?"
+            description="This removes the comment from the discussion."
+            onClose={() => setDeleteTarget(null)}
+            actions={(
+              <>
+                <Button variant="ghost" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+                <Button variant="danger" onClick={handleDeleteComment} disabled={mutating}>
+                  {mutating ? 'Deleting...' : 'Delete comment'}
+                </Button>
+              </>
+            )}
+          />
+          <Dialog
+            open={Boolean(reportTarget)}
+            title="Report comment"
+            description="Tell the moderation team what needs attention."
+            onClose={() => {
+              setReportTarget(null);
+              setReportReason('');
+            }}
+            actions={(
+              <>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setReportTarget(null);
+                    setReportReason('');
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button variant="primary" onClick={handleReportComment} disabled={!reportReason.trim()}>
+                  Submit report
+                </Button>
+              </>
+            )}
+          >
+            <Textarea
+              value={reportReason}
+              onChange={(e) => setReportReason(e.target.value)}
+              placeholder="Reason for report"
+              rows={4}
+            />
+          </Dialog>
         </Stack>
       </Container>
     </PageLayout>

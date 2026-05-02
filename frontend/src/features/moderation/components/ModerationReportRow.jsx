@@ -3,7 +3,9 @@ import { formatDate } from '../../../shared/utils/formatDate';
 import { EntityPicker } from '../../../shared/ui/EntityPicker';
 import Badge from '../../../shared/ui/Badge';
 import Button from '../../../shared/ui/Button';
+import Dialog from '../../../shared/ui/Dialog';
 import InlineMessage from '../../../shared/ui/InlineMessage';
+import Input from '../../../shared/ui/Input';
 import { searchModerationUsers } from '../../users/services/userLookupService';
 import { searchModerationScopes } from '../services/scopeLookupService';
 
@@ -15,10 +17,6 @@ const styles = {
   subtitle: 'text-sm text-[var(--text-muted)]',
   meta: 'text-sm text-[var(--text-muted)]',
   actions: 'flex flex-wrap items-center gap-2',
-  input: [
-    'min-w-[180px] rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2',
-    'text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)]',
-  ].join(' '),
   banSection: 'mt-2 grid gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] p-3',
   banRow: 'grid gap-3',
 };
@@ -48,6 +46,8 @@ function ModerationReportRow({
   const updatedAtMs = updatedAtValue ? new Date(updatedAtValue).getTime() : 0;
   const isRecent = Number.isFinite(updatedAtMs) && Date.now() - updatedAtMs < 60000;
   const [confirming, setConfirming] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState(null);
+  const [pendingBanAction, setPendingBanAction] = useState(null);
   const [banForm, setBanForm] = useState({ group: null, user: null, reason: '' });
   const [banError, setBanError] = useState('');
   const [banPending, setBanPending] = useState(false);
@@ -65,11 +65,15 @@ function ModerationReportRow({
 
   const handleAction = async (status, label) => {
     if (isActionLocked) return;
-    const message = `Are you sure you want to mark this report as ${label}?`;
-    if (!window.confirm(message)) return;
+    setPendingStatus({ status, label });
+  };
+
+  const confirmStatusAction = async () => {
+    if (!pendingStatus) return;
     setConfirming(true);
     try {
-      await onUpdateStatus(report.id, status);
+      await onUpdateStatus(report.id, pendingStatus.status);
+      setPendingStatus(null);
     } finally {
       setConfirming(false);
     }
@@ -77,18 +81,27 @@ function ModerationReportRow({
 
   const handleBan = async () => {
     if (!onBanUser) return;
-    const reason = banForm.reason.trim();
     if (!banForm.group?.id || !banForm.user?.id) {
       setBanError('Select a group and user to ban.');
       return;
     }
-    if (!window.confirm(`Ban ${banForm.user.label} from ${banForm.group.label}?`)) return;
+    setPendingBanAction('ban');
+  };
+
+  const confirmBanAction = async () => {
+    if (!pendingBanAction) return;
     setBanError('');
     setBanPending(true);
     try {
-      await onBanUser({ groupId: banForm.group.id, userId: banForm.user.id, reason: reason || undefined });
+      if (pendingBanAction === 'ban') {
+        const reason = banForm.reason.trim();
+        await onBanUser({ groupId: banForm.group.id, userId: banForm.user.id, reason: reason || undefined });
+      } else {
+        await onUnbanUser({ groupId: banForm.group.id, userId: banForm.user.id });
+      }
+      setPendingBanAction(null);
     } catch (err) {
-      setBanError(err?.response?.data?.message || 'Could not ban user from group.');
+      setBanError(err?.response?.data?.message || `Could not ${pendingBanAction} user.`);
     } finally {
       setBanPending(false);
     }
@@ -100,19 +113,11 @@ function ModerationReportRow({
       setBanError('Select a group and user to unban.');
       return;
     }
-    if (!window.confirm(`Unban ${banForm.user.label} from ${banForm.group.label}?`)) return;
-    setBanError('');
-    setBanPending(true);
-    try {
-      await onUnbanUser({ groupId: banForm.group.id, userId: banForm.user.id });
-    } catch (err) {
-      setBanError(err?.response?.data?.message || 'Could not unban user from group.');
-    } finally {
-      setBanPending(false);
-    }
+    setPendingBanAction('unban');
   };
 
   return (
+    <>
     <article className={`${styles.card} ${isRecent ? styles.highlight : ''}`}>
       <header className={styles.header}>
         <div>
@@ -172,8 +177,8 @@ function ModerationReportRow({
               searchFn={searchModerationUsers}
               disabled={disabled || banPending}
             />
-            <input
-              className={styles.input}
+            <Input
+              className="min-w-[180px]"
               placeholder="Reason (optional)"
               value={banForm.reason}
               onChange={(e) => setBanForm((prev) => ({ ...prev, reason: e.target.value }))}
@@ -197,6 +202,47 @@ function ModerationReportRow({
         </div>
       ) : null}
     </article>
+    <Dialog
+      open={Boolean(pendingStatus)}
+      title="Update report status?"
+      description={`Mark this report as ${pendingStatus?.label}?`}
+      onClose={() => {
+        if (!confirming) setPendingStatus(null);
+      }}
+      actions={(
+        <>
+          <Button variant="ghost" onClick={() => setPendingStatus(null)} disabled={confirming}>Cancel</Button>
+          <Button variant="primary" onClick={confirmStatusAction} disabled={confirming}>
+            {confirming ? 'Updating...' : 'Update status'}
+          </Button>
+        </>
+      )}
+    />
+    <Dialog
+      open={Boolean(pendingBanAction)}
+      title={pendingBanAction === 'ban' ? 'Ban user from group?' : 'Unban user from group?'}
+      description={`${pendingBanAction === 'ban' ? 'Ban' : 'Unban'} ${banForm.user?.label || 'this user'} from ${banForm.group?.label || 'this group'}?`}
+      onClose={() => {
+        if (!banPending) setPendingBanAction(null);
+      }}
+      actions={(
+        <>
+          <Button variant="ghost" onClick={() => setPendingBanAction(null)} disabled={banPending}>Cancel</Button>
+          <Button
+            variant={pendingBanAction === 'ban' ? 'danger' : 'primary'}
+            onClick={confirmBanAction}
+            disabled={banPending}
+          >
+            {banPending ? 'Processing...' : pendingBanAction === 'ban' ? 'Ban user' : 'Unban user'}
+          </Button>
+        </>
+      )}
+    >
+      {pendingBanAction === 'ban' && banForm.reason.trim() ? (
+        <p className="text-sm text-[var(--text-muted)]">Reason: {banForm.reason.trim()}</p>
+      ) : null}
+    </Dialog>
+    </>
   );
 }
 

@@ -15,6 +15,8 @@ import EmptyState from '../../../shared/ui/EmptyState';
 import InlineMessage from '../../../shared/ui/InlineMessage';
 import LoadingState from '../../../shared/ui/LoadingState';
 import PageHeader from '../../../shared/ui/PageHeader';
+import Button from '../../../shared/ui/Button';
+import Select from '../../../shared/ui/Select';
 import { EntityPicker } from '../../../shared/ui/EntityPicker';
 import { searchModerationUsers } from '../../users/services/userLookupService';
 import { searchModerationScopes } from '../services/scopeLookupService';
@@ -25,20 +27,7 @@ const styles = {
   section: 'ui-card p-4 sm:p-6',
   sectionTitle: 'ui-section-title',
   filters: 'flex flex-wrap items-center gap-3',
-  select: [
-    'min-w-[150px] rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2',
-    'text-sm text-[var(--text-primary)]',
-  ].join(' '),
   form: 'grid gap-3 max-w-2xl',
-  input: [
-    'min-w-[150px] rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2',
-    'text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)]',
-  ].join(' '),
-  button: [
-    'inline-flex items-center justify-center rounded-lg border border-[var(--border)]',
-    'bg-[var(--button-bg)] px-4 py-2 text-sm font-medium text-[var(--text-primary)]',
-    'transition hover:bg-[var(--button-hover-bg)] disabled:opacity-60',
-  ].join(' '),
   grid: 'gap-3',
 };
 
@@ -167,8 +156,8 @@ function ModerationPage() {
               <h2 className={styles.sectionTitle}>Reports</h2>
               <div className={styles.filters}>
                 <label htmlFor="report-status" className="text-sm text-[var(--text-secondary)]">Status:</label>
-                <select
-                  className={styles.select}
+                <Select
+                  className="min-w-[150px]"
                   id="report-status"
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
@@ -179,7 +168,7 @@ function ModerationPage() {
                       {option.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
 
               {reportsLoading ? <LoadingState label="Loading reports..." /> : null}
@@ -218,8 +207,7 @@ function ModerationPage() {
                     searchFn={searchModerationUsers}
                     disabled={isMutating}
                   />
-                  <select
-                    className={styles.select}
+                  <Select
                     value={assignmentForm.scopeType}
                     onChange={(e) => {
                       setAssignmentForm((prev) => ({ ...prev, scopeType: e.target.value }));
@@ -231,7 +219,7 @@ function ModerationPage() {
                         {option.label}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   {assignmentForm.scopeType !== '1' ? (
                     <EntityPicker
                       label={`${SCOPE_OPTIONS.find((option) => option.value === assignmentForm.scopeType)?.label ?? 'Scope'} scope`}
@@ -250,13 +238,13 @@ function ModerationPage() {
                       {assignmentForm.scopeType === '1' ? 'Global' : assignmentScope?.label ?? 'selected scope'}.
                     </p>
                   ) : null}
-                  <button
-                    className={styles.button}
+                  <Button
+                    variant="primary"
                     type="submit"
                     disabled={isMutating || !assignmentUser || (assignmentForm.scopeType !== '1' && !assignmentScope)}
                   >
                     Assign moderator
-                  </button>
+                  </Button>
                 </form>
 
                 {assignmentsLoading ? <LoadingState label="Loading assignments..." /> : null}

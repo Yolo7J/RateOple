@@ -12,49 +12,33 @@ import Container from '../../../shared/ui/Container';
 import Grid from '../../../shared/ui/Grid';
 import Stack from '../../../shared/ui/Stack';
 import { EntityPicker } from '../../../shared/ui/EntityPicker';
+import Button from '../../../shared/ui/Button';
+import Dialog from '../../../shared/ui/Dialog';
+import EmptyState from '../../../shared/ui/EmptyState';
+import InlineMessage from '../../../shared/ui/InlineMessage';
+import LoadingState from '../../../shared/ui/LoadingState';
+import PageHeader from '../../../shared/ui/PageHeader';
+import Select from '../../../shared/ui/Select';
 
 const styles = {
   pageStack: 'gap-6',
-  title: 'text-3xl font-semibold text-[var(--text-primary)]',
   titleRow: 'flex flex-wrap items-center gap-2',
   description: 'text-[var(--text-secondary)]',
   muted: 'text-[var(--text-muted)]',
-  error: 'text-[#ff7f7f]',
   inputError: 'text-sm text-[#ff7f7f]',
   controls: 'flex flex-wrap gap-2',
   sectionHeader: 'flex flex-wrap items-center justify-between gap-2',
-  button: [
-    'inline-flex items-center justify-center rounded-lg border border-[var(--border)]',
-    'bg-[var(--button-bg)] px-4 py-2 text-sm font-medium text-[var(--text-primary)]',
-    'transition hover:bg-[var(--button-hover-bg)] disabled:opacity-60',
-  ].join(' '),
-  iconButton: [
-    'inline-flex items-center justify-center rounded-lg border border-[var(--border)]',
-    'bg-[var(--bg-secondary)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)]',
-    'transition hover:bg-[var(--button-hover-bg)] disabled:opacity-60',
-  ].join(' '),
-  select: [
-    'rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2',
-    'text-sm text-[var(--text-primary)]',
-  ].join(' '),
-  section: [
-    'rounded-2xl border border-[var(--border)] bg-[var(--card-bg)]',
-    'p-4 sm:p-6',
-  ].join(' '),
-  sectionTitle: 'text-xl font-semibold',
+  button: 'ui-button',
+  iconButton: 'ui-button px-3 py-1.5 text-xs',
+  section: 'ui-card p-4 sm:p-6',
+  sectionTitle: 'ui-section-title',
   itemsGrid: 'gap-3',
-  itemCard: 'rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] p-3 transition hover:border-[var(--text-muted)] cursor-pointer',
+  itemCard: 'ui-card-interactive cursor-pointer p-3',
   itemImage: 'mb-2 w-full rounded-md object-cover aspect-[2/3]',
-  titleInput: [
-    'w-full rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2',
-    'text-2xl font-semibold text-[var(--text-primary)]',
-  ].join(' '),
+  titleInput: 'ui-input text-2xl font-semibold',
   itemActions: 'mt-2 flex flex-wrap gap-2',
   searchForm: 'flex flex-wrap gap-2',
-  searchInput: [
-    'flex-1 min-w-[220px] rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2',
-    'text-[var(--text-primary)] placeholder:text-[var(--text-muted)]',
-  ].join(' '),
+  searchInput: 'ui-input min-w-[220px] flex-1',
 };
 
 const SORT_MODES = {
@@ -77,6 +61,7 @@ function CollectionDetailPage() {
   const [nameError, setNameError] = useState('');
   const [orderError, setOrderError] = useState('');
   const [sortError, setSortError] = useState('');
+  const [removeTarget, setRemoveTarget] = useState(null);
 
   const { data: collection, loading, error } = useCollectionDetailsQuery(id);
   const { data: childData } = useCollectionsQuery({ parentCollectionId: id, page: 1, pageSize: 50 }, Boolean(id));
@@ -149,11 +134,13 @@ function CollectionDetailPage() {
     }
   };
 
-  const handleRemoveItem = async (mediaIdToRemove) => {
+  const handleRemoveItem = async () => {
     if (!id) return;
+    if (!removeTarget) return;
     try {
       setOrderError('');
-      await removeItemFromCollection(id, mediaIdToRemove);
+      await removeItemFromCollection(id, removeTarget.mediaId);
+      setRemoveTarget(null);
     } catch (err) {
       setOrderError(err?.response?.data?.message || 'Could not remove media from collection.');
     }
@@ -225,7 +212,7 @@ function CollectionDetailPage() {
     return (
       <PageLayout>
         <Container>
-          <p className={styles.muted}>Loading collection...</p>
+          <LoadingState label="Loading collection..." />
         </Container>
       </PageLayout>
     );
@@ -235,7 +222,7 @@ function CollectionDetailPage() {
     return (
       <PageLayout>
         <Container>
-          <p className={styles.error}>Collection not found.</p>
+          <InlineMessage tone="error">Collection not found.</InlineMessage>
         </Container>
       </PageLayout>
     );
@@ -273,7 +260,10 @@ function CollectionDetailPage() {
                 </div>
               ) : (
                 <>
-                  <h1 className={styles.title}>{collection.name}</h1>
+                  <PageHeader
+                    title={collection.name}
+                    subtitle={`${collection.followersCount ?? 0} followers · ${items.length} items`}
+                  />
                   {canManageCollection ? (
                     <button
                       className={styles.iconButton}
@@ -298,23 +288,20 @@ function CollectionDetailPage() {
               )}
             </div>
             {collection.description ? <p className={styles.description}>{collection.description}</p> : null}
-            <p className={styles.muted}>
-              {collection.followersCount ?? 0} followers · {items.length} items
-            </p>
           </Stack>
 
           {user ? (
             <div className={styles.controls}>
-              <button className={styles.button} type="button" onClick={handleFollow} disabled={mutating}>
+              <Button type="button" onClick={handleFollow} disabled={mutating}>
                 Follow
-              </button>
-              <button className={styles.button} type="button" onClick={handleUnfollow} disabled={mutating}>
+              </Button>
+              <Button type="button" onClick={handleUnfollow} disabled={mutating}>
                 Unfollow
-              </button>
+              </Button>
               {canManageCollection && mediaId ? (
-                <button className={styles.button} type="button" onClick={handleAddMedia} disabled={mutating}>
+                <Button type="button" onClick={handleAddMedia} disabled={mutating}>
                   {mutating ? 'Saving...' : 'Add Current Media'}
-                </button>
+                </Button>
               ) : null}
             </div>
           ) : null}
@@ -344,7 +331,7 @@ function CollectionDetailPage() {
                         : `Add ${selectedMedia?.label ?? 'Media'}`}
                   </button>
                 </form>
-                {addError ? <p className={styles.error}>{addError}</p> : null}
+                {addError ? <InlineMessage tone="error">{addError}</InlineMessage> : null}
               </Stack>
             </section>
           ) : null}
@@ -356,8 +343,7 @@ function CollectionDetailPage() {
                 {canManageCollection ? (
                   <label className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
                     Sort
-                    <select
-                      className={styles.select}
+                    <Select
                       value={
                         collection.sortMode === SORT_MODES.MANUAL ? SORT_MODES.MANUAL : SORT_MODES.RELEASE_YEAR
                       }
@@ -366,7 +352,7 @@ function CollectionDetailPage() {
                     >
                       <option value={SORT_MODES.RELEASE_YEAR}>Chronology</option>
                       <option value={SORT_MODES.MANUAL}>Manual</option>
-                    </select>
+                    </Select>
                   </label>
                 ) : null}
               </div>
@@ -417,7 +403,7 @@ function CollectionDetailPage() {
                           disabled={mutating}
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleRemoveItem(item.mediaId);
+                            setRemoveTarget(item);
                           }}
                         >
                           Remove
@@ -426,10 +412,10 @@ function CollectionDetailPage() {
                     ) : null}
                   </article>
                 ))}
-                {items.length === 0 ? <p className={styles.muted}>No media items yet.</p> : null}
+                {items.length === 0 ? <EmptyState title="No media items yet" description="Add media to start building this collection." /> : null}
               </Grid>
-              {orderError ? <p className={styles.error}>{orderError}</p> : null}
-              {sortError ? <p className={styles.error}>{sortError}</p> : null}
+              {orderError ? <InlineMessage tone="error">{orderError}</InlineMessage> : null}
+              {sortError ? <InlineMessage tone="error">{sortError}</InlineMessage> : null}
             </Stack>
           </section>
 
@@ -457,10 +443,24 @@ function CollectionDetailPage() {
                   </button>
                 </form>
               ) : null}
-              {childError ? <p className={styles.error}>{childError}</p> : null}
+              {childError ? <InlineMessage tone="error">{childError}</InlineMessage> : null}
               <CollectionTree collections={childCollections} />
             </Stack>
           </section>
+          <Dialog
+            open={Boolean(removeTarget)}
+            title="Remove media from collection?"
+            description={`Remove ${removeTarget?.mediaTitle || 'this item'} from ${collection.name}?`}
+            onClose={() => setRemoveTarget(null)}
+            actions={(
+              <>
+                <Button variant="ghost" onClick={() => setRemoveTarget(null)}>Cancel</Button>
+                <Button variant="danger" onClick={handleRemoveItem} disabled={mutating}>
+                  {mutating ? 'Removing...' : 'Remove item'}
+                </Button>
+              </>
+            )}
+          />
         </Stack>
       </Container>
     </PageLayout>

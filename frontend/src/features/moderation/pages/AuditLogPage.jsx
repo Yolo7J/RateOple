@@ -8,6 +8,8 @@ import EmptyState from '../../../shared/ui/EmptyState';
 import InlineMessage from '../../../shared/ui/InlineMessage';
 import LoadingState from '../../../shared/ui/LoadingState';
 import PageHeader from '../../../shared/ui/PageHeader';
+import Badge from '../../../shared/ui/Badge';
+import Select from '../../../shared/ui/Select';
 
 const styles = {
   pageStack: 'gap-6',
@@ -15,10 +17,6 @@ const styles = {
   section: 'ui-card p-4 sm:p-6',
   sectionTitle: 'ui-section-title',
   filters: 'flex flex-wrap items-center gap-3',
-  select: [
-    'min-w-[180px] rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2',
-    'text-sm text-[var(--text-primary)]',
-  ].join(' '),
   card: 'ui-card flex flex-col gap-2 p-4',
   cardTitle: 'text-base font-semibold text-[var(--text-primary)]',
   meta: 'text-sm text-[var(--text-muted)]',
@@ -77,8 +75,8 @@ function AuditLogPage() {
               <h2 className={styles.sectionTitle}>Moderation activity</h2>
               <div className={styles.filters}>
                 <label htmlFor="audit-action" className="text-sm text-[var(--text-secondary)]">Action:</label>
-                <select
-                  className={styles.select}
+                <Select
+                  className="min-w-[180px]"
                   id="audit-action"
                   value={actionFilter}
                   onChange={(e) => setActionFilter(e.target.value)}
@@ -89,7 +87,7 @@ function AuditLogPage() {
                       {option.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
 
               {loading ? <LoadingState label="Loading audit logs..." /> : null}
@@ -102,6 +100,9 @@ function AuditLogPage() {
                       <h3 className={styles.cardTitle}>
                         {ACTION_LABELS[log.action] || `Action ${log.action}`}
                       </h3>
+                      <Badge tone={[3, 5, 8].includes(Number(log.action)) ? 'success' : [4, 6, 7].includes(Number(log.action)) ? 'warning' : 'info'}>
+                        {SCOPE_LABELS[log.scopeType] || 'Moderation'}
+                      </Badge>
                       <p className={styles.meta}>
                         Moderator: {log.performedByDisplayName || 'Unknown user'}
                       </p>
