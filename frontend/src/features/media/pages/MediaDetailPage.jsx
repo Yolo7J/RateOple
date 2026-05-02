@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import clsx from 'clsx';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { useMediaDetailsQuery } from '../queries/useMediaDetailsQuery';
@@ -26,60 +25,36 @@ import PageLayout from '../../../layouts/PageLayout';
 import Container from '../../../shared/ui/Container';
 import Grid from '../../../shared/ui/Grid';
 import Stack from '../../../shared/ui/Stack';
+import Badge from '../../../shared/ui/Badge';
+import Button from '../../../shared/ui/Button';
+import EmptyState from '../../../shared/ui/EmptyState';
+import InlineMessage from '../../../shared/ui/InlineMessage';
+import LoadingState from '../../../shared/ui/LoadingState';
+import Tabs from '../../../shared/ui/Tabs';
 
 const MEDIA_TABS = ['Overview', 'Reviews', 'Collections', 'Similar'];
 
 const styles = {
   pageStack: 'gap-6',
-  backButton: [
-    'inline-flex items-center rounded-lg border border-[var(--button-border)] px-4 py-2 text-sm font-medium',
-    'bg-[var(--button-bg)] text-[var(--text-primary)] transition hover:bg-[var(--button-hover-bg)]',
-  ].join(' '),
-  hero: [
-    'rounded-2xl border border-[var(--border)] bg-[var(--card-bg)]',
-    'p-4 sm:p-6',
-  ].join(' '),
+  hero: 'ui-card p-4 sm:p-6',
   heroImage: 'w-full aspect-[2/3] rounded-xl bg-[var(--card-cover-bg)] object-cover',
   muted: 'text-[var(--text-muted)]',
-  error: 'text-[#ff7f7f]',
-  tabRow: 'flex flex-wrap gap-2 border-b border-[var(--border)] pb-2',
-  tabButton: [
-    'rounded-full border border-transparent px-3 py-1.5 text-sm font-medium',
-    'text-[var(--text-secondary)] transition hover:text-[var(--text-primary)]',
-  ].join(' '),
-  tabButtonActive: 'border-[var(--primary-color)] text-[var(--text-primary)]',
-  section: [
-    'rounded-2xl border border-[var(--border)] bg-[var(--card-bg)]',
-    'p-4 sm:p-6',
-  ].join(' '),
+  section: 'ui-card p-4 sm:p-6',
   sectionStack: 'gap-4',
   heroText: 'gap-3',
-  title: 'text-3xl font-semibold text-[var(--text-primary)]',
+  title: 'ui-page-title',
   description: 'text-[var(--text-secondary)]',
-  sectionTitle: 'text-xl font-semibold',
-  seasonsCard: [
-    'rounded-2xl border border-[var(--border)] bg-[var(--card-bg)]',
-    'p-4 sm:p-6',
-  ].join(' '),
-  seasonCard: [
-    'rounded-2xl border border-[var(--border)] bg-[var(--bg-secondary)]',
-    'p-4 shadow-[0_12px_22px_-22px_var(--shadow-color)]',
-  ].join(' '),
+  sectionTitle: 'ui-section-title',
+  seasonsCard: 'ui-card p-4 sm:p-6',
+  seasonCard: 'ui-panel p-4',
   seasonHeader: 'flex flex-wrap items-center justify-between gap-3',
   seasonTitle: 'text-lg font-semibold text-[var(--text-primary)]',
   seasonMeta: 'text-xs text-[var(--text-muted)]',
-  seasonToggle: [
-    'rounded-full border border-[var(--button-border)] bg-[var(--button-bg)] px-3 py-1.5 text-sm font-medium',
-    'text-[var(--text-primary)] transition hover:bg-[var(--button-hover-bg)]',
-  ].join(' '),
   episodeList: 'mt-4 grid gap-3',
-  episodeCard: [
-    'rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)]',
-    'p-3 sm:p-4',
-  ].join(' '),
+  episodeCard: 'ui-panel p-3 sm:p-4',
   episodeTitle: 'text-sm font-semibold text-[var(--text-primary)]',
   episodeMeta: 'text-xs text-[var(--text-muted)]',
-  ratingBlock: 'mt-3 rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-3 sm:p-4',
+  ratingBlock: 'mt-3 ui-panel p-3 sm:p-4',
 };
 
 function SeasonRatingReview({ seasonId, user }) {
@@ -154,7 +129,7 @@ function SeasonRatingReview({ seasonId, user }) {
         <p className={styles.muted}>Rate this season first to post a review.</p>
       ) : null}
 
-      {actionError ? <p className={styles.error}>{actionError}</p> : null}
+      {actionError ? <InlineMessage tone="error" className="mt-3">{actionError}</InlineMessage> : null}
     </div>
   );
 }
@@ -231,7 +206,7 @@ function EpisodeRatingReview({ episodeId, user }) {
         <p className={styles.muted}>Rate this episode first to post a review.</p>
       ) : null}
 
-      {actionError ? <p className={styles.error}>{actionError}</p> : null}
+      {actionError ? <InlineMessage tone="error" className="mt-3">{actionError}</InlineMessage> : null}
     </div>
   );
 }
@@ -353,7 +328,7 @@ function MediaDetailPage() {
     return (
       <PageLayout>
         <Container>
-          <p className={styles.muted}>Loading media...</p>
+          <LoadingState label="Loading media..." />
         </Container>
       </PageLayout>
     );
@@ -363,7 +338,7 @@ function MediaDetailPage() {
     return (
       <PageLayout>
         <Container>
-          <p className={styles.error}>{errorMessage || 'Media not found.'}</p>
+          <InlineMessage tone="error">{errorMessage || 'Media not found.'}</InlineMessage>
         </Container>
       </PageLayout>
     );
@@ -373,9 +348,9 @@ function MediaDetailPage() {
     <PageLayout>
       <Container>
         <Stack className={styles.pageStack}>
-          <button className={styles.backButton} onClick={() => navigate('/media')}>
-            Back to Media List
-          </button>
+          <div>
+            <Button variant="ghost" onClick={() => navigate('/media')}>Back to Media List</Button>
+          </div>
 
           <Grid variant="mediaHero" className={styles.hero}>
             <img
@@ -385,29 +360,22 @@ function MediaDetailPage() {
             />
             <Stack className={styles.heroText}>
               <h1 className={styles.title}>{media.title}</h1>
-              <p className={styles.muted}>
-                {media.type} · {media.releaseYear ?? media.releaseDate?.slice?.(0, 4) ?? 'N/A'}
-              </p>
+              <div className="flex flex-wrap gap-2">
+                <Badge tone="info">{media.type}</Badge>
+                <Badge>{media.releaseYear ?? media.releaseDate?.slice?.(0, 4) ?? 'N/A'}</Badge>
+              </div>
               <p className={styles.description}>
                 {media.description || 'No description available.'}
               </p>
             </Stack>
           </Grid>
 
-          <div className={styles.tabRow} role="tablist" aria-label="Media Details Tabs">
-            {MEDIA_TABS.map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                role="tab"
-                aria-selected={activeTab === tab}
-                className={clsx(styles.tabButton, activeTab === tab && styles.tabButtonActive)}
-                onClick={() => setActiveTab(tab)}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
+          <Tabs
+            tabs={MEDIA_TABS}
+            value={activeTab}
+            onChange={setActiveTab}
+            ariaLabel="Media Details Tabs"
+          />
 
           {activeTab === 'Overview' ? (
             <Stack className={styles.sectionStack}>
@@ -440,11 +408,11 @@ function MediaDetailPage() {
                     <h2 className={styles.sectionTitle}>Seasons</h2>
 
                     {seasonsLoading ? (
-                      <p className={styles.muted}>Loading seasons...</p>
+                      <LoadingState label="Loading seasons..." />
                     ) : seasonsError ? (
-                      <p className={styles.error}>Failed to load seasons.</p>
+                      <InlineMessage tone="error">Failed to load seasons.</InlineMessage>
                     ) : seasons.length === 0 ? (
-                      <p className={styles.muted}>No seasons found.</p>
+                      <EmptyState title="No seasons found" description="This series does not have season data yet." />
                     ) : (
                       <Stack className={styles.sectionStack}>
                         {seasons.map((season) => {
@@ -458,13 +426,14 @@ function MediaDetailPage() {
                                     {(season.episodes ?? []).length} episodes
                                   </p>
                                 </div>
-                                <button
+                                <Button
                                   type="button"
-                                  className={styles.seasonToggle}
+                                  variant="ghost"
+                                  size="sm"
                                   onClick={() => setOpenSeasonId(isOpen ? null : season.id)}
                                 >
                                   {isOpen ? 'Hide' : 'View'}
-                                </button>
+                                </Button>
                               </div>
 
                               {isOpen ? (
@@ -519,7 +488,7 @@ function MediaDetailPage() {
                   <p className={styles.muted}>Rate this media first to post a review.</p>
                 ) : null}
 
-                {actionError ? <p className={styles.error}>{actionError}</p> : null}
+                {actionError ? <InlineMessage tone="error">{actionError}</InlineMessage> : null}
                 <ReviewsList
                   reviews={sortedReviews}
                   loading={reviewLoading}
@@ -534,13 +503,12 @@ function MediaDetailPage() {
               <Stack className={styles.sectionStack}>
                 <h2 className={styles.sectionTitle}>Collections</h2>
                 <p className={styles.muted}>Browse collections or create one and add this media.</p>
-                <button
+                <Button
                   type="button"
-                  className={styles.backButton}
                   onClick={() => navigate(`/collections?mediaId=${id}`)}
                 >
                   Open Collections
-                </button>
+                </Button>
               </Stack>
             </section>
           ) : null}

@@ -6,22 +6,19 @@ import PageLayout from '../../../layouts/PageLayout';
 import Container from '../../../shared/ui/Container';
 import Grid from '../../../shared/ui/Grid';
 import Stack from '../../../shared/ui/Stack';
+import Badge from '../../../shared/ui/Badge';
+import EmptyState from '../../../shared/ui/EmptyState';
+import InlineMessage from '../../../shared/ui/InlineMessage';
+import LoadingState from '../../../shared/ui/LoadingState';
+import PageHeader from '../../../shared/ui/PageHeader';
+import SectionCard from '../../../shared/ui/SectionCard';
 
 const ORDER = STATUS_TYPES;
 
 const styles = {
   pageStack: 'gap-6',
-  title: 'text-3xl font-semibold text-[var(--text-primary)]',
-  muted: 'text-[var(--text-muted)]',
-  error: 'text-[#ff7f7f]',
-  statusGroup: 'rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-4',
-  statusTitle: 'mb-3 text-lg font-semibold text-[var(--text-primary)]',
   grid: 'gap-3',
-  item: [
-    'flex items-center gap-3 rounded-lg border border-[var(--border)]',
-    'bg-[var(--bg-secondary)] px-3 py-2 text-left text-[var(--text-primary)]',
-    'transition hover:bg-[var(--card-hover)]',
-  ].join(' '),
+  item: 'ui-card-interactive flex min-h-[86px] items-center gap-3 px-3 py-2 text-left text-[var(--text-primary)]',
   itemImage: 'h-[60px] w-[40px] flex-shrink-0 rounded object-cover',
 };
 
@@ -42,14 +39,22 @@ function WatchlistPage() {
     <PageLayout>
       <Container>
         <Stack className={styles.pageStack}>
-          <h1 className={styles.title}>Watchlist</h1>
-          {loading ? <p className={styles.muted}>Loading watchlist...</p> : null}
-          {error ? <p className={styles.error}>{errorMessage}</p> : null}
+          <PageHeader
+            title="Watchlist"
+            subtitle="Track what you plan to watch, are watching, completed, paused, or dropped."
+          />
+          {loading ? <LoadingState label="Loading watchlist..." /> : null}
+          {error ? <InlineMessage tone="error">{errorMessage}</InlineMessage> : null}
 
           {!loading && !error ? ORDER.map((status) => (
-            <section key={status} className={styles.statusGroup}>
-              <h2 className={styles.statusTitle}>{status}</h2>
-              {!groups[status]?.length ? <p className={styles.muted}>No media.</p> : null}
+            <SectionCard
+              key={status}
+              title={status}
+              actions={<Badge>{groups[status]?.length ?? 0}</Badge>}
+            >
+              {!groups[status]?.length ? (
+                <EmptyState title="No media" description={`Nothing is marked as ${status.toLowerCase()} yet.`} />
+              ) : null}
               <Grid variant="cards" className={styles.grid}>
                 {groups[status]?.map((item) => (
                   <button
@@ -66,7 +71,7 @@ function WatchlistPage() {
                   </button>
                 ))}
               </Grid>
-            </section>
+            </SectionCard>
           )) : null}
         </Stack>
       </Container>

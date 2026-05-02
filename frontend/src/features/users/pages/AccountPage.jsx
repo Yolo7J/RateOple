@@ -9,28 +9,25 @@ import PageLayout from '../../../layouts/PageLayout';
 import Container from '../../../shared/ui/Container';
 import Grid from '../../../shared/ui/Grid';
 import Stack from '../../../shared/ui/Stack';
+import Badge from '../../../shared/ui/Badge';
+import Button from '../../../shared/ui/Button';
+import Dialog from '../../../shared/ui/Dialog';
+import EmptyState from '../../../shared/ui/EmptyState';
+import FormField from '../../../shared/ui/FormField';
+import InlineMessage from '../../../shared/ui/InlineMessage';
+import Input from '../../../shared/ui/Input';
+import LoadingState from '../../../shared/ui/LoadingState';
+import PageHeader from '../../../shared/ui/PageHeader';
+import Textarea from '../../../shared/ui/Textarea';
 
 const styles = {
   pageStack: 'gap-6',
-  header: 'flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between',
-  title: 'text-3xl font-semibold text-[var(--text-primary)]',
   muted: 'text-[var(--text-muted)]',
-  error: 'text-[#ff7f7f]',
   grid: 'gap-4',
-  form: 'grid gap-3 max-w-2xl',
-  input: [
-    'w-full rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2',
-    'text-[var(--text-primary)] placeholder:text-[var(--text-muted)]',
-  ].join(' '),
-  button: [
-    'inline-flex items-center justify-center rounded-lg border border-[var(--border)]',
-    'bg-[var(--button-bg)] px-4 py-2 text-sm font-medium text-[var(--text-primary)]',
-    'transition hover:bg-[var(--button-hover-bg)] disabled:opacity-60',
-  ].join(' '),
+  form: 'grid max-w-2xl gap-4',
   list: 'grid gap-2',
-  listItem: 'rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] p-3',
+  listItem: 'ui-panel p-3 text-sm text-[var(--text-primary)]',
   chips: 'flex flex-wrap gap-2',
-  chip: 'rounded-full border border-[var(--border)] px-3 py-1 text-sm',
 };
 
 function AccountPage() {
@@ -51,6 +48,7 @@ function AccountPage() {
     newPassword: '',
   });
   const [deletePassword, setDeletePassword] = useState('');
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [actionError, setActionError] = useState('');
 
   const ratings = data?.ratings ?? [];
@@ -97,6 +95,10 @@ function AccountPage() {
 
   const handleDeleteAccount = async (e) => {
     e.preventDefault();
+    setConfirmingDelete(true);
+  };
+
+  const handleConfirmDeleteAccount = async () => {
     setActionError('');
     try {
       await deleteAccount(deletePassword);
@@ -111,88 +113,119 @@ function AccountPage() {
     <PageLayout>
       <Container>
         <Stack className={styles.pageStack}>
-          <div className={styles.header}>
-            <h1 className={styles.title}>Account</h1>
-            <button className={styles.button} onClick={() => navigate('/account/watchlist')}>
-              Open watchlist
-            </button>
-          </div>
+          <PageHeader
+            title="Account"
+            subtitle="Manage your profile, security, ratings, and saved media."
+            actions={(
+              <Button onClick={() => navigate('/account/watchlist')}>
+                Open watchlist
+              </Button>
+            )}
+          />
 
-          {loading ? <p className={styles.muted}>Loading account...</p> : null}
-          {error ? <p className={styles.error}>{errorMessage}</p> : null}
-          {actionError ? <p className={styles.error}>{actionError}</p> : null}
+          {loading ? <LoadingState label="Loading account..." /> : null}
+          {error ? <InlineMessage tone="error">{errorMessage}</InlineMessage> : null}
+          {actionError ? <InlineMessage tone="error">{actionError}</InlineMessage> : null}
 
           {!loading && !error ? (
             <Grid cols="grid-cols-1 lg:grid-cols-2" className={styles.grid}>
               <AccountSection title="Profile">
                 <form className={styles.form} onSubmit={handleProfileSave}>
-                  <input
-                    className={styles.input}
-                    placeholder="Display name"
-                    value={mergedProfile.displayName}
-                    onChange={(e) => setProfileForm((prev) => ({ ...prev, displayName: e.target.value }))}
-                  />
-                  <textarea
-                    className={styles.input}
-                    rows={3}
-                    placeholder="Bio"
-                    value={mergedProfile.bio}
-                    onChange={(e) => setProfileForm((prev) => ({ ...prev, bio: e.target.value }))}
-                  />
-                  <input
-                    className={styles.input}
-                    placeholder="Location"
-                    value={mergedProfile.location}
-                    onChange={(e) => setProfileForm((prev) => ({ ...prev, location: e.target.value }))}
-                  />
-                  <input
-                    className={styles.input}
-                    placeholder="Favorite genres (comma-separated)"
-                    value={mergedProfile.favoriteGenres}
-                    onChange={(e) => setProfileForm((prev) => ({ ...prev, favoriteGenres: e.target.value }))}
-                  />
-                  <button className={styles.button} type="submit" disabled={profileSaving}>
+                  <FormField label="Display name">
+                    {(fieldProps) => (
+                      <Input
+                        {...fieldProps}
+                        placeholder="Display name"
+                        value={mergedProfile.displayName}
+                        onChange={(e) => setProfileForm((prev) => ({ ...prev, displayName: e.target.value }))}
+                      />
+                    )}
+                  </FormField>
+                  <FormField label="Bio">
+                    {(fieldProps) => (
+                      <Textarea
+                        {...fieldProps}
+                        rows={3}
+                        placeholder="Bio"
+                        value={mergedProfile.bio}
+                        onChange={(e) => setProfileForm((prev) => ({ ...prev, bio: e.target.value }))}
+                      />
+                    )}
+                  </FormField>
+                  <FormField label="Location">
+                    {(fieldProps) => (
+                      <Input
+                        {...fieldProps}
+                        placeholder="Location"
+                        value={mergedProfile.location}
+                        onChange={(e) => setProfileForm((prev) => ({ ...prev, location: e.target.value }))}
+                      />
+                    )}
+                  </FormField>
+                  <FormField label="Favorite genres" hint="Use commas between genres.">
+                    {(fieldProps) => (
+                      <Input
+                        {...fieldProps}
+                        placeholder="Drama, Sci-Fi, Comedy"
+                        value={mergedProfile.favoriteGenres}
+                        onChange={(e) => setProfileForm((prev) => ({ ...prev, favoriteGenres: e.target.value }))}
+                      />
+                    )}
+                  </FormField>
+                  <Button variant="primary" type="submit" disabled={profileSaving}>
                     {profileSaving ? 'Saving...' : 'Save profile'}
-                  </button>
+                  </Button>
                 </form>
               </AccountSection>
 
               <AccountSection title="Security">
                 <Stack className="gap-4">
                   <form className={styles.form} onSubmit={handlePasswordChange}>
-                    <input
-                      className={styles.input}
-                      type="password"
-                      placeholder="Current password"
-                      value={passwordForm.currentPassword}
-                      onChange={(e) => setPasswordForm((prev) => ({ ...prev, currentPassword: e.target.value }))}
-                      required
-                    />
-                    <input
-                      className={styles.input}
-                      type="password"
-                      placeholder="New password"
-                      value={passwordForm.newPassword}
-                      onChange={(e) => setPasswordForm((prev) => ({ ...prev, newPassword: e.target.value }))}
-                      required
-                    />
-                    <button className={styles.button} type="submit" disabled={profileSaving}>
+                    <FormField label="Current password">
+                      {(fieldProps) => (
+                        <Input
+                          {...fieldProps}
+                          type="password"
+                          placeholder="Current password"
+                          value={passwordForm.currentPassword}
+                          onChange={(e) => setPasswordForm((prev) => ({ ...prev, currentPassword: e.target.value }))}
+                          required
+                        />
+                      )}
+                    </FormField>
+                    <FormField label="New password">
+                      {(fieldProps) => (
+                        <Input
+                          {...fieldProps}
+                          type="password"
+                          placeholder="New password"
+                          value={passwordForm.newPassword}
+                          onChange={(e) => setPasswordForm((prev) => ({ ...prev, newPassword: e.target.value }))}
+                          required
+                        />
+                      )}
+                    </FormField>
+                    <Button type="submit" disabled={profileSaving}>
                       {profileSaving ? 'Saving...' : 'Change password'}
-                    </button>
+                    </Button>
                   </form>
 
                   <form className={styles.form} onSubmit={handleDeleteAccount}>
-                    <input
-                      className={styles.input}
-                      type="password"
-                      placeholder="Confirm password to delete account"
-                      value={deletePassword}
-                      onChange={(e) => setDeletePassword(e.target.value)}
-                      required
-                    />
-                    <button className={styles.button} type="submit" disabled={profileSaving}>
+                    <FormField label="Delete account" hint="Enter your password before continuing.">
+                      {(fieldProps) => (
+                        <Input
+                          {...fieldProps}
+                          type="password"
+                          placeholder="Confirm password"
+                          value={deletePassword}
+                          onChange={(e) => setDeletePassword(e.target.value)}
+                          required
+                        />
+                      )}
+                    </FormField>
+                    <Button variant="danger" type="submit" disabled={profileSaving}>
                       Delete account
-                    </button>
+                    </Button>
                   </form>
                 </Stack>
               </AccountSection>
@@ -201,10 +234,15 @@ function AccountPage() {
                 <ul className={styles.list}>
                   {ratings.slice(0, 20).map((item) => (
                     <li key={item.id} className={styles.listItem}>
-                      {item.value}/10 · {item.mediaTitle || item.mediaId || item.seasonId || item.episodeId}
+                      <Badge tone="accent">{item.value}/10</Badge>{' '}
+                      {item.mediaTitle || item.mediaId || item.seasonId || item.episodeId}
                     </li>
                   ))}
-                  {!ratings.length ? <li className={styles.listItem}>No ratings yet.</li> : null}
+                  {!ratings.length ? (
+                    <li className="list-none">
+                      <EmptyState title="No ratings yet" description="Your recent ratings will appear here." />
+                    </li>
+                  ) : null}
                 </ul>
               </AccountSection>
 
@@ -213,7 +251,11 @@ function AccountPage() {
                   {reviews.slice(0, 20).map((item) => (
                     <li key={item.id} className={styles.listItem}>{item.content}</li>
                   ))}
-                  {!reviews.length ? <li className={styles.listItem}>No reviews yet.</li> : null}
+                  {!reviews.length ? (
+                    <li className="list-none">
+                      <EmptyState title="No reviews yet" description="Reviews you write will appear here." />
+                    </li>
+                  ) : null}
                 </ul>
               </AccountSection>
 
@@ -221,19 +263,24 @@ function AccountPage() {
                 <ul className={styles.list}>
                   {statuses.slice(0, 20).map((item, idx) => (
                     <li key={`${item.mediaId ?? item.id}-${idx}`} className={styles.listItem}>
-                      {item.title || item.mediaTitle || item.mediaId} · {item.status}
+                      {item.title || item.mediaTitle || item.mediaId}{' '}
+                      <Badge>{item.status}</Badge>
                     </li>
                   ))}
-                  {!statuses.length ? <li className={styles.listItem}>No watchlist items.</li> : null}
+                  {!statuses.length ? (
+                    <li className="list-none">
+                      <EmptyState title="No watchlist items" description="Saved media will appear here." />
+                    </li>
+                  ) : null}
                 </ul>
               </AccountSection>
 
               <AccountSection title="Favorite genres">
                 <div className={styles.chips}>
                   {topGenres.map((genre, idx) => (
-                    <span key={`${genre.name ?? genre}-${idx}`} className={styles.chip}>
+                    <Badge key={`${genre.name ?? genre}-${idx}`} tone="info">
                       {genre.name ?? genre}
-                    </span>
+                    </Badge>
                   ))}
                   {!topGenres.length ? (
                     <span className={styles.muted}>No favorite genres yet.</span>
@@ -242,6 +289,21 @@ function AccountPage() {
               </AccountSection>
             </Grid>
           ) : null}
+
+          <Dialog
+            open={confirmingDelete}
+            title="Delete account?"
+            description="This removes your account and signs you out. This action cannot be undone."
+            onClose={() => setConfirmingDelete(false)}
+            actions={(
+              <>
+                <Button variant="ghost" onClick={() => setConfirmingDelete(false)}>Cancel</Button>
+                <Button variant="danger" onClick={handleConfirmDeleteAccount} disabled={profileSaving}>
+                  {profileSaving ? 'Deleting...' : 'Delete account'}
+                </Button>
+              </>
+            )}
+          />
         </Stack>
       </Container>
     </PageLayout>

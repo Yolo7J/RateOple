@@ -9,6 +9,15 @@ import PageLayout from '../../../layouts/PageLayout';
 import Container from '../../../shared/ui/Container';
 import Grid from '../../../shared/ui/Grid';
 import Stack from '../../../shared/ui/Stack';
+import Badge from '../../../shared/ui/Badge';
+import Button from '../../../shared/ui/Button';
+import Checkbox from '../../../shared/ui/Checkbox';
+import EmptyState from '../../../shared/ui/EmptyState';
+import InlineMessage from '../../../shared/ui/InlineMessage';
+import Input from '../../../shared/ui/Input';
+import PageHeader from '../../../shared/ui/PageHeader';
+import Select from '../../../shared/ui/Select';
+import { Skeleton } from '../../../shared/ui/LoadingState';
 
 const SORT_OPTIONS = [
   { value: 'rating:desc', label: 'Top Rated' },
@@ -22,57 +31,17 @@ const PAGE_SIZE = 24;
 
 const styles = {
   pageStack: 'gap-6',
-  toolbar: [
-    'flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--border)]',
-    'bg-[linear-gradient(140deg,var(--bg-elevated),var(--card-bg))] p-4',
-    'shadow-[0_12px_30px_-22px_var(--shadow-color)]',
-  ].join(' '),
-  searchForm: 'flex min-w-[220px] flex-1',
-  searchInput: [
-    'h-11 flex-1 rounded-l-xl border border-[var(--border)] bg-[var(--input-bg)] px-4 text-sm',
-    'text-[var(--text-primary)] outline-none',
-  ].join(' '),
-  searchButton: [
-    'h-11 rounded-r-xl border border-[var(--border)] bg-[var(--btn-bg)] px-4 text-sm',
-    'text-[var(--text-primary)] transition hover:bg-[var(--btn-hover)]',
-  ].join(' '),
-  clearButton: [
-    'h-11 rounded-xl border border-[var(--border)] bg-transparent px-4 text-sm',
-    'text-[var(--text-primary)] transition hover:bg-[var(--btn-hover)]',
-  ].join(' '),
-  sortSelect: [
-    'h-11 min-w-[160px] rounded-xl border border-[var(--border)] bg-[var(--input-bg)] px-3 text-sm',
-    'text-[var(--text-primary)]',
-  ].join(' '),
-  addButton: [
-    'h-11 rounded-xl bg-[var(--accent)] px-5 text-sm font-bold text-[#151515]',
-    'shadow-[0_8px_20px_-14px_rgba(245,197,24,0.9)] transition hover:bg-[var(--accent-strong)]',
-    'sm:ml-auto',
-  ].join(' '),
+  toolbar: 'ui-card flex flex-wrap items-center gap-3 p-4',
+  searchForm: 'flex min-w-[240px] flex-1 flex-col gap-2 sm:flex-row sm:gap-0',
   layout: 'grid grid-cols-1 gap-5 lg:grid-cols-[250px_minmax(0,1fr)]',
-  filters: [
-    'flex flex-wrap gap-4 rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] p-4',
-    'lg:sticky lg:top-24 lg:max-h-[calc(100vh-105px)] lg:flex-col lg:overflow-auto',
-  ].join(' '),
+  filters: 'ui-card flex flex-wrap gap-4 p-4 lg:sticky lg:top-24 lg:max-h-[calc(100vh-105px)] lg:flex-col lg:overflow-auto',
   filterSection: 'flex flex-col gap-2',
   filterHeading: 'text-xs uppercase tracking-[0.09em] text-[var(--text-muted)]',
   filterCheckbox: 'flex items-center gap-2 text-sm text-[var(--text-primary)]',
   gridArea: 'flex min-w-0 flex-col gap-5',
   grid: 'grid-cols-[repeat(auto-fill,minmax(180px,1fr))] max-sm:grid-cols-[repeat(auto-fill,minmax(146px,1fr))] gap-4',
-  skeletonCard: [
-    'aspect-[2/3] rounded-xl bg-[var(--skeleton-a)] animate-pulse',
-  ].join(' '),
-  empty: [
-    'rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card-bg)] p-12 text-center',
-    'text-[var(--text-muted)]',
-  ].join(' '),
   resultHeading: 'text-lg font-semibold text-[var(--text-primary)]',
-  error: 'text-[#ff6d75]',
   pagination: 'flex items-center justify-center gap-3',
-  pageButton: [
-    'rounded-xl border border-[var(--border)] bg-[var(--btn-bg)] px-4 py-2 text-sm',
-    'text-[var(--text-primary)] transition hover:bg-[var(--btn-hover)] disabled:opacity-50',
-  ].join(' '),
   pageInfo: 'text-sm text-[var(--text-muted)]',
 };
 
@@ -180,42 +149,44 @@ const MediaListPage = () => {
 
   return (
     <PageLayout>
-      <Container size="full">
+      <Container size="xxl">
         <Stack className={styles.pageStack}>
+          <PageHeader
+            title="Media"
+            subtitle="Browse, search, and filter the RateOple catalog."
+            actions={canAddMedia ? (
+              <Button variant="primary" onClick={() => navigate('/media/add')}>Add Media</Button>
+            ) : null}
+          />
+
           <div className={styles.toolbar}>
             <form className={styles.searchForm} onSubmit={handleSearchSubmit}>
-              <input
+              <Input
                 type="text"
                 name="search"
                 key={search}
-                className={styles.searchInput}
+                className="sm:rounded-r-none"
                 placeholder="Search titles..."
                 defaultValue={search}
               />
-              <button type="submit" className={styles.searchButton}>Search</button>
+              <Button type="submit" className="sm:rounded-l-none">Search</Button>
             </form>
 
             {search ? (
-              <button type="button" className={styles.clearButton} onClick={clearSearch}>
+              <Button type="button" variant="ghost" onClick={clearSearch}>
                 Clear search
-              </button>
+              </Button>
             ) : null}
 
-            <select
-              className={styles.sortSelect}
+            <Select
+              className="min-w-[170px]"
               value={sort}
               onChange={(e) => updateSearchParams({ sort: e.target.value, page: 1 })}
             >
               {SORT_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
-            </select>
-
-            {canAddMedia ? (
-              <button className={styles.addButton} onClick={() => navigate('/media/add')}>
-                + Add Media
-              </button>
-            ) : null}
+            </Select>
           </div>
 
           <div className={styles.layout}>
@@ -224,11 +195,9 @@ const MediaListPage = () => {
                 <h4 className={styles.filterHeading}>Type</h4>
                 {MEDIA_TYPES.map((type) => (
                   <label key={type} className={styles.filterCheckbox}>
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={selectedTypes.includes(type)}
                       onChange={() => toggleType(type)}
-                      className="accent-[var(--accent)]"
                     />
                     {type === 'TvSeries' ? 'TV Series' : type}
                   </label>
@@ -240,11 +209,9 @@ const MediaListPage = () => {
                   <h4 className={styles.filterHeading}>Genre</h4>
                   {genres.map((g) => (
                     <label key={g.id} className={styles.filterCheckbox}>
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         checked={selectedGenres.includes(g.id)}
                         onChange={() => toggleGenre(g.id)}
-                        className="accent-[var(--accent)]"
                       />
                       {g.name}
                     </label>
@@ -255,25 +222,27 @@ const MediaListPage = () => {
 
             <main className={styles.gridArea}>
               {search ? (
-                <h2 className={styles.resultHeading}>Search results for "{search}"</h2>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className={styles.resultHeading}>Search results</h2>
+                  <Badge>{search}</Badge>
+                </div>
               ) : null}
 
-              {errorMessage ? <p className={styles.error}>{errorMessage}</p> : null}
+              {errorMessage ? <InlineMessage tone="error">{errorMessage}</InlineMessage> : null}
 
               {loading ? (
                 <Grid cols={styles.grid}>
                   {Array.from({ length: 12 }).map((_, i) => (
-                    <div key={i} className={styles.skeletonCard} />
+                    <Skeleton key={i} className="aspect-[2/3]" />
                   ))}
                 </Grid>
               ) : (result?.items?.length ?? 0) === 0 ? (
-                <div className={styles.empty}>
-                  <p>
-                    {search
-                      ? `No media found for "${search}". Try another search or clear filters.`
-                      : 'No media found. Try adjusting your filters.'}
-                  </p>
-                </div>
+                <EmptyState
+                  title="No media found"
+                  description={search
+                    ? `No media found for "${search}". Try another search or clear filters.`
+                    : 'No media found. Try adjusting your filters.'}
+                />
               ) : (
                 <Grid cols={styles.grid}>
                   {(result?.items ?? []).map((m) => (
@@ -285,19 +254,19 @@ const MediaListPage = () => {
               {(result?.totalPages ?? 1) > 1 ? (
                 <div className={styles.pagination}>
                   <button
-                    className={styles.pageButton}
+                    className="ui-button"
                     disabled={page <= 1}
                     onClick={() => updateSearchParams({ page: page - 1 })}
                   >
-                    ← Prev
+                    Prev
                   </button>
                   <span className={styles.pageInfo}>Page {page} of {result?.totalPages ?? 1}</span>
                   <button
-                    className={styles.pageButton}
+                    className="ui-button"
                     disabled={page >= (result?.totalPages ?? 1)}
                     onClick={() => updateSearchParams({ page: page + 1 })}
                   >
-                    Next →
+                    Next
                   </button>
                 </div>
               ) : null}

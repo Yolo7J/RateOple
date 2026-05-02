@@ -3,6 +3,14 @@ import { useGroupMutations } from '../queries/useGroupMutations';
 import PageLayout from '../../../layouts/PageLayout';
 import Container from '../../../shared/ui/Container';
 import Stack from '../../../shared/ui/Stack';
+import Button from '../../../shared/ui/Button';
+import FormField from '../../../shared/ui/FormField';
+import InlineMessage from '../../../shared/ui/InlineMessage';
+import Input from '../../../shared/ui/Input';
+import PageHeader from '../../../shared/ui/PageHeader';
+import SectionCard from '../../../shared/ui/SectionCard';
+import Select from '../../../shared/ui/Select';
+import Textarea from '../../../shared/ui/Textarea';
 
 const VISIBILITY = {
   Public: 1,
@@ -11,26 +19,7 @@ const VISIBILITY = {
 
 const styles = {
   pageStack: 'gap-6',
-  title: 'text-3xl font-semibold text-[var(--text-primary)]',
-  section: [
-    'rounded-2xl border border-[var(--border)] bg-[var(--card-bg)]',
-    'p-4 sm:p-6',
-  ].join(' '),
-  form: 'grid gap-3 max-w-2xl',
-  input: [
-    'w-full rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2',
-    'text-[var(--text-primary)] placeholder:text-[var(--text-muted)]',
-  ].join(' '),
-  select: [
-    'w-full rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2',
-    'text-[var(--text-primary)]',
-  ].join(' '),
-  button: [
-    'inline-flex items-center justify-center rounded-lg border border-[var(--border)]',
-    'bg-[var(--button-bg)] px-4 py-2 text-sm font-medium text-[var(--text-primary)]',
-    'transition hover:bg-[var(--button-hover-bg)] disabled:opacity-60',
-  ].join(' '),
-  error: 'text-[#ff7f7f]',
+  form: 'grid max-w-2xl gap-4',
 };
 
 function CreateGroupPage() {
@@ -63,37 +52,54 @@ function CreateGroupPage() {
     <PageLayout>
       <Container>
         <Stack className={styles.pageStack}>
-          <h1 className={styles.title}>Create Group</h1>
-          <section className={styles.section}>
+          <PageHeader
+            title="Create Group"
+            subtitle="Start a focused space for discussing media with a public or private audience."
+          />
+          <SectionCard>
             <form className={styles.form} onSubmit={handleCreateGroup}>
-              <input
-                className={styles.input}
-                placeholder="Group name"
-                value={form.name}
-                onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-                required
-              />
-              <textarea
-                className={styles.input}
-                rows={3}
-                placeholder="Description"
-                value={form.description}
-                onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-              />
-              <select
-                className={styles.select}
-                value={form.visibility}
-                onChange={(e) => setForm((prev) => ({ ...prev, visibility: e.target.value }))}
-              >
-                <option value="Public">Public</option>
-                <option value="Private">Private</option>
-              </select>
-              <button className={styles.button} type="submit" disabled={mutating}>
+              <FormField label="Group name">
+                {(fieldProps) => (
+                  <Input
+                    {...fieldProps}
+                    placeholder="Group name"
+                    value={form.name}
+                    onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+                    required
+                  />
+                )}
+              </FormField>
+              <FormField label="Description" hint="Optional. Keep it short and specific.">
+                {(fieldProps) => (
+                  <Textarea
+                    {...fieldProps}
+                    rows={3}
+                    placeholder="What will members discuss here?"
+                    value={form.description}
+                    onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+                  />
+                )}
+              </FormField>
+              <FormField label="Visibility">
+                {(fieldProps) => (
+                  <Select
+                    {...fieldProps}
+                    value={form.visibility}
+                    onChange={(e) => setForm((prev) => ({ ...prev, visibility: e.target.value }))}
+                  >
+                    <option value="Public">Public</option>
+                    <option value="Private">Private</option>
+                  </Select>
+                )}
+              </FormField>
+              <div className="flex flex-wrap items-center gap-3">
+                <Button variant="primary" type="submit" disabled={mutating}>
                 {mutating ? 'Creating...' : 'Create group'}
-              </button>
-              {actionError ? <p className={styles.error}>{actionError}</p> : null}
+                </Button>
+              </div>
+              {actionError ? <InlineMessage tone="error">{actionError}</InlineMessage> : null}
             </form>
-          </section>
+          </SectionCard>
         </Stack>
       </Container>
     </PageLayout>
