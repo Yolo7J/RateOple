@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { buildImageUrl } from '../../../shared/utils/buildImageUrl';
 
 const styles = {
-  card: 'overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card-bg)]',
+  card: 'ui-card-interactive overflow-hidden',
   link: 'block text-inherit no-underline',
   cover: 'aspect-video w-full object-cover',
   meta: 'p-3',

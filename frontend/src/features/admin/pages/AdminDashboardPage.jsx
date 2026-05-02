@@ -3,15 +3,13 @@ import PageLayout from '../../../layouts/PageLayout';
 import Container from '../../../shared/ui/Container';
 import Grid from '../../../shared/ui/Grid';
 import Stack from '../../../shared/ui/Stack';
+import PageHeader from '../../../shared/ui/PageHeader';
 
 const styles = {
   pageStack: 'gap-6',
-  title: 'text-3xl font-semibold text-[var(--text-primary)]',
-  subtitle: 'text-sm text-[var(--text-muted)]',
   grid: 'gap-4 sm:grid-cols-2',
   card: [
-    'group flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card-bg)]',
-    'p-5 transition hover:border-[var(--accent)]/50 hover:bg-[var(--card-hover)]',
+    'ui-card-interactive group flex flex-col gap-3 p-5',
   ].join(' '),
   cardTitle: 'text-lg font-semibold text-[var(--text-primary)]',
   cardBody: 'text-sm text-[var(--text-muted)]',
@@ -36,10 +34,7 @@ const AdminDashboardPage = () => {
     <PageLayout>
       <Container>
         <Stack className={styles.pageStack}>
-          <div>
-            <h1 className={styles.title}>Admin Dashboard</h1>
-            <p className={styles.subtitle}>Manage platform content and operations.</p>
-          </div>
+          <PageHeader title="Admin Dashboard" subtitle="Manage platform content and operations." />
 
           <Grid cols={styles.grid}>
             {ADMIN_LINKS.map((item) => (

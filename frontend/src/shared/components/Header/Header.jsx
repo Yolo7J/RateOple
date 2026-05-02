@@ -95,11 +95,11 @@ const Header = () => {
   const userInitial = user?.username ? user.username.charAt(0).toUpperCase() : 'U';
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-[var(--header-border)] bg-[linear-gradient(120deg,var(--header-bg),var(--bg-secondary))] shadow-[0_12px_30px_-20px_var(--shadow-color)] backdrop-blur-xl">
+    <header className="sticky top-0 z-50 w-full border-b border-[var(--header-border)] bg-[var(--header-bg)] shadow-[var(--shadow-soft)] backdrop-blur-xl">
       <Container size="xxl" className="flex items-center gap-4 py-3 lg:py-4">
         <div className="md:hidden relative flex w-full items-center justify-between">
           <button
-            className="flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--button-border)] bg-[var(--button-bg)] text-[var(--text-primary)] shadow-[0_6px_14px_-10px_var(--shadow-color)] transition duration-200 hover:border-[var(--primary-color)] hover:bg-[var(--button-hover-bg)]"
+            className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-lg)] border border-[var(--button-border)] bg-[var(--button-bg)] p-0 text-[var(--text-primary)] shadow-[var(--shadow-soft)] transition duration-200 hover:border-[var(--primary-color)] hover:bg-[var(--button-hover-bg)]"
             aria-label="Open navigation"
             onClick={() => {
               setIsMobileMenuOpen(true);
@@ -135,7 +135,7 @@ const Header = () => {
 
           <div className="flex items-center gap-2">
             <button
-              className="flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--button-border)] bg-[var(--button-bg)] text-[var(--text-primary)] shadow-[0_6px_14px_-10px_var(--shadow-color)] transition duration-200 hover:border-[var(--primary-color)] hover:bg-[var(--button-hover-bg)]"
+              className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-lg)] border border-[var(--button-border)] bg-[var(--button-bg)] p-0 text-[var(--text-primary)] shadow-[var(--shadow-soft)] transition duration-200 hover:border-[var(--primary-color)] hover:bg-[var(--button-hover-bg)]"
               aria-label="Search"
               onClick={() => {
                 setIsMobileSearchOpen(true);
@@ -149,7 +149,7 @@ const Header = () => {
               </svg>
             </button>
             <button
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--button-border)] bg-[var(--button-bg)] text-sm font-semibold text-[var(--text-primary)] shadow-[0_6px_14px_-10px_var(--shadow-color)] transition duration-200 hover:border-[var(--primary-color)] hover:bg-[var(--button-hover-bg)]"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--button-border)] bg-[var(--button-bg)] p-0 text-sm font-semibold text-[var(--text-primary)] shadow-[var(--shadow-soft)] transition duration-200 hover:border-[var(--primary-color)] hover:bg-[var(--button-hover-bg)]"
               aria-label="Account"
               onClick={() => {
                 setIsMobileUserOpen(true);
@@ -186,7 +186,7 @@ const Header = () => {
 
           <nav className="hidden md:flex items-center gap-4 lg:gap-5">
             <button
-              className="rounded-full px-2 py-1 text-sm font-medium text-[var(--text-secondary)] transition hover:bg-[var(--button-hover-bg)] hover:text-[var(--text-primary)] lg:text-base"
+              className="rounded-full px-2 py-1 text-sm font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--button-hover-bg)] hover:text-[var(--text-primary)] lg:text-base"
               onClick={() => handleNavigate(navLinks[0].path)}
             >
               {navLinks[0].label}
@@ -195,7 +195,7 @@ const Header = () => {
             {navLinks.slice(1).map((item) => (
               <button
                 key={item.path}
-                className="rounded-full px-2 py-1 text-sm font-medium text-[var(--text-secondary)] transition hover:bg-[var(--button-hover-bg)] hover:text-[var(--text-primary)] lg:text-base"
+                className="rounded-full px-2 py-1 text-sm font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--button-hover-bg)] hover:text-[var(--text-primary)] lg:text-base"
                 onClick={() => handleNavigate(item.path)}
               >
                 {item.label}
@@ -215,7 +215,7 @@ const Header = () => {
           <LanguageToggle />
 
           <button
-            className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--button-border)] bg-[var(--button-bg)] text-[var(--text-primary)] shadow-[0_10px_18px_-14px_var(--shadow-color)] transition duration-200 hover:border-[var(--primary-color)] hover:bg-[var(--button-hover-bg)] hover:-translate-y-0.5 lg:h-11 lg:w-11"
+            className="relative flex h-10 w-10 items-center justify-center rounded-[var(--radius-lg)] border border-[var(--button-border)] bg-[var(--button-bg)] p-0 text-[var(--text-primary)] shadow-[var(--shadow-soft)] transition duration-200 hover:border-[var(--primary-color)] hover:bg-[var(--button-hover-bg)] lg:h-11 lg:w-11"
             onClick={() => handleNavigate('/notifications')}
             aria-label="Notifications"
             title="Notifications"
@@ -236,7 +236,7 @@ const Header = () => {
           {user ? (
             <div className="relative" ref={userMenuRef}>
               <button
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--button-border)] bg-[var(--button-bg)] text-sm font-semibold text-[var(--text-primary)] shadow-[0_10px_18px_-14px_var(--shadow-color)] transition duration-200 hover:border-[var(--primary-color)] hover:bg-[var(--button-hover-bg)] hover:-translate-y-0.5 lg:h-11 lg:w-11 lg:text-base"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--button-border)] bg-[var(--button-bg)] p-0 text-sm font-semibold text-[var(--text-primary)] shadow-[var(--shadow-soft)] transition duration-200 hover:border-[var(--primary-color)] hover:bg-[var(--button-hover-bg)] lg:h-11 lg:w-11 lg:text-base"
                 onClick={() => setIsUserMenuOpen((prev) => !prev)}
                 aria-label="User menu"
                 aria-expanded={isUserMenuOpen}
@@ -247,7 +247,7 @@ const Header = () => {
 
               {isUserMenuOpen ? (
                 <div
-                  className="absolute right-0 top-full z-50 mt-3 w-64 overflow-hidden rounded-2xl border border-[var(--dropdown-border)] bg-[var(--dropdown-bg)] shadow-[0_18px_40px_-24px_var(--shadow-color)]"
+                  className="absolute right-0 top-full z-50 mt-3 w-64 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--dropdown-border)] bg-[var(--dropdown-bg)] shadow-[var(--shadow-raised)]"
                   role="menu"
                 >
                   <div className="px-5 py-4 text-sm text-[var(--text-secondary)]">

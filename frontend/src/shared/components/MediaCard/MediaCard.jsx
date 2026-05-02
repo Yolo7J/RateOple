@@ -1,10 +1,8 @@
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 const styles = {
   card: [
-    'group flex h-full cursor-pointer flex-col overflow-hidden rounded-xl',
-    'border border-[var(--border)] bg-[var(--card-bg)] transition',
-    'hover:bg-[var(--card-hover)] hover:shadow-[0_10px_30px_-18px_rgba(0,0,0,0.6)]',
+    'ui-card-interactive group flex h-full flex-col overflow-hidden text-inherit no-underline',
   ].join(' '),
   cover: 'relative aspect-[2/3] w-full overflow-hidden bg-[var(--card-cover-bg)]',
   image: 'h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]',
@@ -35,11 +33,11 @@ const TYPE_LABELS = {
 };
 
 const MediaCard = ({ media }) => {
-  const navigate = useNavigate();
   const { id, type, title, releaseYear, coverUrl, averageRating, ratingsCount } = media;
 
   return (
-    <article className={styles.card} onClick={() => navigate(`/media/${id}`)}>
+    <article className="h-full">
+      <Link className={styles.card} to={`/media/${id}`} aria-label={`Open ${title}`}>
       <div className={styles.cover}>
         <img
           src={coverUrl || PLACEHOLDER}
@@ -64,6 +62,7 @@ const MediaCard = ({ media }) => {
           </span>
         </div>
       </div>
+      </Link>
     </article>
   );
 };

@@ -1,3 +1,5 @@
+import LoadingState from './LoadingState';
+
 function RouteFallback() {
   return (
     <div
@@ -5,9 +7,7 @@ function RouteFallback() {
       role="status"
       aria-live="polite"
     >
-      <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] px-6 py-10 text-center shadow-[0_12px_30px_-24px_var(--shadow-color)]">
-        <p className="text-sm font-medium text-[var(--text-secondary)]">Loading page...</p>
-      </div>
+      <LoadingState label="Loading page..." className="w-full" />
     </div>
   );
 }

@@ -8,32 +8,21 @@ import PageLayout from '../../../layouts/PageLayout';
 import Container from '../../../shared/ui/Container';
 import Grid from '../../../shared/ui/Grid';
 import Stack from '../../../shared/ui/Stack';
+import Button from '../../../shared/ui/Button';
+import EmptyState from '../../../shared/ui/EmptyState';
+import InlineMessage from '../../../shared/ui/InlineMessage';
+import Input from '../../../shared/ui/Input';
+import LoadingState from '../../../shared/ui/LoadingState';
+import PageHeader from '../../../shared/ui/PageHeader';
+import Textarea from '../../../shared/ui/Textarea';
 
 const USER_OWNER_TYPE = 2;
 
 const styles = {
   muted: 'text-[var(--text-muted)]',
-  error: 'text-[#ff7f7f]',
   pageStack: 'gap-6',
   headerStack: 'gap-2',
-  title: 'text-3xl font-semibold text-[var(--text-primary)]',
-  form: [
-    'grid gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card-bg)]',
-    'p-4 sm:p-6 max-w-2xl',
-  ].join(' '),
-  input: [
-    'w-full rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2',
-    'text-[var(--text-primary)] placeholder:text-[var(--text-muted)]',
-  ].join(' '),
-  textarea: [
-    'w-full rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2',
-    'text-[var(--text-primary)] placeholder:text-[var(--text-muted)]',
-  ].join(' '),
-  button: [
-    'inline-flex items-center justify-center rounded-lg border border-[var(--border)]',
-    'bg-[var(--button-bg)] px-4 py-2 text-sm font-medium text-[var(--text-primary)]',
-    'transition hover:bg-[var(--button-hover-bg)] disabled:opacity-60',
-  ].join(' '),
+  form: 'ui-card grid max-w-2xl gap-3 p-4 sm:p-6',
   grid: 'gap-4',
 };
 
@@ -78,7 +67,7 @@ function CollectionsPage() {
       <Container>
         <Stack className={styles.pageStack}>
           <Stack className={styles.headerStack}>
-            <h1 className={styles.title}>Collections</h1>
+            <PageHeader title="Collections" />
             {mediaId ? (
               <p className={styles.muted}>
                 Create a collection and this media will be added automatically.
@@ -88,37 +77,35 @@ function CollectionsPage() {
 
           {user ? (
             <form className={styles.form} onSubmit={handleCreate}>
-              <input
-                className={styles.input}
+              <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Collection name"
                 maxLength={40}
                 required
               />
-              <textarea
-                className={styles.textarea}
+              <Textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Description (optional)"
                 rows={3}
               />
-              <button className={styles.button} type="submit" disabled={mutating}>
+              <Button type="submit" variant="primary" disabled={mutating}>
                 {mutating ? 'Saving...' : 'Create collection'}
-              </button>
-              {actionError ? <p className={styles.error}>{actionError}</p> : null}
+              </Button>
+              {actionError ? <InlineMessage tone="error">{actionError}</InlineMessage> : null}
             </form>
           ) : null}
 
-          {loading ? <p className={styles.muted}>Loading collections...</p> : null}
-          {error ? <p className={styles.error}>Failed to load collections.</p> : null}
+          {loading ? <LoadingState label="Loading collections..." /> : null}
+          {error ? <InlineMessage tone="error">Failed to load collections.</InlineMessage> : null}
 
           {!loading && !error ? (
             <Grid variant="cards" className={styles.grid}>
               {items.map((collection) => (
                 <CollectionCard key={collection.id} collection={collection} />
               ))}
-              {items.length === 0 ? <p className={styles.muted}>No collections yet.</p> : null}
+              {items.length === 0 ? <EmptyState title="No collections yet" /> : null}
             </Grid>
           ) : null}
         </Stack>

@@ -1,16 +1,18 @@
 import { useCallback, useMemo, useState } from 'react';
 import { formatDate } from '../../../shared/utils/formatDate';
 import { EntityPicker } from '../../../shared/ui/EntityPicker';
+import Badge from '../../../shared/ui/Badge';
+import Button from '../../../shared/ui/Button';
+import InlineMessage from '../../../shared/ui/InlineMessage';
 import { searchModerationUsers } from '../../users/services/userLookupService';
 import { searchModerationScopes } from '../services/scopeLookupService';
 
 const styles = {
-  card: 'flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-4',
+  card: 'ui-card flex flex-col gap-2 p-4',
   highlight: 'live-highlight',
   header: 'flex flex-wrap items-center justify-between gap-2',
   title: 'text-base font-semibold text-[var(--text-primary)]',
   subtitle: 'text-sm text-[var(--text-muted)]',
-  chip: 'rounded-full border border-[var(--border)] px-2.5 py-0.5 text-xs',
   meta: 'text-sm text-[var(--text-muted)]',
   actions: 'flex flex-wrap items-center gap-2',
   input: [
@@ -19,12 +21,6 @@ const styles = {
   ].join(' '),
   banSection: 'mt-2 grid gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] p-3',
   banRow: 'grid gap-3',
-  error: 'text-sm text-[#ff7f7f]',
-  button: [
-    'inline-flex items-center justify-center rounded-lg border border-[var(--border)]',
-    'bg-[var(--button-bg)] px-3 py-2 text-sm font-medium text-[var(--text-primary)]',
-    'transition hover:bg-[var(--button-hover-bg)] disabled:opacity-60',
-  ].join(' '),
 };
 
 const STATUS_LABELS = {
@@ -125,7 +121,7 @@ function ModerationReportRow({
             {targetDisplay}
           </p>
         </div>
-        <span className={styles.chip}>{statusLabel}</span>
+        <Badge tone={isResolved ? 'success' : isRejected ? 'danger' : 'warning'}>{statusLabel}</Badge>
       </header>
 
       <p className={styles.meta}>
@@ -140,22 +136,20 @@ function ModerationReportRow({
       <p className="text-sm text-[var(--text-secondary)]">{report.reason}</p>
 
       <div className={styles.actions}>
-        <button
-          className={styles.button}
-          type="button"
+        <Button
+          size="sm"
           disabled={isActionLocked || isResolved}
           onClick={() => handleAction(3, 'resolved')}
         >
           Mark as Resolved
-        </button>
-        <button
-          className={styles.button}
-          type="button"
+        </Button>
+        <Button
+          size="sm"
           disabled={isActionLocked || isRejected}
           onClick={() => handleAction(4, 'rejected')}
         >
           Mark as Rejected
-        </button>
+        </Button>
       </div>
 
       {isGroupRelated ? (
@@ -184,24 +178,22 @@ function ModerationReportRow({
               value={banForm.reason}
               onChange={(e) => setBanForm((prev) => ({ ...prev, reason: e.target.value }))}
             />
-            <button
-              className={styles.button}
-              type="button"
+            <Button
+              size="sm"
               disabled={disabled || banPending || !banForm.group || !banForm.user}
               onClick={handleBan}
             >
               {banPending ? 'Processing...' : 'Ban user (group)'}
-            </button>
-            <button
-              className={styles.button}
-              type="button"
+            </Button>
+            <Button
+              size="sm"
               disabled={disabled || banPending || !banForm.group || !banForm.user}
               onClick={handleUnban}
             >
               {banPending ? 'Processing...' : 'Unban user'}
-            </button>
+            </Button>
           </div>
-          {banError ? <p className={styles.error}>{banError}</p> : null}
+          {banError ? <InlineMessage tone="error">{banError}</InlineMessage> : null}
         </div>
       ) : null}
     </article>

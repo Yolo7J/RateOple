@@ -5,61 +5,20 @@ import * as mediaService from '../services/mediaService';
 import PageLayout from '../../../layouts/PageLayout';
 import Container from '../../../shared/ui/Container';
 import Stack from '../../../shared/ui/Stack';
+import Button from '../../../shared/ui/Button';
+import DataTable from '../../../shared/ui/DataTable';
+import Dialog from '../../../shared/ui/Dialog';
+import EmptyState from '../../../shared/ui/EmptyState';
+import InlineMessage from '../../../shared/ui/InlineMessage';
+import LoadingState from '../../../shared/ui/LoadingState';
+import PageHeader from '../../../shared/ui/PageHeader';
 
 const styles = {
   pageStack: 'gap-6',
-  header: 'flex flex-wrap items-center justify-between gap-3',
-  title: 'text-3xl font-semibold text-[var(--text-primary)]',
-  subtitle: 'text-sm text-[var(--text-muted)]',
-  addButton: [
-    'inline-flex items-center justify-center rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold',
-    'text-[#151515] shadow-[0_10px_24px_-18px_rgba(245,197,24,0.9)] transition hover:bg-[var(--accent-strong)]',
-  ].join(' '),
-  table: [
-    'overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card-bg)]',
-  ].join(' '),
-  tableHeader: [
-    'grid grid-cols-[minmax(160px,2fr)_120px_120px_140px_160px] gap-4',
-    'border-b border-[var(--border)] bg-[var(--bg-secondary)] px-4 py-3 text-xs uppercase tracking-[0.12em]',
-    'text-[var(--text-muted)]',
-  ].join(' '),
-  row: [
-    'grid grid-cols-[minmax(160px,2fr)_120px_120px_140px_160px] gap-4',
-    'px-4 py-3 text-sm text-[var(--text-primary)]',
-  ].join(' '),
-  rowDivider: 'border-b border-[var(--border)] last:border-b-0',
   titleCell: 'font-semibold text-[var(--text-primary)]',
   muted: 'text-[var(--text-muted)]',
   actions: 'flex items-center gap-2',
-  actionBtn: [
-    'inline-flex items-center justify-center rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-semibold',
-    'text-[var(--text-primary)] transition hover:bg-[var(--btn-hover)]',
-  ].join(' '),
-  deleteBtn: [
-    'inline-flex items-center justify-center rounded-lg border border-[#ff7d7d]/40 px-3 py-1.5 text-xs font-semibold',
-    'text-[#ff7d7d] transition hover:bg-[#ff7d7d]/10 disabled:opacity-50 disabled:cursor-not-allowed',
-  ].join(' '),
-  loading: 'text-sm text-[var(--text-muted)]',
-  error: 'text-sm text-[#ff6d75]',
-  empty: [
-    'rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card-bg)]',
-    'px-6 py-10 text-center text-sm text-[var(--text-muted)]',
-  ].join(' '),
   responsiveHint: 'text-xs text-[var(--text-muted)] md:hidden',
-  modalOverlay: 'fixed inset-0 z-[200] grid place-items-center bg-black/60 p-4',
-  modal: 'w-full max-w-[520px] rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] p-5',
-  modalTitle: 'text-lg font-semibold text-[var(--text-primary)]',
-  modalBody: 'mt-2 text-sm text-[var(--text-muted)]',
-  modalError: 'mt-3 text-sm text-[#ff6d75]',
-  modalActions: 'mt-5 flex flex-wrap justify-end gap-2',
-  modalCancel: [
-    'rounded-xl border border-[var(--border)] bg-[var(--btn-bg)] px-4 py-2 text-sm font-semibold',
-    'text-[var(--text-primary)] transition hover:bg-[var(--btn-hover)]',
-  ].join(' '),
-  modalDelete: [
-    'rounded-xl bg-[#ff7d7d] px-4 py-2 text-sm font-semibold text-[#101010]',
-    'transition hover:bg-[#ff6d75] disabled:opacity-60 disabled:cursor-not-allowed',
-  ].join(' '),
 };
 
 const formatMediaType = (type) => {
@@ -91,6 +50,50 @@ const AdminMediaPage = () => {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
   const deletingId = deleting && deleteTarget ? deleteTarget.id : null;
+  const tableColumns = [
+    {
+      key: 'title',
+      header: 'Title',
+      render: (item) => <span className={styles.titleCell}>{item.title || 'Untitled'}</span>,
+    },
+    {
+      key: 'type',
+      header: 'Type',
+      render: (item) => <span className={styles.muted}>{formatMediaType(item.type)}</span>,
+    },
+    {
+      key: 'year',
+      header: 'Year',
+      render: (item) => <span className={styles.muted}>{item.releaseYear ?? 'N/A'}</span>,
+    },
+    {
+      key: 'created',
+      header: 'Created',
+      render: (item) => <span className={styles.muted}>{formatDate(resolveCreatedAt(item))}</span>,
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (item) => (
+        <div className={styles.actions}>
+          <Button as={Link} size="sm" to={`/admin/media/${item.id}/edit`}>
+            Edit
+          </Button>
+          <Button
+            size="sm"
+            variant="danger"
+            onClick={() => {
+              setDeleteError('');
+              setDeleteTarget(item);
+            }}
+            disabled={Boolean(deletingId)}
+          >
+            Delete
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -112,106 +115,64 @@ const AdminMediaPage = () => {
     <PageLayout>
       <Container>
         <Stack className={styles.pageStack}>
-          <div className={styles.header}>
-            <div>
-              <h1 className={styles.title}>Media Management</h1>
-              <p className={styles.subtitle}>Review and manage the media catalog.</p>
-            </div>
-            <button className={styles.addButton} onClick={() => navigate('/media/add?from=admin')}>
-              + Add Media
-            </button>
-          </div>
+          <PageHeader
+            title="Media Management"
+            subtitle="Review and manage the media catalog."
+            actions={(
+              <Button variant="primary" onClick={() => navigate('/media/add?from=admin')}>
+                Add Media
+              </Button>
+            )}
+          />
 
           <p className={styles.responsiveHint}>Swipe horizontally to view all columns.</p>
 
-          {loading ? <p className={styles.loading}>Loading media...</p> : null}
+          {loading ? <LoadingState label="Loading media..." /> : null}
           {error ? (
-            <p className={styles.error}>
+            <InlineMessage tone="error">
               {error?.response?.data?.message || 'Failed to load media list.'}
-            </p>
+            </InlineMessage>
           ) : null}
-          {deleteError ? <p className={styles.error}>{deleteError}</p> : null}
+          {deleteError ? <InlineMessage tone="error">{deleteError}</InlineMessage> : null}
 
           {!loading && !error ? (
             items.length > 0 ? (
-              <div className={styles.table}>
-                <div className={styles.tableHeader}>
-                  <div>Title</div>
-                  <div>Type</div>
-                  <div>Year</div>
-                  <div>Created</div>
-                  <div>Actions</div>
-                </div>
-                <div className="divide-y divide-[var(--border)]">
-                  {items.map((item) => (
-                    <div key={item.id} className={`${styles.row} ${styles.rowDivider}`}>
-                      <div className={styles.titleCell}>{item.title || 'Untitled'}</div>
-                      <div className={styles.muted}>{formatMediaType(item.type)}</div>
-                      <div className={styles.muted}>{item.releaseYear ?? '—'}</div>
-                      <div className={styles.muted}>{formatDate(resolveCreatedAt(item))}</div>
-                      <div className={styles.actions}>
-                        <Link
-                          className={styles.actionBtn}
-                          to={`/admin/media/${item.id}/edit`}
-                        >
-                          Edit
-                        </Link>
-                        <button
-                          className={styles.deleteBtn}
-                          type="button"
-                          onClick={() => {
-                            setDeleteError('');
-                            setDeleteTarget(item);
-                          }}
-                          disabled={Boolean(deletingId)}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <DataTable columns={tableColumns} rows={items} />
             ) : (
-              <div className={styles.empty}>No media items found.</div>
+              <EmptyState title="No media items found" />
             )
           ) : null}
         </Stack>
       </Container>
 
-      {deleteTarget ? (
-        <div className={styles.modalOverlay} role="dialog" aria-modal="true">
-          <div className={styles.modal}>
-            <h2 className={styles.modalTitle}>Delete media?</h2>
-            <p className={styles.modalBody}>
-              You are about to delete <strong>{deleteTarget.title || 'this media item'}</strong>. This action cannot be
-              undone.
-            </p>
-            {deleteError ? <p className={styles.modalError}>{deleteError}</p> : null}
-            <div className={styles.modalActions}>
-              <button
-                type="button"
-                className={styles.modalCancel}
-                onClick={() => {
-                  setDeleteTarget(null);
-                  setDeleteError('');
-                }}
-                disabled={deleting}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className={styles.modalDelete}
-                onClick={handleDelete}
-                disabled={deleting}
-              >
-                {deleting ? 'Deleting...' : 'Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <Dialog
+        open={Boolean(deleteTarget)}
+        title="Delete media?"
+        description={`You are about to delete ${deleteTarget?.title || 'this media item'}. This action cannot be undone.`}
+        onClose={() => {
+          if (deleting) return;
+          setDeleteTarget(null);
+          setDeleteError('');
+        }}
+        actions={(
+          <>
+            <Button
+              onClick={() => {
+                setDeleteTarget(null);
+                setDeleteError('');
+              }}
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={handleDelete} disabled={deleting}>
+              {deleting ? 'Deleting...' : 'Delete'}
+            </Button>
+          </>
+        )}
+      >
+        {deleteError ? <InlineMessage tone="error">{deleteError}</InlineMessage> : null}
+      </Dialog>
     </PageLayout>
   );
 };

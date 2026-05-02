@@ -11,20 +11,19 @@ import PageLayout from '../../../layouts/PageLayout';
 import Container from '../../../shared/ui/Container';
 import Grid from '../../../shared/ui/Grid';
 import Stack from '../../../shared/ui/Stack';
+import EmptyState from '../../../shared/ui/EmptyState';
+import InlineMessage from '../../../shared/ui/InlineMessage';
+import LoadingState from '../../../shared/ui/LoadingState';
+import PageHeader from '../../../shared/ui/PageHeader';
 import { EntityPicker } from '../../../shared/ui/EntityPicker';
 import { searchModerationUsers } from '../../users/services/userLookupService';
 import { searchModerationScopes } from '../services/scopeLookupService';
 
 const styles = {
   pageStack: 'gap-6',
-  title: 'text-3xl font-semibold text-[var(--text-primary)]',
   muted: 'text-[var(--text-muted)]',
-  error: 'text-[#ff7f7f]',
-  section: [
-    'rounded-2xl border border-[var(--border)] bg-[var(--card-bg)]',
-    'p-4 sm:p-6',
-  ].join(' '),
-  sectionTitle: 'text-xl font-semibold',
+  section: 'ui-card p-4 sm:p-6',
+  sectionTitle: 'ui-section-title',
   filters: 'flex flex-wrap items-center gap-3',
   select: [
     'min-w-[150px] rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2',
@@ -161,7 +160,7 @@ function ModerationPage() {
     <PageLayout>
       <Container>
         <Stack className={styles.pageStack}>
-          <h1 className={styles.title}>Moderation</h1>
+          <PageHeader title="Moderation" subtitle="Review reports, assignments, and realtime moderation events." />
 
           <section className={styles.section}>
             <Stack className="gap-4">
@@ -183,10 +182,10 @@ function ModerationPage() {
                 </select>
               </div>
 
-              {reportsLoading ? <p className={styles.muted}>Loading reports...</p> : null}
-              {reportsError ? <p className={styles.error}>Failed to load reports.</p> : null}
-              {isMutating ? <p className={styles.muted}>Applying moderation changes...</p> : null}
-              {actionError ? <p className={styles.error}>{actionError}</p> : null}
+              {reportsLoading ? <LoadingState label="Loading reports..." /> : null}
+              {reportsError ? <InlineMessage tone="error">Failed to load reports.</InlineMessage> : null}
+              {isMutating ? <InlineMessage tone="info">Applying moderation changes...</InlineMessage> : null}
+              {actionError ? <InlineMessage tone="error">{actionError}</InlineMessage> : null}
 
               {!reportsLoading && !reportsError ? (
                 <Grid cols="grid-cols-1 md:grid-cols-2 xl:grid-cols-3" className={styles.grid}>
@@ -200,7 +199,7 @@ function ModerationPage() {
                       disabled={isMutating}
                     />
                   ))}
-                  {reports.length === 0 ? <p className={styles.muted}>No reports found.</p> : null}
+                  {reports.length === 0 ? <EmptyState title="No reports found" /> : null}
                 </Grid>
               ) : null}
             </Stack>
@@ -260,8 +259,8 @@ function ModerationPage() {
                   </button>
                 </form>
 
-                {assignmentsLoading ? <p className={styles.muted}>Loading assignments...</p> : null}
-                {assignmentsError ? <p className={styles.error}>Failed to load assignments.</p> : null}
+                {assignmentsLoading ? <LoadingState label="Loading assignments..." /> : null}
+                {assignmentsError ? <InlineMessage tone="error">Failed to load assignments.</InlineMessage> : null}
 
                 {!assignmentsLoading && !assignmentsError ? (
                   <ModeratorAssignmentList

@@ -14,8 +14,8 @@ const SidebarLayout = ({
     <PageLayout>
       <Container>
         <Grid variant="sidebar" className={clsx('gap-6', className)}>
-          <aside className={clsx('space-y-3', sidebarClassName)}>{sidebar}</aside>
-          <div className={clsx('min-w-0', contentClassName)}>{children}</div>
+          <aside className={clsx('ui-card h-fit space-y-4 p-4 lg:sticky lg:top-24', sidebarClassName)}>{sidebar}</aside>
+          <div className={clsx('min-w-0 space-y-6', contentClassName)}>{children}</div>
         </Grid>
       </Container>
     </PageLayout>

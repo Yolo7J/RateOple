@@ -1,20 +1,16 @@
 import clsx from 'clsx';
 import { useState } from 'react';
+import Badge from '../../../shared/ui/Badge';
+import Button from '../../../shared/ui/Button';
 
 const styles = {
   item: [
-    'flex items-center justify-between gap-3 rounded-lg border border-[var(--border)]',
-    'bg-[var(--card-bg)] p-3',
+    'ui-card flex items-center justify-between gap-3 p-3',
   ].join(' '),
   unread: 'border-[var(--accent)]',
   highlight: 'live-highlight',
   title: 'text-sm font-semibold text-[var(--text-primary)]',
   muted: 'text-xs text-[var(--text-muted)]',
-  button: [
-    'inline-flex items-center justify-center rounded-lg border border-[var(--border)]',
-    'bg-[var(--button-bg)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)]',
-    'transition hover:bg-[var(--button-hover-bg)] disabled:opacity-60',
-  ].join(' '),
 };
 
 const NOTIFICATION_LABELS = {
@@ -39,11 +35,11 @@ function NotificationItem({ notification, onMarkRead, disabled = false }) {
         <p className={styles.muted}>{new Date(notification.createdAt).toLocaleString()}</p>
       </div>
       {!notification.read ? (
-        <button className={styles.button} type="button" onClick={() => onMarkRead(notification.id)} disabled={disabled}>
+        <Button size="sm" onClick={() => onMarkRead(notification.id)} disabled={disabled}>
           Mark read
-        </button>
+        </Button>
       ) : (
-        <span className={styles.muted}>Read</span>
+        <Badge>Read</Badge>
       )}
     </article>
   );

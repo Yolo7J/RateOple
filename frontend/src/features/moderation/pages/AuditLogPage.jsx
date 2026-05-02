@@ -4,23 +4,22 @@ import PageLayout from '../../../layouts/PageLayout';
 import Container from '../../../shared/ui/Container';
 import Grid from '../../../shared/ui/Grid';
 import Stack from '../../../shared/ui/Stack';
+import EmptyState from '../../../shared/ui/EmptyState';
+import InlineMessage from '../../../shared/ui/InlineMessage';
+import LoadingState from '../../../shared/ui/LoadingState';
+import PageHeader from '../../../shared/ui/PageHeader';
 
 const styles = {
   pageStack: 'gap-6',
-  title: 'text-3xl font-semibold text-[var(--text-primary)]',
   muted: 'text-[var(--text-muted)]',
-  error: 'text-[#ff7f7f]',
-  section: [
-    'rounded-2xl border border-[var(--border)] bg-[var(--card-bg)]',
-    'p-4 sm:p-6',
-  ].join(' '),
-  sectionTitle: 'text-xl font-semibold',
+  section: 'ui-card p-4 sm:p-6',
+  sectionTitle: 'ui-section-title',
   filters: 'flex flex-wrap items-center gap-3',
   select: [
     'min-w-[180px] rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2',
     'text-sm text-[var(--text-primary)]',
   ].join(' '),
-  card: 'flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-4',
+  card: 'ui-card flex flex-col gap-2 p-4',
   cardTitle: 'text-base font-semibold text-[var(--text-primary)]',
   meta: 'text-sm text-[var(--text-muted)]',
   grid: 'gap-3',
@@ -71,7 +70,7 @@ function AuditLogPage() {
     <PageLayout>
       <Container>
         <Stack className={styles.pageStack}>
-          <h1 className={styles.title}>Audit Logs</h1>
+          <PageHeader title="Audit Logs" subtitle="Trace moderation actions across reports, assignments, and scopes." />
 
           <section className={styles.section}>
             <Stack className="gap-4">
@@ -93,8 +92,8 @@ function AuditLogPage() {
                 </select>
               </div>
 
-              {loading ? <p className={styles.muted}>Loading audit logs...</p> : null}
-              {error ? <p className={styles.error}>Failed to load audit logs.</p> : null}
+              {loading ? <LoadingState label="Loading audit logs..." /> : null}
+              {error ? <InlineMessage tone="error">Failed to load audit logs.</InlineMessage> : null}
 
               {!loading && !error ? (
                 <Grid cols="grid-cols-1 md:grid-cols-2 xl:grid-cols-3" className={styles.grid}>
@@ -122,7 +121,7 @@ function AuditLogPage() {
                       </p>
                     </article>
                   ))}
-                  {logs.length === 0 ? <p className={styles.muted}>No audit logs found.</p> : null}
+                  {logs.length === 0 ? <EmptyState title="No audit logs found" /> : null}
                 </Grid>
               ) : null}
             </Stack>

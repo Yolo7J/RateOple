@@ -5,18 +5,15 @@ import NotificationItem from '../components/NotificationItem';
 import PageLayout from '../../../layouts/PageLayout';
 import Container from '../../../shared/ui/Container';
 import Stack from '../../../shared/ui/Stack';
+import Button from '../../../shared/ui/Button';
+import EmptyState from '../../../shared/ui/EmptyState';
+import InlineMessage from '../../../shared/ui/InlineMessage';
+import LoadingState from '../../../shared/ui/LoadingState';
+import PageHeader from '../../../shared/ui/PageHeader';
 
 const styles = {
   pageStack: 'gap-6',
-  title: 'text-3xl font-semibold text-[var(--text-primary)]',
-  muted: 'text-[var(--text-muted)]',
-  error: 'text-[#ff7f7f]',
   actions: 'flex flex-wrap gap-2',
-  button: [
-    'inline-flex items-center justify-center rounded-lg border border-[var(--border)]',
-    'bg-[var(--button-bg)] px-4 py-2 text-sm font-medium text-[var(--text-primary)]',
-    'transition hover:bg-[var(--button-hover-bg)] disabled:opacity-60',
-  ].join(' '),
   list: 'grid gap-3',
 };
 
@@ -39,31 +36,27 @@ function NotificationsPage() {
     <PageLayout>
       <Container>
         <Stack className={styles.pageStack}>
-          <h1 className={styles.title}>Notifications</h1>
+          <PageHeader title="Notifications" />
           <div className={styles.actions}>
-            <button
-              className={styles.button}
-              type="button"
+            <Button
               onClick={() => setUnreadOnly(false)}
               disabled={unreadOnly === false}
             >
               All
-            </button>
-            <button
-              className={styles.button}
-              type="button"
+            </Button>
+            <Button
               onClick={() => setUnreadOnly(true)}
               disabled={unreadOnly === true}
             >
               Unread
-            </button>
-            <button className={styles.button} type="button" onClick={handleMarkAllRead} disabled={mutating}>
+            </Button>
+            <Button onClick={handleMarkAllRead} disabled={mutating}>
               Mark all read
-            </button>
+            </Button>
           </div>
 
-          {loading ? <p className={styles.muted}>Loading notifications...</p> : null}
-          {error ? <p className={styles.error}>Failed to load notifications.</p> : null}
+          {loading ? <LoadingState label="Loading notifications..." /> : null}
+          {error ? <InlineMessage tone="error">Failed to load notifications.</InlineMessage> : null}
 
           {!loading && !error ? (
             <section className={styles.list}>
@@ -75,7 +68,7 @@ function NotificationsPage() {
                   disabled={mutating}
                 />
               ))}
-              {items.length === 0 ? <p className={styles.muted}>No notifications.</p> : null}
+              {items.length === 0 ? <EmptyState title="No notifications" /> : null}
             </section>
           ) : null}
         </Stack>

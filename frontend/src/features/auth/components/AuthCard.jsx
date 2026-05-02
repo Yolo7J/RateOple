@@ -1,8 +1,7 @@
 const styles = {
   page: 'flex flex-1 items-center justify-center bg-[var(--bg-primary)] px-4 py-8',
   card: [
-    'w-full max-w-[420px] rounded-2xl border border-[var(--button-border)]',
-    'bg-[var(--bg-secondary)] p-8 shadow-[0_10px_30px_var(--shadow-color)]',
+    'ui-card w-full max-w-[420px] p-6 sm:p-8',
   ].join(' '),
   title: 'mb-6 text-center text-2xl font-semibold text-[var(--text-primary)]',
 };

@@ -1,6 +1,6 @@
 const styles = {
   option: [
-    'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left',
+    'flex w-full items-center gap-3 rounded-[var(--radius-md)] px-3 py-2 text-left',
     'text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] focus:bg-[var(--bg-secondary)]',
   ].join(' '),
   image: 'h-10 w-10 flex-none rounded-md object-cover bg-[var(--bg-secondary)]',
@@ -16,7 +16,7 @@ export default function EntityPickerOption({ option, onSelect }) {
   const initial = option?.label?.trim()?.[0]?.toUpperCase() ?? '?';
 
   return (
-    <button className={styles.option} type="button" onClick={() => onSelect(option)}>
+    <button className={styles.option} type="button" role="option" onClick={() => onSelect(option)}>
       {option.imageUrl ? (
         <img className={styles.image} src={option.imageUrl} alt="" loading="lazy" />
       ) : (

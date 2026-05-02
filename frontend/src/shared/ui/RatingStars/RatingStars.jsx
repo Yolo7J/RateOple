@@ -4,8 +4,8 @@ import clsx from 'clsx';
 const styles = {
     container: 'flex items-center gap-1',
     starBase: 'leading-none transition',
-    starFilled: 'text-[#ffc107]',
-    starEmpty: 'text-[#ccc]',
+    starFilled: 'text-[var(--accent)]',
+    starEmpty: 'text-[var(--text-muted)] opacity-45',
     starReadonly: 'cursor-default',
     starInteractive: 'cursor-pointer hover:scale-110',
     sizeSmall: 'text-[14px]',
@@ -41,30 +41,34 @@ const RatingStars = ({
         for (let i = 1; i <= 10; i++) {
             const isFilled = i <= (hoverValue || rating);
             stars.push(
-                <span
+                <button
+                    type="button"
                     key={i}
                     className={clsx(
                         styles.starBase,
+                        'rounded-sm p-0',
                         isFilled ? styles.starFilled : styles.starEmpty,
                         readOnly ? styles.starReadonly : styles.starInteractive,
                         size === 'small' && styles.sizeSmall,
                         size === 'medium' && styles.sizeMedium,
                         size === 'large' && styles.sizeLarge,
                     )}
+                    disabled={readOnly}
                     onClick={() => handleClick(i)}
                     onMouseEnter={() => !readOnly && setHoverValue(i)}
                     onMouseLeave={() => !readOnly && setHoverValue(0)}
                     title={`${i}/10`}
+                    aria-label={`Rate ${i} out of 10`}
                 >
                     ★
-                </span>
+                </button>
             );
         }
         return stars;
     };
 
     return (
-        <div className={styles.container}>
+        <div className={styles.container} role={readOnly ? 'img' : 'group'} aria-label={`Rating ${rating || 0} out of 10`}>
             {renderStars()}
             <span className={styles.value}>{rating > 0 ? `${rating}/10` : 'Not rated'}</span>
         </div>

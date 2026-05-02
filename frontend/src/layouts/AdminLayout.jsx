@@ -5,8 +5,10 @@ import SidebarLayout from './SidebarLayout';
 
 const navLinkClass = ({ isActive }) =>
   [
-    'rounded-md border border-[var(--border)] px-3 py-2 transition',
-    isActive ? 'bg-[var(--card-bg)] text-[var(--text-primary)]' : 'hover:bg-[var(--card-hover)]',
+    'rounded-[var(--radius-md)] border px-3 py-2 text-sm font-semibold transition',
+    isActive
+      ? 'border-[var(--accent)] bg-[var(--primary-color-alpha)] text-[var(--text-primary)]'
+      : 'border-transparent text-[var(--text-secondary)] hover:border-[var(--border)] hover:bg-[var(--card-hover)] hover:text-[var(--text-primary)]',
   ].join(' ');
 
 const AdminLayout = () => {
@@ -42,8 +44,11 @@ const AdminLayout = () => {
     <SidebarLayout
       sidebar={(
         <>
-          <h3 className="text-lg font-semibold">{title}</h3>
-          <nav className="grid gap-2 text-sm text-[var(--text-secondary)]">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">Workspace</p>
+            <h3 className="mt-1 text-lg font-semibold text-[var(--text-primary)]">{title}</h3>
+          </div>
+          <nav className="grid gap-1">
             {navItems.map((item) => (
               <NavLink key={item.to} to={item.to} end={item.to === '/admin'} className={navLinkClass}>
                 {item.label}

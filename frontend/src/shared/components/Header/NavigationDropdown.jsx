@@ -41,13 +41,13 @@ const NavigationDropdown = ({ className, label, path, items }) => {
   return (
     <div className={clsx('relative flex items-center gap-1', className)} ref={dropdownRef}>
       <button
-        className="rounded-full px-2 py-1 text-sm font-medium text-[var(--text-secondary)] transition hover:bg-[var(--button-hover-bg)] hover:text-[var(--text-primary)]"
+        className="rounded-full px-2 py-1 text-sm font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--button-hover-bg)] hover:text-[var(--text-primary)]"
         onClick={() => handleNavigate(resolvedPath)}
       >
         {resolvedLabel}
       </button>
       <button
-        className="flex items-center justify-center rounded-full border border-transparent p-1 text-[var(--text-secondary)] transition hover:border-[var(--button-border)] hover:bg-[var(--button-hover-bg)] hover:text-[var(--text-primary)]"
+        className="flex h-7 w-7 items-center justify-center rounded-full border border-transparent p-0 text-[var(--text-secondary)] transition hover:border-[var(--button-border)] hover:bg-[var(--button-hover-bg)] hover:text-[var(--text-primary)]"
         onClick={() => setIsOpen((prev) => !prev)}
         aria-label={resolvedLabel}
         aria-expanded={isOpen}
@@ -66,7 +66,7 @@ const NavigationDropdown = ({ className, label, path, items }) => {
 
       {isOpen ? (
         <div
-          className="absolute left-0 top-full z-50 mt-3 w-60 overflow-hidden rounded-2xl border border-[var(--dropdown-border)] bg-[var(--dropdown-bg)] shadow-[0_18px_40px_-24px_var(--shadow-color)]"
+          className="absolute left-0 top-full z-50 mt-3 w-60 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--dropdown-border)] bg-[var(--dropdown-bg)] shadow-[var(--shadow-raised)]"
           role="menu"
         >
           {resolvedItems.map((item) => (

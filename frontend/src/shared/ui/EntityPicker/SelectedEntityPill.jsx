@@ -1,8 +1,5 @@
 const styles = {
-  pill: [
-    'inline-flex max-w-full items-center gap-2 rounded-full border border-[var(--border)]',
-    'bg-[var(--bg-secondary)] px-3 py-1.5 text-sm text-[var(--text-primary)]',
-  ].join(' '),
+  pill: 'ui-badge max-w-full px-3 py-1.5 text-sm text-[var(--text-primary)]',
   image: 'h-5 w-5 flex-none rounded-full object-cover bg-[var(--card-bg)]',
   remove: [
     'inline-flex h-5 w-5 items-center justify-center rounded-full',

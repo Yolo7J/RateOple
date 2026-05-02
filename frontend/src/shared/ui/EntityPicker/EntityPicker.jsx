@@ -4,18 +4,14 @@ import SelectedEntityPill from './SelectedEntityPill';
 
 const styles = {
   root: 'relative grid gap-2',
-  label: 'text-sm font-medium text-[var(--text-secondary)]',
-  input: [
-    'w-full rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2',
-    'text-[var(--text-primary)] placeholder:text-[var(--text-muted)]',
-    'focus:outline-none focus:ring-2 focus:ring-[var(--accent)] disabled:opacity-60',
-  ].join(' '),
+  label: 'ui-label',
+  input: 'ui-input disabled:opacity-60',
   panel: [
-    'absolute left-0 right-0 top-full z-30 mt-1 max-h-72 overflow-auto rounded-lg',
-    'border border-[var(--border)] bg-[var(--card-bg)] p-1 shadow-xl',
+    'absolute left-0 right-0 top-full z-30 mt-1 max-h-72 overflow-auto rounded-[var(--radius-lg)]',
+    'border border-[var(--border)] bg-[var(--card-bg)] p-1 shadow-[var(--shadow-raised)]',
   ].join(' '),
   helper: 'px-3 py-2 text-sm text-[var(--text-muted)]',
-  error: 'px-3 py-2 text-sm text-[#ff7f7f]',
+  error: 'mx-2 my-2 rounded-[var(--radius-md)] bg-[var(--status-danger-bg)] px-3 py-2 text-sm text-[var(--status-danger)]',
   selected: 'flex flex-wrap gap-2',
   clear: 'text-sm text-[var(--text-muted)] underline-offset-4 hover:text-[var(--text-primary)] hover:underline',
 };
@@ -109,6 +105,8 @@ export default function EntityPicker({
         disabled={disabled}
         aria-expanded={open}
         aria-controls={`${inputId}-results`}
+        aria-autocomplete="list"
+        role="combobox"
         onFocus={() => setOpen(true)}
         onChange={(event) => {
           setSearch(event.target.value);

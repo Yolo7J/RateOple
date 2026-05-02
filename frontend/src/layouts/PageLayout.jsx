@@ -7,7 +7,14 @@ const PageLayout = ({
   children,
   ...props
 }) => {
-  return createElement(Component, { className: clsx('py-6 sm:py-8 lg:py-10', className), ...props }, children);
+  return createElement(
+    Component,
+    {
+      className: clsx('min-w-0 py-6 sm:py-8 lg:py-10', className),
+      ...props,
+    },
+    children,
+  );
 };
 
 export default PageLayout;

@@ -1,13 +1,11 @@
+import { useState } from 'react';
+import EmptyState from '../../../shared/ui/EmptyState';
+import Button from '../../../shared/ui/Button';
+
 const styles = {
   list: 'grid gap-3',
-  card: 'flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-4',
+  card: 'ui-card flex flex-col gap-2 p-4',
   highlight: 'live-highlight',
-  muted: 'text-[var(--text-muted)]',
-  button: [
-    'inline-flex items-center justify-center rounded-lg border border-[var(--border)]',
-    'bg-[var(--button-bg)] px-3 py-2 text-sm font-medium text-[var(--text-primary)]',
-    'transition hover:bg-[var(--button-hover-bg)] disabled:opacity-60',
-  ].join(' '),
   meta: 'text-sm text-[var(--text-muted)]',
 };
 
@@ -22,7 +20,7 @@ function ModeratorAssignmentList({ assignments, onRemove, disabled = false }) {
   const [now] = useState(() => Date.now());
 
   if (!assignments.length) {
-    return <p className={styles.muted}>No assignments.</p>;
+    return <EmptyState title="No assignments" className="py-6" />;
   }
 
   return (
@@ -48,9 +46,8 @@ function ModeratorAssignmentList({ assignments, onRemove, disabled = false }) {
             Assigned by: {assignedByName}
           </p>
           <p className={styles.meta}>Assigned at: {new Date(assignment.assignedAt).toLocaleString()}</p>
-          <button
-            className={styles.button}
-            type="button"
+          <Button
+            size="sm"
             disabled={disabled}
             onClick={() =>
               onRemove({
@@ -61,7 +58,7 @@ function ModeratorAssignmentList({ assignments, onRemove, disabled = false }) {
             }
           >
             Remove assignment
-          </button>
+          </Button>
         </article>
         );
       })}
@@ -70,4 +67,3 @@ function ModeratorAssignmentList({ assignments, onRemove, disabled = false }) {
 }
 
 export default ModeratorAssignmentList;
-import { useState } from 'react';

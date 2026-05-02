@@ -1,6 +1,6 @@
 const styles = {
-  section: 'rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-4',
-  title: 'mb-3 text-base font-semibold text-[var(--text-primary)]',
+  section: 'ui-card p-4',
+  title: 'mb-3 ui-section-title',
 };
 
 function AccountSection({ title, children }) {
