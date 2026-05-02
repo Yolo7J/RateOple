@@ -1,177 +1,203 @@
-RateOple Google OAuth frontend polish report
-Generated: 2026-05-01
-Scope: Polish the backend-mediated Google OAuth frontend flow, preserve safe local auth redirects, refresh session state after callback success, add Google auth smoke coverage, update docs, run required verification, and record final results.
+RateOple shared frontend visual system report
+Generated date: 2026-05-02
 
-1. Files changed
-================
+Scope
+=====
 
-Backend auth redirect polish:
-- backend/RateOple/Controllers/Auth/AuthController.cs
+Built a lightweight shared frontend visual foundation for RateOple using the existing React/Vite/Tailwind/CSS stack. The work focused on reusable primitives, design tokens, layout shells, shared components, global UI states, and basic accessibility/responsiveness. No backend contracts or product routes were changed.
 
-Frontend auth flow:
-- frontend/src/app/router.jsx
-- frontend/src/context/AuthContext.jsx
+Files changed
+=============
+
+Frontend design/system files:
+- frontend/src/index.css
+- frontend/src/shared/ui/Badge.jsx
+- frontend/src/shared/ui/Button.jsx
+- frontend/src/shared/ui/Checkbox.jsx
+- frontend/src/shared/ui/DataTable.jsx
+- frontend/src/shared/ui/Dialog.jsx
+- frontend/src/shared/ui/EmptyState.jsx
+- frontend/src/shared/ui/FormField.jsx
+- frontend/src/shared/ui/InlineMessage.jsx
+- frontend/src/shared/ui/Input.jsx
+- frontend/src/shared/ui/LoadingState.jsx
+- frontend/src/shared/ui/PageHeader.jsx
+- frontend/src/shared/ui/Panel.jsx
+- frontend/src/shared/ui/SectionCard.jsx
+- frontend/src/shared/ui/Select.jsx
+- frontend/src/shared/ui/StatCard.jsx
+- frontend/src/shared/ui/Tabs.jsx
+- frontend/src/shared/ui/Textarea.jsx
+- frontend/src/shared/ui/Toggle.jsx
+- frontend/src/shared/ui/index.js
+
+Layouts and shared app chrome:
+- frontend/src/layouts/AdminLayout.jsx
+- frontend/src/layouts/AuthLayout.jsx
+- frontend/src/layouts/GroupLayout.jsx
+- frontend/src/layouts/MainLayout.jsx
+- frontend/src/layouts/PageLayout.jsx
+- frontend/src/layouts/SidebarLayout.jsx
+- frontend/src/shared/components/Header/Header.jsx
+- frontend/src/shared/components/Header/NavigationDropdown.jsx
+- frontend/src/shared/components/Footer/Footer.jsx
+- frontend/src/shared/components/MediaCard/MediaCard.jsx
+- frontend/src/shared/ui/SearchBar/SearchBar.jsx
+- frontend/src/shared/ui/RouteFallback.jsx
+
+Shared/cross-feature polish:
+- frontend/src/shared/ui/EntityPicker/EntityPicker.jsx
+- frontend/src/shared/ui/EntityPicker/EntityPickerModal.jsx
+- frontend/src/shared/ui/EntityPicker/EntityPickerOption.jsx
+- frontend/src/shared/ui/EntityPicker/SelectedEntityPill.jsx
+- frontend/src/shared/ui/RatingStars/RatingStars.jsx
+- frontend/src/features/admin/pages/AdminDashboardPage.jsx
+- frontend/src/features/auth/components/AuthCard.jsx
 - frontend/src/features/auth/components/LoginForm.jsx
 - frontend/src/features/auth/components/RegisterForm.jsx
-- frontend/src/features/auth/components/RequireAuth.jsx
-- frontend/src/features/auth/pages/ExternalLoginCallbackPage.jsx
-- frontend/src/features/auth/queries/useAuthSessionQuery.js
-- frontend/src/features/auth/services/authService.js
-- frontend/src/features/auth/services/googleAuthService.js
-- frontend/src/locales/en.json
-- frontend/src/locales/bg.json
+- frontend/src/features/collections/components/CollectionCard.jsx
+- frontend/src/features/collections/pages/CollectionsPage.jsx
+- frontend/src/features/discovery/components/DiscoverySection.jsx
+- frontend/src/features/discovery/components/MediaRow.jsx
+- frontend/src/features/groups/components/GroupCard.jsx
+- frontend/src/features/groups/components/GroupPostCard.jsx
+- frontend/src/features/groups/pages/GroupsPage.jsx
+- frontend/src/features/media/pages/AdminMediaPage.jsx
+- frontend/src/features/moderation/components/ModerationReportRow.jsx
+- frontend/src/features/moderation/components/ModeratorAssignmentList.jsx
+- frontend/src/features/moderation/pages/AuditLogPage.jsx
+- frontend/src/features/moderation/pages/ModerationPage.jsx
+- frontend/src/features/notifications/components/NotificationItem.jsx
+- frontend/src/features/notifications/pages/NotificationsPage.jsx
+- frontend/src/features/users/components/AccountSection.jsx
 
-Playwright smoke coverage:
-- frontend/tests/e2e/auth-google.spec.js
-
-Docs:
-- frontend/README.md
-- PROJECT_ARCHITECTURE.md
-
-Report:
+Test/config support:
+- frontend/src/app/providers.jsx
+- frontend/playwright.config.js
+- frontend/tests/e2e/shared-ui.spec.js
 - results.txt
 
-2. Google auth helper changes
-=============================
+Shared design language changes
+==============================
 
-Added `frontend/src/features/auth/services/googleAuthService.js`.
+- Added semantic CSS variables for focus rings, radii, elevation, and status colors.
+- Added reusable component classes for surfaces, cards, buttons, fields, badges, messages, empty states, tables, and skeletons.
+- Normalized page and section title scale with `ui-page-title` and `ui-section-title`.
+- Kept the visual direction calm and practical: mostly flat surfaces, restrained elevation, clear borders, limited accent use, no heavy decorative gradients.
+- Improved table density and mobile behavior with a shared scroll-safe table wrapper.
 
-Implemented:
-- backend Google login URL generation from `VITE_API_BASE_URL`
-- safe local `returnUrl` normalization
-- auth entry URL helpers for `/login`, `/register`, and `/auth/callback`
-- full-page browser redirect via `window.location.assign(...)`
-- Google-specific friendly error message mapping
+Shared primitives added/updated
+===============================
 
-Behavior:
-- The frontend still starts Google auth by navigating to backend `GET /api/auth/google/login`.
-- The frontend does not use Axios for the Google challenge redirect.
-- Only local frontend paths are preserved as `returnUrl`; unsafe external URLs fall back to `/`.
+Added:
+- Button
+- Input
+- Textarea
+- Select
+- Checkbox
+- Toggle
+- Badge
+- InlineMessage
+- EmptyState
+- LoadingState
+- Skeleton
+- PageHeader
+- SectionCard
+- Panel
+- StatCard
+- FormField
+- DataTable
+- Tabs
+- Dialog
+- shared UI barrel export
 
-3. Login/register UI changes
+Updated:
+- RouteFallback now uses the shared loading state.
+- EntityPicker now uses normalized input/pill/dialog styling.
+- SearchBar now uses the shared focus and density language.
+- RatingStars has improved focus/ARIA behavior and shared accent coloring.
+
+Layout shell changes
+====================
+
+- MainLayout, AuthLayout, and GroupLayout now share consistent background, text color, and min-width behavior.
+- PageLayout has a consistent page rhythm and min-width handling.
+- SidebarLayout now frames sidebar navigation as a shared panel with sticky desktop behavior.
+- AdminLayout sidebar navigation now has consistent active/hover states and hierarchy.
+- Header visual treatment was simplified and made more layout-safe.
+- Footer was normalized to use Container, real links, badges, and a calmer surface.
+
+Shared component changes
+========================
+
+- MediaCard is now a semantic link instead of a click-only article, improving keyboard access.
+- CollectionCard, GroupCard, GroupPostCard, NotificationItem, AccountSection, and admin cards now use the shared card/button/badge language.
+- AdminMediaPage now uses shared PageHeader, DataTable, Dialog, EmptyState, LoadingState, InlineMessage, and Button primitives.
+- Moderation and audit pages now use shared headers, cards, loading/empty/error states, and badges.
+- Auth forms now use shared Input, Button, and InlineMessage primitives.
+- Discovery sections and media rows now use shared loading and empty states.
+
+Global state pattern changes
 ============================
 
-Updated the existing auth forms instead of redesigning them.
+- Standardized common loading UI through LoadingState.
+- Standardized no-data UI through EmptyState.
+- Standardized error/info/success feedback through InlineMessage.
+- Standardized confirmation modal behavior through Dialog.
+- Added a mocked Playwright smoke test for shared UI rendering and horizontal overflow.
 
-- The Login page now has a working `Continue with Google` button.
-- The Register page now has a working `Continue with Google` button.
-- Existing email/password login and register submission paths remain intact.
-- Login and register links preserve safe local `returnUrl` query params.
-- Login still pre-fills email after successful registration.
-- Google button copy now uses localized strings for the redirecting/completing states.
+Accessibility/responsiveness improvements
+=========================================
 
-4. OAuth redirect result handling
-=================================
+- Added consistent visible focus treatment for links, buttons, form controls, and focusable role elements.
+- Improved keyboard navigation for shared media cards by using links.
+- Improved EntityPicker ARIA roles for combobox/listbox/option behavior.
+- Improved modal escape handling and background scroll locking in Dialog.
+- Added header min-width and overflow protections.
+- Added Playwright coverage for desktop and mobile discovery rendering without horizontal overflow.
+- Disabled React Query devtools during e2e runs to avoid test-only viewport overflow.
 
-Added a dedicated frontend callback route:
-- `/auth/callback`
+Commands run and results
+========================
 
-Flow:
-- Backend redirects back to `/auth/callback?returnUrl=...&externalLogin=success|failed[&error=...]`
-- `ExternalLoginCallbackPage.jsx` refreshes frontend auth state through `AuthContext.refreshSession()`
-- On success, the frontend redirects to the intended safe local route and removes callback params from the address bar
-- On failure, the frontend redirects to login with a friendly message in navigation state instead of leaving OAuth params in the URL
+Final required verification:
+- dotnet test backend/RateOple.sln
+  Result: Passed. RateOple.Core.Tests: 250 passed. RateOple.Api.Tests: 53 passed.
+- cd frontend && npm run lint
+  Result: Passed.
+- cd frontend && npm run build
+  Result: Passed. Vite build completed. Rollup emitted existing SignalR PURE annotation warnings only.
+- cd frontend && npm run test:e2e
+  Result: Passed. 2 Playwright tests passed across chromium and mobile-chromium.
 
-Other auth redirect updates:
-- `RequireAuth` now preserves `pathname + search + hash` through a safe `returnUrl` query param
-- `useAuthSessionQuery` and `AuthContext` now share the same session refresh helper
+Intermediate checks:
+- npm run lint
+  Result: Passed after fixing initial primitive lint issues.
+- npm run build
+  Result: Passed after each frontend batch.
+- npm run test:e2e
+  Initial result: Failed because no tests existed in the configured testDir.
+  Follow-up result: Failed once because the new overflow assertion exposed desktop overflow.
+  Final result: Passed after adding smoke coverage, disabling devtools during e2e, and tightening header/row overflow behavior.
 
-Backend callback polish:
-- `AuthController.GoogleLogin` now redirects back with `externalLogin=failed&error=not_configured` when Google auth is not configured instead of leaving the user on a backend `404` response
-- `AuthController.GoogleCallback` uses the same fallback when Google auth is unavailable
-
-5. Error handling changes
-=========================
-
-Improved auth error extraction in `frontend/src/features/auth/services/authService.js`.
-
-Supported error shapes:
-- string response bodies
-- `error.response?.data?.message`
-- `error.response?.data?.detail`
-- `error.response?.data?.title`
-- validation arrays with `description` values
-
-User-facing Google auth failures now distinguish:
-- generic Google sign-in failure
-- backend-not-configured Google sign-in failure
-
-6. Playwright tests added
-=========================
-
-Added `frontend/tests/e2e/auth-google.spec.js`.
-
-Covered flows:
-- Login page shows `Continue with Google`
-- Register page shows `Continue with Google`
-- Clicking Google sign-in targets backend `/api/auth/google/login`
-- safe local `returnUrl` values are preserved
-- unsafe external `returnUrl` values are dropped
-- `externalLogin=failed` returns to login with a friendly message
-- `error=not_configured` shows a specific fallback message
-- `externalLogin=success` refreshes `/api/auth/me` and redirects to the intended route
-- existing email/password login/register buttons remain visible
-- mobile auth page stays free of horizontal overflow
-
-7. Docs updated
+Commits created
 ===============
 
-Updated `frontend/README.md`:
-- documented backend-mediated Google OAuth
-- documented `/auth/callback`
-- documented frontend `/api/auth/me` refresh after callback success
-- documented Playwright Google auth smoke coverage
-- updated troubleshooting for backend Google configuration
-- corrected the stale bundle-warning note from the previous task
+- cfa4ee4 Add shared UI design primitives
+- 4b78acd Polish shared layouts and global UI states
+- a93362d Add shared UI smoke coverage
+- Report commit: created separately after this file was overwritten.
 
-Updated `PROJECT_ARCHITECTURE.md`:
-- documented `/auth/callback` as the current frontend callback route that refreshes auth session state and navigates to the intended route
+Remaining UI polish gaps
+========================
 
-8. Commands run and results
-===========================
+- Some deeper feature pages still have local one-off form/button styles, especially media add/edit/cart/season manager and detail-heavy group/collection pages.
+- Some legacy confirmation flows still use `window.confirm` or `window.prompt` and should move to Dialog-driven flows.
+- Tables/lists beyond AdminMediaPage can migrate to DataTable or shared list primitives.
+- A full keyboard/focus trap implementation for Dialog would be stronger than the current lightweight Escape/scroll-lock behavior.
+- Review/rating and watchlist surfaces can be further normalized with SectionCard, FormField, and Tabs.
 
-Targeted implementation verification:
-- `cd frontend && npm run lint` passed
-- `cd frontend && npm run build` passed
-- `dotnet test backend/RateOple.sln` passed
-- `cd frontend && npx playwright test tests/e2e/auth-google.spec.js` passed with escalated local dev-server execution
-  - 7 passed, 7 skipped
+Recommended next task
+=====================
 
-Final verification:
-- `dotnet test backend/RateOple.sln` passed
-  - `RateOple.Core.Tests`: 250 passed, 0 failed, 0 skipped
-  - `RateOple.Api.Tests`: 53 passed, 0 failed, 0 skipped
-  - Total backend tests: 303 passed, 0 failed, 0 skipped
-- `cd frontend && npm run lint` passed
-- `cd frontend && npm run build` passed
-  - main chunk after auth polish: `419.55 kB`
-  - Vite `>500 kB` warning did not return
-- `cd frontend && npm run test:e2e` passed with escalated local dev-server execution
-  - 34 passed, 16 skipped
-
-Build/test notes:
-- Rollup still strips non-actionable PURE annotations from the SignalR dependency comments
-- Playwright/Node still prints `NO_COLOR`/`FORCE_COLOR` warnings; tests pass
-
-9. Commits created
-==================
-
-- `636dbe9` Handle Google OAuth redirect results
-- `0c5d580` Add Google auth Playwright smoke tests
-- `e41e06b` Document Google auth frontend flow
-
-Final report commit:
-- Document Google auth frontend polish results
-
-10. Remaining auth gaps
-=======================
-
-- There is still no seeded full-stack OAuth browser test; Playwright coverage remains route-mocked
-- Google account-linking UX is functional but still minimal; there is no dedicated post-link success screen
-- Auth pages still use simple inline messages rather than a shared toast/flash pattern
-- SignalR notification bootstrap is still outside the scope of this auth polish and remains part of the authenticated app path
-
-11. Recommended next task
-=========================
-
-Add a small shared flash-message pattern for auth and mutation success/error states so OAuth, login, registration, and account actions can surface consistent feedback without keeping one-off inline message logic inside each form.
+Run a focused page-by-page polish pass using the new primitives, starting with media add/edit/cart/season manager and then group/collection detail pages. Prioritize replacing one-off forms, confirmation prompts, and dense admin/moderation action clusters with the shared primitives introduced here.
