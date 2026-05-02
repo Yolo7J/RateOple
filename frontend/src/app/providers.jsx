@@ -8,6 +8,8 @@ import { MediaCartProvider } from '../context/MediaCartContext';
 import { queryClient } from '../shared/api/queryClient';
 
 function AppProviders({ children }) {
+  const showQueryDevtools = import.meta.env.DEV && import.meta.env.VITE_ENABLE_QUERY_DEVTOOLS !== 'false';
+
   return (
     <ThemeProvider>
       <LanguageProvider>
@@ -17,7 +19,7 @@ function AppProviders({ children }) {
               <MediaCartProvider>{children}</MediaCartProvider>
             </AuthProvider>
           </BrowserRouter>
-          {import.meta.env.DEV ? <ReactQueryDevtools initialIsOpen={false} /> : null}
+          {showQueryDevtools ? <ReactQueryDevtools initialIsOpen={false} /> : null}
         </QueryClientProvider>
       </LanguageProvider>
     </ThemeProvider>

@@ -3,7 +3,7 @@ import InlineMessage from '../../../shared/ui/InlineMessage';
 import LoadingState from '../../../shared/ui/LoadingState';
 
 const styles = {
-  section: 'space-y-3',
+  section: 'min-w-0 space-y-3',
   title: 'ui-section-title',
 };
 

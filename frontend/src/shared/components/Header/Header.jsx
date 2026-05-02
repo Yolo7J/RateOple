@@ -95,8 +95,8 @@ const Header = () => {
   const userInitial = user?.username ? user.username.charAt(0).toUpperCase() : 'U';
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-[var(--header-border)] bg-[var(--header-bg)] shadow-[var(--shadow-soft)] backdrop-blur-xl">
-      <Container size="xxl" className="flex items-center gap-4 py-3 lg:py-4">
+    <header className="sticky top-0 z-50 w-full overflow-x-clip border-b border-[var(--header-border)] bg-[var(--header-bg)] shadow-[var(--shadow-soft)] backdrop-blur-xl">
+      <Container size="xxl" className="flex min-w-0 items-center gap-4 py-3 lg:py-4">
         <div className="md:hidden relative flex w-full items-center justify-between">
           <button
             className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-lg)] border border-[var(--button-border)] bg-[var(--button-bg)] p-0 text-[var(--text-primary)] shadow-[var(--shadow-soft)] transition duration-200 hover:border-[var(--primary-color)] hover:bg-[var(--button-hover-bg)]"
@@ -162,7 +162,7 @@ const Header = () => {
           </div>
         </div>
 
-        <div className="hidden md:flex items-center gap-6">
+        <div className="hidden min-w-0 items-center gap-4 md:flex lg:gap-6">
           <button
             className="flex items-center gap-3 rounded-full px-3 py-1.5 text-[var(--text-primary)] transition hover:bg-[var(--button-hover-bg)]"
             onClick={() => handleNavigate('/')}
@@ -184,7 +184,7 @@ const Header = () => {
             </span>
           </button>
 
-          <nav className="hidden md:flex items-center gap-4 lg:gap-5">
+          <nav className="hidden min-w-0 items-center gap-3 md:flex lg:gap-5">
             <button
               className="rounded-full px-2 py-1 text-sm font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--button-hover-bg)] hover:text-[var(--text-primary)] lg:text-base"
               onClick={() => handleNavigate(navLinks[0].path)}
@@ -204,13 +204,13 @@ const Header = () => {
           </nav>
         </div>
 
-        <div className="hidden md:flex flex-1 items-center justify-center px-2">
+        <div className="hidden min-w-0 flex-1 items-center justify-center px-2 md:flex">
           <div className="w-full max-w-3xl xl:max-w-4xl">
             <SearchBar />
           </div>
         </div>
 
-        <div className="hidden md:flex items-center gap-2 lg:gap-3">
+        <div className="hidden shrink-0 items-center gap-2 md:flex lg:gap-3">
           <ThemeToggle />
           <LanguageToggle />
 

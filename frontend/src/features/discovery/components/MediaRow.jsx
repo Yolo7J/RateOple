@@ -2,7 +2,7 @@ import MediaCard from './MediaCard';
 import EmptyState from '../../../shared/ui/EmptyState';
 
 const styles = {
-  row: 'grid grid-flow-col auto-cols-[minmax(180px,220px)] gap-3 overflow-x-auto pb-2',
+  row: 'grid w-full min-w-0 grid-flow-col auto-cols-[minmax(180px,220px)] gap-3 overflow-x-auto pb-2',
 };
 
 function MediaRow({ items }) {

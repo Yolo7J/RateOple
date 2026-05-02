@@ -22,6 +22,7 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     env: {
       VITE_API_BASE_URL: apiBaseURL,
+      VITE_ENABLE_QUERY_DEVTOOLS: 'false',
     },
   },
   projects: [
