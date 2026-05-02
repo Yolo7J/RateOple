@@ -6,28 +6,24 @@ import { useMediaCommands } from "../queries/useMediaCommands";
 import PageLayout from "../../../layouts/PageLayout";
 import Container from "../../../shared/ui/Container";
 import Stack from "../../../shared/ui/Stack";
-
-const TYPE_COLOURS = {
-  Movie: "bg-blue-500/20 text-blue-300",
-  Book: "bg-emerald-500/20 text-emerald-300",
-  TvSeries: "bg-[var(--accent)]/20 text-[var(--accent)]",
-};
+import Badge from "../../../shared/ui/Badge";
+import Button from "../../../shared/ui/Button";
+import Dialog from "../../../shared/ui/Dialog";
+import EmptyState from "../../../shared/ui/EmptyState";
+import FormField from "../../../shared/ui/FormField";
+import Input from "../../../shared/ui/Input";
+import InlineMessage from "../../../shared/ui/InlineMessage";
+import PageHeader from "../../../shared/ui/PageHeader";
+import SectionCard from "../../../shared/ui/SectionCard";
+import Textarea from "../../../shared/ui/Textarea";
 
 const STATUS = { idle: "idle", ok: "ok", error: "error" };
 
 const styles = {
-  wrapper: "mx-auto w-[min(1100px,calc(100vw-32px))] max-sm:w-[min(1100px,calc(100vw-20px))]",
-  header: "mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between",
-  title: "text-[clamp(1.5rem,2vw,1.9rem)] tracking-tight text-[var(--text-primary)]",
-  count: "ml-2 text-sm font-medium text-[var(--text-muted)]",
-  addMore: [
-    "rounded-xl border border-[var(--border)] bg-[var(--btn-bg)] px-4 py-2 text-sm",
-    "text-[var(--text-primary)] transition hover:bg-[var(--btn-hover)]",
-  ].join(" "),
+  pageStack: "gap-6",
   list: "flex flex-col gap-3",
   item: [
-    "grid items-center gap-3 rounded-xl border border-[var(--border)]",
-    "bg-[var(--card-bg)] p-3",
+    "ui-card grid items-center gap-3 p-3",
     "grid-cols-[86px_minmax(0,1fr)_28px_auto]",
     "max-[880px]:grid-cols-[74px_minmax(0,1fr)]",
   ].join(" "),
@@ -38,7 +34,6 @@ const styles = {
   thumbPlaceholder: "grid h-full w-full place-items-center text-xs text-[var(--text-muted)]",
   itemInfo: "min-w-0",
   itemTop: "mb-1 flex items-center gap-2",
-  typeBadge: "rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-widest",
   releaseYear: "text-xs text-[var(--text-muted)]",
   itemTitle: "truncate text-sm font-semibold text-[var(--text-primary)]",
   itemMeta: "mt-1 text-xs text-[var(--text-muted)]",
@@ -46,38 +41,17 @@ const styles = {
   statusOk: "text-emerald-400",
   statusError: "text-rose-400",
   actions: "flex gap-2 max-[880px]:col-span-2 max-[880px]:justify-start",
-  actionBtn: [
-    "rounded-xl border border-[var(--border)] bg-[var(--btn-bg)] px-3 py-2 text-xs",
-    "text-[var(--text-primary)] transition hover:bg-[var(--btn-hover)]",
-  ].join(" "),
-  actionDanger: "border-rose-400/40 text-rose-300",
   confirmRow: "flex justify-end max-sm:justify-stretch",
-  confirmBtn: [
-    "rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-bold text-[#151515]",
-    "transition hover:bg-[var(--accent-strong)] disabled:opacity-60 disabled:cursor-not-allowed",
-    "max-sm:w-full",
-  ].join(" "),
-  summary: "mt-4 rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-4",
   summaryText: "font-semibold text-[var(--text-primary)]",
   summaryNote: "mt-1 text-xs text-[var(--text-muted)]",
-  emptyState: "min-h-[55vh] grid place-items-center gap-3 text-center text-[var(--text-muted)]",
-  emptyBtn: [
-    "rounded-xl border border-[var(--border)] bg-[var(--btn-bg)] px-4 py-2 text-sm",
-    "text-[var(--text-primary)] transition hover:bg-[var(--btn-hover)]",
-  ].join(" "),
-  modalOverlay: "fixed inset-0 z-[200] grid place-items-center bg-black/60 p-4",
-  modal: "w-full max-w-[620px] max-h-[90vh] overflow-auto rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] p-4",
-  modalTitle: "mb-3 text-lg font-semibold text-[var(--text-primary)]",
   modalFields: "flex flex-col gap-3",
-  field: "flex flex-col gap-1",
-  fieldLabel: "text-xs font-semibold text-[var(--text-secondary)]",
-  fieldInput: [
-    "rounded-xl border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-sm",
-    "text-[var(--text-primary)] outline-none focus:border-[var(--accent)]",
-  ].join(" "),
-  textarea: "min-h-[94px] resize-y",
-  modalNote: "rounded-xl border border-dashed border-[var(--border)] p-3 text-xs text-[var(--text-muted)]",
-  modalActions: "mt-4 flex justify-end gap-2",
+};
+
+const typeTone = (type) => {
+  if (type === "Movie") return "info";
+  if (type === "Book") return "success";
+  if (type === "TvSeries") return "accent";
+  return "neutral";
 };
 
 export default function CartPage() {
@@ -156,40 +130,32 @@ export default function CartPage() {
   }
 
   if (items.length === 0 && !submitted) {
-    return (
-      <PageLayout>
-        <Container>
-          <div className={styles.emptyState}>
-            <p>Your cart is empty.</p>
-            <button onClick={() => navigate(addMediaPath)} className={styles.emptyBtn}>
-              Back to Add Media
-            </button>
-          </div>
-        </Container>
-      </PageLayout>
+  return (
+    <PageLayout>
+      <Container>
+        <EmptyState
+          title="Your cart is empty"
+          description="Add media items before confirming a bulk import."
+          action={<Button onClick={() => navigate(addMediaPath)}>Back to Add Media</Button>}
+        />
+      </Container>
+    </PageLayout>
     );
   }
 
   return (
     <PageLayout>
       <Container>
-        <div className={styles.wrapper}>
-          <div className={styles.header}>
-            <h1 className={styles.title}>
-              Media Cart
-              <span className={styles.count}>
-                {items.length} item{items.length !== 1 ? "s" : ""}
-              </span>
-            </h1>
-            <button onClick={() => navigate(addMediaPath)} className={styles.addMore}>
-              + Add more
-            </button>
-          </div>
+        <Stack className={styles.pageStack}>
+          <PageHeader
+            title="Media Cart"
+            subtitle={`${items.length} item${items.length !== 1 ? "s" : ""} ready for review before saving.`}
+            actions={<Button onClick={() => navigate(addMediaPath)}>Add more</Button>}
+          />
 
           <div className={styles.list}>
             {items.map((item) => {
               const status = statuses[item.id] ?? STATUS.idle;
-              const typeClass = TYPE_COLOURS[item.type] ?? "bg-slate-500/20 text-slate-300";
 
               return (
                 <div
@@ -206,9 +172,9 @@ export default function CartPage() {
 
                   <div className={styles.itemInfo}>
                     <div className={styles.itemTop}>
-                      <span className={`${styles.typeBadge} ${typeClass}`}>
+                      <Badge tone={typeTone(item.type)}>
                         {item.type === "TvSeries" ? "TV Series" : item.type}
-                      </span>
+                      </Badge>
                       {item.data.releaseYear && (
                         <span className={styles.releaseYear}>{item.data.releaseYear}</span>
                       )}
@@ -239,15 +205,16 @@ export default function CartPage() {
 
                   {!submitted ? (
                     <div className={styles.actions}>
-                      <button onClick={() => setEditTarget(item)} className={styles.actionBtn}>
+                      <Button size="sm" onClick={() => setEditTarget(item)}>
                         Edit
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="danger"
                         onClick={() => removeItem(item.id)}
-                        className={`${styles.actionBtn} ${styles.actionDanger}`}
                       >
                         Remove
-                      </button>
+                      </Button>
                     </div>
                   ) : null}
                 </div>
@@ -257,18 +224,19 @@ export default function CartPage() {
 
           {!submitted ? (
             <div className={styles.confirmRow}>
-              <button
+              <Button
+                variant="primary"
                 onClick={handleConfirmAll}
                 disabled={submitting || items.length === 0}
-                className={styles.confirmBtn}
+                className="max-sm:w-full"
               >
                 {submitting ? "Saving..." : `Confirm All (${items.length})`}
-              </button>
+              </Button>
             </div>
           ) : null}
 
           {submitted ? (
-            <div className={styles.summary}>
+            <SectionCard>
               <p className={styles.summaryText}>
                 {Object.values(statuses).filter((status) => status === STATUS.ok).length} saved
                 {Object.values(statuses).filter((status) => status === STATUS.error).length > 0 &&
@@ -280,15 +248,15 @@ export default function CartPage() {
                 </span>
               ) : null}
               {!allSucceeded && Object.values(statuses).some((status) => status === STATUS.error) ? (
-                <span className={styles.summaryNote}>Failed items remain in the cart. Fix and retry.</span>
+                <InlineMessage tone="warning" className="mt-3">Failed items remain in the cart. Fix and retry.</InlineMessage>
               ) : null}
-            </div>
+            </SectionCard>
           ) : null}
 
           {editTarget ? (
             <EditModal item={editTarget} onSave={handleEditSave} onClose={() => setEditTarget(null)} />
           ) : null}
-        </div>
+        </Stack>
       </Container>
     </PageLayout>
   );
@@ -302,12 +270,17 @@ function EditModal({ item, onSave, onClose }) {
   }
 
   return (
-    <div className={styles.modalOverlay}>
-      <div className={styles.modal}>
-        <h2 className={styles.modalTitle}>
-          Edit {item.type === "TvSeries" ? "TV Series" : item.type}
-        </h2>
-
+    <Dialog
+      open
+      title={`Edit ${item.type === "TvSeries" ? "TV Series" : item.type}`}
+      onClose={onClose}
+      actions={(
+        <>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="primary" onClick={() => onSave(data)}>Save</Button>
+        </>
+      )}
+    >
         <div className={styles.modalFields}>
           <Field label="Title" value={data.title} onChange={(value) => set("title", value)} />
           <Field
@@ -350,44 +323,35 @@ function EditModal({ item, onSave, onClose }) {
           ) : null}
 
           {item.type === "TvSeries" && data.seasons?.length > 0 ? (
-            <div className={styles.modalNote}>
+            <InlineMessage tone="info">
               {data.seasons.length} seasons · {data.seasons.reduce((acc, season) => acc + (season.episodes?.length ?? 0), 0)} episodes imported.
               Edit seasons from the season manager.
-            </div>
+            </InlineMessage>
           ) : null}
         </div>
-
-        <div className={styles.modalActions}>
-          <button onClick={onClose} className={styles.actionBtn}>
-            Cancel
-          </button>
-          <button onClick={() => onSave(data)} className={styles.confirmBtn}>
-            Save
-          </button>
-        </div>
-      </div>
-    </div>
+    </Dialog>
   );
 }
 
 function Field({ label, value, onChange, type = "text", textarea = false }) {
   return (
-    <label className={styles.field}>
-      <span className={styles.fieldLabel}>{label}</span>
-      {textarea ? (
-        <textarea
-          className={`${styles.fieldInput} ${styles.textarea}`}
-          value={value ?? ""}
-          onChange={(event) => onChange(event.target.value || null)}
-        />
-      ) : (
-        <input
-          className={styles.fieldInput}
-          type={type}
-          value={value ?? ""}
-          onChange={(event) => onChange(event.target.value || null)}
-        />
+    <FormField label={label}>
+      {(fieldProps) => (
+        textarea ? (
+          <Textarea
+            {...fieldProps}
+            value={value ?? ""}
+            onChange={(event) => onChange(event.target.value || null)}
+          />
+        ) : (
+          <Input
+            {...fieldProps}
+            type={type}
+            value={value ?? ""}
+            onChange={(event) => onChange(event.target.value || null)}
+          />
+        )
       )}
-    </label>
+    </FormField>
   );
 }

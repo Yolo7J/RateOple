@@ -7,23 +7,19 @@ import * as mediaService from '../services/mediaService';
 import PageLayout from '../../../layouts/PageLayout';
 import Container from '../../../shared/ui/Container';
 import Stack from '../../../shared/ui/Stack';
+import Button from '../../../shared/ui/Button';
+import Checkbox from '../../../shared/ui/Checkbox';
+import FormField from '../../../shared/ui/FormField';
+import InlineMessage from '../../../shared/ui/InlineMessage';
+import Input from '../../../shared/ui/Input';
+import LoadingState from '../../../shared/ui/LoadingState';
+import PageHeader from '../../../shared/ui/PageHeader';
+import SectionCard from '../../../shared/ui/SectionCard';
+import Textarea from '../../../shared/ui/Textarea';
 
 const styles = {
   pageStack: 'gap-6',
-  header: 'flex flex-wrap items-start justify-between gap-3',
-  title: 'text-3xl font-semibold text-[var(--text-primary)]',
-  subtitle: 'text-sm text-[var(--text-muted)]',
-  backLink: [
-    'inline-flex items-center gap-2 rounded-xl border border-[var(--border)]',
-    'bg-[var(--btn-bg)] px-4 py-2 text-sm text-[var(--text-primary)]',
-    'transition hover:bg-[var(--btn-hover)]',
-  ].join(' '),
-  banner: [
-    'rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] px-4 py-3',
-  ].join(' '),
-  bannerSuccess: 'border-emerald-500/40 text-emerald-300',
-  bannerError: 'border-[#ff6d75]/60 text-[#ff6d75]',
-  form: 'flex flex-col gap-4 rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] p-5',
+  form: 'flex flex-col gap-5',
   formRow: 'grid grid-cols-1 gap-4 md:grid-cols-[minmax(130px,180px)_minmax(0,1fr)] items-start',
   cover: [
     'w-full max-w-[180px] aspect-[2/3] overflow-hidden rounded-xl border border-[var(--border)]',
@@ -32,30 +28,14 @@ const styles = {
   coverImage: 'h-full w-full object-cover',
   fields: 'flex flex-col gap-4',
   formRow2: 'grid grid-cols-1 gap-3 sm:grid-cols-2',
-  label: 'flex flex-col gap-1 text-xs font-semibold text-[var(--text-secondary)]',
-  input: [
-    'w-full rounded-xl border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-sm',
-    'text-[var(--text-primary)] outline-none focus:border-[var(--accent)]',
-  ].join(' '),
-  textarea: 'min-h-[92px] resize-y',
   genrePicker: 'flex flex-wrap gap-2',
   genreItem: [
-    'inline-flex items-center rounded-full border border-[var(--border)] px-3 py-1 text-xs',
-    'text-[var(--text-muted)] transition cursor-pointer',
+    'inline-flex cursor-pointer items-center gap-2 rounded-full border border-[var(--border)] px-3 py-1.5 text-xs',
+    'text-[var(--text-muted)] transition',
   ].join(' '),
-  genreItemActive: 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--text-primary)]',
-  genreInput: 'sr-only',
+  genreItemActive: 'border-[var(--accent)] bg-[var(--primary-color-alpha)] text-[var(--text-primary)]',
   helper: 'text-xs text-[var(--text-muted)]',
   actions: 'flex flex-wrap gap-3',
-  saveBtn: [
-    'rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[#151515]',
-    'transition hover:bg-[var(--accent-strong)] disabled:opacity-60 disabled:cursor-not-allowed',
-  ].join(' '),
-  cancelBtn: [
-    'rounded-xl border border-[var(--border)] bg-[var(--btn-bg)] px-4 py-2 text-sm font-semibold',
-    'text-[var(--text-primary)] transition hover:bg-[var(--btn-hover)]',
-  ].join(' '),
-  loading: 'text-sm text-[var(--text-muted)]',
 };
 
 const normalizeGenreIds = (mediaGenres, availableGenres) => {
@@ -169,31 +149,28 @@ const EditMediaPage = () => {
     <PageLayout>
       <Container>
         <Stack className={styles.pageStack}>
-          <Link className={styles.backLink} to="/admin/media">
-            ← Back to Media Management
-          </Link>
+          <PageHeader
+            title={`Edit ${displayType || 'Media'}`}
+            subtitle="Update catalog metadata while keeping season and episode edits in the dedicated manager."
+            actions={(
+              <>
+                <Button as={Link} variant="ghost" to="/admin/media">Media Management</Button>
+                {id ? (
+                  <Button as={Link} to={`/media/${id}`}>View Details</Button>
+                ) : null}
+              </>
+            )}
+          />
 
-          <div className={styles.header}>
-            <div>
-              <h1 className={styles.title}>Edit {displayType || 'Media'}</h1>
-              <p className={styles.subtitle}>Update the core details for this title.</p>
-            </div>
-            {id ? (
-              <Link className={styles.backLink} to={`/media/${id}`}>
-                View Details
-              </Link>
-            ) : null}
-          </div>
-
-          {loading ? <p className={styles.loading}>Loading media details...</p> : null}
+          {loading ? <LoadingState label="Loading media details..." /> : null}
           {error ? (
-            <div className={`${styles.banner} ${styles.bannerError}`}>
+            <InlineMessage tone="error">
               {error?.response?.data?.message || 'Unable to load this media item.'}
-            </div>
+            </InlineMessage>
           ) : null}
 
           {saveSuccess ? (
-            <div className={`${styles.banner} ${styles.bannerSuccess}`}>
+            <InlineMessage tone="success">
               {saveSuccess}{' '}
               <button
                 type="button"
@@ -202,17 +179,17 @@ const EditMediaPage = () => {
               >
                 Back to list
               </button>
-            </div>
+            </InlineMessage>
           ) : null}
 
           {saveError ? (
-            <div className={`${styles.banner} ${styles.bannerError}`}>
+            <InlineMessage tone="error">
               {saveError}
-            </div>
+            </InlineMessage>
           ) : null}
 
           {!loading && !error && !media ? (
-            <div className={`${styles.banner} ${styles.bannerError}`}>
+            <InlineMessage tone="error">
               Media item not found.{' '}
               <button
                 type="button"
@@ -221,140 +198,147 @@ const EditMediaPage = () => {
               >
                 Back to list
               </button>
-            </div>
+            </InlineMessage>
           ) : null}
 
           {!loading && media ? (
-            <form className={styles.form} onSubmit={handleSubmit}>
-              <div className={styles.formRow}>
-                {form.coverUrl ? (
-                  <div className={styles.cover}>
-                    <img
-                      className={styles.coverImage}
-                      src={form.coverUrl}
-                      alt="Cover preview"
-                      onError={(event) => { event.target.style.display = 'none'; }}
-                    />
-                  </div>
-                ) : null}
+            <SectionCard>
+              <form className={styles.form} onSubmit={handleSubmit}>
+                <div className={styles.formRow}>
+                  {form.coverUrl ? (
+                    <div className={styles.cover}>
+                      <img
+                        className={styles.coverImage}
+                        src={form.coverUrl}
+                        alt="Cover preview"
+                        onError={(event) => { event.target.style.display = 'none'; }}
+                      />
+                    </div>
+                  ) : null}
 
-                <div className={styles.fields}>
-                  <label className={styles.label}>
-                    Title *
-                    <input
-                      className={styles.input}
-                      required
-                      value={form.title}
-                      onChange={setField('title')}
-                    />
-                  </label>
+                  <div className={styles.fields}>
+                    <FormField label="Title">
+                      {(fieldProps) => (
+                        <Input
+                          {...fieldProps}
+                          required
+                          value={form.title}
+                          onChange={setField('title')}
+                        />
+                      )}
+                    </FormField>
 
-                  <label className={styles.label}>
-                    Cover Image URL
-                    <input
-                      className={styles.input}
-                      value={form.coverUrl}
-                      onChange={setField('coverUrl')}
-                      placeholder="https://..."
-                    />
-                  </label>
+                    <FormField label="Cover Image URL">
+                      {(fieldProps) => (
+                        <Input
+                          {...fieldProps}
+                          value={form.coverUrl}
+                          onChange={setField('coverUrl')}
+                          placeholder="https://..."
+                        />
+                      )}
+                    </FormField>
 
                   <div className={styles.formRow2}>
-                    <label className={styles.label}>
-                      Release Year
-                      <input
-                        className={styles.input}
-                        type="number"
-                        min="1800"
-                        max="2100"
-                        value={form.releaseYear}
-                        onChange={setField('releaseYear')}
-                      />
-                    </label>
+                    <FormField label="Release Year">
+                      {(fieldProps) => (
+                        <Input
+                          {...fieldProps}
+                          type="number"
+                          min="1800"
+                          max="2100"
+                          value={form.releaseYear}
+                          onChange={setField('releaseYear')}
+                        />
+                      )}
+                    </FormField>
 
                     {mediaType === 'Movie' ? (
-                      <label className={styles.label}>
-                        Duration (min)
-                        <input
-                          className={styles.input}
-                          type="number"
-                          min="1"
-                          value={form.duration}
-                          onChange={setField('duration')}
-                        />
-                      </label>
+                      <FormField label="Duration (min)">
+                        {(fieldProps) => (
+                          <Input
+                            {...fieldProps}
+                            type="number"
+                            min="1"
+                            value={form.duration}
+                            onChange={setField('duration')}
+                          />
+                        )}
+                      </FormField>
                     ) : null}
 
                     {mediaType === 'Book' ? (
-                      <label className={styles.label}>
-                        Pages
-                        <input
-                          className={styles.input}
-                          type="number"
-                          min="1"
-                          value={form.pages}
-                          onChange={setField('pages')}
-                        />
-                      </label>
+                      <FormField label="Pages">
+                        {(fieldProps) => (
+                          <Input
+                            {...fieldProps}
+                            type="number"
+                            min="1"
+                            value={form.pages}
+                            onChange={setField('pages')}
+                          />
+                        )}
+                      </FormField>
                     ) : null}
                   </div>
 
                   {mediaType === 'Movie' ? (
-                    <label className={styles.label}>
-                      Director
-                      <input
-                        className={styles.input}
-                        value={form.director}
-                        onChange={setField('director')}
-                      />
-                    </label>
+                    <FormField label="Director">
+                      {(fieldProps) => (
+                        <Input
+                          {...fieldProps}
+                          value={form.director}
+                          onChange={setField('director')}
+                        />
+                      )}
+                    </FormField>
                   ) : null}
 
                   {mediaType === 'Book' ? (
                     <>
-                      <label className={styles.label}>
-                        Author
-                        <input
-                          className={styles.input}
-                          value={form.author}
-                          onChange={setField('author')}
-                        />
-                      </label>
-                      <label className={styles.label}>
-                        ISBN
-                        <input
-                          className={styles.input}
-                          value={form.isbn}
-                          onChange={setField('isbn')}
-                        />
-                      </label>
+                      <FormField label="Author">
+                        {(fieldProps) => (
+                          <Input
+                            {...fieldProps}
+                            value={form.author}
+                            onChange={setField('author')}
+                          />
+                        )}
+                      </FormField>
+                      <FormField label="ISBN">
+                        {(fieldProps) => (
+                          <Input
+                            {...fieldProps}
+                            value={form.isbn}
+                            onChange={setField('isbn')}
+                          />
+                        )}
+                      </FormField>
                     </>
                   ) : null}
                 </div>
               </div>
 
-              <label className={styles.label}>
-                Description
-                <textarea
-                  className={`${styles.input} ${styles.textarea}`}
-                  rows={4}
-                  value={form.description}
-                  onChange={setField('description')}
-                />
-              </label>
+              <FormField label="Description">
+                {(fieldProps) => (
+                  <Textarea
+                    {...fieldProps}
+                    rows={4}
+                    value={form.description}
+                    onChange={setField('description')}
+                  />
+                )}
+              </FormField>
 
               {genres.length > 0 ? (
-                <div className={styles.label}>
-                  Genres
+                <FormField label="Genres">
                   <div className={styles.genrePicker}>
                     {genres.map((genre) => (
                       <label
                         key={genre.id}
                         className={clsx(styles.genreItem, form.genreIds.includes(genre.id) && styles.genreItemActive)}
                       >
-                        <input
-                          type="checkbox"
-                          className={styles.genreInput}
+                        <Checkbox
                           checked={form.genreIds.includes(genre.id)}
                           onChange={() => toggleGenre(genre.id)}
                         />
@@ -362,28 +346,29 @@ const EditMediaPage = () => {
                       </label>
                     ))}
                   </div>
-                </div>
+                </FormField>
               ) : null}
 
               {mediaType === 'TvSeries' ? (
                 <p className={styles.helper}>
                   Season and episode changes should be handled from the season manager.
                   {' '}
-                  <Link className="underline" to={`/media/${id}/seasons`}>
+                  <Link className="font-semibold text-[var(--accent)] underline" to={`/media/${id}/seasons`}>
                     Manage seasons
                   </Link>
                 </p>
               ) : null}
 
               <div className={styles.actions}>
-                <button type="submit" className={styles.saveBtn} disabled={saving}>
+                <Button type="submit" variant="primary" disabled={saving}>
                   {saving ? 'Saving...' : 'Save Changes'}
-                </button>
-                <button type="button" className={styles.cancelBtn} onClick={() => navigate('/admin/media')}>
+                </Button>
+                <Button type="button" variant="ghost" onClick={() => navigate('/admin/media')}>
                   Cancel
-                </button>
+                </Button>
               </div>
             </form>
+            </SectionCard>
           ) : null}
         </Stack>
       </Container>

@@ -6,6 +6,13 @@ import { useTvSeriesSeasonsQuery } from "../queries/useTvSeriesSeasonsQuery";
 import { useMediaCommands } from "../queries/useMediaCommands";
 import PageLayout from "../../../layouts/PageLayout";
 import Container from "../../../shared/ui/Container";
+import Badge from "../../../shared/ui/Badge";
+import Button from "../../../shared/ui/Button";
+import Dialog from "../../../shared/ui/Dialog";
+import EmptyState from "../../../shared/ui/EmptyState";
+import InlineMessage from "../../../shared/ui/InlineMessage";
+import LoadingState from "../../../shared/ui/LoadingState";
+import PageHeader from "../../../shared/ui/PageHeader";
 
 // ── Icons (inline SVG to avoid deps) ─────────────────────────────────────────
 const ChevronDown = ({ open }) => (
@@ -34,35 +41,33 @@ const emptySeasonForm = (nextNum) => ({
 });
 
 const styles = {
-  page: "mx-auto max-w-[1120px] px-4 py-6 pb-16 text-[var(--text-primary)]",
-  header: "mb-6 rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] p-5",
-  back: "mb-3 text-sm text-indigo-500 hover:underline",
+  page: "space-y-6 pb-10 text-[var(--text-primary)]",
+  header: "ui-card p-4 sm:p-5",
+  back: "mb-3 text-sm font-semibold text-[var(--accent)] hover:underline",
   titleRow: "flex items-center gap-4",
-  cover: "h-[126px] w-[90px] rounded-xl object-cover shadow-[0_10px_28px_rgba(0,0,0,0.2)]",
-  title: "text-3xl font-extrabold",
-  meta: "text-base text-[var(--text-muted)]",
-  tmdbBanner: "mb-6 rounded-2xl border border-indigo-200/60 bg-indigo-50 p-5",
+  cover: "h-[126px] w-[90px] rounded-xl border border-[var(--border)] object-cover shadow-[0_10px_28px_rgba(0,0,0,0.2)]",
+  title: "ui-page-title",
+  meta: "text-sm text-[var(--text-muted)]",
+  tmdbBanner: "ui-card p-4 sm:p-5",
   tmdbBannerHeader: "mb-2 flex items-center justify-between gap-3",
-  tmdbLabel: "text-sm font-semibold text-indigo-700",
-  tmdbReload: "inline-flex items-center gap-2 rounded-md border border-indigo-200 px-3 py-1 text-xs text-indigo-700 hover:bg-indigo-100",
+  tmdbLabel: "text-sm font-semibold text-[var(--text-primary)]",
+  tmdbReload: "ui-button inline-flex items-center gap-2 px-3 py-1 text-xs",
   tmdbSub: "text-sm text-[var(--text-muted)]",
-  tmdbError: "text-sm text-red-600",
-  tmdbSuccess: "text-sm text-green-700",
+  tmdbError: "text-sm text-[var(--status-danger)]",
+  tmdbSuccess: "text-sm text-[var(--status-success)]",
   tmdbSeasons: "mt-2 flex flex-wrap gap-2",
-  tmdbSeason: "rounded-lg border border-indigo-100 bg-[var(--bg-secondary)] px-3 py-2 text-xs",
+  tmdbSeason: "ui-panel px-3 py-2 text-xs",
   tmdbSeasonExists: "opacity-50",
   tmdbSeasonHeader: "flex items-center gap-2",
   tmdbSeasonName: "font-semibold",
   tmdbEpCount: "text-[10px] text-[var(--text-muted)]",
   tmdbSeasonActions: "mt-2 flex items-center gap-2",
-  tmdbDismiss: "text-xs text-[var(--text-muted)] hover:text-red-500",
-  badge: "rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700",
-  tmdbTrigger: "mb-6",
+  tmdbDismiss: "text-xs text-[var(--text-muted)] hover:text-[var(--status-danger)]",
+  tmdbTrigger: "",
   tmdbCandidates: "mt-3 flex flex-wrap gap-2",
-  seasons: "mb-6 flex flex-col gap-3",
-  empty: "rounded-xl border border-dashed border-[var(--border)] p-10 text-center text-sm text-[var(--text-muted)]",
-  season: "rounded-xl border border-[var(--border)] bg-[var(--card-bg)]",
-  seasonOpen: "border-indigo-200 shadow-[0_4px_16px_rgba(99,102,241,0.1)]",
+  seasons: "flex flex-col gap-3",
+  season: "ui-card",
+  seasonOpen: "border-[var(--accent)]/40 shadow-[0_16px_32px_-26px_var(--shadow-color)]",
   seasonHeader: "flex w-full items-center gap-3 px-4 py-3 text-left",
   seasonNum: "flex-1 text-base font-semibold",
   seasonEpCount: "text-sm text-[var(--text-muted)]",
@@ -72,41 +77,36 @@ const styles = {
   episodes: "border-t border-[var(--border)] px-3 py-3",
   noEpisodes: "text-sm text-[var(--text-muted)]",
   episode: "flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition hover:bg-[var(--card-hover)]",
-  episodeEditing: "bg-indigo-50",
+  episodeEditing: "bg-[var(--primary-color-alpha)]",
   epNum: "min-w-[28px] text-xs font-bold text-[var(--text-muted)]",
   epTitle: "flex-1",
   epDuration: "text-xs text-[var(--text-muted)]",
   epActions: "flex gap-1 opacity-0 transition group-hover:opacity-100",
   epEdit: "flex flex-1 flex-wrap items-center gap-2",
-  epInput: "flex-1 min-w-[120px] rounded-md border border-[var(--border)] bg-[var(--bg-secondary)] px-2 py-1 text-xs text-[var(--text-primary)]",
+  epInput: "ui-input h-9 flex-1 min-w-[120px] px-2 py-1 text-xs",
   epInputShort: "w-[64px]",
-  addEpBtn: "w-full rounded-lg border border-dashed border-[var(--border)] px-3 py-2 text-xs text-[var(--text-muted)] hover:border-indigo-400 hover:text-indigo-500 hover:bg-indigo-50",
-  addEpForm: "mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-[var(--bg-secondary)] p-2",
-  addSeasonRow: "mt-2",
-  addSeasonForm: "rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] p-5",
+  addEpBtn: "w-full rounded-lg border border-dashed border-[var(--border)] px-3 py-2 text-xs text-[var(--text-muted)] hover:border-[var(--accent)] hover:bg-[var(--primary-color-alpha)] hover:text-[var(--text-primary)]",
+  addEpForm: "ui-panel mt-2 flex flex-wrap items-center gap-2 p-2",
+  addSeasonRow: "",
+  addSeasonForm: "ui-card p-4 sm:p-5",
   addSeasonFormHeader: "mb-4 flex items-center justify-between",
   newEpisodes: "my-4",
   newEpLabel: "mb-2 text-xs font-semibold text-[var(--text-muted)]",
   newEpRow: "mb-2 flex items-center gap-2",
   formLabel: "mb-3 flex flex-col gap-1 text-xs font-medium text-[var(--text-muted)]",
-  formInput: "w-[120px] rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2 text-sm text-[var(--text-primary)]",
-  formError: "text-xs text-red-600",
+  formInput: "ui-input w-[120px]",
+  formError: "text-xs text-[var(--status-danger)]",
   formActions: "mt-4 flex gap-3",
-  btn: "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold",
-  btnPrimary: "bg-indigo-500 text-white hover:bg-indigo-600",
-  btnSecondary: "border border-[var(--border)] bg-[var(--button-bg)] text-[var(--text-primary)] hover:bg-[var(--button-hover-bg)]",
-  btnGhost: "border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--button-hover-bg)]",
-  btnDanger: "bg-red-500 text-white hover:bg-red-600",
+  btn: "ui-button inline-flex items-center gap-2",
+  btnPrimary: "ui-button-primary",
+  btnSecondary: "",
+  btnGhost: "",
+  btnDanger: "border-[var(--status-danger)]/40 text-[var(--status-danger)] hover:bg-[var(--status-danger-bg)]",
   btnXs: "px-2.5 py-1 text-xs",
   iconBtn: "rounded-md p-1 text-sm text-[var(--text-muted)] hover:bg-[var(--button-hover-bg)]",
-  iconBtnDanger: "text-red-500 hover:bg-red-100",
+  iconBtnDanger: "text-[var(--status-danger)] hover:bg-[var(--status-danger-bg)]",
   loading: "flex min-h-[40vh] flex-col items-center justify-center gap-4 text-[var(--text-muted)]",
-  modalOverlay: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4",
-  modal: "w-full max-w-[420px] rounded-2xl bg-[var(--card-bg)] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.2)]",
-  modalTitle: "mb-3 text-lg font-semibold",
-  modalBody: "mb-4 text-sm text-[var(--text-secondary)]",
   modalNote: "text-xs text-[var(--text-muted)]",
-  modalActions: "flex gap-3",
 };
 
 export default function SeasonManagerPage() {
@@ -489,10 +489,7 @@ export default function SeasonManagerPage() {
     return (
       <PageLayout>
         <Container>
-          <div className={styles.loading}>
-            <Spinner />
-            <span>Loading series…</span>
-          </div>
+          <LoadingState label="Loading series..." />
         </Container>
       </PageLayout>
     );
@@ -502,12 +499,12 @@ export default function SeasonManagerPage() {
     return (
       <PageLayout>
         <Container>
-          <div className={styles.loading}>
-            <p>{error}</p>
-            <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => navigate(-1)}>
-              ← Go back
-            </button>
-          </div>
+          <InlineMessage
+            tone="error"
+            action={<Button variant="ghost" onClick={() => navigate(-1)}>Go back</Button>}
+          >
+            {error}
+          </InlineMessage>
         </Container>
       </PageLayout>
     );
@@ -517,10 +514,14 @@ export default function SeasonManagerPage() {
     <PageLayout>
       <Container>
         <div className={styles.page}>
+        <PageHeader
+          title="Season Manager"
+          subtitle="Import, edit, and maintain seasons and episodes for this TV series."
+        />
         {/* Header */}
         <div className={styles.header}>
           <button className={styles.back} onClick={() => navigate(`/media/${id}`)}>
-            ← Back to series
+            Back to series
           </button>
           <div className={styles.titleRow}>
             {media?.coverUrl && (
@@ -576,7 +577,7 @@ export default function SeasonManagerPage() {
                         <div className={styles.tmdbSeasonHeader}>
                           <span className={styles.tmdbSeasonName}>
                             Season {s.seasonNumber}
-                            {alreadyInDb && <span className={styles.badge}>already saved</span>}
+                            {alreadyInDb && <Badge tone="success" className="ml-2">already saved</Badge>}
                           </span>
                           <span className={styles.tmdbEpCount}>{s.episodes?.length ?? 0} eps</span>
                         </div>
@@ -655,9 +656,10 @@ export default function SeasonManagerPage() {
         {/* Seasons accordion */}
         <div className={styles.seasons}>
           {seasons.length === 0 && !tmdbPreview && (
-            <div className={styles.empty}>
-              No seasons yet. Import from TMDB or add one manually.
-            </div>
+            <EmptyState
+              title="No seasons yet"
+              description="Import from TMDB or add a season manually."
+            />
           )}
 
           {seasons.map((season) => {
@@ -901,36 +903,28 @@ export default function SeasonManagerPage() {
           )}
         </div>
 
-        {/* Delete confirmation modal */}
-        {confirmDelete && (
-          <div className={styles.modalOverlay}>
-            <div className={styles.modal}>
-              <h3 className={styles.modalTitle}>Confirm Delete</h3>
-              <p className={styles.modalBody}>
-                {confirmDelete.type === "season"
-                  ? `Delete Season ${confirmDelete.seasonNumber} and all its episodes?`
-                  : `Delete Episode ${confirmDelete.episodeNumber} from Season ${confirmDelete.seasonNumber}?`}
-                <br />
-                <span className={styles.modalNote}>This is a soft delete — data is kept in the database.</span>
-              </p>
-              <div className={styles.modalActions}>
-                <button
-                  className={`${styles.btn} ${styles.btnDanger}`}
-                  onClick={handleConfirmDelete}
-                  disabled={deleting}
-                >
-                  {deleting ? <Spinner /> : "Delete"}
-                </button>
-                <button
-                  className={`${styles.btn} ${styles.btnGhost}`}
-                  onClick={() => setConfirmDelete(null)}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <Dialog
+          open={Boolean(confirmDelete)}
+          title="Confirm delete"
+          description={confirmDelete?.type === "season"
+            ? `Delete Season ${confirmDelete?.seasonNumber} and all its episodes?`
+            : `Delete Episode ${confirmDelete?.episodeNumber} from Season ${confirmDelete?.seasonNumber}?`}
+          onClose={() => {
+            if (!deleting) setConfirmDelete(null);
+          }}
+          actions={(
+            <>
+              <Button variant="ghost" onClick={() => setConfirmDelete(null)} disabled={deleting}>
+                Cancel
+              </Button>
+              <Button variant="danger" onClick={handleConfirmDelete} disabled={deleting}>
+                {deleting ? "Deleting..." : "Delete"}
+              </Button>
+            </>
+          )}
+        >
+          <p className={styles.modalNote}>This is a soft delete. Data is kept in the database.</p>
+        </Dialog>
         </div>
       </Container>
     </PageLayout>

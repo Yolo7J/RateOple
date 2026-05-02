@@ -5,6 +5,8 @@ import { useMediaCart } from '../../../context/MediaCartContext';
 import { useMediaCommands } from '../queries/useMediaCommands';
 import PageLayout from '../../../layouts/PageLayout';
 import Container from '../../../shared/ui/Container';
+import InlineMessage from '../../../shared/ui/InlineMessage';
+import PageHeader from '../../../shared/ui/PageHeader';
 
 const STEPS = { SELECT_TYPE: 0, SEARCH: 1, FILL_FORM: 2 };
 const emptyEpisode = (episodeNumber) => ({ episodeNumber, title: '', duration: '' });
@@ -20,56 +22,38 @@ const mapTmdbSeasonsToForm = (seasons) =>
     }));
 
 const styles = {
-    page: [
-        'mx-auto w-[min(1160px,calc(100vw-32px))] max-sm:w-[min(1160px,calc(100vw-22px))]',
-        'py-7 pb-14 flex flex-col gap-4',
-    ].join(' '),
-    backBtn: [
-        'self-start rounded-xl border border-[var(--border)] bg-[var(--btn-bg)] px-4 py-2 text-sm',
-        'text-[var(--text-primary)] transition hover:bg-[var(--btn-hover)]',
-    ].join(' '),
-    heading: 'text-[clamp(1.6rem,2vw,2rem)] font-extrabold tracking-tight text-[var(--text-primary)]',
+    page: 'flex flex-col gap-5 pb-10',
+    backBtn: 'ui-button self-start',
     sub: 'text-[var(--text-muted)]',
     seriesNotice: [
         'rounded-xl border border-[var(--accent)] bg-[var(--primary-color-alpha)] p-3 text-sm',
         'text-[var(--text-primary)]',
     ].join(' '),
     addedBanner: [
-        'mx-auto w-full max-w-[680px] rounded-2xl border border-[var(--border)]',
-        'bg-[var(--card-bg)] p-8 text-center',
+        'ui-card mx-auto w-full max-w-[680px] p-8 text-center',
     ].join(' '),
     addedIcon: 'mb-3 inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--accent)]/20 text-2xl',
     addedTitle: 'text-xl font-semibold text-[var(--text-primary)]',
     addedSub: 'mx-auto mt-3 max-w-[56ch] text-sm text-[var(--text-muted)]',
     addedActions: 'mb-4 mt-5 flex flex-wrap justify-center gap-3',
-    addedBtn: 'rounded-xl px-4 py-2 text-sm font-semibold',
-    addedPrimary: 'bg-[var(--accent)] text-[#121212] transition hover:bg-[var(--accent-strong)]',
-    addedGhost: [
-        'border border-[var(--border)] bg-[var(--btn-bg)] text-[var(--text-primary)]',
-        'transition hover:bg-[var(--btn-hover)]',
-    ].join(' '),
+    addedBtn: 'ui-button',
+    addedPrimary: 'ui-button-primary',
+    addedGhost: '',
     addedNote: [
         'mx-auto max-w-[60ch] rounded-xl border border-dashed border-[var(--border)]',
         'p-3 text-xs text-[var(--text-muted)]',
     ].join(' '),
     typeSelectGrid: 'mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3',
     typeSelectCard: [
-        'flex min-h-[148px] flex-col items-center justify-center gap-3 rounded-2xl',
-        'border border-[var(--border)] bg-[var(--card-bg)] text-[var(--text-primary)] transition',
-        'hover:border-[var(--accent)]/50 hover:bg-[var(--accent)]/10',
+        'ui-card-interactive flex min-h-[148px] flex-col items-center justify-center gap-3 text-[var(--text-primary)]',
     ].join(' '),
     typeIcon: 'text-3xl',
     typeLabel: 'font-bold',
-    searchInput: [
-        'w-full rounded-xl border border-[var(--border)] bg-[var(--input-bg)] px-4 py-3 text-base',
-        'text-[var(--text-primary)]',
-    ].join(' '),
+    searchInput: 'ui-input px-4 py-3 text-base',
     searchStatus: 'text-sm text-[var(--text-muted)]',
-    searchError: 'text-[#ff6d75]',
     results: 'flex flex-col gap-2',
     resultCard: [
-        'flex w-full items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--card-bg)]',
-        'px-3 py-2 text-left text-[var(--text-primary)] transition hover:border-[var(--accent)]/50',
+        'ui-card-interactive flex w-full items-center gap-3 px-3 py-2 text-left text-[var(--text-primary)]',
     ].join(' '),
     resultImage: 'h-[76px] w-[52px] flex-shrink-0 rounded-lg object-cover',
     noCover: 'flex h-[76px] w-[52px] items-center justify-center rounded-lg bg-[var(--card-cover-bg)] text-[var(--text-muted)]',
@@ -80,7 +64,7 @@ const styles = {
         'self-start rounded-xl border border-dashed border-[var(--border)] px-3 py-2 text-sm',
         'text-[var(--text-muted)] transition hover:text-[var(--text-primary)] hover:border-[var(--accent)]',
     ].join(' '),
-    form: 'flex flex-col gap-4 rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] p-5',
+    form: 'ui-card flex flex-col gap-4 p-5',
     formRow: 'grid grid-cols-1 gap-4 md:grid-cols-[minmax(130px,180px)_minmax(0,1fr)] items-start',
     cover: [
         'w-full max-w-[180px] aspect-[2/3] overflow-hidden rounded-xl border border-[var(--border)]',
@@ -90,10 +74,7 @@ const styles = {
     formFields: 'flex flex-col gap-4',
     formRow2: 'grid grid-cols-1 gap-3 sm:grid-cols-2',
     formLabel: 'flex flex-col gap-1 text-xs font-semibold text-[var(--text-secondary)]',
-    formInput: [
-        'w-full rounded-xl border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-sm',
-        'text-[var(--text-primary)] outline-none focus:border-[var(--accent)]',
-    ].join(' '),
+    formInput: 'ui-input',
     formTextarea: 'min-h-[92px] resize-y',
     genrePicker: 'flex flex-wrap gap-2',
     genreItem: [
@@ -103,38 +84,21 @@ const styles = {
     genreItemActive: 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--text-primary)]',
     genreInput: 'sr-only',
     saveError: 'text-sm text-[#ff6d75]',
-    seasonBuilder: [
-        'flex flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-4',
-    ].join(' '),
+    seasonBuilder: 'ui-panel flex flex-col gap-3 p-4',
     seasonHeader: 'flex items-center justify-between gap-3',
-    seasonAdd: [
-        'rounded-lg border border-[var(--border)] bg-[var(--btn-bg)] px-3 py-1.5 text-xs',
-        'text-[var(--text-primary)] transition hover:bg-[var(--btn-hover)]',
-    ].join(' '),
+    seasonAdd: 'ui-button px-3 py-1.5 text-xs',
     seasonEmpty: 'text-xs text-[var(--text-muted)]',
-    seasonBlock: 'flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-3',
+    seasonBlock: 'ui-panel flex flex-col gap-2 p-3',
     seasonBlockHeader: 'flex items-center justify-between gap-2 text-sm font-bold',
-    seasonRemove: [
-        'rounded-lg border border-[var(--border)] bg-[var(--btn-bg)] px-3 py-1.5 text-xs',
-        'text-[var(--text-primary)] transition hover:bg-[var(--btn-hover)] disabled:opacity-50',
-    ].join(' '),
+    seasonRemove: 'ui-button px-3 py-1.5 text-xs',
     episodeList: 'flex flex-col gap-2',
     episodeRow: 'grid grid-cols-[auto_1fr] gap-2 items-center sm:grid-cols-[auto_1fr_90px_auto]',
     episodeNum: 'min-w-[24px] text-xs font-bold text-[var(--text-muted)]',
     episodeDuration: 'sm:w-[90px]',
-    episodeAdd: [
-        'rounded-lg border border-[var(--border)] bg-[var(--btn-bg)] px-3 py-1.5 text-xs',
-        'text-[var(--text-primary)] transition hover:bg-[var(--btn-hover)]',
-    ].join(' '),
+    episodeAdd: 'ui-button px-3 py-1.5 text-xs',
     formActions: 'flex flex-wrap gap-3',
-    saveBtn: [
-        'rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[#151515]',
-        'transition hover:bg-[var(--accent-strong)] disabled:opacity-60 disabled:cursor-not-allowed',
-    ].join(' '),
-    cancelBtn: [
-        'rounded-xl border border-[var(--border)] bg-[var(--btn-bg)] px-4 py-2 text-sm font-semibold',
-        'text-[var(--text-primary)] transition hover:bg-[var(--btn-hover)]',
-    ].join(' '),
+    saveBtn: 'ui-button ui-button-primary',
+    cancelBtn: 'ui-button',
 };
 
 const AddMediaPage = () => {
@@ -446,10 +410,9 @@ const AddMediaPage = () => {
     if (step === STEPS.SELECT_TYPE) {
         return (
             <PageLayout>
-                <Container size="full">
+                <Container size="xxl">
                     <div className={styles.page}>
-                        <h1 className={styles.heading}>Add Media</h1>
-                        <p className={styles.sub}>What type of media are you adding?</p>
+                        <PageHeader title="Add Media" subtitle="Choose the media type before searching external sources or filling details manually." />
                         <div className={styles.typeSelectGrid}>
                             {[
                                 { type: 'Movie',    icon: 'M', label: 'Movie'     },
@@ -481,15 +444,13 @@ const AddMediaPage = () => {
 
         return (
             <PageLayout>
-                <Container size="full">
+                <Container size="xxl">
                     <div className={styles.page}>
                         <button className={styles.backBtn} onClick={() => setStep(STEPS.SELECT_TYPE)}>&lt;- Back</button>
-                        <h1 className={styles.heading}>
-                            {isBook ? 'Search Open Library' : 'Search TMDB'}
-                        </h1>
-                        <p className={styles.sub}>
-                            Find the title to auto-fill details, or skip to fill manually.
-                        </p>
+                        <PageHeader
+                            title={isBook ? 'Search Open Library' : 'Search TMDB'}
+                            subtitle="Find the title to auto-fill details, or skip to fill manually."
+                        />
 
                         <input
                             className={styles.searchInput}
@@ -501,7 +462,7 @@ const AddMediaPage = () => {
                         />
 
                         {searchLoading && <p className={styles.searchStatus}>Searching...</p>}
-                        {searchError && <p className={`${styles.searchStatus} ${styles.searchError}`}>{searchError}</p>}
+                        {searchError && <InlineMessage tone="error">{searchError}</InlineMessage>}
 
                         <div className={styles.results}>
                             {searchResults.map(r => (
@@ -535,7 +496,7 @@ const AddMediaPage = () => {
     if (justAddedSeries) {
         return (
             <PageLayout>
-                <Container size="full">
+                <Container size="xxl">
                     <div className={styles.page}>
                         <div className={styles.addedBanner}>
                             <span className={styles.addedIcon}>TV</span>
@@ -581,12 +542,13 @@ const AddMediaPage = () => {
 
     return (
         <PageLayout>
-            <Container size="full">
+            <Container size="xxl">
                 <div className={styles.page}>
                     <button className={styles.backBtn} onClick={() => setStep(STEPS.SEARCH)}>&lt;- Back</button>
-                    <h1 className={styles.heading}>
-                        {mediaType === 'TvSeries' ? 'Add TV Series' : `Add ${mediaType}`}
-                    </h1>
+                    <PageHeader
+                        title={mediaType === 'TvSeries' ? 'Add TV Series' : `Add ${mediaType}`}
+                        subtitle="Review imported details and adjust anything needed before adding the item to your media cart."
+                    />
 
                     {mediaType === 'TvSeries' && (
                         <div className={styles.seriesNotice}>
