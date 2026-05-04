@@ -31,6 +31,7 @@ Switching between local HTTP and HTTPS backends:
 - Use `frontend/.env.https.example` as the template when running the backend on `https://localhost:7167`
 - Copy the one you want to `frontend/.env.local`
 - When the frontend is served by the backend from `backend/RateOple/wwwroot`, the shared API config falls back to same-origin `/api` automatically, so no frontend env override is required
+- For submission/review on another machine, this `.env.local` step is required so the frontend points to the correct local backend protocol
 
 ## Local Development
 
@@ -56,6 +57,12 @@ https://localhost:7167/api
 ```
 
 and run the backend HTTPS launch profile.
+
+Submission note:
+
+- TMDB-backed movie and TV images will not fully work on another machine unless the backend has a valid `Tmdb:ReadAccessToken`.
+- Google sign-in will not work on another machine unless the backend has valid `Authentication:Google:ClientId` and `Authentication:Google:ClientSecret` values.
+- Those secrets are not included in the repository by default.
 
 ## Auth and CSRF Model
 
@@ -115,6 +122,54 @@ Use lookup endpoints, feature lookup services, and the shared picker UI:
 
 Use `EntityPicker` or `MultiEntityPicker` for workflows that select existing media, users, groups, collections, or moderation scopes.
 
+## Shared UI and Visual System
+
+RateOple uses a lightweight shared UI foundation built from React components, Tailwind utility classes, and global CSS tokens in `src/index.css`.
+
+Use the shared primitives before adding new page-local control styles:
+
+- `src/shared/ui/Button.jsx`
+- `src/shared/ui/Input.jsx`
+- `src/shared/ui/Textarea.jsx`
+- `src/shared/ui/Select.jsx`
+- `src/shared/ui/Checkbox.jsx`
+- `src/shared/ui/Toggle.jsx`
+- `src/shared/ui/FormField.jsx`
+- `src/shared/ui/Badge.jsx`
+- `src/shared/ui/InlineMessage.jsx`
+- `src/shared/ui/EmptyState.jsx`
+- `src/shared/ui/LoadingState.jsx`
+- `src/shared/ui/Dialog.jsx`
+- `src/shared/ui/PageHeader.jsx`
+- `src/shared/ui/SectionCard.jsx`
+- `src/shared/ui/Panel.jsx`
+- `src/shared/ui/StatCard.jsx`
+- `src/shared/ui/DataTable.jsx`
+- `src/shared/ui/Tabs.jsx`
+- `src/shared/ui/Container.jsx`, `Grid.jsx`, `Stack.jsx`, and `Flex.jsx`
+
+Composite shared UI lives in:
+
+- `src/shared/components/Header`
+- `src/shared/components/Footer`
+- `src/shared/components/MediaCard`
+- `src/shared/ui/SearchBar`
+- `src/shared/ui/RatingStars`
+- `src/shared/ui/EntityPicker`
+
+Current UI conventions:
+
+- Use `PageHeader` for primary page titles and action bars.
+- Use `SectionCard` or `Panel` for framed content instead of hand-rolled card classes.
+- Use `InlineMessage` for error, warning, success, and info feedback.
+- Use `LoadingState` or `Skeleton` for loading surfaces.
+- Use `EmptyState` for no-data surfaces.
+- Use `Dialog` for confirmations and destructive actions instead of `window.confirm` or `window.prompt`.
+- Keep action rows wrapping on mobile and avoid fixed-width content that can cause horizontal overflow.
+- Preserve shared `ui-*` focus and interaction styles unless a feature has a strong reason to customize.
+
+The shared system has been applied across media browse/detail, account, watchlist, groups, collections, notifications, admin media workflows, moderation queues, audit logs, and moderator assignment workflows.
+
 ## Testing
 
 Available scripts:
@@ -130,7 +185,7 @@ npm run test:e2e:headed
 Notes:
 
 - Playwright smoke tests currently rely on route mocks for fast browser coverage rather than a seeded full-stack environment.
-- `tests/e2e/auth-google.spec.js` covers the frontend Google OAuth entry points and callback handling with route mocks rather than a real Google login.
+- `tests/e2e/shared-ui.spec.js` covers shared UI rendering and horizontal-overflow smoke behavior on desktop and mobile Chromium.
 - If browser binaries are missing, run `npx playwright install chromium`.
 - `playwright.config.js` starts the Vite dev server automatically for e2e runs.
 
@@ -155,7 +210,7 @@ npm run build:backend
 - `src/app` - router and provider composition
 - `src/features` - feature pages, components, services, queries, and realtime hooks
 - `src/shared/api` - Axios client, auth/CSRF interceptor, React Query client, and lookup API helpers
-- `src/shared/ui` - shared UI primitives including `EntityPicker`
+- `src/shared/ui` - shared UI primitives, visual states, layout helpers, dialogs, data tables, tabs, and `EntityPicker`
 - `src/shared/components` - shared composite components such as header, footer, and media cards
 - `src/context` - auth, theme, language, and media cart contexts
 - `src/layouts` - main/auth/group/admin layout shells

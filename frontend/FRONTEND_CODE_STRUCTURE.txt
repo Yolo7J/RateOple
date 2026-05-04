@@ -1,315 +1,170 @@
-README.md - Frontend package documentation and setup notes.
-eslint.config.js - ESLint configuration for code quality rules.
-index.html - Vite HTML entry template that mounts the React app.
-package-lock.json - Exact dependency lockfile for reproducible installs.
-package.json - NPM scripts, dependencies, and project metadata.
-postcss.config.js - PostCSS configuration (Tailwind integration).
-tailwind.config.js - Tailwind CSS configuration and theme tokens.
-public/ - Static public assets served as-is by Vite.
-public/vite.svg - Static logo asset used in starter/branding UI.
-src/ - Frontend application source code.
-src/App.jsx - Main app shell component composition.
-src/app/ - App-level routing and composition setup.
-src/app/AppRouter.jsx - Router wrapper that renders the active router component.
-src/app/providers.jsx - Global provider composition (query/auth/theme/language).
-src/app/router.jsx - Active route definition and router component for the frontend.
-src/assets/ - Bundled static assets imported by the app.
-src/assets/react.svg - Static logo asset used in starter/branding UI.
-src/context/ - React context providers for global state.
-src/context/AuthContext.jsx - React context provider and hook for auth state.
-src/context/LanguageContext.jsx - React context provider and hook for language state.
-src/context/MediaCartContext.jsx - React context provider and hook for media cart state.
-src/context/ThemeContext.jsx - React context provider and hook for theme state.
-src/features/ - Feature-based domain modules.
-src/features/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/admin/ - Admin feature module container.
-src/features/admin/pages/ - Pages layer for the admin feature.
-src/features/admin/pages/AdminDashboardPage.jsx - Admin dashboard entry page.
-src/features/auth/ - Auth domain feature module container.
-src/features/auth/components/ - Components layer for the auth feature.
-src/features/auth/components/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/auth/components/AuthCard.jsx - Auth card layout component.
-src/features/auth/components/LoginForm.jsx - Login form component.
-src/features/auth/components/RegisterForm.jsx - Registration form component.
-src/features/auth/components/RequireAuth.jsx - Route guard enforcing authenticated access.
-src/features/auth/components/RequireGuest.jsx - Route guard enforcing guest-only access.
-src/features/auth/components/RequireRole.jsx - Route guard enforcing role-based access.
-src/features/auth/hooks/ - Hooks layer for the auth feature.
-src/features/auth/hooks/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/auth/pages/ - Pages layer for the auth feature.
-src/features/auth/pages/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/auth/pages/LoginPage.jsx - Login route page component.
-src/features/auth/pages/RegisterPage.jsx - Register route page component.
-src/features/auth/queries/ - React Query hooks for auth feature.
-src/features/auth/queries/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/auth/queries/useAuthSessionQuery.js - Query for the current auth session.
-src/features/auth/services/ - Services layer for the auth feature.
-src/features/auth/services/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/auth/services/authService.js - Auth API service module.
-src/features/collections/ - Collections domain feature module container.
-src/features/collections/README.md - Feature documentation and notes.
-src/features/collections/components/ - Components layer for the collections feature.
-src/features/collections/components/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/collections/components/CollectionCard.jsx - Collection card display component.
-src/features/collections/components/CollectionTree.jsx - Hierarchical collections tree component.
-src/features/collections/hooks/ - Hooks layer for the collections feature.
-src/features/collections/hooks/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/collections/pages/ - Pages layer for the collections feature.
-src/features/collections/pages/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/collections/pages/CollectionDetailPage.jsx - Collection detail route page.
-src/features/collections/pages/CollectionsPage.jsx - Collections index route page.
-src/features/collections/queries/ - React Query hooks for collections feature.
-src/features/collections/queries/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/collections/queries/useCollectionDetailsQuery.js - Query for collection details.
-src/features/collections/queries/useCollectionMutations.js - Mutations for collection CRUD.
-src/features/collections/queries/useCollectionsQuery.js - Query for collections lists.
-src/features/collections/services/ - Services layer for the collections feature.
-src/features/collections/services/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/collections/services/collectionService.js - Collections API service module.
-src/features/discovery/ - Discovery domain feature module container.
-src/features/discovery/components/ - Components layer for the discovery feature.
-src/features/discovery/components/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/discovery/components/DiscoverySection.jsx - Discovery section UI component.
-src/features/discovery/components/HeroBanner.jsx - Discovery hero banner component.
-src/features/discovery/components/MediaCard.jsx - Discovery media card component.
-src/features/discovery/components/MediaRow.jsx - Row layout for discovery media.
-src/features/discovery/hooks/ - Hooks layer for the discovery feature.
-src/features/discovery/hooks/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/discovery/pages/ - Pages layer for the discovery feature.
-src/features/discovery/pages/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/discovery/pages/DiscoveryPage.jsx - Discovery route page.
-src/features/discovery/queries/ - React Query hooks for discovery feature.
-src/features/discovery/queries/useHomeDiscoveryQuery.js - Query for discovery/home data.
-src/features/discovery/queries/useSimilarMediaQuery.js - Query for similar media results.
-src/features/discovery/services/ - Services layer for the discovery feature.
-src/features/discovery/services/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/discovery/services/discoveryService.js - Discovery API service module.
-src/features/groups/ - Groups domain feature module container.
-src/features/groups/README.md - Feature documentation and notes.
-src/features/groups/components/ - Components layer for the groups feature.
-src/features/groups/components/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/groups/components/GroupCard.jsx - Group card display component.
-src/features/groups/components/GroupPostCard.jsx - Group post card component.
-src/features/groups/hooks/ - Hooks layer for the groups feature.
-src/features/groups/hooks/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/groups/pages/ - Pages layer for the groups feature.
-src/features/groups/pages/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/groups/pages/CreateGroupPage.jsx - Group creation route page.
-src/features/groups/pages/GroupDetailPage.jsx - Group detail route page.
-src/features/groups/pages/GroupPostDetailPage.jsx - Group post detail route page.
-src/features/groups/pages/GroupsPage.jsx - Groups index route page.
-src/features/groups/queries/ - React Query hooks for groups feature.
-src/features/groups/queries/useGroupDetailsQuery.js - Query for group details.
-src/features/groups/queries/useGroupMembersQuery.js - Query for group members.
-src/features/groups/queries/useGroupMutations.js - Mutations for group operations.
-src/features/groups/queries/useGroupPostCommentsQuery.js - Query for group post comments.
-src/features/groups/queries/useGroupPostQuery.js - Query for a single group post.
-src/features/groups/queries/useGroupPinnedMediaQuery.js - Query for pinned media.
-src/features/groups/queries/useGroupPostsQuery.js - Query for group posts.
-src/features/groups/queries/useGroupStaffMessagesQuery.js - Query for group staff messages.
-src/features/groups/queries/useGroupsQuery.js - Query for groups lists.
-src/features/groups/services/ - Services layer for the groups feature.
-src/features/groups/services/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/groups/services/groupService.js - Groups API service module.
-src/features/media/ - Media domain feature module container.
-src/features/media/components/ - Components layer for the media feature.
-src/features/media/components/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/media/components/MediaCard/ - Media card component folder.
-src/features/media/components/MediaCard/MediaCard.jsx - Media card component implementation.
-src/features/media/components/MediaStatusSelector.jsx - Media status selector component.
-src/features/media/hooks/ - Hooks layer for the media feature.
-src/features/media/hooks/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/media/pages/ - Pages layer for the media feature.
-src/features/media/pages/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/media/pages/AddMediaPage.jsx - Add media route page.
-src/features/media/pages/AdminMediaPage.jsx - Admin media management list page.
-src/features/media/pages/CartPage.jsx - Media cart route page.
-src/features/media/pages/EditMediaPage.jsx - Admin edit media route page.
-src/features/media/pages/MediaDetailPage.jsx - Media detail route page.
-src/features/media/pages/MediaListPage.jsx - Media list route page.
-src/features/media/pages/SeasonManagerPage.jsx - Season manager route page.
-src/features/media/queries/ - React Query hooks for media feature.
-src/features/media/queries/useMediaCommands.js - Media mutations for create/update/delete.
-src/features/media/queries/useMediaDetailsQuery.js - Query for media details.
-src/features/media/queries/useMediaGenresQuery.js - Query for media genres.
-src/features/media/queries/useMediaListQuery.js - Query for media list pages.
-src/features/media/queries/useTvSeriesSeasonsQuery.js - Query for TV series seasons.
-src/features/media/services/ - Services layer for the media feature.
-src/features/media/services/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/media/services/mediaService.js - Media API service module.
-src/features/media/services/tmdbService.js - TMDB API proxy service module.
-src/features/media/services/tvSeriesService.js - TV series API service module.
-src/features/moderation/ - Moderation domain feature module container.
-src/features/moderation/README.md - Feature documentation and notes.
-src/features/moderation/components/ - Components layer for the moderation feature.
-src/features/moderation/components/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/moderation/components/ModerationReportRow.jsx - Moderation report row component.
-src/features/moderation/components/ModeratorAssignmentList.jsx - Moderator assignment list component.
-src/features/moderation/hooks/ - Hooks layer for the moderation feature.
-src/features/moderation/hooks/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/moderation/pages/ - Pages layer for the moderation feature.
-src/features/moderation/pages/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/moderation/pages/ModerationPage.jsx - Moderation route page.
-src/features/moderation/queries/ - React Query hooks for moderation feature.
-src/features/moderation/queries/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/moderation/queries/useModerationMutations.js - Mutations for moderation operations.
-src/features/moderation/queries/useModerationReportsQuery.js - Query for moderation reports.
-src/features/moderation/queries/useModeratorAssignmentsQuery.js - Query for moderator assignments.
-src/features/moderation/services/ - Services layer for the moderation feature.
-src/features/moderation/services/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/moderation/services/moderationService.js - Moderation API service module.
-src/features/notifications/ - Notifications domain feature module container.
-src/features/notifications/README.md - Feature documentation and notes.
-src/features/notifications/components/ - Components layer for the notifications feature.
-src/features/notifications/components/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/notifications/components/NotificationItem.jsx - Notification item component.
-src/features/notifications/hooks/ - Hooks layer for the notifications feature.
-src/features/notifications/hooks/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/notifications/pages/ - Pages layer for the notifications feature.
-src/features/notifications/pages/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/notifications/pages/NotificationsPage.jsx - Notifications route page.
-src/features/notifications/queries/ - React Query hooks for notifications feature.
-src/features/notifications/queries/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/notifications/queries/useNotificationMutations.js - Mutations for notification actions.
-src/features/notifications/queries/useNotificationsQuery.js - Query for notifications lists.
-src/features/notifications/services/ - Services layer for the notifications feature.
-src/features/notifications/services/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/notifications/services/notificationService.js - Notifications API service module.
-src/features/ratings/ - Ratings domain feature module container.
-src/features/ratings/components/ - Components layer for the ratings feature.
-src/features/ratings/components/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/ratings/components/RatingSelector.jsx - Rating selector component.
-src/features/ratings/components/RatingStars.jsx - Rating stars component.
-src/features/ratings/components/UserRatingDisplay.jsx - User rating display component.
-src/features/ratings/hooks/ - Hooks layer for the ratings feature.
-src/features/ratings/hooks/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/ratings/pages/ - Pages layer for the ratings feature.
-src/features/ratings/pages/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/ratings/queries/ - React Query hooks for ratings feature.
-src/features/ratings/queries/useDeleteMediaRatingMutation.js - Mutation to delete a rating.
-src/features/ratings/queries/useEpisodeRatingSummaryQuery.js - Query for episode rating summaries.
-src/features/ratings/queries/useMediaRatingSummaryQuery.js - Query for rating summaries.
-src/features/ratings/queries/useMyRatingsQuery.js - Query for the current user's ratings.
-src/features/ratings/queries/useRateEpisodeMutation.js - Mutation to rate an episode.
-src/features/ratings/queries/useRateMediaMutation.js - Mutation to rate a media item.
-src/features/ratings/queries/useRateSeasonMutation.js - Mutation to rate a season.
-src/features/ratings/queries/useSeasonRatingSummaryQuery.js - Query for season rating summaries.
-src/features/ratings/services/ - Services layer for the ratings feature.
-src/features/ratings/services/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/ratings/services/ratingService.js - Ratings API service module.
-src/features/reviews/ - Reviews domain feature module container.
-src/features/reviews/components/ - Components layer for the reviews feature.
-src/features/reviews/components/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/reviews/components/ReviewCard.jsx - Review card component.
-src/features/reviews/components/ReviewEditor.jsx - Review editor component.
-src/features/reviews/components/ReviewFilters.jsx - Review filters component.
-src/features/reviews/components/ReviewsList.jsx - Reviews list component.
-src/features/reviews/hooks/ - Hooks layer for the reviews feature.
-src/features/reviews/hooks/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/reviews/pages/ - Pages layer for the reviews feature.
-src/features/reviews/pages/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/reviews/queries/ - React Query hooks for reviews feature.
-src/features/reviews/queries/useMyReviewsQuery.js - Query for the current user's reviews.
-src/features/reviews/queries/useReviewMutations.js - Mutations for reviews.
-src/features/reviews/queries/useReviewsQuery.js - Query for reviews lists.
-src/features/reviews/services/ - Services layer for the reviews feature.
-src/features/reviews/services/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/reviews/services/reviewService.js - Reviews API service module.
-src/features/users/ - Users domain feature module container.
-src/features/users/components/ - Components layer for the users feature.
-src/features/users/components/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/users/components/AccountSection.jsx - Account section component.
-src/features/users/hooks/ - Hooks layer for the users feature.
-src/features/users/hooks/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/users/pages/ - Pages layer for the users feature.
-src/features/users/pages/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/users/pages/AccountPage.jsx - Account route page.
-src/features/users/pages/WatchlistPage.jsx - Watchlist route page.
-src/features/users/queries/ - React Query hooks for users feature.
-src/features/users/queries/useAccountQuery.js - Query for account details.
-src/features/users/queries/useMediaStatusMutation.js - Mutation for media status updates.
-src/features/users/queries/useMyProfileQuery.js - Query for current user profile.
-src/features/users/queries/useProfileMutations.js - Mutations for profile updates.
-src/features/users/queries/useWatchlistQuery.js - Query for watchlist items.
-src/features/users/services/ - Services layer for the users feature.
-src/features/users/services/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/features/users/services/statusService.js - Media status API service module.
-src/features/users/services/userProfileService.js - User profile API service module.
-src/features/users/services/userService.js - User API service module.
-src/hooks/ - Reusable React hooks.
-src/hooks/useLanguage.js - Reusable custom React hook.
-src/hooks/useQueryResource.js - Shared React Query helper hook.
-src/hooks/useTheme.js - Reusable custom React hook.
-src/index.css - Global base styles loaded once at app start.
-src/layouts/ - Layout modules.
-src/layouts/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/layouts/AdminLayout.jsx - Admin layout shell.
-src/layouts/AuthLayout.jsx - Auth layout shell.
+README.md - Frontend-specific setup, auth, routing, shared UI, testing, and build notes.
+package.json - NPM scripts, dependency manifest, and frontend metadata.
+package-lock.json - Exact dependency lockfile.
+vite.config.js - Vite bundler configuration.
+playwright.config.js - Playwright test runner configuration.
+eslint.config.js - ESLint configuration.
+tailwind.config.js - Tailwind theme/config setup.
+postcss.config.js - PostCSS/Tailwind integration.
+scripts/build-backend.mjs - Copies the production frontend build into the backend `wwwroot`.
+public/ - Static assets served directly by Vite.
+src/ - Frontend application source.
+
+src/main.jsx - React application bootstrap.
+src/index.css - Global styles, design tokens, shared `ui-*` utility classes, focus states, cards, controls, tables, messages, skeletons, and layout polish.
+
+src/app/ - App-level routing and provider composition.
+src/app/AppRouter.jsx - Router wrapper.
+src/app/providers.jsx - Query/auth/theme/language provider composition.
+src/app/router.jsx - Active route map for the application.
+
+src/context/ - Global context state.
+src/context/AuthContext.jsx - Session bootstrap and auth state.
+src/context/LanguageContext.jsx - UI language state.
+src/context/MediaCartContext.jsx - Admin/media-cart state.
+src/context/ThemeContext.jsx - Theme state.
+
+src/layouts/ - Top-level layout shells.
+src/layouts/AdminLayout.jsx - Admin area layout shell with shared page rhythm.
+src/layouts/AuthLayout.jsx - Login/register/callback layout shell.
 src/layouts/GroupLayout.jsx - Group-focused layout shell.
-src/layouts/MainLayout.jsx - Main app layout shell.
-src/layouts/PageLayout.jsx - Shared page layout wrapper.
-src/layouts/SidebarLayout.jsx - Sidebar layout shell.
-src/locales/ - i18n translation resources.
-src/locales/bg.json - Translation dictionary for UI localization.
-src/locales/en.json - Translation dictionary for UI localization.
-src/main.jsx - Application bootstrap that renders the root React tree.
-src/shared/ - Shared cross-feature modules.
-src/shared/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-src/shared/api/ - Shared API clients and interceptors.
-src/shared/api/apiClient.js - Base axios client.
-src/shared/api/authInterceptor.js - Auth + CSRF axios interceptor.
-src/shared/api/lookupApi.js - Shared lookup request helper used by picker workflows.
-src/shared/api/queryClient.js - React Query client setup.
-src/shared/components/ - Global shared components.
-src/shared/components/Footer/ - Footer component folder.
-src/shared/components/Footer/Footer.jsx - Footer component implementation.
-src/shared/components/Header/ - Header components folder.
-src/shared/components/Header/Header.jsx - Header component implementation.
-src/shared/components/Header/NavigationDropdown.jsx - Header navigation dropdown component.
-src/shared/components/MediaCard/ - Shared media card component folder.
-src/shared/components/MediaCard/MediaCard.jsx - Shared media card component implementation.
-src/shared/constants/ - Shared constants.
-src/shared/constants/breakpoints.js - Layout breakpoint definitions.
-src/shared/constants/mediaTypes.js - Media type constants.
-src/shared/constants/statusTypes.js - Media status constants.
-src/shared/ui/ - Reusable UI primitives.
-src/shared/ui/Container.jsx - Container layout primitive.
-src/shared/ui/EntityPicker/ - Shared entity picker primitives for searchable relation selection.
-src/shared/ui/EntityPicker/EntityPicker.jsx - Single-entity picker used across admin/group/moderation flows.
-src/shared/ui/EntityPicker/MultiEntityPicker.jsx - Multi-select picker for attaching multiple related entities.
-src/shared/ui/Flex.jsx - Flexbox layout primitive.
-src/shared/ui/Grid.jsx - Grid layout primitive.
-src/shared/ui/Stack.jsx - Stack layout primitive.
-src/shared/ui/LanguageToggle/ - Language toggle component folder.
-src/shared/ui/LanguageToggle/LanguageToggle.jsx - Language toggle component.
-src/shared/ui/RatingStars/ - Rating stars component folder.
-src/shared/ui/RatingStars/RatingStars.jsx - Rating stars component.
-src/shared/ui/SearchBar/ - Search bar component folder.
-src/shared/ui/SearchBar/SearchBar.jsx - Search bar component.
-src/shared/ui/ThemeToggle/ - Theme toggle component folder.
-src/shared/ui/ThemeToggle/ThemeToggle.jsx - Theme toggle component.
-src/shared/utils/ - Shared utility helpers.
-src/shared/utils/buildImageUrl.js - Media image URL builder.
-src/shared/utils/formatDate.js - Date formatting helper.
-src/shared/utils/formatRating.js - Rating formatting helper.
-src/styles/ - Global styles module placeholder folder.
-src/styles/.gitkeep - Placeholder file to keep this empty folder tracked in Git.
-tests/e2e/ - Playwright smoke tests for routing, search, and picker workflows.
-vite.config.js - Vite configuration.
+src/layouts/MainLayout.jsx - Main site layout shell with header/footer.
+src/layouts/PageLayout.jsx - Shared page wrapper.
+src/layouts/SidebarLayout.jsx - Sidebar-based layout shell.
 
-Architecture audit notes - 2026-04-26
--------------------------------------
+src/features/admin/ - Admin dashboard feature.
+src/features/admin/pages/AdminDashboardPage.jsx - Admin dashboard landing page.
 
-Current frontend structure is feature-based React + Vite:
-- src/app owns provider composition and the active router in src/app/router.jsx, rendered by src/app/AppRouter.jsx.
-- src/context owns global auth/theme/language/media-cart state.
-- src/features owns page/components/query/service modules by domain.
-- src/shared owns API clients, layout primitives, shared UI pieces, signalR, constants, and utility helpers.
+src/features/auth/ - Authentication feature.
+src/features/auth/components/ - Auth forms and route guards.
+src/features/auth/pages/ - Login, register, and external callback pages.
+src/features/auth/queries/ - Session query helpers.
+src/features/auth/services/ - Auth API and Google OAuth helpers.
 
-Important quality issues to address:
-- The global SearchBar currently logs to console instead of navigating/searching. Make it route to /media?search=...
-- Several screens ask users/admins for raw IDs: GroupDetailPage pinned media, GroupDetailPage post media IDs, ModerationPage scope ID, ModerationReportRow group/user ban controls. Replace with reusable searchable entity pickers.
-- UI is visually inconsistent because most pages define local Tailwind style dictionaries. Introduce shared Button, Field, Select, Dialog, DataTable, Badge, EmptyState, Tabs, and EntityPicker primitives.
-- Admin/moderation screens need dense operational workflows rather than decorative card grids: search, pagination, filters, target previews, accessible confirmations, and summary counts.
-- GroupsPage has client-side media/tag filters that inspect group text, not real metadata. Remove them or add backend-supported group tags/categories.
-- Playwright smoke tests live under tests/e2e and currently cover route/search/picker flows with mocked network data rather than a seeded full-stack environment.
+src/features/collections/ - Collections feature.
+src/features/collections/components/ - Collection cards and tree UI.
+src/features/collections/pages/ - Collection list/detail pages; detail uses shared headers, states, and removal dialogs.
+src/features/collections/queries/ - Collection queries and mutations.
+src/features/collections/services/ - Collection API services and lookup helpers.
+
+src/features/discovery/ - Home/discovery feature.
+src/features/discovery/components/ - Hero, rows, and discovery media UI.
+src/features/discovery/pages/ - Discovery landing page.
+src/features/discovery/queries/ - Discovery data queries.
+src/features/discovery/services/ - Discovery API services.
+
+src/features/groups/ - Groups/social-community feature.
+src/features/groups/components/ - Group cards and post UI.
+src/features/groups/pages/ - Group list, detail, post detail, and create pages; touched pages use shared headers, controls, states, and dialogs.
+src/features/groups/queries/ - Group queries and mutations.
+src/features/groups/services/ - Group API and lookup services.
+
+src/features/media/ - Media catalog and admin media management feature.
+src/features/media/components/ - Media cards and status selector UI.
+src/features/media/pages/ - Media list/detail plus add/edit/cart/season admin pages; current pages use shared UI primitives and confirmation patterns.
+src/features/media/queries/ - Media list/detail/genre/TV query hooks and commands.
+src/features/media/services/ - Media, TV series, lookup, and TMDB API helpers.
+
+src/features/moderation/ - Moderation/admin feature.
+src/features/moderation/components/ - Moderation report and assignment UI with shared badges, dialogs, and feedback.
+src/features/moderation/pages/ - Moderation dashboard and audit log pages.
+src/features/moderation/queries/ - Moderation queries and mutations.
+src/features/moderation/realtime/ - Moderation realtime subscription hooks.
+src/features/moderation/services/ - Moderation API and scope lookup services.
+
+src/features/notifications/ - User notifications feature.
+src/features/notifications/components/ - Notification item UI.
+src/features/notifications/pages/ - Notifications page.
+src/features/notifications/queries/ - Notification queries and mutations.
+src/features/notifications/realtime/ - Notification SignalR hooks.
+src/features/notifications/services/ - Notification API services.
+
+src/features/ratings/ - Rating feature.
+src/features/ratings/components/ - Rating selectors and summary UI.
+src/features/ratings/queries/ - Rating summary queries and rating mutations.
+src/features/ratings/services/ - Rating API services.
+
+src/features/reviews/ - Reviews feature.
+src/features/reviews/components/ - Review editor, filters, cards, and lists.
+src/features/reviews/queries/ - Review queries and mutations.
+src/features/reviews/services/ - Review API services.
+
+src/features/users/ - User/account/profile feature.
+src/features/users/components/ - Account/profile UI sections.
+src/features/users/pages/ - Account and watchlist pages using shared page headers, forms, badges, states, and account deletion dialog.
+src/features/users/queries/ - Profile, watchlist, and media-status queries/mutations.
+src/features/users/services/ - User, profile, status, and user-lookup services.
+
+src/shared/api/ - Shared HTTP client and data access helpers.
+src/shared/api/apiClient.js - Base Axios client with credentials.
+src/shared/api/apiConfig.js - Shared API/base-origin helpers.
+src/shared/api/authInterceptor.js - CSRF and refresh-token retry wiring.
+src/shared/api/lookupApi.js - Shared lookup endpoint helpers.
+src/shared/api/queryClient.js - Shared React Query client.
+
+src/shared/components/ - Shared composite UI.
+src/shared/components/Footer/Footer.jsx - Shared footer.
+src/shared/components/Header/Header.jsx - Shared header, global nav, auth/account affordances, notification entry, and search presentation.
+src/shared/components/Header/NavigationDropdown.jsx - Header dropdown navigation.
+src/shared/components/MediaCard/MediaCard.jsx - Shared media card variant used across catalog/discovery contexts.
+
+src/shared/ui/ - Shared UI primitives and reusable controls.
+src/shared/ui/index.js - Barrel exports for shared UI primitives.
+src/shared/ui/Badge.jsx - Semantic badge/chip component.
+src/shared/ui/Button.jsx - Shared button primitive with variants and sizes.
+src/shared/ui/Checkbox.jsx - Shared checkbox primitive.
+src/shared/ui/Container.jsx - Width-constrained layout wrapper.
+src/shared/ui/DataTable.jsx - Shared data-table wrapper.
+src/shared/ui/Dialog.jsx - Shared dialog/confirmation modal.
+src/shared/ui/EmptyState.jsx - Shared no-data state.
+src/shared/ui/Flex.jsx - Flex helper primitive.
+src/shared/ui/FormField.jsx - Label/hint/error wrapper for form controls.
+src/shared/ui/Grid.jsx - Grid helper primitive.
+src/shared/ui/InlineMessage.jsx - Shared error/info/warning/success message.
+src/shared/ui/Input.jsx - Shared input primitive.
+src/shared/ui/LoadingState.jsx - Loading state and skeleton primitives.
+src/shared/ui/PageHeader.jsx - Standard page title/subtitle/action header.
+src/shared/ui/Panel.jsx - Lightweight inner panel surface.
+src/shared/ui/RouteFallback.jsx - Route-level loading/fallback UI.
+src/shared/ui/SectionCard.jsx - Standard framed section surface.
+src/shared/ui/Select.jsx - Shared select primitive.
+src/shared/ui/Stack.jsx - Vertical spacing primitive.
+src/shared/ui/StatCard.jsx - Shared stat card primitive.
+src/shared/ui/Tabs.jsx - Shared tabs control.
+src/shared/ui/Textarea.jsx - Shared textarea primitive.
+src/shared/ui/Toggle.jsx - Shared toggle primitive.
+src/shared/ui/EntityPicker/ - Reusable async entity selection modal/picker components.
+src/shared/ui/LanguageToggle/ - Language toggle UI.
+src/shared/ui/RatingStars/ - Shared rating-star display.
+src/shared/ui/SearchBar/ - Search input UI.
+src/shared/ui/ThemeToggle/ - Theme toggle UI.
+
+src/shared/constants/ - Shared constant values such as breakpoints, media types, and status types.
+src/shared/signalr/signalrClient.js - Shared SignalR client creation/wiring.
+src/shared/utils/ - Shared formatting and image helpers.
+
+src/hooks/ - Cross-feature reusable hooks.
+src/locales/ - Translation dictionaries.
+src/assets/ - Bundled imported assets.
+tests/e2e/ - Playwright browser tests.
+tests/e2e/shared-ui.spec.js - Shared UI rendering and desktop/mobile horizontal-overflow smoke coverage.
+
+Current frontend architecture summary - 2026-05-02
+--------------------------------------------------
+
+The frontend uses a feature-first React structure:
+- Route definitions live in `src/app/router.jsx`.
+- Global cross-cutting state lives in `src/context`.
+- Feature modules own their pages, components, services, query hooks, and realtime hooks.
+- Shared API behavior is centralized in `src/shared/api`.
+- Shared visual language is centralized in `src/index.css`, `src/shared/ui`, `src/shared/components`, and `src/layouts`.
+- Realtime subscriptions are isolated in feature-specific `realtime/` folders plus the shared SignalR client.
+- Production deployment is handled by `npm run build:backend`, which copies the compiled app into the backend host.
+
+Current UI implementation summary - 2026-05-02
+----------------------------------------------
+
+- Normal user surfaces now use shared page headers, controls, messages, loading states, empty states, cards, tabs, and dialogs across media, account, watchlist, groups, and collection detail.
+- Admin/media workflows now use the shared system for media management, add/edit media, media cart, season management, and media status controls.
+- Moderator/admin operational workflows now use shared filters, badges, dialogs, inline messages, empty/loading states, and action rows in moderation reports, assignments, audit logs, group moderation actions, and collection/group destructive actions.
+- New work should prefer shared primitives and `ui-*` classes before adding local button, field, card, dialog, table, or message styles.

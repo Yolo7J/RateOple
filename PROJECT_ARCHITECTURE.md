@@ -1,8 +1,24 @@
 # RateOple Architecture (Current State)
 
-Last updated: **May 1, 2026**
+Last updated: **May 4, 2026**
 
 This document reflects the code currently present in the repository.
+
+## Submission Runtime Notes
+
+For a submitted ZIP or cloned repository on another machine:
+
+- Backend HTTP launch profile runs at `http://localhost:5113`.
+- Backend HTTPS launch profile runs at `https://localhost:7167` and also exposes `http://localhost:5113`.
+- Frontend Vite development should use `frontend/.env.http.example` or `frontend/.env.https.example` copied to `frontend/.env.local` so `VITE_API_BASE_URL` matches the backend origin.
+- When the frontend is built into `backend/RateOple/wwwroot`, the app uses same-origin `/api` calls behind the backend host.
+
+Important external-service limitations in the submitted project:
+
+- TMDB-backed movie and TV metadata/images require backend configuration key `Tmdb:ReadAccessToken`.
+- Google OAuth requires backend keys `Authentication:Google:ClientId` and `Authentication:Google:ClientSecret`.
+- Those secrets are not expected to exist on another machine by default, so full media-image enrichment and Google auth are not guaranteed in a fresh submission environment.
+- If a reviewer needs the project to function at 100%, they need the missing private configuration from the project author.
 
 ## 1. System Summary
 
@@ -53,7 +69,7 @@ backend/
     Extensions/                      # DI + middleware composition
     wwwroot/                         # compiled frontend build output for production hosting
   RateOple.Core/                     # domain services, interfaces, DTOs
-    Auth/ Collections/ Groups/ Media/ Moderation/ Social/ Users/
+    Auth/ Collections/ Common/ Groups/ Media/ Moderation/ Social/ Users/ Validation/
   RateOple.Infrastructure/           # DbContext, entities, EF configs, migrations, infra middleware
     Data/Configurations/{Collections,Groups,Media,Moderation,Social,Users}
     Data/Entities/{Collections,Groups,Media,Moderation,Social,Users}
@@ -62,6 +78,8 @@ backend/
     Migrations/
     Security/
   RateOple.Constants/                # enums and constants
+  RateOple.Core.Tests/               # service-layer and validation tests
+  RateOple.Api.Tests/                # API/integration-style tests
 
 frontend/
   src/app/                           # active router + provider composition
@@ -75,14 +93,14 @@ frontend/
     # each feature uses pages/components/services/queries (+ hooks placeholders in some)
     # realtime hooks live under feature `realtime/` folders
   src/shared/
-    api/                             # axios client, auth interceptor, React Query client
+    api/                             # axios client, auth interceptor, React Query client, lookup helpers
     components/                      # shared Header/Footer/MediaCard
-    ui/                              # layout primitives + toggles/search/rating UI
+    ui/                              # layout primitives + picker/toggle/search/rating UI
     constants/ utils/
     signalr/                         # SignalR client
   src/locales/                       # i18n dictionaries
   src/assets/                        # bundled static assets
-  src/styles/                        # placeholder for global styles
+  tests/e2e/                         # Playwright browser coverage
 ```
 
 ## 3. Backend Startup Composition
@@ -236,6 +254,11 @@ Domain folders:
 
 Each domain follows `DTOs`, `Interfaces`, `Services`.
 
+Shared support folders:
+
+- `Common`
+- `Validation`
+
 ### 5.2 Infrastructure Layer (`RateOple.Infrastructure`)
 
 Entity folders:
@@ -258,9 +281,25 @@ Configuration folders mirror entity domains:
 
 `ApplicationDbContext` applies all configurations via `ApplyConfigurationsFromAssembly`.
 
+## 6. Testing Shape
+
+Backend test coverage is split across two projects:
+
+- `RateOple.Core.Tests` for service-layer, validation, and seeding behavior
+- `RateOple.Api.Tests` for HTTP/API, auth, authorization, CSRF, lookup, and endpoint-level behavior
+
+Frontend browser coverage lives under `frontend/tests/e2e` and currently focuses on smoke coverage with Playwright.
+
+Current verification snapshot as of May 4, 2026:
+
+- `dotnet test backend/RateOple.sln` passes with 303 backend tests.
+- `cd frontend && npm run lint` passes.
+- `cd frontend && npm run build` passes.
+- `cd frontend && npm run test:e2e` passes with 2 Playwright smoke tests.
+
 Note: Entities are physically domain-grouped in folders but currently share namespace `RateOple.Infrastructure.Data.Entities`.
 
-### 5.3 Controllers by Domain
+## 7. Controllers by Domain
 
 `backend/RateOple/Controllers`:
 
@@ -272,9 +311,9 @@ Note: Entities are physically domain-grouped in folders but currently share name
 - `Groups`
 - `Moderation`
 
-## 6. Database Model (Current)
+## 8. Database Model (Current)
 
-### 6.1 Media Domain
+### 8.1 Media Domain
 
 - `Media` (soft delete, aggregate ratings)
 - `Movie` (1:1 with `Media`)
@@ -287,7 +326,7 @@ Note: Entities are physically domain-grouped in folders but currently share name
 - `Tag`
 - `MediaTag` (many-to-many)
 
-### 6.2 Social Domain
+### 8.2 Social Domain
 
 - `Rating` (exactly one target: media/season/episode)
 - `Review` (1:1 with `Rating`)
@@ -296,13 +335,13 @@ Note: Entities are physically domain-grouped in folders but currently share name
 - `MediaInteraction`
 - `UserGenreScore`
 
-### 6.3 Collections Domain
+### 8.3 Collections Domain
 
 - `Collection` (hierarchical parent/child, owner type, sort mode)
 - `CollectionItem` (ordered media in collection)
 - `FollowCollection`
 
-### 6.4 Groups Domain
+### 8.4 Groups Domain
 
 - `Group`
 - `GroupBan`
@@ -313,7 +352,7 @@ Note: Entities are physically domain-grouped in folders but currently share name
 - `GroupStaffMessage`
 - `PostMedia` (media attached to group posts)
 
-### 6.5 Users Domain
+### 8.5 Users Domain
 
 - `User` (Identity)
 - `UserProfile`
@@ -321,13 +360,13 @@ Note: Entities are physically domain-grouped in folders but currently share name
 - `UserMediaStatus`
 - `Notification`
 
-### 6.6 Moderation Domain
+### 8.6 Moderation Domain
 
 - `Report`
 - `ModeratorAssignment`
 - `ModerationAuditLog`
 
-## 7. Service Registration (DI)
+## 9. Service Registration (DI)
 
 `AddApplicationServices` currently registers:
 
@@ -339,9 +378,9 @@ Note: Entities are physically domain-grouped in folders but currently share name
 - Groups: `IGroupService`
 - Moderation: `IModerationService`, `IModerationAuditService`, `IModerationRealtimePublisher` (SignalR)
 
-## 8. API Surface
+## 10. API Surface
 
-### 8.1 Auth and CSRF
+### 10.1 Auth and CSRF
 
 - `POST /api/auth/register`
 - `POST /api/auth/login`
@@ -350,14 +389,14 @@ Note: Entities are physically domain-grouped in folders but currently share name
 - `GET /api/auth/me`
 - `GET /api/csrf`
 
-### 8.2 Discovery
+### 10.2 Discovery
 
 - `GET /api/discovery/trending`
 - `GET /api/discovery/popular`
 - `GET /api/discovery/recommended`
 - `GET /api/media/{id}/similar`
 
-### 8.3 Media
+### 10.3 Media
 
 Read/query:
 
@@ -403,7 +442,7 @@ Tags and status:
 - `DELETE /api/media/{id}/tags/{tagId}`
 - `POST /api/media/{id}/status`
 
-### 8.4 TMDB Alternate Controller
+### 10.4 TMDB Alternate Controller
 
 Separate controller still exists:
 
@@ -413,7 +452,7 @@ Separate controller still exists:
 
 `POST /api/tmdb/import-series/{tmdbId}` requires the `RequireAdmin` policy.
 
-### 8.5 Ratings and Reviews
+### 10.5 Ratings and Reviews
 
 Ratings:
 
@@ -434,7 +473,7 @@ Reviews:
 - `DELETE /api/reviews/{reviewId}`
 - `GET /api/media/{mediaId}/reviews`
 
-### 8.6 Users
+### 10.6 Users
 
 Follows:
 
@@ -459,7 +498,7 @@ SignalR hubs:
 
 - `GET/POST /hubs/notifications` (SignalR)
 
-### 8.7 Collections
+### 10.7 Collections
 
 - `GET /api/collections`
 - `GET /api/collections/{id}`
@@ -472,7 +511,7 @@ SignalR hubs:
 - `POST /api/collections/{id}/follow`
 - `DELETE /api/collections/{id}/follow`
 
-### 8.8 Groups
+### 10.8 Groups
 
 - `GET /api/groups`
 - `GET /api/groups/{id}`
@@ -495,7 +534,7 @@ SignalR hubs:
 - `POST /api/groups/{id}/pinned-media`
 - `GET /api/groups/{id}/pinned-media`
 
-### 8.9 Moderation
+### 10.9 Moderation
 
 - `POST /api/moderation/reports`
 - `GET /api/moderation/reports`
@@ -505,7 +544,7 @@ SignalR hubs:
 - `DELETE /api/moderation/assignments`
 - `GET /api/moderation/audit-logs`
 
-## 9. Frontend Contract Snapshot
+## 11. Frontend Contract Snapshot
 
 - Primary routing is in `frontend/src/app/router.jsx` (rendered by `AppRouter.jsx`).
 - Providers are composed in `frontend/src/app/providers.jsx`:
@@ -559,9 +598,32 @@ Realtime clients:
 - Notifications: `frontend/src/features/notifications/realtime/useNotificationRealtime.js`
 - Moderation: `frontend/src/features/moderation/realtime/useModerationRealtime.js`
 
-## 10. External Integrations
+## 12. Frontend Visual System and Role UX
 
-### 10.1 TMDB
+The frontend has a shared visual foundation under `frontend/src/shared/ui`, `frontend/src/shared/components`, `frontend/src/layouts`, and global token/class definitions in `frontend/src/index.css`.
+
+Shared primitives include:
+
+- Layout: `Container`, `Grid`, `Stack`, `Flex`, `PageHeader`, `SectionCard`, `Panel`, `StatCard`
+- Controls: `Button`, `Input`, `Textarea`, `Select`, `Checkbox`, `Toggle`, `FormField`
+- Feedback and state: `InlineMessage`, `EmptyState`, `LoadingState`, `Skeleton`, `Dialog`
+- Data and navigation UI: `Badge`, `DataTable`, `Tabs`, `RouteFallback`
+- Composite/shared controls: `EntityPicker`, `MultiEntityPicker`, `SearchBar`, `RatingStars`
+
+Shared composite components cover the main header, navigation dropdowns, footer, and reusable media cards.
+
+Current visual/UX application:
+
+- Normal user surfaces: discovery, media list/detail, account, watchlist, groups, collection detail, notifications, ratings, and reviews use the shared page rhythm and state patterns.
+- Admin surfaces: admin dashboard, media management, add/edit media, media cart, and season manager use shared headers, cards, controls, messages, and confirmations.
+- Moderator/admin operational surfaces: moderation queues, assignment management, audit logs, group moderation actions, report status updates, group ban/unban actions, and destructive workflows use shared badges, action rows, inline feedback, and dialogs.
+- Global states: major touched pages now use common loading, empty, error, success/info, and confirmation patterns.
+
+Current design rule: prefer shared primitives and `ui-*` classes before creating page-local button, field, card, dialog, table, or message styling.
+
+## 13. External Integrations
+
+### 13.1 TMDB
 
 `TmdbService` provides:
 
@@ -571,14 +633,14 @@ Realtime clients:
 
 `TmdbImportService` imports a TMDB series into local media records.
 
-### 10.2 Open Library
+### 13.2 Open Library
 
 `OpenLibraryService` provides:
 
 - book search mapping to app DTOs
 - book details mapping from OL work endpoint
 
-## 11. Notification Design (Realtime)
+## 14. Notification Design (Realtime)
 
 Notifications are persisted first (DB is source of truth), then pushed in realtime via SignalR with polling fallback.
 
@@ -599,7 +661,7 @@ Moderation realtime events:
 - `ReportUpdated`
 - `AssignmentUpdated`
 
-## 12. Delivery Stage Status (8-Stage Plan)
+## 15. Delivery Stage Status (8-Stage Plan)
 
 Completed:
 
@@ -618,7 +680,7 @@ Not yet implemented from larger long-form roadmap:
 - Review voting
 - Additional moderation role expansion beyond current implementation details
 
-## 13. Entity Picker and Lookup Workflow Status
+## 16. Entity Picker and Lookup Workflow Status
 
 Raw database identifiers are no longer intended to be copied into user-facing group, collection, or moderation forms.
 
@@ -635,9 +697,10 @@ Current lookup/picker state:
 
 Guardrail coverage:
 
-- Playwright smoke tests cover the shared picker states, group pin/post picker flows, moderation assignment/ban picker flows, collection add-media picker flow, and 360px mobile picker interactions.
+- Playwright smoke tests currently cover shared UI rendering and horizontal overflow behavior on desktop and mobile Chromium.
+- Earlier picker/search flows are represented in the UI architecture and should be restored or extended with targeted Playwright coverage as the smoke suite grows.
 
-## 14. Architecture Quality Audit (May 1, 2026)
+## 17. Architecture Quality Audit (May 4, 2026)
 
 The current structure is feature-rich but still carries product and architecture debt that should be treated as roadmap input, not cosmetic cleanup.
 
@@ -648,30 +711,34 @@ Resolved guardrails:
 - Raw GUID workflows are replaced by lookup/entity picker flows and protected by Playwright smoke tests.
 - Global header search submits to `/media?search=<query>`, the media listing consumes query params as route state, and Playwright smoke tests cover desktop/mobile search behavior.
 - Group browsing no longer exposes fake media-type/tag filters; the UI only shows backend-supported search and visibility controls, with Playwright smoke tests covering the contract.
+- Shared frontend UI primitives now exist and are applied across user, moderator, admin, and super-admin-facing screens.
+- Common loading, empty, error, success/info, and destructive confirmation patterns are standardized across major touched pages.
+- Admin/media and moderation operational screens now use the shared visual language instead of rough isolated styles.
 
 Remaining risks:
 
 - Google OAuth works through the backend, but the frontend flow still needs polish.
-- Admin/moderation operational UI still needs richer queue, audit, and staff workflows.
-- Shared frontend design primitives are still incomplete across buttons, fields, dialogs, data tables, badges, and empty states.
+- Admin/moderation operational UI is more cohesive, but targeted smoke coverage for the new dialogs and mutation flows is still thin.
+- Some feature pages still keep local class maps and could be decomposed into smaller shared form/card/list components.
+- Season manager is visually aligned but still dense; a dedicated compact episode table/editor could improve admin ergonomics.
 - The main frontend bundle remains larger than Vite's 500 kB warning threshold and should be split later.
 - Demo seed data remains thin for media, tags, collections, groups, posts, reports, assignments, notifications, and ratings.
-- `frontend/README.md` should stay aligned with the active Vite, auth, CSRF, routing, and test workflows as those evolve.
+- `frontend/README.md`, code-structure docs, and architecture docs should stay aligned as UI/testing workflows evolve.
 
 Documentation note: the full prioritized critique and remediation backlog lives in `PROJECT_CRITIQUE_AND_RECOMMENDATIONS.txt`.
 
-## 15. Recommended Architecture Direction
+## 18. Recommended Architecture Direction
 
 Immediate architecture work should be ordered by risk and product leverage:
 
 1. Keep CSRF, seed-mode, lookup/picker, global search, and honest group filter behavior as regression guardrails when adding new workflows.
 2. Extend lookup/picker patterns to any future workflow that selects existing entities.
-3. Build remaining shared frontend primitives for buttons, fields, dialogs, data tables, badges, and empty states.
-4. Improve Google OAuth frontend polish and admin/moderation operational screens.
+3. Add targeted Playwright smoke coverage for admin media edit/cart, moderation report status dialogs, moderator assignment removal, group ban confirmation, and collection item removal.
+4. Improve Google OAuth frontend polish and any remaining dense operational screens.
 5. Decide whether `RateOple.Core` is intended to be a clean domain layer or an EF-backed service layer. Right now it references Infrastructure and injects `ApplicationDbContext`, so the honest current model is a pragmatic service layer over EF Core.
 6. Normalize DTO validation and API error responses with ProblemDetails.
 7. Add representative development/demo seeds for media, tags, collections, groups, posts, reports, assignments, notifications, and ratings.
-8. Replace the default frontend README with RateOple-specific setup, auth/CSRF, environment, and testing documentation.
-9. Split the frontend bundle by route or feature once product behavior is covered.
+8. Keep RateOple-specific README and code-structure documentation current as UI and contract behavior changes.
+9. Split the frontend bundle further by route or feature once product behavior is covered.
 
 The most important product rule for future architecture: do not design API or UI flows that require users, admins, or moderators to know database identifiers. IDs should remain implementation details behind lookup/search/select workflows.
