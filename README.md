@@ -76,6 +76,53 @@ cd backend
 dotnet build RateOple.sln
 ```
 
+### 2.1 Database setup before running the backend
+
+The backend requires a PostgreSQL database and a valid `ConnectionStrings:DefaultConnection` value in:
+
+- `backend/RateOple/appsettings.json`
+
+If the examiner wants to create/update the database from the existing EF Core migrations, use:
+
+```bash
+cd backend
+dotnet tool restore
+dotnet ef database update --project RateOple.Infrastructure --startup-project RateOple
+```
+
+Useful EF Core migration commands:
+
+Create a new migration:
+
+```bash
+cd backend
+dotnet tool restore
+dotnet ef migrations add MigrationName --project RateOple.Infrastructure --startup-project RateOple
+```
+
+Remove the last unapplied migration:
+
+```bash
+cd backend
+dotnet tool restore
+dotnet ef migrations remove --project RateOple.Infrastructure --startup-project RateOple
+```
+
+Apply migrations to the configured database:
+
+```bash
+cd backend
+dotnet tool restore
+dotnet ef database update --project RateOple.Infrastructure --startup-project RateOple
+```
+
+Important note about `dotnet-ef`:
+
+- `backend/.config/dotnet-tools.json` contains the local `dotnet-ef` tool manifest.
+- `backend/.config` is not included in the submitted ZIP.
+- Because of that, `dotnet tool restore` will not work from this repository on another machine.
+- To use the migration commands above, `dotnet-ef` must be installed globally on the examiner's machine.
+
 Run one of the backend launch profiles:
 
 HTTP:
