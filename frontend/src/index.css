@@ -267,6 +267,751 @@ textarea:disabled {
     backdrop-filter: blur(18px);
   }
 
+  .discovery-page {
+    gap: 1.25rem;
+    padding-block: 0.35rem 1.75rem;
+  }
+
+  .discovery-hero {
+    --hero-image: linear-gradient(145deg, color-mix(in srgb, var(--bg-elevated) 92%, #111827), var(--bg-primary));
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    min-width: 0;
+    overflow: hidden;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.25rem;
+    border: 1px solid color-mix(in srgb, var(--border) 92%, transparent);
+    border-radius: var(--radius-xl);
+    background:
+      linear-gradient(120deg, color-mix(in srgb, var(--bg-primary) 96%, #020617) 0%, color-mix(in srgb, var(--bg-secondary) 88%, transparent) 52%, color-mix(in srgb, var(--bg-primary) 78%, transparent) 100%),
+      radial-gradient(circle at 15% 18%, color-mix(in srgb, var(--primary-color) 22%, transparent), transparent 26rem),
+      radial-gradient(circle at 82% 18%, rgba(63, 113, 177, 0.24), transparent 30rem),
+      var(--hero-image);
+    background-position: center;
+    background-size: cover;
+    box-shadow: var(--shadow-raised);
+    padding: 1.05rem;
+  }
+
+  .discovery-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      linear-gradient(90deg, color-mix(in srgb, var(--bg-primary) 96%, transparent) 0%, color-mix(in srgb, var(--bg-primary) 82%, transparent) 52%, color-mix(in srgb, var(--bg-primary) 58%, transparent) 100%),
+      linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--bg-primary) 62%, transparent) 100%);
+    backdrop-filter: blur(18px) saturate(1.12);
+  }
+
+  .discovery-hero__content,
+  .discovery-hero__visual {
+    position: relative;
+    min-width: 0;
+  }
+
+  .discovery-hero__content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1rem;
+    padding: 0.75rem 0.25rem 0.25rem;
+  }
+
+  .discovery-hero__eyebrow {
+    display: inline-flex;
+    width: fit-content;
+    max-width: 100%;
+    align-items: center;
+    gap: 0.45rem;
+    border: 1px solid color-mix(in srgb, var(--primary-color) 34%, var(--border));
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--primary-color-alpha) 62%, transparent);
+    color: color-mix(in srgb, var(--primary-color) 82%, var(--text-primary));
+    padding: 0.35rem 0.7rem;
+    font-size: 0.74rem;
+    font-weight: 820;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+    text-transform: uppercase;
+  }
+
+  .discovery-live-dot {
+    display: inline-block;
+    height: 0.45rem;
+    width: 0.45rem;
+    flex: 0 0 auto;
+    border-radius: 999px;
+    background: var(--primary-color);
+    box-shadow: 0 0 0 0.28rem color-mix(in srgb, var(--primary-color) 14%, transparent);
+  }
+
+  .discovery-hero h1 {
+    max-width: 13ch;
+    color: var(--text-primary);
+    font-size: 2.28rem;
+    font-weight: 860;
+    letter-spacing: 0;
+    line-height: 0.98;
+    overflow-wrap: anywhere;
+  }
+
+  .discovery-hero__content > p {
+    max-width: 42rem;
+    color: var(--text-secondary);
+    font-size: 1rem;
+    line-height: 1.62;
+  }
+
+  .discovery-hero__actions {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .discovery-hero__actions .ui-button {
+    min-height: 2.85rem;
+    min-width: min(100%, 10.5rem);
+  }
+
+  .discovery-hero__chips {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    padding-top: 0.25rem;
+  }
+
+  .discovery-hero__chips span {
+    display: inline-flex;
+    min-height: 1.8rem;
+    align-items: center;
+    border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--bg-elevated) 62%, transparent);
+    color: var(--text-secondary);
+    padding: 0.25rem 0.62rem;
+    font-size: 0.78rem;
+    font-weight: 720;
+    line-height: 1.15;
+  }
+
+  .discovery-hero__visual {
+    align-self: stretch;
+  }
+
+  .discovery-feature {
+    display: grid;
+    min-height: 100%;
+    min-width: 0;
+    grid-template-columns: minmax(7rem, 0.62fr) minmax(0, 1fr);
+    gap: 0.9rem;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+    border-radius: var(--radius-lg);
+    background:
+      linear-gradient(145deg, color-mix(in srgb, var(--card-bg) 88%, transparent), color-mix(in srgb, var(--bg-secondary) 72%, transparent));
+    color: inherit;
+    padding: 0.78rem;
+    box-shadow: 0 24px 54px -38px var(--shadow-color);
+    transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+  }
+
+  .discovery-feature:hover {
+    border-color: color-mix(in srgb, var(--primary-color) 44%, var(--border));
+    background: color-mix(in srgb, var(--card-hover) 86%, transparent);
+    color: inherit;
+    box-shadow: 0 28px 70px -42px var(--shadow-color);
+    transform: translateY(-2px);
+  }
+
+  .discovery-feature__poster {
+    position: relative;
+    aspect-ratio: 2 / 3;
+    min-width: 0;
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    background:
+      radial-gradient(circle at 50% 20%, color-mix(in srgb, var(--primary-color) 20%, transparent), transparent 32%),
+      linear-gradient(145deg, var(--card-cover-bg), var(--bg-primary));
+    box-shadow: 0 20px 40px -28px rgba(0, 0, 0, 0.72);
+  }
+
+  .discovery-feature__poster::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(180deg, transparent 42%, rgba(0, 0, 0, 0.34));
+  }
+
+  .discovery-feature__poster img {
+    display: block;
+    height: 100%;
+    width: 100%;
+    object-fit: cover;
+  }
+
+  .discovery-feature__placeholder,
+  .discovery-hero__empty {
+    display: flex;
+    height: 100%;
+    min-height: 12rem;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    color: var(--text-secondary);
+    text-align: center;
+  }
+
+  .discovery-feature__placeholder {
+    padding: 1rem;
+  }
+
+  .discovery-feature__placeholder svg {
+    color: var(--primary-color);
+  }
+
+  .discovery-feature__copy {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.55rem;
+    padding-block: 0.25rem;
+  }
+
+  .discovery-feature__label {
+    color: color-mix(in srgb, var(--primary-color) 78%, var(--text-primary));
+    font-size: 0.72rem;
+    font-weight: 820;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+
+  .discovery-feature__copy h2 {
+    display: -webkit-box;
+    overflow: hidden;
+    color: var(--text-primary);
+    font-size: 1.3rem;
+    font-weight: 820;
+    letter-spacing: 0;
+    line-height: 1.08;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+  }
+
+  .discovery-feature__meta,
+  .discovery-feature__open,
+  .discovery-type-card__signals,
+  .discovery-community-card span {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.42rem;
+  }
+
+  .discovery-feature__meta {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+
+  .discovery-feature__meta span:not(:last-child)::after {
+    content: "";
+    display: inline-block;
+    height: 0.24rem;
+    width: 0.24rem;
+    margin-left: 0.42rem;
+    border-radius: 999px;
+    background: currentColor;
+    opacity: 0.52;
+    vertical-align: middle;
+  }
+
+  .discovery-feature__rating {
+    color: var(--text-secondary);
+  }
+
+  .discovery-feature__rating svg {
+    color: var(--primary-color);
+  }
+
+  .discovery-feature__open,
+  .discovery-community-card span {
+    margin-top: auto;
+    color: color-mix(in srgb, var(--primary-color) 84%, var(--text-primary));
+    font-size: 0.83rem;
+    font-weight: 800;
+    line-height: 1.25;
+  }
+
+  .discovery-hero__empty {
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+    border-radius: var(--radius-lg);
+    background:
+      radial-gradient(circle at 20% 16%, color-mix(in srgb, var(--primary-color) 16%, transparent), transparent 36%),
+      linear-gradient(145deg, color-mix(in srgb, var(--card-bg) 80%, transparent), color-mix(in srgb, var(--bg-primary) 94%, transparent));
+    padding: 1.5rem;
+  }
+
+  .discovery-hero__empty div {
+    display: flex;
+    gap: 0.55rem;
+    color: var(--primary-color);
+  }
+
+  .discovery-hero__empty h2 {
+    max-width: 18rem;
+    color: var(--text-primary);
+    font-size: 1.35rem;
+    font-weight: 820;
+    line-height: 1.12;
+  }
+
+  .discovery-hero__empty p {
+    max-width: 24rem;
+    color: var(--text-muted);
+    font-size: 0.92rem;
+    line-height: 1.5;
+  }
+
+  .discovery-hero__skeleton {
+    min-height: 18rem;
+    width: 100%;
+  }
+
+  .discovery-quick-links,
+  .discovery-type-grid,
+  .discovery-community__cards {
+    display: grid;
+    min-width: 0;
+    gap: 0.85rem;
+  }
+
+  .discovery-quick-links {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  }
+
+  .discovery-quick-link,
+  .discovery-type-card,
+  .discovery-community-card {
+    min-width: 0;
+    border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+    background: color-mix(in srgb, var(--card-bg) 84%, transparent);
+    color: inherit;
+    box-shadow: 0 18px 42px -34px var(--shadow-color);
+    transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+  }
+
+  .discovery-quick-link:hover,
+  .discovery-type-card:hover,
+  .discovery-community-card:hover {
+    border-color: color-mix(in srgb, var(--primary-color) 38%, var(--border));
+    background: var(--card-hover);
+    color: inherit;
+    box-shadow: 0 24px 58px -40px var(--shadow-color);
+    transform: translateY(-2px);
+  }
+
+  .discovery-quick-link {
+    display: flex;
+    align-items: center;
+    gap: 0.82rem;
+    border-radius: var(--radius-lg);
+    padding: 0.85rem;
+  }
+
+  .discovery-quick-link__icon,
+  .discovery-type-card__icon,
+  .discovery-community__icon {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid color-mix(in srgb, var(--primary-color) 28%, var(--border));
+    background:
+      radial-gradient(circle at 35% 18%, color-mix(in srgb, var(--primary-color) 22%, transparent), transparent 40%),
+      color-mix(in srgb, var(--bg-elevated) 82%, transparent);
+    color: var(--primary-color);
+  }
+
+  .discovery-quick-link__icon {
+    height: 2.6rem;
+    width: 2.6rem;
+    border-radius: var(--radius-md);
+  }
+
+  .discovery-quick-link span:last-child,
+  .discovery-type-card__body {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  .discovery-quick-link strong,
+  .discovery-type-card strong,
+  .discovery-community-card strong {
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    font-weight: 820;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+
+  .discovery-quick-link small,
+  .discovery-type-card small,
+  .discovery-community-card small {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-weight: 550;
+    line-height: 1.35;
+  }
+
+  .discovery-media-section,
+  .discovery-type-section {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.85rem;
+    padding-block: 0.15rem;
+  }
+
+  .discovery-section-header {
+    display: flex;
+    min-width: 0;
+    align-items: end;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .discovery-section-header__copy {
+    min-width: 0;
+  }
+
+  .discovery-section-header h2 {
+    color: var(--text-primary);
+    font-size: 1.28rem;
+    font-weight: 820;
+    letter-spacing: 0;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+  }
+
+  .discovery-section-header p {
+    max-width: 47rem;
+    margin-top: 0.25rem;
+    color: var(--text-muted);
+    font-size: 0.92rem;
+    line-height: 1.45;
+  }
+
+  .discovery-section-header__link {
+    display: inline-flex;
+    min-height: 2.25rem;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 0.38rem;
+    border: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--button-bg) 74%, transparent);
+    color: var(--text-secondary);
+    padding: 0.35rem 0.72rem;
+    font-size: 0.82rem;
+    font-weight: 780;
+    line-height: 1.2;
+  }
+
+  .discovery-section-header__link:hover {
+    border-color: color-mix(in srgb, var(--primary-color) 42%, var(--border));
+    background: var(--button-hover-bg);
+    color: var(--text-primary);
+  }
+
+  .discovery-media-row,
+  .discovery-media-skeleton-row {
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(138px, 164px);
+    gap: 0.88rem;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    padding: 0.05rem 0.05rem 0.8rem;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--primary-color) 38%, var(--border)) transparent;
+  }
+
+  .discovery-media-skeleton-card {
+    aspect-ratio: 0.54;
+    width: 100%;
+  }
+
+  .discovery-empty-state {
+    padding-block: 1.25rem;
+  }
+
+  .discovery-type-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+  }
+
+  .discovery-type-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.85rem;
+    border-radius: var(--radius-lg);
+    padding: 1rem;
+  }
+
+  .discovery-type-card__icon,
+  .discovery-community__icon {
+    height: 3rem;
+    width: 3rem;
+    border-radius: var(--radius-lg);
+  }
+
+  .discovery-type-card__signals {
+    grid-column: 2;
+    color: var(--text-muted);
+  }
+
+  .discovery-type-card__signals svg:first-child {
+    color: var(--primary-color);
+  }
+
+  .discovery-community {
+    display: grid;
+    min-width: 0;
+    gap: 1rem;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+    border-radius: var(--radius-xl);
+    background:
+      radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--primary-color) 13%, transparent), transparent 26rem),
+      linear-gradient(145deg, color-mix(in srgb, var(--bg-elevated) 78%, transparent), color-mix(in srgb, var(--bg-secondary) 86%, transparent));
+    box-shadow: var(--shadow-soft);
+    padding: 1rem;
+  }
+
+  .discovery-community__intro {
+    display: flex;
+    min-width: 0;
+    align-items: flex-start;
+    gap: 0.9rem;
+  }
+
+  .discovery-community__intro h2 {
+    color: var(--text-primary);
+    font-size: 1.35rem;
+    font-weight: 840;
+    letter-spacing: 0;
+    line-height: 1.12;
+    overflow-wrap: anywhere;
+  }
+
+  .discovery-community__intro p {
+    max-width: 48rem;
+    margin-top: 0.35rem;
+    color: var(--text-muted);
+    font-size: 0.92rem;
+    line-height: 1.5;
+  }
+
+  .discovery-community__cards {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  }
+
+  .discovery-community-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    border-radius: var(--radius-lg);
+    padding: 1rem;
+  }
+
+  .discovery-community-card > svg {
+    color: var(--primary-color);
+  }
+
+  [data-theme="light"] .discovery-hero::before {
+    background:
+      linear-gradient(90deg, rgba(248, 250, 252, 0.96) 0%, rgba(248, 250, 252, 0.84) 54%, rgba(248, 250, 252, 0.64) 100%),
+      linear-gradient(180deg, transparent 0%, rgba(248, 250, 252, 0.68) 100%);
+  }
+
+  [data-theme="light"] .discovery-feature,
+  [data-theme="light"] .discovery-quick-link,
+  [data-theme="light"] .discovery-type-card,
+  [data-theme="light"] .discovery-community-card {
+    background: rgba(255, 255, 255, 0.82);
+  }
+
+  @media (max-width: 479px) {
+    .discovery-page {
+      gap: 1rem;
+      padding-block: 0.2rem 1.25rem;
+    }
+
+    .discovery-hero {
+      padding: 0.85rem;
+    }
+
+    .discovery-hero__content {
+      gap: 0.85rem;
+      padding: 0.35rem 0.05rem 0;
+    }
+
+    .discovery-hero h1 {
+      max-width: 100%;
+      font-size: 1.86rem;
+      line-height: 1.04;
+    }
+
+    .discovery-hero__content > p {
+      font-size: 0.93rem;
+      line-height: 1.52;
+    }
+
+    .discovery-hero__actions .ui-button {
+      width: 100%;
+    }
+
+    .discovery-feature {
+      grid-template-columns: minmax(5.75rem, 0.55fr) minmax(0, 1fr);
+      gap: 0.75rem;
+      padding: 0.65rem;
+    }
+
+    .discovery-feature__copy h2 {
+      font-size: 1.05rem;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+    }
+
+    .discovery-feature__label {
+      font-size: 0.66rem;
+    }
+
+    .discovery-feature__meta,
+    .discovery-feature__open {
+      font-size: 0.76rem;
+    }
+
+    .discovery-section-header {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+
+    .discovery-section-header__link {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .discovery-media-row,
+    .discovery-media-skeleton-row {
+      grid-auto-columns: minmax(136px, 154px);
+      gap: 0.75rem;
+      margin-inline: -0.05rem;
+    }
+
+    .discovery-community__intro {
+      flex-direction: column;
+    }
+  }
+
+  @media (min-width: 640px) {
+    .discovery-page {
+      gap: 1.5rem;
+    }
+
+    .discovery-hero {
+      grid-template-columns: minmax(0, 1.05fr) minmax(14rem, 0.95fr);
+      gap: 1.15rem;
+      padding: 1.25rem;
+    }
+
+    .discovery-hero h1 {
+      font-size: 2.65rem;
+    }
+
+    .discovery-hero__content > p {
+      font-size: 1.05rem;
+    }
+
+    .discovery-media-row,
+    .discovery-media-skeleton-row {
+      grid-auto-columns: minmax(160px, 194px);
+      gap: 1rem;
+    }
+  }
+
+  @media (min-width: 900px) {
+    .discovery-hero {
+      min-height: 27rem;
+      grid-template-columns: minmax(0, 1.14fr) minmax(22rem, 0.86fr);
+      gap: 1.5rem;
+      padding: 1.4rem;
+    }
+
+    .discovery-hero__content {
+      padding: 1.4rem;
+    }
+
+    .discovery-hero h1 {
+      font-size: 4.1rem;
+    }
+
+    .discovery-feature {
+      grid-template-columns: minmax(10rem, 0.72fr) minmax(0, 1fr);
+      padding: 0.95rem;
+    }
+
+    .discovery-feature__copy h2 {
+      font-size: 1.75rem;
+    }
+
+    .discovery-community {
+      grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+      align-items: center;
+      padding: 1.15rem;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .discovery-page {
+      gap: 1.75rem;
+    }
+
+    .discovery-hero {
+      min-height: 31rem;
+      padding: 1.65rem;
+    }
+
+    .discovery-hero h1 {
+      font-size: 4.55rem;
+    }
+
+    .discovery-hero__content > p {
+      font-size: 1.1rem;
+    }
+
+    .discovery-media-row,
+    .discovery-media-skeleton-row {
+      grid-auto-columns: minmax(172px, 206px);
+    }
+  }
+
   .site-header {
     position: sticky;
     top: 0;
@@ -1099,6 +1844,7 @@ textarea:disabled {
     overflow-wrap: anywhere;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
   }
 
   .media-card__meta {

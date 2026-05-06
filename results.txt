@@ -1,3 +1,62 @@
+RateOple Discovery/Home cinematic hub refactor results
+
+Summary:
+- Refactored the Discovery/Home page from a simple hero plus rows into a fuller RateOple media hub.
+- Preserved the existing discovery API calls for trending, popular, and authenticated recommended media.
+- Kept the global shell/header/footer and shared MediaCard refactors intact, with only page-level layout and discovery component changes.
+
+Files changed:
+- frontend/src/features/discovery/pages/DiscoveryPage.jsx
+- frontend/src/features/discovery/components/DiscoveryHero.jsx
+- frontend/src/features/discovery/components/DiscoveryQuickLinks.jsx
+- frontend/src/features/discovery/components/DiscoverySection.jsx
+- frontend/src/features/discovery/components/DiscoverySectionHeader.jsx
+- frontend/src/features/discovery/components/DiscoveryExploreTypes.jsx
+- frontend/src/features/discovery/components/DiscoveryCommunityPanel.jsx
+- frontend/src/features/discovery/components/MediaRow.jsx
+- frontend/src/index.css
+- results.txt
+
+Exact UX improvements:
+- Added a stronger cinematic hero with logged-out product messaging and logged-in greeting/watchlist CTA behavior.
+- Uses the first current trending media item as the featured hero visual when available, including title, type, year, rating, and detail navigation.
+- Added a branded empty hero treatment for limited/no trending data without fake media.
+- Added compact quick links for Movies, TV Series, Books, Collections, and Groups using existing routes.
+- Rebuilt discovery section headers with descriptions and "View all" links.
+- Kept Trending Now, Recommended For You, Popular Movies, Popular TV Series, and Popular Books backed by existing discovery data.
+- Added an Explore by type section that links to real `/media?types=Movie`, `/media?types=TvSeries`, and `/media?types=Book` filters.
+- Added a community/navigation panel for groups and collections without fake group counts, posts, users, reviews, or ratings.
+- Replaced generic section loading with poster-row skeletons and added more intentional empty section copy.
+
+Data sources used:
+- `useHomeDiscoveryQuery` still fetches `/discovery/trending`, `/discovery/popular`, and authenticated `/discovery/recommended`.
+- Popular Movies, TV Series, and Books are derived from the existing popular array by media type.
+- No new backend endpoints, contracts, dependencies, or fake dynamic data were added.
+
+Responsive behavior:
+- Backend-hosted Playwright inspection at 320px, 375px, 430px, 675px, and 1366px showed no document-level horizontal overflow.
+- Media rows retain intentional horizontal scrolling while the page itself stays overflow-safe.
+- Hero CTAs stack cleanly on narrow mobile and the 675px tablet layout now reduces hero height with a split composition.
+- Footer transition after home content was inspected at the same backend-hosted viewports and remained visible at page bottom.
+- Light theme was briefly inspected and rendered the new home sections without horizontal overflow.
+
+Checks run:
+- npm run lint: passed.
+- npm run build: passed. Build emitted existing Rollup annotation warnings from @microsoft/signalr comments.
+- npm run test:e2e: passed, 2 tests.
+- dotnet build backend/RateOple/RateOple.csproj: passed while diagnosing backend host startup.
+- Backend-hosted Playwright inspection passed for desktop home, mobile 320px/375px/430px, tablet 675px, footer handoff, and light theme.
+
+build:backend status:
+- npm run build:backend: passed.
+- Copied final Vite output into backend/RateOple/wwwroot.
+- Build emitted the same existing Rollup annotation warnings from @microsoft/signalr comments.
+
+Known limitations / manual things to inspect:
+- Manual authenticated visual verification was not performed, but the logged-in hero path only changes copy and the secondary CTA to `/account/watchlist`.
+- Empty/limited-data behavior was implemented in code but not manually forced against a mocked empty API response.
+- The backend HTTPS host was already running during final inspection; an attempted sandboxed startup failed due restricted DB socket access, and an elevated startup confirmed the port was already in use.
+
 RateOple media card cinematic refactor results
 
 Summary:
