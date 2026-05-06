@@ -1,23 +1,27 @@
 import { useEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { BookOpen, ChevronDown, Film, LayoutGrid, Tv } from 'lucide-react';
 import { useLanguage } from '../../../hooks/useLanguage';
 
-const NavigationDropdown = ({ className, label, path, items }) => {
+const NavigationDropdown = ({ className, label, path, items, active = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const resolvedLabel = label ?? t('header.navigation.media');
   const resolvedPath = path ?? '/media';
   const resolvedItems =
     items ??
     [
-      { label: t('header.navigation.movies'), path: '/media?types=Movie' },
-      { label: t('header.navigation.books'), path: '/media?types=Book' },
-      { label: t('header.navigation.tvShows'), path: '/media?types=TvSeries' },
+      { label: 'All Media', path: '/media', icon: LayoutGrid },
+      { label: t('header.navigation.movies'), path: '/media?types=Movie', icon: Film },
+      { label: t('header.navigation.tvShows'), path: '/media?types=TvSeries', icon: Tv },
+      { label: t('header.navigation.books'), path: '/media?types=Book', icon: BookOpen },
     ];
+  const isActive = active || location.pathname === resolvedPath;
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -33,52 +37,66 @@ const NavigationDropdown = ({ className, label, path, items }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
+
   const handleNavigate = (target) => {
     navigate(target);
     setIsOpen(false);
   };
 
   return (
-    <div className={clsx('relative flex items-center gap-1', className)} ref={dropdownRef}>
+    <div className={clsx('relative', className)} ref={dropdownRef}>
       <button
-        className="rounded-full px-2 py-1 text-sm font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--button-hover-bg)] hover:text-[var(--text-primary)]"
-        onClick={() => handleNavigate(resolvedPath)}
-      >
-        {resolvedLabel}
-      </button>
-      <button
-        className="flex h-7 w-7 items-center justify-center rounded-full border border-transparent p-0 text-[var(--text-secondary)] transition hover:border-[var(--button-border)] hover:bg-[var(--button-hover-bg)] hover:text-[var(--text-primary)]"
+        type="button"
+        className={clsx('nav-pill gap-2', isActive && 'nav-pill-active')}
         onClick={() => setIsOpen((prev) => !prev)}
         aria-label={resolvedLabel}
         aria-expanded={isOpen}
         aria-haspopup="menu"
+        aria-current={isActive ? 'page' : undefined}
       >
-        <svg
-          className={clsx('h-4 w-4 transition', isOpen && 'rotate-180')}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.2"
-        >
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
+        <span>{resolvedLabel}</span>
+        <ChevronDown
+          className={clsx('h-4 w-4 transition-transform duration-200', isOpen && 'rotate-180')}
+          strokeWidth={2.4}
+          aria-hidden="true"
+        />
       </button>
 
       {isOpen ? (
-        <div
-          className="absolute left-0 top-full z-50 mt-3 w-60 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--dropdown-border)] bg-[var(--dropdown-bg)] shadow-[var(--shadow-raised)]"
-          role="menu"
-        >
-          {resolvedItems.map((item) => (
-            <button
-              key={item.path}
-              className="flex w-full items-center justify-between px-5 py-3 text-left text-base text-[var(--text-primary)] transition hover:bg-[var(--dropdown-hover-bg)]"
-              onClick={() => handleNavigate(item.path)}
-              role="menuitem"
-            >
-              {item.label}
-            </button>
-          ))}
+        <div className="nav-dropdown-panel" role="menu">
+          {resolvedItems.map((item) => {
+            const Icon = item.icon;
+            const itemActive = location.pathname === item.path.split('?')[0] && item.path === resolvedPath;
+
+            return (
+              <button
+                key={item.path}
+                type="button"
+                className={clsx('nav-dropdown-item', itemActive && 'nav-dropdown-item-active')}
+                onClick={() => handleNavigate(item.path)}
+                role="menuitem"
+              >
+                {Icon ? (
+                  <span className="desktop-menu-icon" aria-hidden="true">
+                    <Icon className="h-4 w-4" strokeWidth={2.2} />
+                  </span>
+                ) : null}
+                <span className="min-w-0 flex-1 truncate text-left">{item.label}</span>
+              </button>
+            );
+          })}
         </div>
       ) : null}
     </div>

@@ -33,31 +33,36 @@
   },
   
   "footer": {
-    "about": {
-      "title": "About",
-      "description": "RateOple is your platform for rating and reviewing books, movies, and TV shows."
+    "brand": {
+      "description": "Track, rate, review, and discuss movies, TV series, and books."
     },
-    "quickLinks": {
-      "title": "Quick Links",
+    "sections": {
+      "explore": "Explore",
+      "community": "Community",
+      "account": "Account"
+    },
+    "links": {
       "home": "Home",
-      "media": "Media",
-      "about": "About"
+      "media": "All Media",
+      "movies": "Movies",
+      "tvSeries": "TV Series",
+      "books": "Books",
+      "collections": "Collections",
+      "groups": "Groups",
+      "notifications": "Notifications",
+      "account": "Account",
+      "watchlist": "Watchlist"
     },
-    "contact": {
-      "title": "Contact",
-      "email": "Email",
-      "phone": "Phone"
+    "pills": {
+      "track": "Track",
+      "rate": "Rate",
+      "discuss": "Discuss"
     },
-    "socials": {
-      "facebook": "Facebook",
-      "twitter": "Twitter",
-      "instagram": "Instagram"
-    },
-    "copyright": "© 2024 RateOple. All rights reserved.",
-    "mobile": {
+    "legal": {
       "privacy": "Privacy",
       "terms": "Terms"
-    }
+    },
+    "copyright": "© 2024 RateOple. All rights reserved."
   },
 
 

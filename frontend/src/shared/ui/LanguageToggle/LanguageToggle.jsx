@@ -1,40 +1,18 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
+import { Check, ChevronDown, Globe2 } from 'lucide-react';
 import { useLanguage } from '../../../hooks/useLanguage';
 
-const styles = {
-  wrapper: 'relative',
-  button: [
-    'flex h-10 items-center gap-1.5 rounded-lg border border-[var(--button-border)]',
-    'bg-[var(--button-bg)] px-3 text-sm font-medium text-[var(--text-primary)]',
-    'transition duration-200 hover:bg-[var(--button-hover-bg)] hover:border-[var(--primary-color)] hover:-translate-y-0.5',
-    'lg:h-11',
-  ].join(' '),
-  icon: 'transition group-hover:rotate-12',
-  dropdown: [
-    'absolute right-0 top-[calc(100%+0.5rem)] z-50 min-w-[150px] md:min-w-[180px]',
-    'overflow-hidden rounded-lg border border-[var(--dropdown-border)] bg-[var(--dropdown-bg)]',
-    'shadow-[0_4px_12px_var(--shadow-color)]',
-  ].join(' '),
-  option: [
-    'flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-[var(--text-primary)]',
-    'transition hover:bg-[var(--dropdown-hover-bg)]',
-  ].join(' '),
-  optionActive: 'bg-[var(--primary-color-alpha)] text-[var(--primary-color)] font-medium',
-  flag: 'text-lg',
-  label: 'flex-1',
-  check: 'text-[var(--primary-color)]',
-};
-
-const LanguageToggle = () => {
+const LanguageToggle = ({ align = 'right', className }) => {
   const [isOpen, setIsOpen] = useState(false);
   const { language, switchLanguage, t } = useLanguage();
   const dropdownRef = useRef(null);
 
   const languages = [
-    { code: 'en', label: t('header.language.english'), flag: '🇬🇧' },
-    { code: 'bg', label: t('header.language.bulgarian'), flag: '🇧🇬' },
+    { code: 'en', label: t('header.language.english'), shortLabel: 'EN' },
+    { code: 'bg', label: t('header.language.bulgarian'), shortLabel: 'BG' },
   ];
+  const currentLanguage = languages.find((item) => item.code === language) ?? languages[0];
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -52,60 +30,60 @@ const LanguageToggle = () => {
     };
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
+
   const handleLanguageChange = (langCode) => {
     switchLanguage(langCode);
     setIsOpen(false);
   };
 
   return (
-    <div className={styles.wrapper} ref={dropdownRef}>
+    <div className={clsx('language-toggle-wrap', className)} ref={dropdownRef}>
       <button
-        className={`group ${styles.button}`}
+        type="button"
+        className="language-toggle-control"
         onClick={() => setIsOpen(!isOpen)}
         aria-label={t('header.language.toggle')}
         aria-expanded={isOpen}
+        aria-haspopup="menu"
       >
-        <svg
-          className="h-5 w-5 lg:h-6 lg:w-6 transition duration-200"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-        >
-          <circle cx="12" cy="12" r="10" />
-          <line x1="2" y1="12" x2="22" y2="12" />
-          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-        </svg>
-        <span>{language.toUpperCase()}</span>
+        <Globe2 className="h-5 w-5" strokeWidth={2.25} aria-hidden="true" />
+        <span>{currentLanguage.shortLabel}</span>
+        <ChevronDown
+          className={clsx('h-3.5 w-3.5 transition-transform duration-200', isOpen && 'rotate-180')}
+          strokeWidth={2.4}
+          aria-hidden="true"
+        />
       </button>
 
-      {isOpen && (
-        <div className={styles.dropdown}>
+      {isOpen ? (
+        <div className={clsx('language-menu', align === 'left' ? 'left-0' : 'right-0')} role="menu">
           {languages.map((lang) => (
             <button
               key={lang.code}
-              className={clsx(styles.option, language === lang.code && styles.optionActive)}
+              type="button"
+              className={clsx('language-menu-item', language === lang.code && 'language-menu-item-active')}
               onClick={() => handleLanguageChange(lang.code)}
+              role="menuitem"
             >
-              <span className={styles.flag}>{lang.flag}</span>
-              <span className={styles.label}>{lang.label}</span>
-              {language === lang.code && (
-                <svg
-                  className={styles.check}
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              )}
+              <span className="language-code">{lang.shortLabel}</span>
+              <span className="min-w-0 flex-1 truncate text-left">{lang.label}</span>
+              {language === lang.code ? <Check className="h-4 w-4" strokeWidth={2.4} aria-hidden="true" /> : null}
             </button>
           ))}
         </div>
-      )}
+      ) : null}
     </div>
   );
 };

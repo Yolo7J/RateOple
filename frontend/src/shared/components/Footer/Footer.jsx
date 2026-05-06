@@ -1,74 +1,123 @@
 import { Link } from 'react-router-dom';
+import { Bell, BookOpen, Film, Layers, Star, Tv, User, Users } from 'lucide-react';
 import { useLanguage } from '../../../hooks/useLanguage';
+import { useAuth } from '../../../context/AuthContext';
 import Container from '../../ui/Container';
 
-const styles = {
-  footer: [
-    'mt-16 border-t border-[var(--header-border)]',
-    'bg-[var(--bg-secondary)]/90 backdrop-blur',
-  ].join(' '),
-  desktop: 'hidden md:grid grid-cols-[2fr_1fr_1.4fr] gap-10 py-9',
-  columnTitle: 'mb-3 font-semibold text-[var(--text-primary)]',
-  text: 'text-sm text-[var(--text-secondary)]',
-  list: 'space-y-2',
-  listItem: 'text-sm text-[var(--text-secondary)] transition hover:text-[var(--primary-color)]',
-  socials: 'mt-3 flex gap-2 text-sm text-[var(--text-secondary)]',
-  copy: 'mt-4 text-xs text-[var(--text-muted)]',
-  socialBadge: 'ui-badge',
-  mobile: 'block md:hidden text-center py-8',
-  mobileTitle: 'mb-4 text-xl font-bold text-[var(--text-primary)]',
-  mobileContact: 'flex flex-col gap-1 text-sm text-[var(--text-secondary)]',
-  mobileBottom: 'mt-4 flex flex-wrap items-center justify-center gap-2 text-xs text-[var(--text-muted)]',
-};
+const FooterLink = ({ to, children }) => (
+  <Link className="footer-link" to={to}>
+    {children}
+  </Link>
+);
 
 function Footer() {
   const { t } = useLanguage();
+  const { user } = useAuth();
+
+  const exploreLinks = [
+    { label: t('footer.links.home'), path: '/', icon: Star },
+    { label: t('footer.links.media'), path: '/media', icon: Film },
+    { label: t('footer.links.movies'), path: '/media?types=Movie', icon: Film },
+    { label: t('footer.links.tvSeries'), path: '/media?types=TvSeries', icon: Tv },
+    { label: t('footer.links.books'), path: '/media?types=Book', icon: BookOpen },
+  ];
+
+  const communityLinks = [
+    { label: t('footer.links.collections'), path: '/collections', icon: Layers },
+    { label: t('footer.links.groups'), path: '/groups', icon: Users },
+    ...(user ? [{ label: t('footer.links.notifications'), path: '/notifications', icon: Bell }] : []),
+  ];
+
+  const accountLinks = user
+    ? [
+        { label: t('footer.links.account'), path: '/account', icon: User },
+        { label: t('footer.links.watchlist'), path: '/account/watchlist', icon: Star },
+      ]
+    : [
+        { label: t('header.auth.login'), path: '/login', icon: User },
+        { label: t('header.auth.register'), path: '/register', icon: Star },
+      ];
 
   return (
-    <footer className={styles.footer}>
-      <Container size="xxl" className={styles.desktop}>
-        <div>
-          <h4 className={styles.columnTitle}>{t('footer.about.title')}</h4>
-          <p className={styles.text}>{t('footer.about.description')}</p>
-          <p className={styles.copy}>{t('footer.copyright')}</p>
-        </div>
+    <footer className="site-footer">
+      <Container size="xxl" className="py-8 sm:py-10 lg:py-12">
+        <div className="grid gap-8 lg:grid-cols-[1.5fr_2fr] lg:gap-12">
+          <div className="max-w-xl">
+            <Link className="footer-brand" to="/" aria-label={t('header.logo')}>
+              <span className="brand-mark" aria-hidden="true">
+                <Star className="h-4 w-4 fill-current" strokeWidth={2.4} />
+              </span>
+              <span>{t('header.logo')}</span>
+            </Link>
+            <p className="mt-4 max-w-md text-sm leading-6 text-[var(--text-secondary)] sm:text-base">
+              {t('footer.brand.description')}
+            </p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <span className="footer-pill">{t('footer.pills.track')}</span>
+              <span className="footer-pill">{t('footer.pills.rate')}</span>
+              <span className="footer-pill">{t('footer.pills.discuss')}</span>
+            </div>
+          </div>
 
-        <div>
-          <h4 className={styles.columnTitle}>{t('footer.quickLinks.title')}</h4>
-          <ul className={styles.list}>
-            <li><Link className={styles.listItem} to="/">{t('footer.quickLinks.home')}</Link></li>
-            <li><Link className={styles.listItem} to="/media">{t('footer.quickLinks.media')}</Link></li>
-            <li><Link className={styles.listItem} to="/groups">{t('footer.quickLinks.about')}</Link></li>
-          </ul>
-        </div>
+          <div className="grid gap-6 sm:grid-cols-3">
+            <div>
+              <h2 className="footer-heading">{t('footer.sections.explore')}</h2>
+              <ul className="mt-3 grid gap-2.5">
+                {exploreLinks.map((link) => {
+                  const Icon = link.icon;
+                  return (
+                    <li key={link.path}>
+                      <FooterLink to={link.path}>
+                        <Icon className="h-4 w-4" strokeWidth={2.2} aria-hidden="true" />
+                        {link.label}
+                      </FooterLink>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
 
-        <div>
-          <h4 className={styles.columnTitle}>{t('footer.contact.title')}</h4>
-          <p className={styles.text}>{t('footer.contact.email')}: example@email.com</p>
-          <p className={styles.text}>{t('footer.contact.phone')}: +359 000 000</p>
+            <div>
+              <h2 className="footer-heading">{t('footer.sections.community')}</h2>
+              <ul className="mt-3 grid gap-2.5">
+                {communityLinks.map((link) => {
+                  const Icon = link.icon;
+                  return (
+                    <li key={link.path}>
+                      <FooterLink to={link.path}>
+                        <Icon className="h-4 w-4" strokeWidth={2.2} aria-hidden="true" />
+                        {link.label}
+                      </FooterLink>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
 
-          <div className={styles.socials}>
-            <span className={styles.socialBadge}>FB</span>
-            <span className={styles.socialBadge}>TW</span>
-            <span className={styles.socialBadge}>IG</span>
+            <div>
+              <h2 className="footer-heading">{t('footer.sections.account')}</h2>
+              <ul className="mt-3 grid gap-2.5">
+                {accountLinks.map((link) => {
+                  const Icon = link.icon;
+                  return (
+                    <li key={link.path}>
+                      <FooterLink to={link.path}>
+                        <Icon className="h-4 w-4" strokeWidth={2.2} aria-hidden="true" />
+                        {link.label}
+                      </FooterLink>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
           </div>
         </div>
-      </Container>
 
-      <Container className={styles.mobile}>
-        <h3 className={styles.mobileTitle}>RATEOPLE</h3>
-
-        <div className={styles.mobileContact}>
-          <span>{t('footer.contact.phone')}: +359 000 000</span>
-          <span>{t('footer.contact.email')}: example@email.com</span>
-        </div>
-
-        <div className={styles.mobileBottom}>
-          <span>© 2024</span>
-          <span>•</span>
-          <span>{t('footer.mobile.privacy')}</span>
-          <span>•</span>
-          <span>{t('footer.mobile.terms')}</span>
+        <div className="footer-bottom">
+          <span>{t('footer.copyright')}</span>
+          <span className="hidden h-1 w-1 rounded-full bg-[var(--text-muted)] sm:block" aria-hidden="true" />
+          <span>{t('footer.legal.privacy')}</span>
+          <span>{t('footer.legal.terms')}</span>
         </div>
       </Container>
     </footer>

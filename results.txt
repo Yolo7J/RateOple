@@ -1,95 +1,52 @@
-Generated date: 2026-05-02
+RateOple global shell refactor results
 
-Scope
-- Applied the shared RateOple UI foundation across high-traffic user pages, admin/media workflows, moderation workflows, group workflows, and collection detail surfaces.
-- Kept backend contracts, routing, and core product flows intact.
-- Focused on page-level polish, reusable primitive adoption, consistent operational density, and standardized loading/empty/error/confirmation patterns.
+Summary:
+- Refactored the shared frontend shell into a dark-first cinematic media hub foundation.
+- Preserved route paths, auth behavior, notifications, language switching, theme switching, search, and role-based staff links.
 
-Files changed
-- frontend/src/features/collections/pages/CollectionDetailPage.jsx
-- frontend/src/features/groups/pages/CreateGroupPage.jsx
-- frontend/src/features/groups/pages/GroupDetailPage.jsx
-- frontend/src/features/groups/pages/GroupPostDetailPage.jsx
-- frontend/src/features/media/components/MediaStatusSelector.jsx
-- frontend/src/features/media/pages/AddMediaPage.jsx
-- frontend/src/features/media/pages/CartPage.jsx
-- frontend/src/features/media/pages/EditMediaPage.jsx
-- frontend/src/features/media/pages/MediaDetailPage.jsx
-- frontend/src/features/media/pages/MediaListPage.jsx
-- frontend/src/features/media/pages/SeasonManagerPage.jsx
-- frontend/src/features/moderation/components/ModerationReportRow.jsx
-- frontend/src/features/moderation/components/ModeratorAssignmentList.jsx
-- frontend/src/features/moderation/pages/AuditLogPage.jsx
-- frontend/src/features/moderation/pages/ModerationPage.jsx
-- frontend/src/features/users/pages/AccountPage.jsx
-- frontend/src/features/users/pages/WatchlistPage.jsx
-- results.txt
+Files changed:
+- frontend/src/shared/components/Header/Header.jsx
+- frontend/src/shared/components/Header/NavigationDropdown.jsx
+- frontend/src/shared/components/Footer/Footer.jsx
+- frontend/src/layouts/MainLayout.jsx
+- frontend/src/layouts/AuthLayout.jsx
+- frontend/src/layouts/GroupLayout.jsx
+- frontend/src/index.css
+- frontend/src/shared/ui/ThemeToggle/ThemeToggle.jsx
+- frontend/src/shared/ui/LanguageToggle/LanguageToggle.jsx
+- frontend/src/shared/ui/SearchBar/SearchBar.jsx
+- frontend/src/locales/en.json
+- frontend/src/locales/bg.json
 
-User-facing page polish
-- Media list now uses shared PageHeader, Button, Input, Select, Checkbox, Badge, Skeleton, EmptyState, and InlineMessage patterns.
-- Media detail now uses shared tabs, badges, cards, loading/error states, and cleaner season/episode panels.
-- Group creation now uses PageHeader, SectionCard, FormField, Input, Textarea, Select, Button, and InlineMessage.
-- Account page now uses shared page header, form fields, inputs, textareas, badges, empty states, loading/error states, and a Dialog for account deletion confirmation.
-- Watchlist now uses PageHeader, SectionCard, Badge, EmptyState, LoadingState, and InlineMessage.
-- Group detail and group post detail now use shared headers, panels, buttons, loading/error/empty states, and dialogs for destructive/reporting actions.
-- Collection detail now uses shared headers, buttons, select styling, inline errors, loading/error/empty states, and a dialog for removing collection items.
+UX improvements:
+- Rebuilt the desktop header with a sticky translucent surface, larger 44px action controls, clearer logo treatment, visible bell icon, readable unread badges, stronger search, and a polished account dropdown.
+- Reworked the media dropdown with a single clear trigger, larger menu rows, icons, active state styling, click-outside closing, and Escape closing.
+- Replaced the cramped mobile navigation with full-height app drawers for navigation and account, plus a separate search sheet with clear title, close button, and full-width search.
+- Added drawer sections for Explore, Personal, Staff, Settings, and Account, preserving admin/moderation visibility rules.
+- Redesigned the footer as a product footer with brand copy, route-based Explore/Community/Account links, auth-aware account links, and no fake contact information.
+- Updated ThemeToggle and LanguageToggle to use larger visible controls with clearer state, icons, and readable EN/BG language labels.
+- Removed the Google Fonts import and moved to a system font stack to avoid CSP font-loading issues.
 
-Admin page polish
-- Add media now uses the shared page rhythm, PageHeader, shared card/button/input classes, calmer type selection cards, and cleaner search/form presentation.
-- Edit media now uses PageHeader, SectionCard, FormField, Input, Textarea, Checkbox, Button, InlineMessage, and LoadingState.
-- Media cart now uses PageHeader, Badge, Button, Dialog, EmptyState, FormField, Input, Textarea, InlineMessage, and SectionCard.
-- Season manager now uses shared page headers, cards, panels, buttons, badges, empty/loading/error states, and Dialog confirmation for deletes.
-- Media status selector now uses shared Select and Button styling.
+Responsive behavior:
+- Header uses the mobile/tablet shell below xl to avoid cramped intermediate layouts, then switches to full desktop navigation/search/actions at xl and above.
+- Mobile controls use 44px minimum hit areas and the drawer width is constrained for 320px screens.
+- Drawer bodies are scrollable for short-height devices.
+- Global html/body/root overflow-x clipping was added to prevent horizontal scroll.
+- Existing Playwright shared UI tests passed in desktop Chromium and mobile Chromium, including the horizontal-overflow guard.
 
-Moderation page polish
-- Moderation page filters and assignment form controls now use shared Select and Button primitives.
-- Moderation report rows now use Dialog confirmations for status changes and group ban/unban actions instead of browser confirms.
-- Moderator assignment removal now uses a shared Dialog confirmation and clearer badge labeling.
-- Audit log filters now use shared Select, and audit cards now include status/scope badges for faster scanning.
-- Group moderation actions now use shared confirmation and feedback patterns.
+Accessibility improvements:
+- Icon-only controls have aria-labels.
+- Menu, drawer, and dropdown triggers expose aria-expanded and aria-haspopup where relevant.
+- Mobile panels use dialog semantics with aria-modal.
+- Escape closes mobile panels and desktop dropdowns.
+- Overlay click closes mobile panels.
+- Focus ring styles remain visible through the global token system.
 
-Shared feedback/dialog state improvements
-- Replaced raw browser prompt/confirm patterns in touched moderation and group-post workflows with shared Dialog flows.
-- Standardized error presentation with InlineMessage on major touched pages.
-- Standardized no-data presentation with EmptyState on media, account, watchlist, group, collection, moderation, and season-management surfaces.
-- Standardized loading presentation with LoadingState on major touched pages.
+Checks run:
+- npm run lint: passed.
+- npm run build: passed. Build emitted existing Rollup annotation warnings from @microsoft/signalr comments.
+- npm run test:e2e: passed, 2 tests.
 
-Accessibility/responsiveness improvements
-- Improved visible focus consistency by routing more controls through shared primitives and global ui-* classes.
-- Added proper dialog affordances for destructive actions instead of native browser confirms/prompts.
-- Improved mobile behavior by using wrapping action rows, responsive card grids, and shared density primitives.
-- Preserved keyboard activation behavior on collection item cards.
-
-Playwright updates
-- No Playwright selector updates were needed.
-- Existing shared UI smoke coverage continued to pass on desktop and mobile Chromium.
-
-Commands run and results
-- npm run lint: passed after user-facing batch.
-- npm run build: passed after user-facing batch.
-- npm run test:e2e: passed after user-facing batch, 2 passed.
-- npm run lint: passed after admin/media batch.
-- npm run build: passed after admin/media batch.
-- npm run test:e2e: passed after admin/media batch, 2 passed.
-- npm run lint: passed after moderation/group/collection batch.
-- npm run build: passed after moderation/group/collection batch.
-- npm run test:e2e: passed after moderation/group/collection batch, 2 passed.
-- dotnet test backend/RateOple.sln: passed, 303 total tests passed.
-- cd frontend && npm run lint: passed.
-- cd frontend && npm run build: passed.
-- cd frontend && npm run test:e2e: passed, 2 passed.
-
-Commits created
-- cbda825 Apply shared UI to user-facing pages
-- 23b22c3 Polish admin media workflows
-- 7e2279d Polish moderation and group workflows
-- Report commit: Record frontend UI polish results
-
-Remaining frontend polish gaps
-- Some page internals still use local class maps and could be further decomposed into smaller shared form/card/list components.
-- Collections and groups are visually improved, but a deeper interaction pass could refine rename/follow/unfollow feedback and member-role workflows.
-- Season manager still has dense operational controls; it is more cohesive now, but could benefit from a dedicated compact episode table component.
-- The smoke test suite is intentionally lightweight and does not yet cover the newly polished admin/moderation mutation dialogs.
-
-Recommended next task
-- Add targeted Playwright smoke coverage for admin media edit/cart, moderation report status dialogs, moderator assignment removal, group ban confirmation, and collection item removal.
+Known limitations / manual inspection:
+- Privacy and Terms are displayed in the footer bottom row as labels because no Privacy or Terms routes exist in frontend/src/app/router.jsx.
+- Discovery/Home page content and MediaCard were intentionally not redesigned in this refactor.

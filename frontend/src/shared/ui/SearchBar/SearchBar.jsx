@@ -1,26 +1,26 @@
 import { useMemo } from 'react';
+import clsx from 'clsx';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useLanguage } from '../../../hooks/useLanguage';
 
 const styles = {
   form: [
-    'flex items-center gap-2 rounded-[var(--radius-lg)] border border-[var(--search-border)]',
-    'bg-[var(--search-bg)] px-3 py-2 transition lg:px-4 lg:py-2.5',
-    'min-w-[160px] sm:min-w-[200px] md:min-w-[240px] lg:min-w-[280px]',
+    'flex min-h-12 w-full min-w-0 items-center gap-2 rounded-[var(--radius-lg)] border border-[var(--search-border)]',
+    'bg-[var(--search-bg)] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition lg:px-4',
     'focus-within:border-[var(--primary-color)]',
     'focus-within:shadow-[0_0_0_3px_var(--focus-ring)]',
   ].join(' '),
   iconButton: [
-    'flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] p-0 text-[var(--text-secondary)] transition',
+    'flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-md)] !p-0 text-[var(--text-secondary)] transition',
     'group-focus-within:text-[var(--primary-color)] hover:text-[var(--primary-color)]',
   ].join(' '),
   input: [
-    'flex-1 border-0 bg-transparent text-sm text-[var(--text-primary)] outline-none lg:text-base',
+    'min-w-0 flex-1 border-0 bg-transparent text-sm font-medium text-[var(--text-primary)] outline-none lg:text-base',
     'placeholder:text-[var(--text-secondary)]',
   ].join(' '),
 };
 
-const SearchBar = ({ onSearchComplete }) => {
+const SearchBar = ({ onSearchComplete, className, autoFocus = false }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -40,7 +40,7 @@ const SearchBar = ({ onSearchComplete }) => {
   };
 
   return (
-    <form className={`group ${styles.form}`} onSubmit={handleSearch}>
+    <form className={clsx('group', styles.form, className)} onSubmit={handleSearch}>
       <button
         type="submit"
         className={styles.iconButton}
@@ -67,6 +67,7 @@ const SearchBar = ({ onSearchComplete }) => {
         placeholder={t('header.search.placeholder')}
         defaultValue={searchValue}
         aria-label={t('header.search.placeholder')}
+        autoFocus={autoFocus}
       />
     </form>
   );

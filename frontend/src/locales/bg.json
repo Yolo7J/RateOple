@@ -33,31 +33,36 @@
   },
 
   "footer": {
-    "about": {
-      "title": "За нас",
-      "description": "RateOple е вашата платформа за оценяване и ревюта на книги, филми и сериали."
+    "brand": {
+      "description": "Следете, оценявайте, ревюирайте и обсъждайте филми, сериали и книги."
     },
-    "quickLinks": {
-      "title": "Бързи връзки",
+    "sections": {
+      "explore": "Разглеждане",
+      "community": "Общност",
+      "account": "Профил"
+    },
+    "links": {
       "home": "Начало",
-      "media": "Медия",
-      "about": "За нас"
+      "media": "Всички медии",
+      "movies": "Филми",
+      "tvSeries": "Сериали",
+      "books": "Книги",
+      "collections": "Колекции",
+      "groups": "Групи",
+      "notifications": "Известия",
+      "account": "Профил",
+      "watchlist": "Списък"
     },
-    "contact": {
-      "title": "Контакт",
-      "email": "Имейл",
-      "phone": "Телефон"
+    "pills": {
+      "track": "Следете",
+      "rate": "Оценявайте",
+      "discuss": "Обсъждайте"
     },
-    "socials": {
-      "facebook": "Фейсбук",
-      "twitter": "Туитър",
-      "instagram": "Инстаграм"
-    },
-    "copyright": "© 2024 RateOple. Всички права запазени.",
-    "mobile": {
+    "legal": {
       "privacy": "Поверителност",
       "terms": "Условия"
-    }
+    },
+    "copyright": "© 2024 RateOple. Всички права запазени."
   },
 
   "home": {

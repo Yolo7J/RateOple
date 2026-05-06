@@ -1,5 +1,29 @@
-import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import clsx from 'clsx';
+import { useLocation, useNavigate } from 'react-router-dom';
+import {
+  Bell,
+  BookOpen,
+  Bookmark,
+  ChevronRight,
+  Clapperboard,
+  Film,
+  Home,
+  Layers,
+  LayoutGrid,
+  LogIn,
+  LogOut,
+  Menu,
+  Search,
+  Settings,
+  ShieldCheck,
+  Star,
+  Tv,
+  User,
+  UserPlus,
+  Users,
+  X,
+} from 'lucide-react';
 import { useLanguage } from '../../../hooks/useLanguage';
 import { useAuth } from '../../../context/AuthContext';
 import { useNotificationsQuery } from '../../../features/notifications/queries/useNotificationsQuery';
@@ -9,11 +33,118 @@ import ThemeToggle from '../../ui/ThemeToggle/ThemeToggle';
 import LanguageToggle from '../../ui/LanguageToggle/LanguageToggle';
 import Container from '../../ui/Container';
 
+const formatUnreadCount = (count) => (count > 99 ? '99+' : String(count));
+
+const BrandMark = ({ compact = false }) => (
+  <span className={clsx('brand-mark', compact && 'brand-mark-compact')} aria-hidden="true">
+    <Star className="h-4 w-4 fill-current" strokeWidth={2.4} />
+  </span>
+);
+
+const BrandButton = ({ label, onClick, className, compact = false, showTagline = false }) => (
+  <button type="button" className={clsx('header-brand', className)} onClick={onClick} aria-label={label}>
+    <BrandMark compact={compact} />
+    <span className="min-w-0">
+      <span className={clsx('block truncate font-bold leading-none tracking-normal', compact ? 'text-lg' : 'text-xl')}>
+        {label}
+      </span>
+      {showTagline ? (
+        <span className="mt-1 hidden text-xs font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)] sm:block">
+          Rate. Review. Discuss.
+        </span>
+      ) : null}
+    </span>
+  </button>
+);
+
+const HeaderActionButton = ({ children, className, ...props }) => (
+  <button type="button" className={clsx('icon-button header-action-button', className)} {...props}>
+    {children}
+  </button>
+);
+
+const NotificationBadge = ({ count, pulse = false, className }) => {
+  if (!count) return null;
+
+  return (
+    <span className={clsx('notification-badge', pulse && 'live-badge', className)}>
+      {formatUnreadCount(count)}
+    </span>
+  );
+};
+
+const DesktopNavButton = ({ active = false, children, onClick }) => (
+  <button
+    type="button"
+    className={clsx('nav-pill', active && 'nav-pill-active')}
+    onClick={onClick}
+    aria-current={active ? 'page' : undefined}
+  >
+    {children}
+  </button>
+);
+
+const MobileSection = ({ title, children }) => (
+  <section className="grid gap-2">
+    <h2 className="mobile-section-title">{title}</h2>
+    <div className="grid gap-2">{children}</div>
+  </section>
+);
+
+const MobileNavButton = ({
+  icon: Icon,
+  label,
+  onClick,
+  badgeCount = 0,
+  active = false,
+  primary = false,
+  danger = false,
+  showChevron = true,
+}) => (
+  <button
+    type="button"
+    className={clsx(
+      'mobile-nav-item',
+      active && 'mobile-nav-item-active',
+      primary && 'mobile-nav-item-primary',
+      danger && 'mobile-nav-item-danger',
+    )}
+    onClick={onClick}
+    aria-current={active ? 'page' : undefined}
+  >
+    {Icon ? (
+      <span className="mobile-nav-icon" aria-hidden="true">
+        <Icon className="h-5 w-5" strokeWidth={2.2} />
+      </span>
+    ) : null}
+    <span className="min-w-0 flex-1 truncate text-left">{label}</span>
+    {badgeCount > 0 ? <NotificationBadge count={badgeCount} className="notification-badge-inline" /> : null}
+    {showChevron ? <ChevronRight className="h-4 w-4 shrink-0 text-[var(--text-muted)]" aria-hidden="true" /> : null}
+  </button>
+);
+
+const DesktopMenuButton = ({ icon, label, onClick, danger = false }) => {
+  const MenuIcon = icon;
+
+  return (
+    <button
+      type="button"
+      className={clsx('desktop-menu-item', danger && 'desktop-menu-item-danger')}
+      onClick={onClick}
+      role="menuitem"
+    >
+      <span className="desktop-menu-icon" aria-hidden="true">
+        <MenuIcon className="h-4 w-4" strokeWidth={2.2} />
+      </span>
+      <span>{label}</span>
+    </button>
+  );
+};
+
 const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isMobileUserOpen, setIsMobileUserOpen] = useState(false);
-  const [isMobileMediaOpen, setIsMobileMediaOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [badgePulse, setBadgePulse] = useState(false);
   const userMenuRef = useRef(null);
@@ -23,6 +154,7 @@ const Header = () => {
   const { user, logout } = useAuth();
   const { data: unreadData } = useNotificationsQuery({ unreadOnly: true, page: 1, pageSize: 1 }, Boolean(user));
   const navigate = useNavigate();
+  const location = useLocation();
   const unreadCount = unreadData?.totalCount ?? 0;
   const isAdmin = Array.isArray(user?.roles)
     ? user.roles.some((role) => ['Admin', 'SuperAdmin'].includes(role))
@@ -30,6 +162,19 @@ const Header = () => {
   const hasModerationAccess = Array.isArray(user?.roles)
     ? user.roles.some((role) => ['Admin', 'SuperAdmin', 'Moderator'].includes(role))
     : false;
+
+  const closeMobilePanels = useCallback(() => {
+    setIsMobileMenuOpen(false);
+    setIsMobileSearchOpen(false);
+    setIsMobileUserOpen(false);
+  }, []);
+
+  const openMobilePanel = useCallback((panel) => {
+    setIsMobileMenuOpen(panel === 'menu');
+    setIsMobileSearchOpen(panel === 'search');
+    setIsMobileUserOpen(panel === 'account');
+    setIsUserMenuOpen(false);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -44,6 +189,38 @@ const Header = () => {
 
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isUserMenuOpen]);
+
+  useEffect(() => {
+    const hasOpenMobilePanel = isMobileMenuOpen || isMobileSearchOpen || isMobileUserOpen;
+
+    if (!hasOpenMobilePanel && !isUserMenuOpen) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key !== 'Escape') return;
+      closeMobilePanels();
+      setIsUserMenuOpen(false);
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [closeMobilePanels, isMobileMenuOpen, isMobileSearchOpen, isMobileUserOpen, isUserMenuOpen]);
+
+  useEffect(() => {
+    const hasOpenMobilePanel = isMobileMenuOpen || isMobileSearchOpen || isMobileUserOpen;
+
+    if (!hasOpenMobilePanel) {
+      return undefined;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isMobileMenuOpen, isMobileSearchOpen, isMobileUserOpen]);
 
   useEffect(() => {
     const prev = prevUnreadRef.current;
@@ -62,10 +239,7 @@ const Header = () => {
 
   const handleNavigate = (path) => {
     navigate(path);
-    setIsMobileMenuOpen(false);
-    setIsMobileSearchOpen(false);
-    setIsMobileUserOpen(false);
-    setIsMobileMediaOpen(false);
+    closeMobilePanels();
     setIsUserMenuOpen(false);
   };
 
@@ -74,720 +248,430 @@ const Header = () => {
     handleNavigate('/');
   };
 
-  const navLinks = [
-    { label: t('header.navigation.home'), path: '/' },
-    { label: 'Collections', path: '/collections' },
-    { label: 'Groups', path: '/groups' },
-  ];
+  const isPathActive = (path) => {
+    if (path === '/') return location.pathname === '/';
+    return location.pathname === path;
+  };
 
   const mediaItems = [
-    { label: t('header.navigation.movies'), path: '/media?types=Movie' },
-    { label: t('header.navigation.books'), path: '/media?types=Book' },
-    { label: t('header.navigation.tvShows'), path: '/media?types=TvSeries' },
+    { label: 'All Media', path: '/media', icon: LayoutGrid },
+    { label: t('header.navigation.movies'), path: '/media?types=Movie', icon: Film },
+    { label: t('header.navigation.tvShows'), path: '/media?types=TvSeries', icon: Tv },
+    { label: t('header.navigation.books'), path: '/media?types=Book', icon: BookOpen },
   ];
 
-  const userMenuItems = [
-    { label: 'Account', path: '/account' },
-    { label: 'Watchlist', path: '/account/watchlist' },
-    { label: 'My collections', path: '/collections' },
+  const desktopUserMenuItems = [
+    { label: 'Account', path: '/account', icon: User },
+    { label: 'Watchlist', path: '/account/watchlist', icon: Bookmark },
+    { label: 'My collections', path: '/collections', icon: Layers },
+  ];
+
+  const personalItems = [
+    { label: 'Account', path: '/account', icon: User },
+    { label: 'Watchlist', path: '/account/watchlist', icon: Bookmark },
+    { label: 'Notifications', path: '/notifications', icon: Bell, badgeCount: unreadCount },
+  ];
+
+  const adminItems = [
+    ...(isAdmin
+      ? [
+          { label: 'Admin Dashboard', path: '/admin', icon: ShieldCheck },
+          { label: 'Media Management', path: '/admin/media', icon: Clapperboard },
+        ]
+      : []),
+    ...(hasModerationAccess ? [{ label: 'Moderation', path: '/admin/moderation', icon: ShieldCheck }] : []),
   ];
 
   const userInitial = user?.username ? user.username.charAt(0).toUpperCase() : 'U';
+  const mediaActive = location.pathname === '/media';
 
   return (
-    <header className="sticky top-0 z-50 w-full overflow-x-clip border-b border-[var(--header-border)] bg-[var(--header-bg)] shadow-[var(--shadow-soft)] backdrop-blur-xl">
-      <Container size="xxl" className="flex min-w-0 items-center gap-4 py-3 lg:py-4">
-        <div className="md:hidden relative flex w-full items-center justify-between">
-          <button
-            className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-lg)] border border-[var(--button-border)] bg-[var(--button-bg)] p-0 text-[var(--text-primary)] shadow-[var(--shadow-soft)] transition duration-200 hover:border-[var(--primary-color)] hover:bg-[var(--button-hover-bg)]"
+    <header className="site-header">
+      <Container size="xxl" className="flex min-w-0 items-center py-3">
+        <div className="flex w-full min-w-0 items-center gap-2 xl:hidden">
+          <HeaderActionButton
             aria-label="Open navigation"
-            onClick={() => {
-              setIsMobileMenuOpen(true);
-              setIsMobileSearchOpen(false);
-              setIsMobileUserOpen(false);
-            }}
+            aria-expanded={isMobileMenuOpen}
+            aria-haspopup="dialog"
+            onClick={() => openMobilePanel('menu')}
           >
-            <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <line x1="3" y1="12" x2="21" y2="12" />
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <line x1="3" y1="18" x2="21" y2="18" />
-            </svg>
-          </button>
+            <Menu className="h-6 w-6" strokeWidth={2.3} />
+          </HeaderActionButton>
 
-          <button
-            className="absolute left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full px-3 py-1.5 text-[var(--text-primary)] transition hover:bg-[var(--button-hover-bg)]"
+          <BrandButton
+            label={t('header.logo')}
+            compact
+            className="min-w-0 flex-1 justify-center px-1 min-[380px]:justify-start"
             onClick={() => handleNavigate('/')}
-            aria-label={t('header.logo')}
-          >
-            <svg
-              className="h-7 w-7 text-[var(--primary-color)]"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M12 2L2 7l10 5 10-5-10-5z" />
-              <path d="M2 17l10 5 10-5" />
-              <path d="M2 12l10 5 10-5" />
-            </svg>
-            <span className="text-lg font-semibold text-[var(--text-primary)]">{t('header.logo')}</span>
-          </button>
+          />
 
-          <div className="flex items-center gap-2">
-            <button
-              className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-lg)] border border-[var(--button-border)] bg-[var(--button-bg)] p-0 text-[var(--text-primary)] shadow-[var(--shadow-soft)] transition duration-200 hover:border-[var(--primary-color)] hover:bg-[var(--button-hover-bg)]"
-              aria-label="Search"
-              onClick={() => {
-                setIsMobileSearchOpen(true);
-                setIsMobileMenuOpen(false);
-                setIsMobileUserOpen(false);
-              }}
+          <div className="flex shrink-0 items-center gap-1.5">
+            <HeaderActionButton
+              aria-label="Open search"
+              aria-expanded={isMobileSearchOpen}
+              aria-haspopup="dialog"
+              onClick={() => openMobilePanel('search')}
             >
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.35-4.35" />
-              </svg>
-            </button>
-            <button
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--button-border)] bg-[var(--button-bg)] p-0 text-sm font-semibold text-[var(--text-primary)] shadow-[var(--shadow-soft)] transition duration-200 hover:border-[var(--primary-color)] hover:bg-[var(--button-hover-bg)]"
-              aria-label="Account"
-              onClick={() => {
-                setIsMobileUserOpen(true);
-                setIsMobileMenuOpen(false);
-                setIsMobileSearchOpen(false);
-              }}
+              <Search className="h-5 w-5" strokeWidth={2.3} />
+            </HeaderActionButton>
+            <HeaderActionButton
+              className="relative"
+              aria-label={user ? 'Open account menu' : 'Open sign in options'}
+              aria-expanded={isMobileUserOpen}
+              aria-haspopup="dialog"
+              onClick={() => openMobilePanel('account')}
             >
-              {userInitial}
-            </button>
+              {user ? (
+                <span className="avatar-initial avatar-initial-sm">{userInitial}</span>
+              ) : (
+                <User className="h-5 w-5" strokeWidth={2.3} />
+              )}
+              {user && unreadCount > 0 ? (
+                <NotificationBadge count={unreadCount} pulse={badgePulse} className="-right-1 -top-1" />
+              ) : null}
+            </HeaderActionButton>
           </div>
         </div>
 
-        <div className="hidden min-w-0 items-center gap-4 md:flex lg:gap-6">
-          <button
-            className="flex items-center gap-3 rounded-full px-3 py-1.5 text-[var(--text-primary)] transition hover:bg-[var(--button-hover-bg)]"
+        <div className="hidden w-full min-w-0 items-center gap-4 xl:flex">
+          <BrandButton
+            label={t('header.logo')}
+            showTagline
+            className="shrink-0"
             onClick={() => handleNavigate('/')}
-            aria-label={t('header.logo')}
-          >
-            <svg
-              className="h-7 w-7 text-[var(--primary-color)] lg:h-8 lg:w-8"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M12 2L2 7l10 5 10-5-10-5z" />
-              <path d="M2 17l10 5 10-5" />
-              <path d="M2 12l10 5 10-5" />
-            </svg>
-            <span className="text-lg font-semibold text-[var(--text-primary)] lg:text-2xl">
-              {t('header.logo')}
-            </span>
-          </button>
+          />
 
-          <nav className="hidden min-w-0 items-center gap-3 md:flex lg:gap-5">
-            <button
-              className="rounded-full px-2 py-1 text-sm font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--button-hover-bg)] hover:text-[var(--text-primary)] lg:text-base"
-              onClick={() => handleNavigate(navLinks[0].path)}
-            >
-              {navLinks[0].label}
-            </button>
-            <NavigationDropdown items={mediaItems} />
-            {navLinks.slice(1).map((item) => (
-              <button
-                key={item.path}
-                className="rounded-full px-2 py-1 text-sm font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--button-hover-bg)] hover:text-[var(--text-primary)] lg:text-base"
-                onClick={() => handleNavigate(item.path)}
-              >
-                {item.label}
-              </button>
-            ))}
+          <nav className="flex shrink-0 items-center gap-1.5" aria-label="Primary navigation">
+            <DesktopNavButton active={isPathActive('/')} onClick={() => handleNavigate('/')}>
+              {t('header.navigation.home')}
+            </DesktopNavButton>
+            <NavigationDropdown items={mediaItems} active={mediaActive} />
+            <DesktopNavButton active={isPathActive('/collections')} onClick={() => handleNavigate('/collections')}>
+              Collections
+            </DesktopNavButton>
+            <DesktopNavButton active={isPathActive('/groups')} onClick={() => handleNavigate('/groups')}>
+              Groups
+            </DesktopNavButton>
           </nav>
-        </div>
 
-        <div className="hidden min-w-0 flex-1 items-center justify-center px-2 md:flex">
-          <div className="w-full max-w-3xl xl:max-w-4xl">
+          <div className="min-w-[18rem] flex-1">
             <SearchBar />
           </div>
-        </div>
 
-        <div className="hidden shrink-0 items-center gap-2 md:flex lg:gap-3">
-          <ThemeToggle />
-          <LanguageToggle />
+          <div className="flex shrink-0 items-center gap-2">
+            <ThemeToggle />
+            <LanguageToggle />
 
-          <button
-            className="relative flex h-10 w-10 items-center justify-center rounded-[var(--radius-lg)] border border-[var(--button-border)] bg-[var(--button-bg)] p-0 text-[var(--text-primary)] shadow-[var(--shadow-soft)] transition duration-200 hover:border-[var(--primary-color)] hover:bg-[var(--button-hover-bg)] lg:h-11 lg:w-11"
-            onClick={() => handleNavigate('/notifications')}
-            aria-label="Notifications"
-            title="Notifications"
-          >
-            <svg className="h-5 w-5 lg:h-6 lg:w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
-              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-            </svg>
-            {unreadCount > 0 ? (
-              <span
-                className={`absolute -top-1 -right-1 flex h-5 items-center justify-center rounded-full bg-[var(--primary-color)] px-1 text-xs font-semibold text-black ${badgePulse ? 'live-badge' : ''}`}
-              >
-                {unreadCount}
-              </span>
-            ) : null}
-          </button>
-
-          {user ? (
-            <div className="relative" ref={userMenuRef}>
-              <button
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--button-border)] bg-[var(--button-bg)] p-0 text-sm font-semibold text-[var(--text-primary)] shadow-[var(--shadow-soft)] transition duration-200 hover:border-[var(--primary-color)] hover:bg-[var(--button-hover-bg)] lg:h-11 lg:w-11 lg:text-base"
-                onClick={() => setIsUserMenuOpen((prev) => !prev)}
-                aria-label="User menu"
-                aria-expanded={isUserMenuOpen}
-                aria-haspopup="menu"
-              >
-                {userInitial}
-              </button>
-
-              {isUserMenuOpen ? (
-                <div
-                  className="absolute right-0 top-full z-50 mt-3 w-64 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--dropdown-border)] bg-[var(--dropdown-bg)] shadow-[var(--shadow-raised)]"
-                  role="menu"
-                >
-                  <div className="px-5 py-4 text-sm text-[var(--text-secondary)]">
-                    {t('header.auth.hello', { username: user.username })}
-                  </div>
-                  <div className="border-t border-[var(--dropdown-border)]" />
-                  {userMenuItems.map((item) => (
-                    <button
-                      key={item.path}
-                      className="flex w-full items-center px-5 py-3 text-left text-base text-[var(--text-primary)] transition hover:bg-[var(--dropdown-hover-bg)]"
-                      onClick={() => handleNavigate(item.path)}
-                      role="menuitem"
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                  {hasModerationAccess ? (
-                    <>
-                      <div className="border-t border-[var(--dropdown-border)]" />
-                      {isAdmin ? (
-                        <>
-                          <button
-                            className="flex w-full items-center px-5 py-3 text-left text-base text-[var(--text-primary)] transition hover:bg-[var(--dropdown-hover-bg)]"
-                            onClick={() => handleNavigate('/admin')}
-                            role="menuitem"
-                          >
-                            Admin Dashboard
-                          </button>
-                          <button
-                            className="flex w-full items-center px-5 py-3 text-left text-base text-[var(--text-primary)] transition hover:bg-[var(--dropdown-hover-bg)]"
-                            onClick={() => handleNavigate('/admin/media')}
-                            role="menuitem"
-                          >
-                            Media Management
-                          </button>
-                        </>
-                      ) : null}
-                      <button
-                        className="flex w-full items-center px-5 py-3 text-left text-base text-[var(--text-primary)] transition hover:bg-[var(--dropdown-hover-bg)]"
-                        onClick={() => handleNavigate('/admin/moderation')}
-                        role="menuitem"
-                      >
-                        Moderation
-                      </button>
-                    </>
-                  ) : null}
-                  <div className="border-t border-[var(--dropdown-border)]" />
-                  <button
-                    className="flex w-full items-center px-5 py-3 text-left text-base font-medium text-[var(--text-primary)] transition hover:bg-[var(--dropdown-hover-bg)]"
-                    onClick={handleLogout}
-                    role="menuitem"
-                  >
-                    {t('header.auth.logout')}
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <button
-                className="rounded-full border border-[var(--button-border)] bg-[var(--button-bg)] px-4 py-2 text-sm font-medium text-[var(--text-primary)] transition hover:border-[var(--primary-color)] hover:bg-[var(--button-hover-bg)] lg:text-base"
-                onClick={() => handleNavigate('/login')}
-              >
-                {t('header.auth.login')}
-              </button>
-              <button
-                className="rounded-full bg-[var(--primary-color)] px-4 py-2 text-sm font-semibold text-black transition hover:opacity-90 lg:text-base"
-                onClick={() => handleNavigate('/register')}
-              >
-                {t('header.auth.register')}
-              </button>
-            </div>
-          )}
-        </div>
-
-      </Container>
-
-      <div
-        className={`md:hidden fixed inset-0 z-50 transition ${
-          isMobileMenuOpen ? 'block pointer-events-auto' : 'hidden pointer-events-none'
-        }`}
-        aria-hidden={!isMobileMenuOpen}
-      >
-        <div
-          className={`absolute inset-0 bg-black/40 transition-opacity ${
-            isMobileMenuOpen ? 'opacity-100' : 'opacity-0'
-          }`}
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-        <div
-          className={`absolute left-0 top-0 h-full w-[90%] max-w-md rounded-r-3xl border-r border-[var(--border)] bg-[var(--bg-secondary)] shadow-2xl transition-transform ${
-            isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-          }`}
-        >
-          <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-5">
-            <span className="text-lg font-semibold text-[var(--text-primary)]">Menu</span>
-            <button
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--button-border)] bg-[var(--button-bg)] text-[var(--text-primary)]"
-              onClick={() => setIsMobileMenuOpen(false)}
-              aria-label="Close menu"
+            <HeaderActionButton
+              className="relative"
+              onClick={() => handleNavigate('/notifications')}
+              aria-label="Notifications"
+              title="Notifications"
             >
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          </div>
+              <Bell className="h-5 w-5" strokeWidth={2.35} />
+              <NotificationBadge count={unreadCount} pulse={badgePulse} className="-right-1 -top-1" />
+            </HeaderActionButton>
 
-          <div className="flex h-full flex-col gap-5 overflow-y-auto px-5 py-5">
-            <div className="grid gap-2">
-              <button
-                className="flex w-full items-center justify-between rounded-2xl border border-[var(--button-border)] bg-[var(--button-bg)] px-4 py-3 text-base font-semibold text-[var(--text-primary)] shadow-[0_10px_20px_-16px_var(--shadow-color)]"
-                onClick={() => handleNavigate(navLinks[0].path)}
-              >
-                <span className="flex items-center gap-2">
-                  <svg className="h-5 w-5 text-[var(--text-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                    <path d="M3 9l9-7 9 7" />
-                    <path d="M9 22V12h6v10" />
-                  </svg>
-                  {navLinks[0].label}
-                </span>
-              </button>
-
-              <div className="rounded-2xl border border-[var(--button-border)] bg-[var(--button-bg)] shadow-[0_10px_20px_-16px_var(--shadow-color)]">
-                <button
-                  className="flex w-full items-center justify-between px-4 py-3 text-base font-semibold text-[var(--text-primary)]"
-                  onClick={() => setIsMobileMediaOpen((prev) => !prev)}
-                >
-                  <span className="flex items-center gap-2">
-                    <svg className="h-5 w-5 text-[var(--text-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                      <rect x="3" y="4" width="18" height="14" rx="2" />
-                      <path d="M7 20h10" />
-                    </svg>
-                    {t('header.navigation.media')}
-                  </span>
-                  <svg
-                    className={`h-5 w-5 transition ${isMobileMediaOpen ? 'rotate-180' : ''}`}
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.2"
-                  >
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
-                </button>
-                {isMobileMediaOpen ? (
-                  <div className="border-t border-[var(--border)] bg-[var(--submenu-bg)] px-4 py-3">
-                    <button
-                      className="w-full rounded-xl border border-[var(--button-border)] bg-[var(--button-bg)] px-3 py-2.5 text-left text-base font-medium text-[var(--text-primary)] transition hover:bg-[var(--button-hover-bg)]"
-                      onClick={() => handleNavigate('/media')}
-                    >
-                      All media
-                    </button>
-                    {mediaItems.map((item) => (
-                      <button
-                        key={item.path}
-                        className="mt-2 w-full rounded-xl border border-[var(--button-border)] bg-[var(--button-bg)] px-3 py-2.5 text-left text-base font-medium text-[var(--text-primary)] transition hover:bg-[var(--button-hover-bg)]"
-                        onClick={() => handleNavigate(item.path)}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-
-              {navLinks.slice(1).map((item) => (
-                <button
-                  key={item.path}
-                  className="flex w-full items-center justify-between rounded-2xl border border-[var(--button-border)] bg-[var(--button-bg)] px-4 py-3 text-base font-semibold text-[var(--text-primary)] shadow-[0_10px_20px_-16px_var(--shadow-color)]"
-                  onClick={() => handleNavigate(item.path)}
-                >
-                  <span className="flex items-center gap-2">
-                    {item.path === '/collections' ? (
-                      <svg className="h-5 w-5 text-[var(--text-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                        <path d="M4 6h16" />
-                        <path d="M4 12h16" />
-                        <path d="M4 18h16" />
-                      </svg>
-                    ) : (
-                      <svg className="h-5 w-5 text-[var(--text-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                        <circle cx="9" cy="7" r="3" />
-                        <circle cx="17" cy="7" r="3" />
-                        <path d="M2 21c1.5-3 6.5-3 8 0" />
-                        <path d="M14 21c1.5-3 6.5-3 8 0" />
-                      </svg>
-                    )}
-                    {item.label}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            <div className="grid gap-2">
-              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">Quick links</span>
-              <button
-                className="flex w-full items-center justify-between rounded-2xl border border-[var(--button-border)] bg-[var(--button-bg)] px-4 py-3 text-base font-semibold text-[var(--text-primary)]"
-                onClick={() => handleNavigate('/account/watchlist')}
-              >
-                <span className="flex items-center gap-2">
-                  <svg className="h-5 w-5 text-[var(--text-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                    <path d="M6 4h12v16l-6-4-6 4z" />
-                  </svg>
-                  Watchlist
-                </span>
-              </button>
-              <button
-                className="flex w-full items-center justify-between rounded-2xl border border-[var(--button-border)] bg-[var(--button-bg)] px-4 py-3 text-base font-semibold text-[var(--text-primary)]"
-                onClick={() => handleNavigate('/notifications')}
-              >
-                <span className="flex items-center gap-2">
-                  <svg className="h-5 w-5 text-[var(--text-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                    <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
-                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                  </svg>
-                  Notifications
-                </span>
-                <svg className="h-5 w-5 text-[var(--text-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="grid gap-3">
-              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">Settings</span>
-              <div className="flex items-center gap-3">
-                <ThemeToggle />
-                <LanguageToggle />
-              </div>
-            </div>
-
-            <div className="mt-auto grid gap-2 pb-6">
-              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">Account</span>
-              {user ? (
-                <>
-                  <button
-                    className="flex w-full items-center justify-between rounded-2xl border border-[var(--button-border)] bg-[var(--button-bg)] px-4 py-3 text-base font-semibold text-[var(--text-primary)]"
-                    onClick={() => handleNavigate('/account')}
-                  >
-                    <span className="flex items-center gap-2">
-                      <svg className="h-5 w-5 text-[var(--text-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                        <circle cx="12" cy="7" r="4" />
-                        <path d="M4 21c2.5-4 13.5-4 16 0" />
-                      </svg>
-                      Profile
-                    </span>
-                  </button>
-                  {userMenuItems.map((item) => (
-                    <button
-                      key={item.path}
-                      className="flex w-full items-center justify-between rounded-2xl border border-[var(--button-border)] bg-[var(--button-bg)] px-4 py-3 text-base font-semibold text-[var(--text-primary)]"
-                      onClick={() => handleNavigate(item.path)}
-                    >
-                      <span className="flex items-center gap-2">
-                        <svg className="h-5 w-5 text-[var(--text-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                          <rect x="3" y="5" width="18" height="14" rx="2" />
-                          <path d="M7 9h10" />
-                          <path d="M7 13h6" />
-                        </svg>
-                        {item.label}
-                      </span>
-                    </button>
-                  ))}
-                  {hasModerationAccess ? (
-                    <>
-                      {isAdmin ? (
-                        <>
-                          <button
-                            className="flex w-full items-center justify-between rounded-2xl border border-[var(--button-border)] bg-[var(--button-bg)] px-4 py-3 text-base font-semibold text-[var(--text-primary)]"
-                            onClick={() => handleNavigate('/admin')}
-                          >
-                            <span className="flex items-center gap-2">
-                              <svg className="h-5 w-5 text-[var(--text-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                                <path d="M12 2l7 4v6c0 5-3 9-7 10-4-1-7-5-7-10V6l7-4z" />
-                              </svg>
-                              Admin Dashboard
-                            </span>
-                          </button>
-                          <button
-                            className="flex w-full items-center justify-between rounded-2xl border border-[var(--button-border)] bg-[var(--button-bg)] px-4 py-3 text-base font-semibold text-[var(--text-primary)]"
-                            onClick={() => handleNavigate('/admin/media')}
-                          >
-                            <span className="flex items-center gap-2">
-                              <svg className="h-5 w-5 text-[var(--text-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                                <rect x="3" y="4" width="18" height="14" rx="2" />
-                                <path d="M7 20h10" />
-                              </svg>
-                              Media Management
-                            </span>
-                          </button>
-                        </>
-                      ) : null}
-                      <button
-                        className="flex w-full items-center justify-between rounded-2xl border border-[var(--button-border)] bg-[var(--button-bg)] px-4 py-3 text-base font-semibold text-[var(--text-primary)]"
-                        onClick={() => handleNavigate('/admin/moderation')}
-                      >
-                        <span className="flex items-center gap-2">
-                          <svg className="h-5 w-5 text-[var(--text-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                            <path d="M12 2l7 4v6c0 5-3 9-7 10-4-1-7-5-7-10V6l7-4z" />
-                          </svg>
-                          Moderation
-                        </span>
-                      </button>
-                    </>
-                  ) : null}
-                  <button
-                    className="flex w-full items-center justify-between rounded-2xl border border-[var(--button-border)] bg-[var(--button-bg)] px-4 py-3 text-base font-semibold text-[var(--text-primary)]"
-                    onClick={handleLogout}
-                  >
-                    <span className="flex items-center gap-2">
-                      <svg className="h-5 w-5 text-[var(--text-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                        <path d="M16 17l5-5-5-5" />
-                        <path d="M21 12H9" />
-                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                      </svg>
-                      {t('header.auth.logout')}
-                    </span>
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    className="flex w-full items-center justify-between rounded-2xl border border-[var(--button-border)] bg-[var(--button-bg)] px-4 py-3 text-base font-semibold text-[var(--text-primary)]"
-                    onClick={() => handleNavigate('/login')}
-                  >
-                    {t('header.auth.login')}
-                  </button>
-                  <button
-                    className="flex w-full items-center justify-between rounded-2xl bg-[var(--primary-color)] px-4 py-3 text-base font-semibold text-black"
-                    onClick={() => handleNavigate('/register')}
-                  >
-                    {t('header.auth.register')}
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div
-        className={`md:hidden fixed inset-0 z-50 transition ${
-          isMobileSearchOpen ? 'block pointer-events-auto' : 'hidden pointer-events-none'
-        }`}
-        aria-hidden={!isMobileSearchOpen}
-      >
-        <div
-          className={`absolute inset-0 bg-black/40 transition-opacity ${
-            isMobileSearchOpen ? 'opacity-100' : 'opacity-0'
-          }`}
-          onClick={() => setIsMobileSearchOpen(false)}
-        />
-        <div
-          className={`absolute left-0 right-0 top-0 mx-auto w-full bg-[var(--bg-secondary)] shadow-xl transition-transform ${
-            isMobileSearchOpen ? 'translate-y-0' : '-translate-y-full'
-          }`}
-        >
-          <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-5 py-5">
-            <span className="text-lg font-semibold text-[var(--text-primary)]">Search</span>
-            <button
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--button-border)] bg-[var(--button-bg)] text-[var(--text-primary)]"
-              onClick={() => setIsMobileSearchOpen(false)}
-              aria-label="Close search"
-            >
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          </div>
-          <div className="px-5 py-5">
-            <SearchBar onSearchComplete={() => setIsMobileSearchOpen(false)} />
-          </div>
-        </div>
-      </div>
-
-      <div
-        className={`md:hidden fixed inset-0 z-50 transition ${
-          isMobileUserOpen ? 'block pointer-events-auto' : 'hidden pointer-events-none'
-        }`}
-        aria-hidden={!isMobileUserOpen}
-      >
-        <div
-          className={`absolute inset-0 bg-black/40 transition-opacity ${
-            isMobileUserOpen ? 'opacity-100' : 'opacity-0'
-          }`}
-          onClick={() => setIsMobileUserOpen(false)}
-        />
-        <div
-          className={`absolute right-0 top-0 h-full w-[85%] max-w-md rounded-l-3xl border-l border-[var(--border)] bg-[var(--bg-secondary)] shadow-2xl transition-transform ${
-            isMobileUserOpen ? 'translate-x-0' : 'translate-x-full'
-          }`}
-        >
-          <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-5">
-            <span className="text-lg font-semibold text-[var(--text-primary)]">Account</span>
-            <button
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--button-border)] bg-[var(--button-bg)] text-[var(--text-primary)]"
-              onClick={() => setIsMobileUserOpen(false)}
-              aria-label="Close account menu"
-            >
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          </div>
-          <div className="flex h-full flex-col gap-3 overflow-y-auto px-5 py-5">
             {user ? (
-              <>
-                <span className="text-sm text-[var(--text-secondary)]">
-                  {t('header.auth.hello', { username: user.username })}
-                </span>
+              <div className="relative" ref={userMenuRef}>
                 <button
-                  className="flex w-full items-center justify-between rounded-2xl border border-[var(--button-border)] bg-[var(--button-bg)] px-4 py-3 text-base font-semibold text-[var(--text-primary)]"
-                  onClick={() => handleNavigate('/account')}
+                  type="button"
+                  className="account-trigger"
+                  onClick={() => setIsUserMenuOpen((prev) => !prev)}
+                  aria-label="User menu"
+                  aria-expanded={isUserMenuOpen}
+                  aria-haspopup="menu"
                 >
-                  <span className="flex items-center gap-2">
-                    <svg className="h-5 w-5 text-[var(--text-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                      <circle cx="12" cy="7" r="4" />
-                      <path d="M4 21c2.5-4 13.5-4 16 0" />
-                    </svg>
-                    Profile
-                  </span>
+                  <span className="avatar-initial">{userInitial}</span>
                 </button>
-                {userMenuItems.map((item) => (
-                  <button
-                    key={item.path}
-                    className="flex w-full items-center justify-between rounded-2xl border border-[var(--button-border)] bg-[var(--button-bg)] px-4 py-3 text-base font-semibold text-[var(--text-primary)]"
-                    onClick={() => handleNavigate(item.path)}
-                  >
-                    <span className="flex items-center gap-2">
-                      <svg className="h-5 w-5 text-[var(--text-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                        <rect x="3" y="5" width="18" height="14" rx="2" />
-                        <path d="M7 9h10" />
-                        <path d="M7 13h6" />
-                      </svg>
-                      {item.label}
-                    </span>
-                  </button>
-                ))}
-                <button
-                  className="flex w-full items-center justify-between rounded-2xl border border-[var(--button-border)] bg-[var(--button-bg)] px-4 py-3 text-base font-semibold text-[var(--text-primary)]"
-                  onClick={() => handleNavigate('/notifications')}
-                >
-                  <span className="flex items-center gap-2">
-                    <svg className="h-5 w-5 text-[var(--text-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
-                      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                    </svg>
-                    Notifications
-                  </span>
-                </button>
-                {hasModerationAccess ? (
-                  <>
-                    {isAdmin ? (
+
+                {isUserMenuOpen ? (
+                  <div className="account-dropdown" role="menu">
+                    <div className="account-dropdown-header">
+                      <span className="avatar-initial avatar-initial-lg" aria-hidden="true">
+                        {userInitial}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-[var(--text-primary)]">
+                          {t('header.auth.hello', { username: user.username })}
+                        </p>
+                        <p className="mt-1 text-xs text-[var(--text-muted)]">Your ratings, lists, and settings</p>
+                      </div>
+                    </div>
+
+                    <div className="py-2">
+                      {desktopUserMenuItems.map((item) => (
+                        <DesktopMenuButton
+                          key={item.path}
+                          icon={item.icon}
+                          label={item.label}
+                          onClick={() => handleNavigate(item.path)}
+                        />
+                      ))}
+                    </div>
+
+                    {hasModerationAccess ? (
                       <>
-                        <button
-                          className="flex w-full items-center justify-between rounded-2xl border border-[var(--button-border)] bg-[var(--button-bg)] px-4 py-3 text-base font-semibold text-[var(--text-primary)]"
-                          onClick={() => handleNavigate('/admin')}
-                        >
-                          <span className="flex items-center gap-2">
-                            <svg className="h-5 w-5 text-[var(--text-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                              <path d="M12 2l7 4v6c0 5-3 9-7 10-4-1-7-5-7-10V6l7-4z" />
-                            </svg>
-                            Admin Dashboard
-                          </span>
-                        </button>
-                        <button
-                          className="flex w-full items-center justify-between rounded-2xl border border-[var(--button-border)] bg-[var(--button-bg)] px-4 py-3 text-base font-semibold text-[var(--text-primary)]"
-                          onClick={() => handleNavigate('/admin/media')}
-                        >
-                          <span className="flex items-center gap-2">
-                            <svg className="h-5 w-5 text-[var(--text-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                              <rect x="3" y="4" width="18" height="14" rx="2" />
-                              <path d="M7 20h10" />
-                            </svg>
-                            Media Management
-                          </span>
-                        </button>
+                        <div className="account-dropdown-divider" />
+                        <div className="py-2">
+                          {adminItems.map((item) => (
+                            <DesktopMenuButton
+                              key={item.path}
+                              icon={item.icon}
+                              label={item.label}
+                              onClick={() => handleNavigate(item.path)}
+                            />
+                          ))}
+                        </div>
                       </>
                     ) : null}
-                    <button
-                      className="flex w-full items-center justify-between rounded-2xl border border-[var(--button-border)] bg-[var(--button-bg)] px-4 py-3 text-base font-semibold text-[var(--text-primary)]"
-                      onClick={() => handleNavigate('/admin/moderation')}
-                    >
-                      <span className="flex items-center gap-2">
-                        <svg className="h-5 w-5 text-[var(--text-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                          <path d="M12 2l7 4v6c0 5-3 9-7 10-4-1-7-5-7-10V6l7-4z" />
-                        </svg>
-                        Moderation
-                      </span>
-                    </button>
-                  </>
+
+                    <div className="account-dropdown-divider" />
+                    <div className="py-2">
+                      <DesktopMenuButton icon={LogOut} label={t('header.auth.logout')} onClick={handleLogout} danger />
+                    </div>
+                  </div>
                 ) : null}
-                <button
-                  className="flex w-full items-center justify-between rounded-2xl border border-[var(--button-border)] bg-[var(--button-bg)] px-4 py-3 text-base font-semibold text-[var(--text-primary)]"
-                  onClick={handleLogout}
-                >
-                  <span className="flex items-center gap-2">
-                    <svg className="h-5 w-5 text-[var(--text-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                      <path d="M16 17l5-5-5-5" />
-                      <path d="M21 12H9" />
-                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                    </svg>
-                    {t('header.auth.logout')}
-                  </span>
-                </button>
-              </>
+              </div>
             ) : (
-              <>
-                <button
-                  className="flex w-full items-center justify-between rounded-2xl border border-[var(--button-border)] bg-[var(--button-bg)] px-4 py-3 text-base font-semibold text-[var(--text-primary)]"
-                  onClick={() => handleNavigate('/login')}
-                >
-                  <span className="flex items-center gap-2">
-                    <svg className="h-5 w-5 text-[var(--text-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                      <path d="M15 12H3" />
-                      <path d="M10 7l-5 5 5 5" />
-                      <path d="M21 21V3" />
-                    </svg>
-                    {t('header.auth.login')}
-                  </span>
+              <div className="flex items-center gap-2">
+                <button type="button" className="auth-button" onClick={() => handleNavigate('/login')}>
+                  <LogIn className="h-4 w-4" aria-hidden="true" />
+                  {t('header.auth.login')}
                 </button>
-                <button
-                  className="flex w-full items-center justify-between rounded-2xl bg-[var(--primary-color)] px-4 py-3 text-base font-semibold text-black"
-                  onClick={() => handleNavigate('/register')}
-                >
-                  <span className="flex items-center gap-2">
-                    <svg className="h-5 w-5 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                      <path d="M12 5v14" />
-                      <path d="M5 12h14" />
-                    </svg>
-                    {t('header.auth.register')}
-                  </span>
+                <button type="button" className="auth-button auth-button-primary" onClick={() => handleNavigate('/register')}>
+                  <UserPlus className="h-4 w-4" aria-hidden="true" />
+                  {t('header.auth.register')}
                 </button>
-              </>
+              </div>
             )}
           </div>
         </div>
-      </div>
+      </Container>
+
+      {isMobileMenuOpen ? (
+        <div className="mobile-overlay xl:hidden" role="presentation">
+          <div className="mobile-overlay-backdrop" onClick={closeMobilePanels} />
+          <aside className="mobile-drawer mobile-drawer-left" role="dialog" aria-modal="true" aria-label="Mobile navigation">
+            <div className="mobile-drawer-header">
+              <BrandButton
+                label={t('header.logo')}
+                compact
+                showTagline
+                className="min-w-0"
+                onClick={() => handleNavigate('/')}
+              />
+              <HeaderActionButton aria-label="Close navigation" onClick={closeMobilePanels}>
+                <X className="h-5 w-5" strokeWidth={2.3} />
+              </HeaderActionButton>
+            </div>
+
+            <div className="mobile-drawer-body">
+              <div className="cinematic-surface p-3">
+                <SearchBar onSearchComplete={closeMobilePanels} />
+              </div>
+
+              <MobileSection title="Explore">
+                <MobileNavButton
+                  icon={Home}
+                  label={t('header.navigation.home')}
+                  active={isPathActive('/')}
+                  onClick={() => handleNavigate('/')}
+                />
+                {mediaItems.map((item) => (
+                  <MobileNavButton
+                    key={item.path}
+                    icon={item.icon}
+                    label={item.label}
+                    active={item.path === '/media' ? mediaActive : false}
+                    onClick={() => handleNavigate(item.path)}
+                  />
+                ))}
+                <MobileNavButton
+                  icon={Layers}
+                  label="Collections"
+                  active={isPathActive('/collections')}
+                  onClick={() => handleNavigate('/collections')}
+                />
+                <MobileNavButton
+                  icon={Users}
+                  label="Groups"
+                  active={isPathActive('/groups')}
+                  onClick={() => handleNavigate('/groups')}
+                />
+              </MobileSection>
+
+              {user ? (
+                <MobileSection title="Personal">
+                  {personalItems.map((item) => (
+                    <MobileNavButton
+                      key={item.path}
+                      icon={item.icon}
+                      label={item.label}
+                      badgeCount={item.badgeCount}
+                      onClick={() => handleNavigate(item.path)}
+                    />
+                  ))}
+                </MobileSection>
+              ) : null}
+
+              {hasModerationAccess ? (
+                <MobileSection title="Staff">
+                  {adminItems.map((item) => (
+                    <MobileNavButton
+                      key={item.path}
+                      icon={item.icon}
+                      label={item.label}
+                      onClick={() => handleNavigate(item.path)}
+                    />
+                  ))}
+                </MobileSection>
+              ) : null}
+
+              <MobileSection title="Settings">
+                <div className="mobile-setting-row">
+                  <span className="flex items-center gap-3 text-sm font-semibold text-[var(--text-primary)]">
+                    <Settings className="h-5 w-5 text-[var(--primary-color)]" aria-hidden="true" />
+                    Appearance
+                  </span>
+                  <ThemeToggle showLabel />
+                </div>
+                <div className="mobile-setting-row">
+                  <span className="flex items-center gap-3 text-sm font-semibold text-[var(--text-primary)]">
+                    <Settings className="h-5 w-5 text-[var(--primary-color)]" aria-hidden="true" />
+                    Language
+                  </span>
+                  <LanguageToggle align="left" />
+                </div>
+              </MobileSection>
+
+              <MobileSection title="Account">
+                {user ? (
+                  <MobileNavButton
+                    icon={LogOut}
+                    label={t('header.auth.logout')}
+                    onClick={handleLogout}
+                    danger
+                    showChevron={false}
+                  />
+                ) : (
+                  <>
+                    <MobileNavButton icon={LogIn} label={t('header.auth.login')} onClick={() => handleNavigate('/login')} />
+                    <MobileNavButton
+                      icon={UserPlus}
+                      label={t('header.auth.register')}
+                      onClick={() => handleNavigate('/register')}
+                      primary
+                    />
+                  </>
+                )}
+              </MobileSection>
+            </div>
+          </aside>
+        </div>
+      ) : null}
+
+      {isMobileSearchOpen ? (
+        <div className="mobile-overlay xl:hidden" role="presentation">
+          <div className="mobile-overlay-backdrop" onClick={closeMobilePanels} />
+          <section className="mobile-search-sheet" role="dialog" aria-modal="true" aria-label="Search RateOple">
+            <div className="mobile-drawer-header">
+              <div>
+                <p className="text-lg font-bold text-[var(--text-primary)]">Search RateOple</p>
+                <p className="mt-1 text-sm text-[var(--text-muted)]">Find movies, TV series, and books</p>
+              </div>
+              <HeaderActionButton aria-label="Close search" onClick={closeMobilePanels}>
+                <X className="h-5 w-5" strokeWidth={2.3} />
+              </HeaderActionButton>
+            </div>
+            <div className="p-4 sm:p-5">
+              <SearchBar onSearchComplete={closeMobilePanels} autoFocus />
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {isMobileUserOpen ? (
+        <div className="mobile-overlay xl:hidden" role="presentation">
+          <div className="mobile-overlay-backdrop" onClick={closeMobilePanels} />
+          <aside className="mobile-drawer mobile-drawer-right" role="dialog" aria-modal="true" aria-label="Account menu">
+            <div className="mobile-drawer-header">
+              <div className="flex min-w-0 items-center gap-3">
+                {user ? (
+                  <span className="avatar-initial avatar-initial-lg" aria-hidden="true">
+                    {userInitial}
+                  </span>
+                ) : (
+                  <BrandMark compact />
+                )}
+                <div className="min-w-0">
+                  <p className="truncate text-lg font-bold text-[var(--text-primary)]">
+                    {user ? t('header.auth.hello', { username: user.username }) : 'Welcome to RateOple'}
+                  </p>
+                  <p className="mt-1 text-sm text-[var(--text-muted)]">
+                    {user ? 'Manage your profile and alerts' : 'Sign in to rate, review, and build your watchlist'}
+                  </p>
+                </div>
+              </div>
+              <HeaderActionButton aria-label="Close account menu" onClick={closeMobilePanels}>
+                <X className="h-5 w-5" strokeWidth={2.3} />
+              </HeaderActionButton>
+            </div>
+
+            <div className="mobile-drawer-body">
+              {user ? (
+                <>
+                  <MobileSection title="Account">
+                    {personalItems.map((item) => (
+                      <MobileNavButton
+                        key={item.path}
+                        icon={item.icon}
+                        label={item.label}
+                        badgeCount={item.badgeCount}
+                        onClick={() => handleNavigate(item.path)}
+                      />
+                    ))}
+                    <MobileNavButton icon={Layers} label="My collections" onClick={() => handleNavigate('/collections')} />
+                  </MobileSection>
+
+                  {hasModerationAccess ? (
+                    <MobileSection title="Staff">
+                      {adminItems.map((item) => (
+                        <MobileNavButton
+                          key={item.path}
+                          icon={item.icon}
+                          label={item.label}
+                          onClick={() => handleNavigate(item.path)}
+                        />
+                      ))}
+                    </MobileSection>
+                  ) : null}
+
+                  <MobileSection title="Session">
+                    <MobileNavButton
+                      icon={LogOut}
+                      label={t('header.auth.logout')}
+                      onClick={handleLogout}
+                      danger
+                      showChevron={false}
+                    />
+                  </MobileSection>
+                </>
+              ) : (
+                <MobileSection title="Start">
+                  <MobileNavButton icon={LogIn} label={t('header.auth.login')} onClick={() => handleNavigate('/login')} />
+                  <MobileNavButton
+                    icon={UserPlus}
+                    label={t('header.auth.register')}
+                    onClick={() => handleNavigate('/register')}
+                    primary
+                  />
+                </MobileSection>
+              )}
+            </div>
+          </aside>
+        </div>
+      ) : null}
     </header>
   );
 };
