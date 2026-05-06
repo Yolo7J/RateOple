@@ -1,3 +1,63 @@
+RateOple Media List / Explore cinematic refactor results
+
+Summary:
+- Refactored `/media` from a basic listing/filter page into the main RateOple Explore surface.
+- Preserved the existing media list API contract, route behavior, global shell/header/footer, Discovery/Home page, and shared MediaCard presentation.
+- Kept admin add-media access visible for Admin/SuperAdmin users without turning the public catalog into an admin screen.
+
+Files changed:
+- frontend/src/features/media/pages/MediaListPage.jsx
+- frontend/src/index.css
+- results.txt
+
+Supported filters used:
+- `search` URL param mapped to the existing media query search.
+- `types` URL param using existing values `Movie`, `TvSeries`, and `Book`.
+- `genres` URL param mapped to existing `genreIds` query support from `/media/genres`.
+- `sort` URL param mapped to existing `sortBy` / `sortDir` support for rating, year, and title.
+- Existing `page` pagination and fixed `pageSize` 24 behavior were preserved.
+- Tag, year-range, rating-range, and page-size controls were not exposed because the current frontend page/query contract does not support them as user-facing filters.
+
+Exact UX improvements:
+- Added a cinematic Explore hero with catalog positioning, prominent page search, and quick type chips.
+- Search now uses controlled URL-synced input state, initializes from `/media?search=...`, and can be cleared from the page.
+- Rebuilt type filtering into clear All / Movies / TV Series / Books controls while preserving multi-type backend query support.
+- Added a sticky desktop filter sidebar with media type, sort, and genre controls.
+- Added a mobile filter sheet with dialog semantics, close/apply/clear actions, Escape closing, and large touch targets.
+- Added active filter chips for search, type, genre, and non-default sort, with removable chips and a clear-all action.
+- Reworked the results header to show backend-provided match counts/ranges without inventing catalog counts.
+- Replaced generic loading with poster-grid skeletons.
+- Added a guided empty state with "No media found", explanatory copy, and a Clear filters action.
+- Polished pagination with Previous / Next buttons, current page text, disabled states, and mobile-friendly wrapping.
+
+Responsive behavior:
+- Backend-hosted Playwright inspection at desktop `/media`, `/media?search=godfather`, `/media?types=Movie`, `/media?types=TvSeries`, and `/media?types=Book` showed no document-level horizontal overflow.
+- Backend-hosted Playwright inspection at 320px, 375px, 430px, and 675px showed no document-level horizontal overflow.
+- Mobile widths keep a 2-column MediaCard grid at 320px, 375px, and 430px.
+- The 675px tablet layout now uses a denser 3-column MediaCard grid.
+- Mobile filter drawer opened at 320px, 375px, 430px, 675px, and the empty-search viewport, stayed within viewport width, and closed on Escape.
+- The quick type chip rail intentionally scrolls horizontally on narrow mobile while the document itself remains overflow-safe.
+- Empty search `/media?search=zzzxxyy-rateople-no-match` rendered the empty state and active search chip correctly.
+- Light theme was briefly inspected on backend-hosted `/media` and rendered without document-level horizontal overflow.
+
+Checks run:
+- npm run lint: passed.
+- npm run build: passed. Build emitted existing Rollup annotation warnings from @microsoft/signalr comments.
+- npm run test:e2e: passed, 2 tests.
+- npm run build:backend: passed.
+- dotnet build backend/RateOple/RateOple.csproj: passed while diagnosing backend host startup.
+- Backend-hosted Playwright inspection passed for desktop media/search/type URLs, mobile 320px/375px/430px, tablet 675px, empty search, mobile filter drawer behavior, and light theme.
+
+build:backend status:
+- npm run build:backend: passed.
+- Copied final Vite output into backend/RateOple/wwwroot.
+- Build emitted the same existing Rollup annotation warnings from @microsoft/signalr comments.
+
+Known limitations / manual things to inspect:
+- Genre filters depend on `/media/genres`; if that endpoint fails, the page shows the catalog and notes that genre filters are unavailable.
+- Manual authenticated admin visual verification was not performed, but the Admin/SuperAdmin Add Media affordance uses the existing role check and route.
+- The desktop header still has clipped off-canvas auth controls in Playwright element-level overflow reporting from the existing shell, but document-level horizontal overflow remained false; this refactor did not redesign the header again.
+
 RateOple Discovery/Home cinematic hub refactor results
 
 Summary:

@@ -1,5 +1,19 @@
-import { useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { createElement, useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  ArrowLeft,
+  ArrowRight,
+  BookOpen,
+  Film,
+  Grid3X3,
+  Plus,
+  RotateCcw,
+  Search,
+  SlidersHorizontal,
+  Tv,
+  X,
+} from 'lucide-react';
+import clsx from 'clsx';
 import { useAuth } from '../../../context/AuthContext';
 import { MEDIA_TYPES } from '../../../shared/constants/mediaTypes';
 import { useMediaGenresQuery } from '../queries/useMediaGenresQuery';
@@ -7,15 +21,11 @@ import { useMediaListQuery } from '../queries/useMediaListQuery';
 import MediaCard from '../components/MediaCard/MediaCard';
 import PageLayout from '../../../layouts/PageLayout';
 import Container from '../../../shared/ui/Container';
-import Grid from '../../../shared/ui/Grid';
-import Stack from '../../../shared/ui/Stack';
-import Badge from '../../../shared/ui/Badge';
 import Button from '../../../shared/ui/Button';
 import Checkbox from '../../../shared/ui/Checkbox';
 import EmptyState from '../../../shared/ui/EmptyState';
 import InlineMessage from '../../../shared/ui/InlineMessage';
 import Input from '../../../shared/ui/Input';
-import PageHeader from '../../../shared/ui/PageHeader';
 import Select from '../../../shared/ui/Select';
 import { Skeleton } from '../../../shared/ui/LoadingState';
 
@@ -24,26 +34,18 @@ const SORT_OPTIONS = [
   { value: 'rating:asc', label: 'Lowest Rated' },
   { value: 'year:desc', label: 'Newest' },
   { value: 'year:asc', label: 'Oldest' },
-  { value: 'title:asc', label: 'A – Z' },
-  { value: 'title:desc', label: 'Z – A' },
+  { value: 'title:asc', label: 'A - Z' },
+  { value: 'title:desc', label: 'Z - A' },
 ];
-const PAGE_SIZE = 24;
 
-const styles = {
-  pageStack: 'gap-6',
-  toolbar: 'ui-card flex flex-wrap items-center gap-3 p-4',
-  searchForm: 'flex min-w-[240px] flex-1 flex-col gap-2 sm:flex-row sm:gap-0',
-  layout: 'grid grid-cols-1 gap-5 lg:grid-cols-[250px_minmax(0,1fr)]',
-  filters: 'ui-card flex flex-wrap gap-4 p-4 lg:sticky lg:top-24 lg:max-h-[calc(100vh-105px)] lg:flex-col lg:overflow-auto',
-  filterSection: 'flex flex-col gap-2',
-  filterHeading: 'text-xs uppercase tracking-[0.09em] text-[var(--text-muted)]',
-  filterCheckbox: 'flex items-center gap-2 text-sm text-[var(--text-primary)]',
-  gridArea: 'flex min-w-0 flex-col gap-5',
-  grid: 'grid-cols-[repeat(auto-fill,minmax(172px,1fr))] max-sm:grid-cols-[repeat(auto-fill,minmax(132px,1fr))] gap-4',
-  resultHeading: 'text-lg font-semibold text-[var(--text-primary)]',
-  pagination: 'flex items-center justify-center gap-3',
-  pageInfo: 'text-sm text-[var(--text-muted)]',
-};
+const TYPE_OPTIONS = [
+  { value: 'Movie', label: 'Movies', shortLabel: 'Movie', Icon: Film },
+  { value: 'TvSeries', label: 'TV Series', shortLabel: 'Series', Icon: Tv },
+  { value: 'Book', label: 'Books', shortLabel: 'Book', Icon: BookOpen },
+];
+
+const DEFAULT_SORT = 'rating:desc';
+const PAGE_SIZE = 24;
 
 const parseTypes = (value) => {
   const types = value?.split(',').filter((type) => MEDIA_TYPES.includes(type)) ?? MEDIA_TYPES;
@@ -62,21 +64,31 @@ const parsePage = (value) => {
   return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 1;
 };
 
+const parseSort = (value) => (
+  SORT_OPTIONS.some((option) => option.value === value) ? value : DEFAULT_SORT
+);
+
+const formatShortTypeLabel = (type) => TYPE_OPTIONS.find((option) => option.value === type)?.shortLabel ?? type;
+const formatCount = (value) => new Intl.NumberFormat().format(value);
+
 const MediaListPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [searchDraft, setSearchDraft] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const canAddMedia = Array.isArray(user?.roles)
     ? user.roles.some((role) => ['Admin', 'SuperAdmin'].includes(role))
     : false;
 
-  const selectedTypes = parseTypes(searchParams.get('types'));
-  const selectedGenres = parseGenres(searchParams.get('genres'));
+  const selectedTypes = useMemo(() => parseTypes(searchParams.get('types')), [searchParams]);
+  const selectedGenres = useMemo(() => parseGenres(searchParams.get('genres')), [searchParams]);
   const search = searchParams.get('search')?.trim() ?? '';
-  const sort = searchParams.get('sort') ?? 'rating:desc';
+  const sort = parseSort(searchParams.get('sort'));
   const page = parsePage(searchParams.get('page'));
-
   const [sortBy, sortDir] = sort.split(':');
+  const allTypesSelected = selectedTypes.length === MEDIA_TYPES.length;
+
   const { data: genresData, error: genresError } = useMediaGenresQuery();
   const { data: result, loading, error } = useMediaListQuery({
     types: selectedTypes,
@@ -87,7 +99,31 @@ const MediaListPage = () => {
     page,
     pageSize: PAGE_SIZE,
   });
-  const genres = Array.isArray(genresData) ? genresData : [];
+  const genres = useMemo(() => (Array.isArray(genresData) ? genresData : []), [genresData]);
+  const items = Array.isArray(result?.items) ? result.items : [];
+  const totalCount = Number.isFinite(Number(result?.totalCount)) ? Number(result.totalCount) : 0;
+  const totalPages = Math.max(1, Number(result?.totalPages) || 1);
+  const selectedGenreNames = useMemo(() => {
+    const genreMap = new Map(genres.map((genre) => [genre.id, genre.name]));
+    return selectedGenres.map((id) => ({ id, name: genreMap.get(id) ?? `Genre ${id}` }));
+  }, [genres, selectedGenres]);
+  const activeFilterCount = (
+    (search ? 1 : 0)
+    + (allTypesSelected ? 0 : selectedTypes.length)
+    + selectedGenres.length
+    + (sort === DEFAULT_SORT ? 0 : 1)
+  );
+  const resultRange = totalCount > 0
+    ? `${formatCount(((page - 1) * PAGE_SIZE) + 1)}-${formatCount(Math.min(page * PAGE_SIZE, totalCount))}`
+    : '0';
+  const resultLabel = loading
+    ? 'Loading catalog'
+    : `${formatCount(totalCount)} ${totalCount === 1 ? 'match' : 'matches'}`;
+  const errorMessage = error ? (error?.response?.data?.message || 'Failed to load media.') : null;
+
+  useEffect(() => {
+    setSearchDraft(search);
+  }, [search]);
 
   useEffect(() => {
     if (genresError?.response?.status === 401) {
@@ -95,7 +131,24 @@ const MediaListPage = () => {
     }
   }, [genresError, navigate]);
 
-  const errorMessage = error ? (error?.response?.data?.message || 'Failed to load media.') : null;
+  useEffect(() => {
+    if (!filtersOpen) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setFiltersOpen(false);
+      }
+    };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [filtersOpen]);
 
   const updateSearchParams = (updates) => {
     const params = new URLSearchParams(searchParams);
@@ -117,163 +170,359 @@ const MediaListPage = () => {
     if ((params.get('types')?.split(',').filter(Boolean).length ?? MEDIA_TYPES.length) >= MEDIA_TYPES.length) {
       params.delete('types');
     }
-    if (params.get('sort') === 'rating:desc') params.delete('sort');
+    if (params.get('sort') === DEFAULT_SORT) params.delete('sort');
     if (params.get('page') === '1') params.delete('page');
 
     setSearchParams(params);
   };
 
+  const clearAllFilters = () => {
+    setSearchParams(new URLSearchParams());
+  };
+
   const toggleType = (type) => {
-    const nextTypes = selectedTypes.includes(type)
-      ? (selectedTypes.length > 1 ? selectedTypes.filter((t) => t !== type) : selectedTypes)
-      : [...selectedTypes, type];
+    let nextTypes;
+
+    if (allTypesSelected) {
+      nextTypes = [type];
+    } else if (selectedTypes.includes(type)) {
+      nextTypes = selectedTypes.length > 1
+        ? selectedTypes.filter((selectedType) => selectedType !== type)
+        : MEDIA_TYPES;
+    } else {
+      nextTypes = [...selectedTypes, type];
+    }
 
     updateSearchParams({ types: nextTypes, page: 1 });
   };
 
   const toggleGenre = (id) => {
     const nextGenres = selectedGenres.includes(id)
-      ? selectedGenres.filter((g) => g !== id)
+      ? selectedGenres.filter((genreId) => genreId !== id)
       : [...selectedGenres, id];
 
     updateSearchParams({ genres: nextGenres, page: 1 });
   };
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    updateSearchParams({ search: String(formData.get('search') ?? '').trim(), page: 1 });
+  const removeGenre = (id) => {
+    updateSearchParams({ genres: selectedGenres.filter((genreId) => genreId !== id), page: 1 });
   };
 
-  const clearSearch = () => updateSearchParams({ search: '', page: 1 });
+  const handleSearchSubmit = (event) => {
+    event.preventDefault();
+    updateSearchParams({ search: searchDraft.trim(), page: 1 });
+  };
+
+  const clearSearch = () => {
+    setSearchDraft('');
+    updateSearchParams({ search: '', page: 1 });
+  };
+
+  const renderFilterPanel = (sortId) => (
+    <div className="media-explore-filter-panel">
+      <div className="media-explore-filter-group">
+        <div className="media-explore-filter-heading">
+          <span>Media type</span>
+          <button type="button" onClick={() => updateSearchParams({ types: MEDIA_TYPES, page: 1 })}>
+            All
+          </button>
+        </div>
+        <div className="media-explore-type-grid" role="group" aria-label="Media type filters">
+          {TYPE_OPTIONS.map(({ value, label, Icon }) => (
+            <button
+              key={value}
+              type="button"
+              className={clsx('media-explore-type-toggle', !allTypesSelected && selectedTypes.includes(value) && 'is-active')}
+              aria-pressed={!allTypesSelected && selectedTypes.includes(value)}
+              onClick={() => toggleType(value)}
+            >
+              {createElement(Icon, { 'aria-hidden': 'true' })}
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="media-explore-filter-group">
+        <label className="media-explore-filter-heading" htmlFor={sortId}>
+          <span>Sort by</span>
+        </label>
+        <Select
+          id={sortId}
+          value={sort}
+          onChange={(event) => updateSearchParams({ sort: event.target.value, page: 1 })}
+        >
+          {SORT_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </Select>
+      </div>
+
+      <div className="media-explore-filter-group">
+        <div className="media-explore-filter-heading">
+          <span>Genres</span>
+          {selectedGenres.length > 0 ? (
+            <button type="button" onClick={() => updateSearchParams({ genres: [], page: 1 })}>
+              Clear
+            </button>
+          ) : null}
+        </div>
+        {genres.length > 0 ? (
+          <div className="media-explore-genre-list">
+            {genres.map((genre) => (
+              <label key={genre.id} className="media-explore-genre-option">
+                <Checkbox
+                  checked={selectedGenres.includes(genre.id)}
+                  onChange={() => toggleGenre(genre.id)}
+                />
+                <span>{genre.name}</span>
+              </label>
+            ))}
+          </div>
+        ) : (
+          <p className="media-explore-filter-note">
+            {genresError ? 'Genre filters are unavailable right now.' : 'Loading genres...'}
+          </p>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <PageLayout>
-      <Container size="xxl">
-        <Stack className={styles.pageStack}>
-          <PageHeader
-            title="Media"
-            subtitle="Browse, search, and filter the RateOple catalog."
-            actions={canAddMedia ? (
-              <Button variant="primary" onClick={() => navigate('/media/add')}>Add Media</Button>
-            ) : null}
-          />
+      <main className="media-explore-page">
+        <Container size="xxl">
+          <section className="media-explore-hero" aria-labelledby="media-explore-title">
+            <div className="media-explore-hero-copy">
+              <span className="media-explore-kicker">
+                <Grid3X3 aria-hidden="true" />
+                RateOple catalog
+              </span>
+              <h1 id="media-explore-title">Explore media</h1>
+              <p>Search movies, TV series, and books across the RateOple catalog.</p>
+              <div className="media-explore-hero-actions">
+                {canAddMedia ? (
+                  <Button as={Link} to="/media/add" variant="primary" size="lg">
+                    <Plus aria-hidden="true" />
+                    Add Media
+                  </Button>
+                ) : null}
+              </div>
+            </div>
 
-          <div className={styles.toolbar}>
-            <form className={styles.searchForm} onSubmit={handleSearchSubmit}>
-              <Input
-                type="text"
-                name="search"
-                key={search}
-                className="sm:rounded-r-none"
-                placeholder="Search titles..."
-                defaultValue={search}
-              />
-              <Button type="submit" className="sm:rounded-l-none">Search</Button>
-            </form>
-
-            {search ? (
-              <Button type="button" variant="ghost" onClick={clearSearch}>
-                Clear search
-              </Button>
-            ) : null}
-
-            <Select
-              className="min-w-[170px]"
-              value={sort}
-              onChange={(e) => updateSearchParams({ sort: e.target.value, page: 1 })}
-            >
-              {SORT_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </Select>
-          </div>
-
-          <div className={styles.layout}>
-            <aside className={styles.filters}>
-              <div className={styles.filterSection}>
-                <h4 className={styles.filterHeading}>Type</h4>
-                {MEDIA_TYPES.map((type) => (
-                  <label key={type} className={styles.filterCheckbox}>
-                    <Checkbox
-                      checked={selectedTypes.includes(type)}
-                      onChange={() => toggleType(type)}
+            <div className="media-explore-search-card">
+              <form className="media-explore-search-form" onSubmit={handleSearchSubmit}>
+                <label htmlFor="media-search">Search catalog</label>
+                <div className="media-explore-search-row">
+                  <div className="media-explore-search-input">
+                    <Search aria-hidden="true" />
+                    <Input
+                      id="media-search"
+                      type="search"
+                      value={searchDraft}
+                      onChange={(event) => setSearchDraft(event.target.value)}
+                      placeholder="Search by title..."
                     />
-                    {type === 'TvSeries' ? 'TV Series' : type}
-                  </label>
+                  </div>
+                  <Button type="submit" variant="primary" size="lg">Search</Button>
+                  {search ? (
+                    <Button type="button" variant="ghost" size="lg" onClick={clearSearch}>
+                      <X aria-hidden="true" />
+                      Clear
+                    </Button>
+                  ) : null}
+                </div>
+              </form>
+
+              <div className="media-explore-type-rail" role="group" aria-label="Quick media type filters">
+                <button
+                  type="button"
+                  className={clsx('media-explore-type-chip', allTypesSelected && 'is-active')}
+                  aria-pressed={allTypesSelected}
+                  onClick={() => updateSearchParams({ types: MEDIA_TYPES, page: 1 })}
+                >
+                  All
+                </button>
+                {TYPE_OPTIONS.map(({ value, label, Icon }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={clsx('media-explore-type-chip', !allTypesSelected && selectedTypes.includes(value) && 'is-active')}
+                    aria-pressed={!allTypesSelected && selectedTypes.includes(value)}
+                    onClick={() => toggleType(value)}
+                  >
+                    {createElement(Icon, { 'aria-hidden': 'true' })}
+                    {label}
+                  </button>
                 ))}
               </div>
+            </div>
+          </section>
 
-              {Array.isArray(genres) && genres.length > 0 ? (
-                <div className={styles.filterSection}>
-                  <h4 className={styles.filterHeading}>Genre</h4>
-                  {genres.map((g) => (
-                    <label key={g.id} className={styles.filterCheckbox}>
-                      <Checkbox
-                        checked={selectedGenres.includes(g.id)}
-                        onChange={() => toggleGenre(g.id)}
-                      />
-                      {g.name}
-                    </label>
-                  ))}
+          <div className="media-explore-layout">
+            <aside className="media-explore-sidebar" aria-label="Media filters">
+              <div className="media-explore-sidebar-header">
+                <div>
+                  <span>Browse filters</span>
+                  <strong>{activeFilterCount > 0 ? `${activeFilterCount} active` : 'Ready'}</strong>
                 </div>
-              ) : null}
+                {activeFilterCount > 0 ? (
+                  <button type="button" onClick={clearAllFilters}>
+                    <RotateCcw aria-hidden="true" />
+                    Reset
+                  </button>
+                ) : null}
+              </div>
+              {renderFilterPanel('media-sort-sidebar')}
             </aside>
 
-            <main className={styles.gridArea}>
-              {search ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className={styles.resultHeading}>Search results</h2>
-                  <Badge>{search}</Badge>
+            <section className="media-explore-results" aria-labelledby="media-results-title">
+              <div className="media-explore-results-toolbar">
+                <div>
+                  <h2 id="media-results-title">Catalog results</h2>
+                  <p>
+                    {resultLabel}
+                    {!loading && totalCount > 0 ? `, showing ${resultRange}` : ''}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="default"
+                  className="media-explore-filter-button"
+                  onClick={() => setFiltersOpen(true)}
+                >
+                  <SlidersHorizontal aria-hidden="true" />
+                  Filters
+                  {activeFilterCount > 0 ? <span>{activeFilterCount}</span> : null}
+                </Button>
+              </div>
+
+              {activeFilterCount > 0 ? (
+                <div className="media-explore-active-filters" aria-label="Active filters">
+                  {search ? (
+                    <button type="button" onClick={clearSearch}>
+                      Search: {search}
+                      <X aria-hidden="true" />
+                    </button>
+                  ) : null}
+                  {!allTypesSelected ? selectedTypes.map((type) => (
+                    <button key={type} type="button" onClick={() => toggleType(type)}>
+                      {formatShortTypeLabel(type)}
+                      <X aria-hidden="true" />
+                    </button>
+                  )) : null}
+                  {selectedGenreNames.map((genre) => (
+                    <button key={genre.id} type="button" onClick={() => removeGenre(genre.id)}>
+                      {genre.name}
+                      <X aria-hidden="true" />
+                    </button>
+                  ))}
+                  {sort !== DEFAULT_SORT ? (
+                    <button type="button" onClick={() => updateSearchParams({ sort: DEFAULT_SORT, page: 1 })}>
+                      Sort: {SORT_OPTIONS.find((option) => option.value === sort)?.label}
+                      <X aria-hidden="true" />
+                    </button>
+                  ) : null}
+                  <button type="button" className="media-explore-clear-all" onClick={clearAllFilters}>
+                    Clear all
+                  </button>
                 </div>
               ) : null}
 
               {errorMessage ? <InlineMessage tone="error">{errorMessage}</InlineMessage> : null}
 
               {loading ? (
-                <Grid cols={styles.grid}>
-                  {Array.from({ length: 12 }).map((_, i) => (
-                    <Skeleton key={i} className="aspect-[2/3]" />
+                <div className="media-explore-results-grid" aria-label="Loading media">
+                  {Array.from({ length: 12 }).map((_, index) => (
+                    <div key={index} className="media-explore-skeleton-card">
+                      <Skeleton className="media-explore-skeleton-poster" />
+                      <Skeleton className="media-explore-skeleton-line" />
+                      <Skeleton className="media-explore-skeleton-line short" />
+                    </div>
                   ))}
-                </Grid>
-              ) : (result?.items?.length ?? 0) === 0 ? (
+                </div>
+              ) : items.length === 0 ? (
                 <EmptyState
                   title="No media found"
-                  description={search
-                    ? `No media found for "${search}". Try another search or clear filters.`
-                    : 'No media found. Try adjusting your filters.'}
+                  description="Try clearing filters or searching another title."
+                  className="media-explore-empty"
+                  action={(
+                    <Button type="button" variant="primary" onClick={clearAllFilters}>
+                      Clear filters
+                    </Button>
+                  )}
                 />
               ) : (
-                <Grid cols={styles.grid}>
-                  {(result?.items ?? []).map((m) => (
-                    <MediaCard key={m.id} media={m} />
+                <div className="media-explore-results-grid">
+                  {items.map((media) => (
+                    <MediaCard key={media.id} media={media} />
                   ))}
-                </Grid>
+                </div>
               )}
 
-              {(result?.totalPages ?? 1) > 1 ? (
-                <div className={styles.pagination}>
-                  <button
-                    className="ui-button"
+              {totalPages > 1 ? (
+                <nav className="media-explore-pagination" aria-label="Media pagination">
+                  <Button
+                    type="button"
                     disabled={page <= 1}
                     onClick={() => updateSearchParams({ page: page - 1 })}
                   >
-                    Prev
-                  </button>
-                  <span className={styles.pageInfo}>Page {page} of {result?.totalPages ?? 1}</span>
-                  <button
-                    className="ui-button"
-                    disabled={page >= (result?.totalPages ?? 1)}
+                    <ArrowLeft aria-hidden="true" />
+                    Previous
+                  </Button>
+                  <span>Page {page} of {totalPages}</span>
+                  <Button
+                    type="button"
+                    disabled={page >= totalPages}
                     onClick={() => updateSearchParams({ page: page + 1 })}
                   >
                     Next
-                  </button>
-                </div>
+                    <ArrowRight aria-hidden="true" />
+                  </Button>
+                </nav>
               ) : null}
-            </main>
+            </section>
           </div>
-        </Stack>
-      </Container>
+        </Container>
+
+        {filtersOpen ? (
+          <div className="media-explore-filter-sheet" role="presentation">
+            <button
+              type="button"
+              className="media-explore-filter-backdrop"
+              aria-label="Close filters"
+              onClick={() => setFiltersOpen(false)}
+            />
+            <section
+              className="media-explore-filter-drawer"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="media-filter-title"
+            >
+              <div className="media-explore-filter-drawer-header">
+                <div>
+                  <h2 id="media-filter-title">Filters</h2>
+                  <p>{activeFilterCount > 0 ? `${activeFilterCount} active filters` : 'Refine the catalog'}</p>
+                </div>
+                <button type="button" aria-label="Close filters" onClick={() => setFiltersOpen(false)}>
+                  <X aria-hidden="true" />
+                </button>
+              </div>
+              <div className="media-explore-filter-drawer-body">
+                {renderFilterPanel('media-sort-drawer')}
+              </div>
+              <div className="media-explore-filter-drawer-actions">
+                <Button type="button" variant="ghost" onClick={clearAllFilters} disabled={activeFilterCount === 0}>
+                  Clear all
+                </Button>
+                <Button type="button" variant="primary" onClick={() => setFiltersOpen(false)}>
+                  Apply filters
+                </Button>
+              </div>
+            </section>
+          </div>
+        ) : null}
+      </main>
     </PageLayout>
   );
 };
