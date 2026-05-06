@@ -670,7 +670,10 @@ textarea:disabled {
   .mobile-overlay {
     position: fixed;
     inset: 0;
-    z-index: 60;
+    z-index: 1000;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow: hidden;
   }
 
   .mobile-overlay-backdrop {
@@ -693,10 +696,13 @@ textarea:disabled {
 
   .mobile-drawer {
     top: 0;
-    bottom: 0;
     display: flex;
     width: min(27rem, calc(100vw - 0.75rem));
     max-width: calc(100vw - 0.75rem);
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
     flex-direction: column;
     overflow: hidden;
   }
@@ -736,10 +742,13 @@ textarea:disabled {
     display: flex;
     min-height: 0;
     flex: 1;
+    height: 100%;
     flex-direction: column;
     gap: 1rem;
     overflow-y: auto;
+    overflow-x: hidden;
     overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
     padding: 1rem 1.1rem max(1.25rem, env(safe-area-inset-bottom));
   }
 

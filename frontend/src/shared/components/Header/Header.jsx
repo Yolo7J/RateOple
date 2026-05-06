@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import clsx from 'clsx';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -285,170 +286,8 @@ const Header = () => {
   const userInitial = user?.username ? user.username.charAt(0).toUpperCase() : 'U';
   const mediaActive = location.pathname === '/media';
 
-  return (
-    <header className="site-header">
-      <Container size="xxl" className="flex min-w-0 items-center py-3">
-        <div className="flex w-full min-w-0 items-center gap-2 xl:hidden">
-          <HeaderActionButton
-            aria-label="Open navigation"
-            aria-expanded={isMobileMenuOpen}
-            aria-haspopup="dialog"
-            onClick={() => openMobilePanel('menu')}
-          >
-            <Menu className="h-6 w-6" strokeWidth={2.3} />
-          </HeaderActionButton>
-
-          <BrandButton
-            label={t('header.logo')}
-            compact
-            className="min-w-0 flex-1 justify-center px-1 min-[380px]:justify-start"
-            onClick={() => handleNavigate('/')}
-          />
-
-          <div className="flex shrink-0 items-center gap-1.5">
-            <HeaderActionButton
-              aria-label="Open search"
-              aria-expanded={isMobileSearchOpen}
-              aria-haspopup="dialog"
-              onClick={() => openMobilePanel('search')}
-            >
-              <Search className="h-5 w-5" strokeWidth={2.3} />
-            </HeaderActionButton>
-            <HeaderActionButton
-              className="relative"
-              aria-label={user ? 'Open account menu' : 'Open sign in options'}
-              aria-expanded={isMobileUserOpen}
-              aria-haspopup="dialog"
-              onClick={() => openMobilePanel('account')}
-            >
-              {user ? (
-                <span className="avatar-initial avatar-initial-sm">{userInitial}</span>
-              ) : (
-                <User className="h-5 w-5" strokeWidth={2.3} />
-              )}
-              {user && unreadCount > 0 ? (
-                <NotificationBadge count={unreadCount} pulse={badgePulse} className="-right-1 -top-1" />
-              ) : null}
-            </HeaderActionButton>
-          </div>
-        </div>
-
-        <div className="hidden w-full min-w-0 items-center gap-4 xl:flex">
-          <BrandButton
-            label={t('header.logo')}
-            showTagline
-            className="shrink-0"
-            onClick={() => handleNavigate('/')}
-          />
-
-          <nav className="flex shrink-0 items-center gap-1.5" aria-label="Primary navigation">
-            <DesktopNavButton active={isPathActive('/')} onClick={() => handleNavigate('/')}>
-              {t('header.navigation.home')}
-            </DesktopNavButton>
-            <NavigationDropdown items={mediaItems} active={mediaActive} />
-            <DesktopNavButton active={isPathActive('/collections')} onClick={() => handleNavigate('/collections')}>
-              Collections
-            </DesktopNavButton>
-            <DesktopNavButton active={isPathActive('/groups')} onClick={() => handleNavigate('/groups')}>
-              Groups
-            </DesktopNavButton>
-          </nav>
-
-          <div className="min-w-[18rem] flex-1">
-            <SearchBar />
-          </div>
-
-          <div className="flex shrink-0 items-center gap-2">
-            <ThemeToggle />
-            <LanguageToggle />
-
-            <HeaderActionButton
-              className="relative"
-              onClick={() => handleNavigate('/notifications')}
-              aria-label="Notifications"
-              title="Notifications"
-            >
-              <Bell className="h-5 w-5" strokeWidth={2.35} />
-              <NotificationBadge count={unreadCount} pulse={badgePulse} className="-right-1 -top-1" />
-            </HeaderActionButton>
-
-            {user ? (
-              <div className="relative" ref={userMenuRef}>
-                <button
-                  type="button"
-                  className="account-trigger"
-                  onClick={() => setIsUserMenuOpen((prev) => !prev)}
-                  aria-label="User menu"
-                  aria-expanded={isUserMenuOpen}
-                  aria-haspopup="menu"
-                >
-                  <span className="avatar-initial">{userInitial}</span>
-                </button>
-
-                {isUserMenuOpen ? (
-                  <div className="account-dropdown" role="menu">
-                    <div className="account-dropdown-header">
-                      <span className="avatar-initial avatar-initial-lg" aria-hidden="true">
-                        {userInitial}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-[var(--text-primary)]">
-                          {t('header.auth.hello', { username: user.username })}
-                        </p>
-                        <p className="mt-1 text-xs text-[var(--text-muted)]">Your ratings, lists, and settings</p>
-                      </div>
-                    </div>
-
-                    <div className="py-2">
-                      {desktopUserMenuItems.map((item) => (
-                        <DesktopMenuButton
-                          key={item.path}
-                          icon={item.icon}
-                          label={item.label}
-                          onClick={() => handleNavigate(item.path)}
-                        />
-                      ))}
-                    </div>
-
-                    {hasModerationAccess ? (
-                      <>
-                        <div className="account-dropdown-divider" />
-                        <div className="py-2">
-                          {adminItems.map((item) => (
-                            <DesktopMenuButton
-                              key={item.path}
-                              icon={item.icon}
-                              label={item.label}
-                              onClick={() => handleNavigate(item.path)}
-                            />
-                          ))}
-                        </div>
-                      </>
-                    ) : null}
-
-                    <div className="account-dropdown-divider" />
-                    <div className="py-2">
-                      <DesktopMenuButton icon={LogOut} label={t('header.auth.logout')} onClick={handleLogout} danger />
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <button type="button" className="auth-button" onClick={() => handleNavigate('/login')}>
-                  <LogIn className="h-4 w-4" aria-hidden="true" />
-                  {t('header.auth.login')}
-                </button>
-                <button type="button" className="auth-button auth-button-primary" onClick={() => handleNavigate('/register')}>
-                  <UserPlus className="h-4 w-4" aria-hidden="true" />
-                  {t('header.auth.register')}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </Container>
-
+  const mobilePanels = (
+    <>
       {isMobileMenuOpen ? (
         <div className="mobile-overlay xl:hidden" role="presentation">
           <div className="mobile-overlay-backdrop" onClick={closeMobilePanels} />
@@ -672,7 +511,176 @@ const Header = () => {
           </aside>
         </div>
       ) : null}
-    </header>
+    </>
+  );
+
+  return (
+    <>
+      <header className="site-header">
+        <Container size="xxl" className="flex min-w-0 items-center py-3">
+          <div className="flex w-full min-w-0 items-center gap-2 xl:hidden">
+            <HeaderActionButton
+              aria-label="Open navigation"
+              aria-expanded={isMobileMenuOpen}
+              aria-haspopup="dialog"
+              onClick={() => openMobilePanel('menu')}
+            >
+              <Menu className="h-6 w-6" strokeWidth={2.3} />
+            </HeaderActionButton>
+
+            <BrandButton
+              label={t('header.logo')}
+              compact
+              className="min-w-0 flex-1 justify-center px-1 min-[380px]:justify-start"
+              onClick={() => handleNavigate('/')}
+            />
+
+            <div className="flex shrink-0 items-center gap-1.5">
+              <HeaderActionButton
+                aria-label="Open search"
+                aria-expanded={isMobileSearchOpen}
+                aria-haspopup="dialog"
+                onClick={() => openMobilePanel('search')}
+              >
+                <Search className="h-5 w-5" strokeWidth={2.3} />
+              </HeaderActionButton>
+              <HeaderActionButton
+                className="relative"
+                aria-label={user ? 'Open account menu' : 'Open sign in options'}
+                aria-expanded={isMobileUserOpen}
+                aria-haspopup="dialog"
+                onClick={() => openMobilePanel('account')}
+              >
+                {user ? (
+                  <span className="avatar-initial avatar-initial-sm">{userInitial}</span>
+                ) : (
+                  <User className="h-5 w-5" strokeWidth={2.3} />
+                )}
+                {user && unreadCount > 0 ? (
+                  <NotificationBadge count={unreadCount} pulse={badgePulse} className="-right-1 -top-1" />
+                ) : null}
+              </HeaderActionButton>
+            </div>
+          </div>
+
+          <div className="hidden w-full min-w-0 items-center gap-4 xl:flex">
+            <BrandButton
+              label={t('header.logo')}
+              showTagline
+              className="shrink-0"
+              onClick={() => handleNavigate('/')}
+            />
+
+            <nav className="flex shrink-0 items-center gap-1.5" aria-label="Primary navigation">
+              <DesktopNavButton active={isPathActive('/')} onClick={() => handleNavigate('/')}>
+                {t('header.navigation.home')}
+              </DesktopNavButton>
+              <NavigationDropdown items={mediaItems} active={mediaActive} />
+              <DesktopNavButton active={isPathActive('/collections')} onClick={() => handleNavigate('/collections')}>
+                Collections
+              </DesktopNavButton>
+              <DesktopNavButton active={isPathActive('/groups')} onClick={() => handleNavigate('/groups')}>
+                Groups
+              </DesktopNavButton>
+            </nav>
+
+            <div className="min-w-[18rem] flex-1">
+              <SearchBar />
+            </div>
+
+            <div className="flex shrink-0 items-center gap-2">
+              <ThemeToggle />
+              <LanguageToggle />
+
+              <HeaderActionButton
+                className="relative"
+                onClick={() => handleNavigate('/notifications')}
+                aria-label="Notifications"
+                title="Notifications"
+              >
+                <Bell className="h-5 w-5" strokeWidth={2.35} />
+                <NotificationBadge count={unreadCount} pulse={badgePulse} className="-right-1 -top-1" />
+              </HeaderActionButton>
+
+              {user ? (
+                <div className="relative" ref={userMenuRef}>
+                  <button
+                    type="button"
+                    className="account-trigger"
+                    onClick={() => setIsUserMenuOpen((prev) => !prev)}
+                    aria-label="User menu"
+                    aria-expanded={isUserMenuOpen}
+                    aria-haspopup="menu"
+                  >
+                    <span className="avatar-initial">{userInitial}</span>
+                  </button>
+
+                  {isUserMenuOpen ? (
+                    <div className="account-dropdown" role="menu">
+                      <div className="account-dropdown-header">
+                        <span className="avatar-initial avatar-initial-lg" aria-hidden="true">
+                          {userInitial}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-[var(--text-primary)]">
+                            {t('header.auth.hello', { username: user.username })}
+                          </p>
+                          <p className="mt-1 text-xs text-[var(--text-muted)]">Your ratings, lists, and settings</p>
+                        </div>
+                      </div>
+
+                      <div className="py-2">
+                        {desktopUserMenuItems.map((item) => (
+                          <DesktopMenuButton
+                            key={item.path}
+                            icon={item.icon}
+                            label={item.label}
+                            onClick={() => handleNavigate(item.path)}
+                          />
+                        ))}
+                      </div>
+
+                      {hasModerationAccess ? (
+                        <>
+                          <div className="account-dropdown-divider" />
+                          <div className="py-2">
+                            {adminItems.map((item) => (
+                              <DesktopMenuButton
+                                key={item.path}
+                                icon={item.icon}
+                                label={item.label}
+                                onClick={() => handleNavigate(item.path)}
+                              />
+                            ))}
+                          </div>
+                        </>
+                      ) : null}
+
+                      <div className="account-dropdown-divider" />
+                      <div className="py-2">
+                        <DesktopMenuButton icon={LogOut} label={t('header.auth.logout')} onClick={handleLogout} danger />
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button type="button" className="auth-button" onClick={() => handleNavigate('/login')}>
+                    <LogIn className="h-4 w-4" aria-hidden="true" />
+                    {t('header.auth.login')}
+                  </button>
+                  <button type="button" className="auth-button auth-button-primary" onClick={() => handleNavigate('/register')}>
+                    <UserPlus className="h-4 w-4" aria-hidden="true" />
+                    {t('header.auth.register')}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </Container>
+      </header>
+      {typeof document !== 'undefined' ? createPortal(mobilePanels, document.body) : null}
+    </>
   );
 };
 

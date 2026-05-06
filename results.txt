@@ -1,5 +1,31 @@
 RateOple global shell refactor results
 
+Mobile drawer/account follow-up:
+- Fixed the mobile hamburger and avatar panels so they render as usable full-height viewport drawers instead of being clipped to the sticky header area.
+- Root cause: the mobile overlays were rendered inside `.site-header`, whose sticky blurred surface and overflow/stacking context clipped the fixed-position drawer content. That left only the drawer header/top area visible.
+- Exact fix: moved mobile menu, account, and search panels into a `createPortal(..., document.body)` viewport layer; raised `.mobile-overlay` z-index; added `100dvh` drawer sizing; kept drawer body as a flex child with vertical scrolling and hidden horizontal overflow.
+- Preserved panel behavior: opening menu/search/account closes the other panels, overlay click closes, Escape closes, close buttons close, and link taps navigate and close the active panel.
+- Aligned the media label to "TV Series" in English so the mobile drawer matches the required navigation wording.
+
+Mobile follow-up files changed:
+- frontend/src/shared/components/Header/Header.jsx
+- frontend/src/index.css
+- frontend/src/locales/en.json
+- results.txt
+
+Mobile follow-up responsive checks:
+- Playwright browser inspection at 320px, 375px, 430px, 675px, 768px, and 1000px confirmed the menu drawer is full-height, shows Home / All Media / Movies / TV Series / Books / Collections / Groups / Login / Register for logged-out state, has no horizontal overflow, and closes on Escape.
+- Playwright browser inspection at 320px, 375px, 430px, 675px, 768px, and 1000px confirmed the mobile account panel is full-height and exposes Login/Register for logged-out state.
+- Playwright browser inspection confirmed the mobile search sheet remains visible and closeable, and desktop at 1366px keeps desktop nav/search while hiding the mobile menu button.
+
+Mobile follow-up checks run:
+- npm run lint: passed.
+- npm run build: passed. Build emitted existing Rollup annotation warnings from @microsoft/signalr comments.
+- npm run test:e2e: passed, 2 tests. An earlier run failed while reusing a manual Vite dev server with the wrong test API environment; after stopping that server, the configured Playwright web server run passed.
+
+Mobile follow-up known limitations:
+- Manual authenticated-role verification was not performed in-browser in this run, but the logged-in account/staff links use the same portal drawer structure and existing auth/role conditionals.
+
 Summary:
 - Refactored the shared frontend shell into a dark-first cinematic media hub foundation.
 - Preserved route paths, auth behavior, notifications, language switching, theme switching, search, and role-based staff links.
