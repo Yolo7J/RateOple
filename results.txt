@@ -1,3 +1,57 @@
+RateOple media card cinematic refactor results
+
+Summary:
+- Refactored the reusable shared MediaCard into a compact cinematic poster card for movies, TV series, and books.
+- Preserved `/media/:id` navigation, existing media DTO usage, type/year/rating/count display, and current shared card import paths.
+- Kept the change scoped to reusable media-card presentation and minimal parent row/grid sizing adjustments.
+
+Files changed:
+- frontend/src/shared/components/MediaCard/MediaCard.jsx
+- frontend/src/features/discovery/components/MediaRow.jsx
+- frontend/src/features/media/pages/MediaListPage.jsx
+- frontend/src/index.css
+- results.txt
+
+Exact UX improvements:
+- Added a stronger 2:3 poster surface with soft borders, dark-first elevated card treatment, subtle glow, and hover lift.
+- Added gentle poster zoom/saturation on hover while keeping touch layouts stable with no hover-only required information.
+- Moved the type badge onto the poster top-left using RateOple yellow and consistent Film / Series / Book labels.
+- Reworked title, year/status, and rating/count typography for denser readable grids with 2-line title clamping.
+- Added a compact star rating line with graceful "Not rated" handling and no invented rating/count data.
+- Added optional passive status display if a caller already provides status/currentStatus/userStatus.
+- Added a subtle book-spine treatment for book cover cards.
+- Improved keyboard focus visibility on the whole clickable card.
+
+Placeholder/no-cover behavior:
+- Replaced the generated gray "No Cover" image with an intentional in-card placeholder using a dark gradient, type-specific lucide icon, and "No cover" label.
+- Uses the existing buildImageUrl helper without adding URL hacks.
+- Broken external image requests fall back to the same premium placeholder state.
+
+Responsive behavior:
+- Discovery/home horizontal rows now use compact responsive card widths: 156px on small mobile, scaling up on larger screens.
+- Media catalog mobile grid now remains dense at 320px with two compact columns instead of one oversized column.
+- Backend-hosted Playwright inspection at 320px, 375px, 430px, desktop home, desktop media list, and mobile media list showed no horizontal overflow.
+- Poster ratio stayed at 0.667 width/height, matching the intended 2:3 aspect.
+- Collection detail and group detail pages were inspected against the backend host and had no horizontal overflow; those pages do not currently use shared MediaCard for their inline media thumbnails.
+- Light theme was briefly inspected and rendered cards without horizontal overflow.
+
+Checks run:
+- npm run lint: passed.
+- npm run build: passed. Build emitted existing Rollup annotation warnings from @microsoft/signalr comments.
+- npm run test:e2e: passed, 2 tests.
+- dotnet build backend/RateOple/RateOple.csproj: passed.
+- Backend-hosted Playwright inspection passed for desktop/mobile home, media list, missing-cover placeholders, broken-image fallback, collection detail, group detail, and light theme.
+
+build:backend status:
+- npm run build:backend: passed.
+- Copied final Vite output into backend/RateOple/wwwroot.
+- Build emitted the same existing Rollup annotation warnings from @microsoft/signalr comments.
+
+Known limitations / manual things to inspect:
+- Collection and group inline media thumbnails were not redesigned because they do not currently use shared MediaCard and changing them would expand the scope beyond this reusable card foundation step.
+- Book author/creator metadata is not shown in shared card rows because the existing discovery/media-list DTOs do not provide it.
+- Manual authenticated/user-status visual verification was not performed, but optional status rendering is passive and only appears when existing callers provide status data.
+
 RateOple global shell refactor results
 
 Mobile drawer/account follow-up:

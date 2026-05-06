@@ -39,7 +39,7 @@ const styles = {
   filterHeading: 'text-xs uppercase tracking-[0.09em] text-[var(--text-muted)]',
   filterCheckbox: 'flex items-center gap-2 text-sm text-[var(--text-primary)]',
   gridArea: 'flex min-w-0 flex-col gap-5',
-  grid: 'grid-cols-[repeat(auto-fill,minmax(180px,1fr))] max-sm:grid-cols-[repeat(auto-fill,minmax(146px,1fr))] gap-4',
+  grid: 'grid-cols-[repeat(auto-fill,minmax(172px,1fr))] max-sm:grid-cols-[repeat(auto-fill,minmax(132px,1fr))] gap-4',
   resultHeading: 'text-lg font-semibold text-[var(--text-primary)]',
   pagination: 'flex items-center justify-center gap-3',
   pageInfo: 'text-sm text-[var(--text-muted)]',
