@@ -1,3 +1,34 @@
+RateOple Media Detail TV architecture audit / plan results
+
+Summary:
+- Performed a product/technical audit of the current media detail, TV season/episode, rating, review, and collections contracts.
+- Wrote an implementation plan for an IMDb-style route split before doing another UI polish pass.
+- Made documentation-only changes; no frontend build was needed.
+
+Files changed:
+- frontend/MEDIA_DETAIL_REDESIGN_PLAN.md
+- results.txt
+
+Key findings:
+- Public frontend media detail currently has `/media/:id` only; there are no public season or episode detail routes.
+- `/media/:id/seasons` exists, but it is an authenticated season management page, not a public detail route.
+- TV season and episode viewer routes are possible without backend changes because `/api/media/{id}` and `/api/media/{id}/seasons` include season IDs, season numbers, episode IDs, episode numbers, titles, and durations.
+- Media, season, and episode rating endpoints already exist independently, including backend delete endpoints. The frontend service supports season/episode deletes, but dedicated delete mutation hooks are missing.
+- TV reviews are the main hard blocker: `GET /api/media/{mediaId}/reviews` returns media-owned reviews, while `ReviewDto` does not expose target type, season ID, episode ID, season number, episode number, target title, or rating value. The frontend cannot safely separate series reviews from season/episode reviews.
+- Collections containing a title are not supported by the backend. `/api/collections?mediaId=...` is not a containing-media filter; the frontend only uses that query param to add a media item when creating or editing a collection.
+- Media-level TV rating semantics need clarification because stored media aggregates can include media, season, and episode ratings, while `/media/{id}/ratings/summary` returns direct media ratings only.
+
+Backend changes required:
+- Add review target metadata and target-specific review endpoints before real series/season/episode review feeds can be shown.
+- Add a containing collections endpoint, recommended as `GET /api/media/{mediaId}/collections`, before the Collections tab can show real appearances.
+- Optional but recommended: add single season and episode read endpoints to avoid fetching the full season tree for detail pages.
+
+Recommended next implementation step:
+- Stage 1 should split frontend routes/components into `/media/:id`, `/media/:id/seasons/:seasonNumber`, and `/media/:id/seasons/:seasonNumber/episodes/:episodeNumber` using existing TV data, while keeping review feeds and containing collections explicitly blocked until backend contracts are added.
+
+Checks run:
+- No build run; documentation-only change.
+
 RateOple Media Detail IA / TV season-episode UX remodel results
 
 Summary:
