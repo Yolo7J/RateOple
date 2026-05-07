@@ -19,6 +19,8 @@ const RegisterPage = lazy(() => import('../features/auth/pages/RegisterPage'));
 const ExternalLoginCallbackPage = lazy(() => import('../features/auth/pages/ExternalLoginCallbackPage'));
 const MediaListPage = lazy(() => import('../features/media/pages/MediaListPage'));
 const MediaDetailPage = lazy(() => import('../features/media/pages/MediaDetailPage'));
+const SeasonDetailPage = lazy(() => import('../features/media/pages/SeasonDetailPage'));
+const EpisodeDetailPage = lazy(() => import('../features/media/pages/EpisodeDetailPage'));
 const CollectionsPage = lazy(() => import('../features/collections/pages/CollectionsPage'));
 const CollectionDetailPage = lazy(() => import('../features/collections/pages/CollectionDetailPage'));
 const NotificationsPage = lazy(() => import('../features/notifications/pages/NotificationsPage'));
@@ -46,6 +48,8 @@ const Router = () => {
         <Route path="/" element={renderLazyRoute(DiscoveryPage)} />
         <Route path="/media" element={renderLazyRoute(MediaListPage)} />
         <Route path="/media/:id" element={renderLazyRoute(MediaDetailPage)} />
+        <Route path="/media/:id/seasons/:seasonNumber" element={renderLazyRoute(SeasonDetailPage)} />
+        <Route path="/media/:id/seasons/:seasonNumber/episodes/:episodeNumber" element={renderLazyRoute(EpisodeDetailPage)} />
         <Route path="/collections" element={renderLazyRoute(CollectionsPage)} />
         <Route path="/collections/:id" element={renderLazyRoute(CollectionDetailPage)} />
         <Route element={<RequireAuth />}>
