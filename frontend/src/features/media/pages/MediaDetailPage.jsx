@@ -1,10 +1,30 @@
 import { useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import clsx from 'clsx';
+import {
+  ArrowLeft,
+  BookOpen,
+  BookmarkCheck,
+  Calendar,
+  ChevronDown,
+  ChevronUp,
+  Clock3,
+  Film,
+  Layers3,
+  Library,
+  MessageCircle,
+  PencilLine,
+  PlayCircle,
+  Star,
+  Tag,
+  Tv,
+} from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useMediaDetailsQuery } from '../queries/useMediaDetailsQuery';
 import { useTvSeriesSeasonsQuery } from '../queries/useTvSeriesSeasonsQuery';
 import { useMediaRatingSummaryQuery } from '../../ratings/queries/useMediaRatingSummaryQuery';
 import { useRateMediaMutation } from '../../ratings/queries/useRateMediaMutation';
+import { useDeleteMediaRatingMutation } from '../../ratings/queries/useDeleteMediaRatingMutation';
 import { useSeasonRatingSummaryQuery } from '../../ratings/queries/useSeasonRatingSummaryQuery';
 import { useEpisodeRatingSummaryQuery } from '../../ratings/queries/useEpisodeRatingSummaryQuery';
 import { useRateSeasonMutation } from '../../ratings/queries/useRateSeasonMutation';
@@ -13,72 +33,423 @@ import { useReviewsQuery } from '../../reviews/queries/useReviewsQuery';
 import { useReviewMutations } from '../../reviews/queries/useReviewMutations';
 import { useSimilarMediaQuery } from '../../discovery/queries/useSimilarMediaQuery';
 import { useMediaStatusMutation } from '../../users/queries/useMediaStatusMutation';
-import UserRatingDisplay from '../../ratings/components/UserRatingDisplay';
-import RatingSelector from '../../ratings/components/RatingSelector';
+import RatingStars from '../../ratings/components/RatingStars';
 import ReviewEditor from '../../reviews/components/ReviewEditor';
 import ReviewFilters from '../../reviews/components/ReviewFilters';
 import ReviewsList from '../../reviews/components/ReviewsList';
 import MediaRow from '../../discovery/components/MediaRow';
-import MediaStatusSelector from '../components/MediaStatusSelector';
 import { buildImageUrl } from '../../../shared/utils/buildImageUrl';
+import { STATUS_TYPES } from '../../../shared/constants/statusTypes';
 import PageLayout from '../../../layouts/PageLayout';
 import Container from '../../../shared/ui/Container';
-import Grid from '../../../shared/ui/Grid';
-import Stack from '../../../shared/ui/Stack';
-import Badge from '../../../shared/ui/Badge';
 import Button from '../../../shared/ui/Button';
 import EmptyState from '../../../shared/ui/EmptyState';
 import InlineMessage from '../../../shared/ui/InlineMessage';
-import LoadingState from '../../../shared/ui/LoadingState';
+import Select from '../../../shared/ui/Select';
 import Tabs from '../../../shared/ui/Tabs';
 
 const MEDIA_TABS = ['Overview', 'Reviews', 'Collections', 'Similar'];
+const RATING_VALUES = Array.from({ length: 10 }, (_, index) => index + 1);
 
-const styles = {
-  pageStack: 'gap-6',
-  hero: 'ui-card p-4 sm:p-6',
-  heroImage: 'w-full aspect-[2/3] rounded-xl bg-[var(--card-cover-bg)] object-cover',
-  muted: 'text-[var(--text-muted)]',
-  section: 'ui-card p-4 sm:p-6',
-  sectionStack: 'gap-4',
-  heroText: 'gap-3',
-  title: 'ui-page-title',
-  description: 'text-[var(--text-secondary)]',
-  sectionTitle: 'ui-section-title',
-  seasonsCard: 'ui-card p-4 sm:p-6',
-  seasonCard: 'ui-panel p-4',
-  seasonHeader: 'flex flex-wrap items-center justify-between gap-3',
-  seasonTitle: 'text-lg font-semibold text-[var(--text-primary)]',
-  seasonMeta: 'text-xs text-[var(--text-muted)]',
-  episodeList: 'mt-4 grid gap-3',
-  episodeCard: 'ui-panel p-3 sm:p-4',
-  episodeTitle: 'text-sm font-semibold text-[var(--text-primary)]',
-  episodeMeta: 'text-xs text-[var(--text-muted)]',
-  ratingBlock: 'mt-3 ui-panel p-3 sm:p-4',
+const TYPE_CONFIG = {
+  Movie: { label: 'Movie', shortLabel: 'Film', Icon: Film },
+  TvSeries: { label: 'TV Series', shortLabel: 'Series', Icon: Tv },
+  Book: { label: 'Book', shortLabel: 'Book', Icon: BookOpen },
 };
 
-function SeasonRatingReview({ seasonId, user }) {
-  const [ratingDto, setRatingDto] = useState(null);
-  const [actionError, setActionError] = useState('');
-  const { data: summary, refetch } = useSeasonRatingSummaryQuery(seasonId);
-  const { mutate: rateSeason, loading: submittingRating } = useRateSeasonMutation();
-  const { createReview, loading: submittingReview } = useReviewMutations();
+const STATUS_LABELS = {
+  Movie: {
+    Plan: 'Plan to watch',
+    'On it': 'Watching',
+    Done: 'Watched',
+    Dropped: 'Dropped',
+  },
+  TvSeries: {
+    Plan: 'Plan to watch',
+    'On it': 'Watching',
+    Done: 'Completed',
+    Dropped: 'Dropped',
+  },
+  Book: {
+    Plan: 'Plan to read',
+    'On it': 'Reading',
+    Done: 'Read',
+    Dropped: 'Dropped',
+  },
+};
 
-  const handleRate = async (value) => {
+const compactCount = (value) => {
+  const count = Number(value);
+  if (!Number.isFinite(count) || count <= 0) return '0';
+  if (count >= 1000) return `${(count / 1000).toFixed(count >= 10000 ? 0 : 1)}k`;
+  return String(count);
+};
+
+const getYear = (media) => media?.releaseYear ?? media?.releaseDate?.slice?.(0, 4) ?? null;
+
+const formatRuntime = (minutes) => {
+  const value = Number(minutes);
+  if (!Number.isFinite(value) || value <= 0) return '';
+  const hours = Math.floor(value / 60);
+  const mins = value % 60;
+  if (!hours) return `${mins} min`;
+  return mins ? `${hours}h ${mins}m` : `${hours}h`;
+};
+
+const getStatusLabel = (mediaType, status) => STATUS_LABELS[mediaType]?.[status] ?? status;
+
+function CoverArtwork({ media, className = '' }) {
+  const [failedImageUrl, setFailedImageUrl] = useState('');
+  const imageUrl = useMemo(() => buildImageUrl(media?.coverUrl, ''), [media?.coverUrl]);
+  const typeConfig = TYPE_CONFIG[media?.type] ?? TYPE_CONFIG.Movie;
+  const Icon = typeConfig.Icon;
+  const hasImage = Boolean(imageUrl) && failedImageUrl !== imageUrl;
+
+  return (
+    <div className={clsx('media-detail-cover', className)} data-media-type={media?.type}>
+      {hasImage ? (
+        <img
+          src={imageUrl}
+          alt={media?.title ?? 'Media cover'}
+          onError={() => setFailedImageUrl(imageUrl)}
+        />
+      ) : (
+        <div className="media-detail-cover__placeholder" aria-label="No cover available">
+          <Icon size={42} strokeWidth={1.7} aria-hidden="true" />
+          <span>No cover</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MetaChip({ icon: Icon, children, tone = 'default' }) {
+  if (!children) return null;
+
+  return (
+    <span className="media-detail-chip" data-tone={tone}>
+      {Icon ? <Icon size={15} aria-hidden="true" /> : null}
+      {children}
+    </span>
+  );
+}
+
+function RatingScore({ averageRating = 0, ratingsCount = 0, userRating = null, compact = false }) {
+  const hasAverage = Number(averageRating) > 0;
+
+  return (
+    <div className={clsx('media-detail-rating-score', compact && 'media-detail-rating-score--compact')}>
+      <div className="media-detail-rating-score__main">
+        <Star size={compact ? 16 : 20} fill="currentColor" aria-hidden="true" />
+        <strong>{hasAverage ? Number(averageRating).toFixed(1) : 'N/A'}</strong>
+        {!compact ? <RatingStars rating={averageRating} /> : null}
+      </div>
+      <span>{compactCount(ratingsCount)} ratings</span>
+      <span>{userRating ? `You rated ${userRating}/10` : "You haven't rated this yet"}</span>
+    </div>
+  );
+}
+
+function RatingPicker({ id, value, onChange, disabled = false, compact = false }) {
+  if (compact) {
+    return (
+      <Select
+        id={id}
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+        disabled={disabled}
+        className="media-detail-rating-select"
+      >
+        {RATING_VALUES.map((item) => (
+          <option key={item} value={item}>{item}/10</option>
+        ))}
+      </Select>
+    );
+  }
+
+  return (
+    <div className="media-detail-rating-grid" role="group" aria-label="Choose a rating from 1 to 10">
+      {RATING_VALUES.map((item) => (
+        <button
+          key={item}
+          type="button"
+          className={clsx('media-detail-rating-pill', value === item && 'is-selected')}
+          aria-pressed={value === item}
+          onClick={() => onChange(item)}
+          disabled={disabled}
+        >
+          {item}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function MediaRatingPanel({
+  summary,
+  user,
+  initialRatingId,
+  submitting,
+  deleting,
+  onRate,
+  onDelete,
+  onReviewClick,
+}) {
+  const [value, setValue] = useState(summary?.userRating ?? 10);
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    onRate(value);
+  };
+
+  return (
+    <section className="media-detail-action-card media-detail-action-card--rating" aria-labelledby="media-rating-title">
+      <div className="media-detail-action-card__head">
+        <span className="media-detail-action-card__icon">
+          <Star size={18} fill="currentColor" aria-hidden="true" />
+        </span>
+        <div>
+          <h2 id="media-rating-title">Rate this title</h2>
+          <p>{summary?.userRating ? `You rated this ${summary.userRating}/10.` : "You haven't rated this yet."}</p>
+        </div>
+      </div>
+
+      <RatingScore
+        averageRating={summary?.averageRating ?? 0}
+        ratingsCount={summary?.ratingsCount ?? 0}
+        userRating={summary?.userRating ?? null}
+      />
+
+      {user ? (
+        <form className="media-detail-rating-form" onSubmit={handleSubmit}>
+          <label className="media-detail-field-label" htmlFor="media-rating-picker">Your rating</label>
+          <RatingPicker
+            id="media-rating-picker"
+            value={value}
+            onChange={setValue}
+            disabled={submitting || deleting}
+          />
+          <div className="media-detail-action-row">
+            <Button type="submit" variant="primary" disabled={submitting || deleting}>
+              {submitting ? 'Saving...' : 'Save rating'}
+            </Button>
+            <Button type="button" onClick={onReviewClick}>
+              <PencilLine size={16} aria-hidden="true" />
+              Write review
+            </Button>
+            {summary?.userRating || initialRatingId ? (
+              <Button type="button" variant="ghost" onClick={onDelete} disabled={submitting || deleting}>
+                {deleting ? 'Clearing...' : 'Clear rating'}
+              </Button>
+            ) : null}
+          </div>
+        </form>
+      ) : (
+        <InlineMessage tone="info">Sign in to save a rating or write a review.</InlineMessage>
+      )}
+    </section>
+  );
+}
+
+function StatusTracker({ mediaType, currentStatus, user, saving, onSave }) {
+  const [status, setStatus] = useState(currentStatus || STATUS_TYPES[0]);
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    onSave(status);
+  };
+
+  return (
+    <section className="media-detail-action-card" aria-labelledby="media-status-title">
+      <div className="media-detail-action-card__head">
+        <span className="media-detail-action-card__icon">
+          <BookmarkCheck size={18} aria-hidden="true" />
+        </span>
+        <div>
+          <h2 id="media-status-title">Track progress</h2>
+          <p>{user ? `Current status: ${getStatusLabel(mediaType, status)}` : 'Sign in to track progress.'}</p>
+        </div>
+      </div>
+
+      {user ? (
+        <form className="media-detail-status-form" onSubmit={handleSubmit}>
+          <label className="media-detail-field-label" htmlFor="media-status">Status</label>
+          <Select
+            id="media-status"
+            value={status}
+            onChange={(event) => setStatus(event.target.value)}
+            disabled={saving}
+          >
+            {STATUS_TYPES.map((item) => (
+              <option key={item} value={item}>{getStatusLabel(mediaType, item)}</option>
+            ))}
+          </Select>
+          <Button type="submit" disabled={saving}>
+            {saving ? 'Saving...' : 'Update status'}
+          </Button>
+        </form>
+      ) : (
+        <InlineMessage tone="info">Your watch or reading status stays private until you sign in.</InlineMessage>
+      )}
+    </section>
+  );
+}
+
+function MediaDetailHero({ media, summary, seasons, onReviewClick }) {
+  const typeConfig = TYPE_CONFIG[media.type] ?? TYPE_CONFIG.Movie;
+  const year = getYear(media);
+  const runtime = media.type === 'Movie' ? formatRuntime(media.duration) : '';
+  const episodeCount = seasons.reduce((total, season) => total + (season.episodes?.length ?? 0), 0);
+  const seasonCount = media.seasonsCount ?? seasons.length;
+  const heroImageUrl = buildImageUrl(media.coverUrl, '');
+  const chips = [
+    { icon: typeConfig.Icon, value: typeConfig.label, tone: 'accent' },
+    { icon: Calendar, value: year },
+    { icon: Clock3, value: runtime },
+    { icon: BookOpen, value: media.type === 'Book' ? media.author : '' },
+    {
+      icon: Layers3,
+      value: media.type === 'TvSeries' && seasonCount ? `${seasonCount} seasons` : '',
+    },
+    {
+      icon: PlayCircle,
+      value: media.type === 'TvSeries' && episodeCount ? `${episodeCount} episodes` : '',
+    },
+  ].filter((chip) => chip.value);
+
+  return (
+    <section className="media-detail-hero">
+      {heroImageUrl ? (
+        <img className="media-detail-hero__backdrop" src={heroImageUrl} alt="" aria-hidden="true" />
+      ) : null}
+      <div className="media-detail-hero__shade" aria-hidden="true" />
+
+      <div className="media-detail-hero__poster">
+        <CoverArtwork media={media} />
+      </div>
+
+      <div className="media-detail-hero__content">
+        <Link className="media-detail-back-link" to="/media">
+          <ArrowLeft size={16} aria-hidden="true" />
+          Back to Explore
+        </Link>
+
+        <div className="media-detail-hero__title-block">
+          <span className="media-detail-kicker">{typeConfig.shortLabel}</span>
+          <h1>{media.title}</h1>
+        </div>
+
+        <div className="media-detail-chip-row" aria-label="Media metadata">
+          {chips.map((chip) => (
+            <MetaChip key={`${chip.value}-${chip.tone ?? 'default'}`} icon={chip.icon} tone={chip.tone}>
+              {chip.value}
+            </MetaChip>
+          ))}
+        </div>
+
+        {media.genres?.length || media.tags?.length ? (
+          <div className="media-detail-tag-row" aria-label="Genres and tags">
+            {[...(media.genres ?? []), ...(media.tags ?? [])].slice(0, 10).map((item) => (
+              <span key={item}>
+                <Tag size={13} aria-hidden="true" />
+                {item}
+              </span>
+            ))}
+          </div>
+        ) : null}
+
+        <p className="media-detail-description">
+          {media.description || 'No description available yet.'}
+        </p>
+
+        <div className="media-detail-hero__summary">
+          <RatingScore
+            averageRating={summary?.averageRating ?? media.averageRating ?? 0}
+            ratingsCount={summary?.ratingsCount ?? media.ratingsCount ?? 0}
+            userRating={summary?.userRating ?? null}
+            compact
+          />
+          <Button type="button" variant="primary" onClick={onReviewClick}>
+            <MessageCircle size={17} aria-hidden="true" />
+            Reviews
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function DetailSpecs({ media, seasons }) {
+  const episodeCount = seasons.reduce((total, season) => total + (season.episodes?.length ?? 0), 0);
+  const rows = [
+    ['Type', TYPE_CONFIG[media.type]?.label ?? media.type],
+    ['Year', getYear(media)],
+    ['Genres', media.genres?.join(', ')],
+    ['Tags', media.tags?.join(', ')],
+    ['Director', media.director],
+    ['Runtime', media.type === 'Movie' ? formatRuntime(media.duration) : ''],
+    ['Author', media.author],
+    ['Pages', media.pages ? `${media.pages} pages` : ''],
+    ['ISBN', media.isbn],
+    ['Seasons', media.type === 'TvSeries' && (media.seasonsCount ?? seasons.length) ? media.seasonsCount ?? seasons.length : ''],
+    ['Episodes', media.type === 'TvSeries' && episodeCount ? episodeCount : ''],
+  ].filter(([, value]) => value);
+
+  if (!rows.length) return null;
+
+  return (
+    <section className="media-detail-section" aria-labelledby="media-details-title">
+      <div className="media-detail-section__header">
+        <div>
+          <h2 id="media-details-title">Details</h2>
+          <p>Key catalog information for this title.</p>
+        </div>
+      </div>
+      <dl className="media-detail-specs">
+        {rows.map(([label, value]) => (
+          <div key={label}>
+            <dt>{label}</dt>
+            <dd>{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
+function TargetRatingReview({
+  targetLabel,
+  targetId,
+  summary,
+  user,
+  ratingDto,
+  setRatingDto,
+  onRate,
+  submittingRating,
+  createReview,
+  submittingReview,
+  actionError,
+  setActionError,
+  compact = false,
+}) {
+  const [value, setValue] = useState(summary?.userRating ?? 10);
+  const [showEditor, setShowEditor] = useState(false);
+
+  const handleRate = async (event) => {
+    event.preventDefault();
     setActionError('');
     try {
-      const dto = await rateSeason(seasonId, value);
+      const dto = await onRate(value);
       setRatingDto(dto);
-      await refetch();
-    } catch (e) {
-      setActionError(e.response?.data?.message || 'Could not save rating.');
+    } catch (error) {
+      setActionError(error.response?.data?.message || 'Could not save rating.');
     }
   };
 
   const ensureRatingId = async () => {
     if (ratingDto?.id) return ratingDto.id;
     if (!summary?.userRating) return null;
-    const dto = await rateSeason(seasonId, summary.userRating);
+    const dto = await onRate(summary.userRating);
     setRatingDto(dto);
     return dto.id;
   };
@@ -88,49 +459,105 @@ function SeasonRatingReview({ seasonId, user }) {
     try {
       const ratingId = await ensureRatingId();
       if (!ratingId) {
-        setActionError('Please rate this season first.');
+        setActionError(`Please rate this ${targetLabel.toLowerCase()} first.`);
         return;
       }
+
       await createReview({
         ratingId,
         content,
         containsSpoilers: false,
       });
-    } catch (e) {
-      setActionError(e.response?.data?.message || 'Could not post review.');
+      setShowEditor(false);
+    } catch (error) {
+      setActionError(error.response?.data?.message || 'Could not post review.');
     }
   };
 
+  const canReview = Boolean(user && (summary?.userRating || ratingDto?.id));
+  const fieldId = `${targetLabel.toLowerCase()}-${targetId}-rating`;
+
   return (
-    <div className={styles.ratingBlock}>
-      <UserRatingDisplay
+    <div className={clsx('media-detail-target-rating', compact && 'media-detail-target-rating--compact')}>
+      <RatingScore
         averageRating={summary?.averageRating ?? 0}
         ratingsCount={summary?.ratingsCount ?? 0}
         userRating={summary?.userRating ?? null}
+        compact
       />
 
       {user ? (
-        <RatingSelector
-          key={`season-rating-${summary?.userRating ?? 'none'}`}
-          initialValue={summary?.userRating ?? 10}
-          onSubmit={handleRate}
-          submitting={submittingRating}
-        />
+        <form className="media-detail-target-rating__form" onSubmit={handleRate}>
+          <label className="media-detail-field-label" htmlFor={fieldId}>
+            Rate {targetLabel.toLowerCase()}
+          </label>
+          <RatingPicker
+            id={fieldId}
+            value={value}
+            onChange={setValue}
+            disabled={submittingRating}
+            compact={compact}
+          />
+          <Button type="submit" size="sm" variant={compact ? 'default' : 'primary'} disabled={submittingRating}>
+            {submittingRating ? 'Saving...' : 'Save'}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={() => setShowEditor((current) => !current)}
+            disabled={!canReview || submittingReview}
+          >
+            <PencilLine size={14} aria-hidden="true" />
+            Review
+          </Button>
+        </form>
       ) : null}
 
-      {user && (summary?.userRating || ratingDto?.id) ? (
-        <ReviewEditor
-          onSubmit={handleCreateReview}
-          submitting={submittingReview}
-        />
+      {user && !canReview ? (
+        <p className="media-detail-target-note">Rate this {targetLabel.toLowerCase()} first to post a review.</p>
       ) : null}
 
-      {user && !summary?.userRating && !ratingDto?.id ? (
-        <p className={styles.muted}>Rate this season first to post a review.</p>
+      {showEditor && canReview ? (
+        <div className="media-detail-target-editor">
+          <ReviewEditor onSubmit={handleCreateReview} submitting={submittingReview} />
+        </div>
       ) : null}
 
-      {actionError ? <InlineMessage tone="error" className="mt-3">{actionError}</InlineMessage> : null}
+      {actionError ? <InlineMessage tone="error">{actionError}</InlineMessage> : null}
     </div>
+  );
+}
+
+function SeasonRatingReview({ seasonId, user }) {
+  const [ratingDto, setRatingDto] = useState(null);
+  const [actionError, setActionError] = useState('');
+  const { data: summary, refetch } = useSeasonRatingSummaryQuery(seasonId);
+  const { mutate: rateSeason, loading: submittingRating } = useRateSeasonMutation();
+  const { createReview, loading: submittingReview } = useReviewMutations();
+
+  const onRate = async (value) => {
+    const dto = await rateSeason(seasonId, value);
+    await refetch();
+    return dto;
+  };
+
+  return (
+    <TargetRatingReview
+      key={`season-target-${summary?.userRating ?? 'none'}`}
+      targetLabel="Season"
+      targetId={seasonId}
+      summary={summary}
+      user={user}
+      ratingDto={ratingDto}
+      setRatingDto={setRatingDto}
+      onRate={onRate}
+      submittingRating={submittingRating}
+      createReview={createReview}
+      submittingReview={submittingReview}
+      actionError={actionError}
+      setActionError={setActionError}
+    />
   );
 }
 
@@ -141,73 +568,168 @@ function EpisodeRatingReview({ episodeId, user }) {
   const { mutate: rateEpisode, loading: submittingRating } = useRateEpisodeMutation();
   const { createReview, loading: submittingReview } = useReviewMutations();
 
-  const handleRate = async (value) => {
-    setActionError('');
-    try {
-      const dto = await rateEpisode(episodeId, value);
-      setRatingDto(dto);
-      await refetch();
-    } catch (e) {
-      setActionError(e.response?.data?.message || 'Could not save rating.');
-    }
-  };
-
-  const ensureRatingId = async () => {
-    if (ratingDto?.id) return ratingDto.id;
-    if (!summary?.userRating) return null;
-    const dto = await rateEpisode(episodeId, summary.userRating);
-    setRatingDto(dto);
-    return dto.id;
-  };
-
-  const handleCreateReview = async (content) => {
-    setActionError('');
-    try {
-      const ratingId = await ensureRatingId();
-      if (!ratingId) {
-        setActionError('Please rate this episode first.');
-        return;
-      }
-      await createReview({
-        ratingId,
-        content,
-        containsSpoilers: false,
-      });
-    } catch (e) {
-      setActionError(e.response?.data?.message || 'Could not post review.');
-    }
+  const onRate = async (value) => {
+    const dto = await rateEpisode(episodeId, value);
+    await refetch();
+    return dto;
   };
 
   return (
-    <div className={styles.ratingBlock}>
-      <UserRatingDisplay
-        averageRating={summary?.averageRating ?? 0}
-        ratingsCount={summary?.ratingsCount ?? 0}
-        userRating={summary?.userRating ?? null}
-      />
+    <TargetRatingReview
+      key={`episode-target-${summary?.userRating ?? 'none'}`}
+      targetLabel="Episode"
+      targetId={episodeId}
+      summary={summary}
+      user={user}
+      ratingDto={ratingDto}
+      setRatingDto={setRatingDto}
+      onRate={onRate}
+      submittingRating={submittingRating}
+      createReview={createReview}
+      submittingReview={submittingReview}
+      actionError={actionError}
+      setActionError={setActionError}
+      compact
+    />
+  );
+}
 
-      {user ? (
-        <RatingSelector
-          key={`episode-rating-${summary?.userRating ?? 'none'}`}
-          initialValue={summary?.userRating ?? 10}
-          onSubmit={handleRate}
-          submitting={submittingRating}
-        />
+function SeasonSummary({ seasonId }) {
+  const { data: summary } = useSeasonRatingSummaryQuery(seasonId);
+
+  return (
+    <RatingScore
+      averageRating={summary?.averageRating ?? 0}
+      ratingsCount={summary?.ratingsCount ?? 0}
+      userRating={summary?.userRating ?? null}
+      compact
+    />
+  );
+}
+
+function EpisodeCard({ episode, user }) {
+  return (
+    <article className="media-detail-episode-card">
+      <div className="media-detail-episode-card__main">
+        <span className="media-detail-episode-number">E{episode.episodeNumber}</span>
+        <div>
+          <h4>{episode.title || `Episode ${episode.episodeNumber}`}</h4>
+          <p>
+            {episode.duration ? `${episode.duration} min` : 'Runtime not listed'}
+          </p>
+        </div>
+      </div>
+      <EpisodeRatingReview episodeId={episode.id} user={user} />
+    </article>
+  );
+}
+
+function SeasonAccordion({ season, user, isOpen, onToggle }) {
+  const episodes = Array.isArray(season.episodes) ? season.episodes : [];
+
+  return (
+    <article className="media-detail-season-card">
+      <button
+        type="button"
+        className="media-detail-season-card__summary"
+        onClick={onToggle}
+        aria-expanded={isOpen}
+      >
+        <span className="media-detail-season-number">S{season.seasonNumber}</span>
+        <span className="media-detail-season-card__title">
+          <strong>Season {season.seasonNumber}</strong>
+          <small>{episodes.length} episodes</small>
+        </span>
+        <span className="media-detail-season-card__rating">
+          <SeasonSummary seasonId={season.id} />
+        </span>
+        <span className="media-detail-season-card__toggle">
+          {isOpen ? <ChevronUp size={18} aria-hidden="true" /> : <ChevronDown size={18} aria-hidden="true" />}
+          {isOpen ? 'Hide' : 'View'}
+        </span>
+      </button>
+
+      {isOpen ? (
+        <div className="media-detail-season-card__body">
+          <SeasonRatingReview seasonId={season.id} user={user} />
+
+          {episodes.length ? (
+            <div className="media-detail-episode-list" aria-label={`Season ${season.seasonNumber} episodes`}>
+              {episodes.map((episode) => (
+                <EpisodeCard key={episode.id} episode={episode} user={user} />
+              ))}
+            </div>
+          ) : (
+            <EmptyState title="No episodes available" description="This season does not have episode data yet." />
+          )}
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
+function TvSeasonsPanel({ seasons, loading, error, user, openSeasonId, onToggleSeason }) {
+  return (
+    <section className="media-detail-section media-detail-section--seasons" aria-labelledby="media-seasons-title">
+      <div className="media-detail-section__header">
+        <div>
+          <h2 id="media-seasons-title">Seasons & episodes</h2>
+          <p>Browse season ratings and open a season to rate or review individual episodes.</p>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="media-detail-season-skeleton" role="status" aria-label="Loading seasons">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div key={index} className="ui-skeleton" />
+          ))}
+        </div>
       ) : null}
 
-      {user && (summary?.userRating || ratingDto?.id) ? (
-        <ReviewEditor
-          onSubmit={handleCreateReview}
-          submitting={submittingReview}
-        />
+      {error ? <InlineMessage tone="error">Failed to load seasons.</InlineMessage> : null}
+
+      {!loading && !error && seasons.length === 0 ? (
+        <EmptyState title="No seasons available" description="This series does not have season data yet." />
       ) : null}
 
-      {user && !summary?.userRating && !ratingDto?.id ? (
-        <p className={styles.muted}>Rate this episode first to post a review.</p>
+      {!loading && !error && seasons.length ? (
+        <div className="media-detail-season-list">
+          {seasons.map((season) => (
+            <SeasonAccordion
+              key={season.id}
+              season={season}
+              user={user}
+              isOpen={openSeasonId === season.id}
+              onToggle={() => onToggleSeason(openSeasonId === season.id ? null : season.id)}
+            />
+          ))}
+        </div>
       ) : null}
+    </section>
+  );
+}
 
-      {actionError ? <InlineMessage tone="error" className="mt-3">{actionError}</InlineMessage> : null}
-    </div>
+function LoadingDetail() {
+  return (
+    <PageLayout>
+      <Container size="xxl">
+        <div className="media-detail-page">
+          <section className="media-detail-loading-hero" aria-label="Loading media details">
+            <div className="ui-skeleton media-detail-loading-poster" />
+            <div className="media-detail-loading-copy">
+              <div className="ui-skeleton" />
+              <div className="ui-skeleton" />
+              <div className="ui-skeleton" />
+              <div className="ui-skeleton" />
+            </div>
+          </section>
+          <div className="media-detail-loading-grid">
+            <div className="ui-skeleton" />
+            <div className="ui-skeleton" />
+          </div>
+        </div>
+      </Container>
+    </PageLayout>
   );
 }
 
@@ -244,12 +766,17 @@ function MediaDetailPage() {
   const { data: similarData } = useSimilarMediaQuery(id, 20);
 
   const { mutate: rateMedia, loading: submittingRating } = useRateMediaMutation();
+  const { mutate: deleteMediaRating, loading: deletingRating } = useDeleteMediaRatingMutation();
   const { createReview, loading: submittingReview } = useReviewMutations();
   const { mutate: saveMediaStatus, loading: savingStatus } = useMediaStatusMutation();
 
   const reviews = useMemo(() => (Array.isArray(reviewsData) ? reviewsData : []), [reviewsData]);
   const similar = Array.isArray(similarData) ? similarData : [];
-  const seasons = Array.isArray(seasonsData) ? seasonsData : [];
+  const seasons = useMemo(() => {
+    if (Array.isArray(seasonsData) && seasonsData.length) return seasonsData;
+    if (Array.isArray(media?.seasons)) return media.seasons;
+    return [];
+  }, [media?.seasons, seasonsData]);
 
   const loading = mediaLoading || summaryLoading;
   const error = mediaError || summaryError;
@@ -281,6 +808,17 @@ function MediaDetailPage() {
       await refetchSummary();
     } catch (e) {
       setActionError(e.response?.data?.message || 'Could not save rating.');
+    }
+  };
+
+  const handleDeleteRating = async () => {
+    setActionError('');
+    try {
+      await deleteMediaRating(id);
+      setRatingDto(null);
+      await refetchSummary();
+    } catch (e) {
+      setActionError(e.response?.data?.message || 'Could not clear rating.');
     }
   };
 
@@ -324,21 +862,25 @@ function MediaDetailPage() {
     }
   };
 
+  const showReviews = () => setActiveTab('Reviews');
+
   if (loading) {
-    return (
-      <PageLayout>
-        <Container>
-          <LoadingState label="Loading media..." />
-        </Container>
-      </PageLayout>
-    );
+    return <LoadingDetail />;
   }
 
   if (error || !media) {
     return (
       <PageLayout>
-        <Container>
-          <InlineMessage tone="error">{errorMessage || 'Media not found.'}</InlineMessage>
+        <Container size="xxl">
+          <div className="media-detail-page">
+            <section className="media-detail-state">
+              <InlineMessage tone="error">{errorMessage || 'Media not found.'}</InlineMessage>
+              <Button as={Link} to="/media" variant="primary">
+                <ArrowLeft size={16} aria-hidden="true" />
+                Back to Explore
+              </Button>
+            </section>
+          </div>
         </Container>
       </PageLayout>
     );
@@ -346,182 +888,147 @@ function MediaDetailPage() {
 
   return (
     <PageLayout>
-      <Container>
-        <Stack className={styles.pageStack}>
-          <div>
-            <Button variant="ghost" onClick={() => navigate('/media')}>Back to Media List</Button>
-          </div>
-
-          <Grid variant="mediaHero" className={styles.hero}>
-            <img
-              src={buildImageUrl(media.coverUrl)}
-              alt={media.title}
-              className={styles.heroImage}
-            />
-            <Stack className={styles.heroText}>
-              <h1 className={styles.title}>{media.title}</h1>
-              <div className="flex flex-wrap gap-2">
-                <Badge tone="info">{media.type}</Badge>
-                <Badge>{media.releaseYear ?? media.releaseDate?.slice?.(0, 4) ?? 'N/A'}</Badge>
-              </div>
-              <p className={styles.description}>
-                {media.description || 'No description available.'}
-              </p>
-            </Stack>
-          </Grid>
+      <Container size="xxl">
+        <div className="media-detail-page">
+          <MediaDetailHero
+            media={media}
+            summary={summary}
+            seasons={seasons}
+            onReviewClick={showReviews}
+          />
 
           <Tabs
             tabs={MEDIA_TABS}
             value={activeTab}
             onChange={setActiveTab}
-            ariaLabel="Media Details Tabs"
+            ariaLabel="Media detail sections"
+            className="media-detail-tabs"
           />
 
+          {actionError ? <InlineMessage tone="error">{actionError}</InlineMessage> : null}
+
           {activeTab === 'Overview' ? (
-            <Stack className={styles.sectionStack}>
-              <UserRatingDisplay
-                averageRating={summary?.averageRating ?? 0}
-                ratingsCount={summary?.ratingsCount ?? 0}
-                userRating={summary?.userRating ?? null}
-              />
-
-              {user ? (
-                <RatingSelector
-                  key={`rating-${summary?.userRating ?? 'none'}`}
-                  initialValue={summary?.userRating ?? 10}
-                  onSubmit={handleRate}
+            <div className="media-detail-overview">
+              <div className="media-detail-action-grid">
+                <MediaRatingPanel
+                  key={`media-rating-${summary?.userRating ?? 'none'}`}
+                  summary={summary}
+                  user={user}
+                  initialRatingId={ratingDto?.id}
                   submitting={submittingRating}
+                  deleting={deletingRating}
+                  onRate={handleRate}
+                  onDelete={handleDeleteRating}
+                  onReviewClick={showReviews}
                 />
-              ) : null}
-
-              {user ? (
-                <MediaStatusSelector
+                <StatusTracker
+                  key={`media-status-${media.id}-${media.userStatus || 'Plan'}`}
+                  mediaType={media.type}
                   currentStatus={media.userStatus || 'Plan'}
-                  onSave={handleSaveStatus}
+                  user={user}
                   saving={savingStatus}
+                  onSave={handleSaveStatus}
                 />
-              ) : null}
+              </div>
+
+              <DetailSpecs media={media} seasons={seasons} />
 
               {shouldFetchSeasons ? (
-                <section className={styles.seasonsCard}>
-                  <Stack className={styles.sectionStack}>
-                    <h2 className={styles.sectionTitle}>Seasons</h2>
-
-                    {seasonsLoading ? (
-                      <LoadingState label="Loading seasons..." />
-                    ) : seasonsError ? (
-                      <InlineMessage tone="error">Failed to load seasons.</InlineMessage>
-                    ) : seasons.length === 0 ? (
-                      <EmptyState title="No seasons found" description="This series does not have season data yet." />
-                    ) : (
-                      <Stack className={styles.sectionStack}>
-                        {seasons.map((season) => {
-                          const isOpen = openSeasonId === season.id;
-                          return (
-                            <div key={season.id} className={styles.seasonCard}>
-                              <div className={styles.seasonHeader}>
-                                <div>
-                                  <p className={styles.seasonTitle}>Season {season.seasonNumber}</p>
-                                  <p className={styles.seasonMeta}>
-                                    {(season.episodes ?? []).length} episodes
-                                  </p>
-                                </div>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => setOpenSeasonId(isOpen ? null : season.id)}
-                                >
-                                  {isOpen ? 'Hide' : 'View'}
-                                </Button>
-                              </div>
-
-                              {isOpen ? (
-                                <div className="mt-4">
-                                  <SeasonRatingReview seasonId={season.id} user={user} />
-
-                                  <div className={styles.episodeList}>
-                                    {(season.episodes ?? []).map((ep) => (
-                                      <div key={ep.id} className={styles.episodeCard}>
-                                        <div className="flex flex-wrap items-center justify-between gap-2">
-                                          <div>
-                                            <p className={styles.episodeTitle}>
-                                              E{ep.episodeNumber} · {ep.title || `Episode ${ep.episodeNumber}`}
-                                            </p>
-                                            {ep.duration ? (
-                                              <p className={styles.episodeMeta}>{ep.duration} min</p>
-                                            ) : null}
-                                          </div>
-                                        </div>
-
-                                        <EpisodeRatingReview episodeId={ep.id} user={user} />
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              ) : null}
-                            </div>
-                          );
-                        })}
-                      </Stack>
-                    )}
-                  </Stack>
-                </section>
+                <TvSeasonsPanel
+                  seasons={seasons}
+                  loading={seasonsLoading}
+                  error={seasonsError}
+                  user={user}
+                  openSeasonId={openSeasonId}
+                  onToggleSeason={setOpenSeasonId}
+                />
               ) : null}
-            </Stack>
+            </div>
           ) : null}
 
           {activeTab === 'Reviews' ? (
-            <section className={styles.section}>
-              <Stack className={styles.sectionStack}>
-                <h2 className={styles.sectionTitle}>Reviews</h2>
+            <section className="media-detail-section media-detail-section--reviews">
+              <div className="media-detail-section__header">
+                <div>
+                  <h2>Reviews</h2>
+                  <p>Read community reactions or add your own after rating this title.</p>
+                </div>
                 <ReviewFilters value={sortBy} onChange={setSortBy} />
+              </div>
 
-                {user && (summary?.userRating || ratingDto?.id) ? (
+              {user && (summary?.userRating || ratingDto?.id) ? (
+                <div className="media-detail-review-editor">
                   <ReviewEditor
                     onSubmit={handleCreateReview}
                     submitting={submittingReview}
                   />
-                ) : null}
+                </div>
+              ) : null}
 
-                {user && !summary?.userRating && !ratingDto?.id ? (
-                  <p className={styles.muted}>Rate this media first to post a review.</p>
-                ) : null}
+              {user && !summary?.userRating && !ratingDto?.id ? (
+                <InlineMessage tone="info">Rate this media first to post a review.</InlineMessage>
+              ) : null}
 
-                {actionError ? <InlineMessage tone="error">{actionError}</InlineMessage> : null}
-                <ReviewsList
-                  reviews={sortedReviews}
-                  loading={reviewLoading}
-                  error={reviewError ? reviewErrorMessage : ''}
-                />
-              </Stack>
+              {!user ? (
+                <InlineMessage tone="info">Sign in and rate this title to write a review.</InlineMessage>
+              ) : null}
+
+              <ReviewsList
+                reviews={sortedReviews}
+                loading={reviewLoading}
+                error={reviewError ? reviewErrorMessage : ''}
+              />
             </section>
           ) : null}
 
           {activeTab === 'Collections' ? (
-            <section className={styles.section}>
-              <Stack className={styles.sectionStack}>
-                <h2 className={styles.sectionTitle}>Collections</h2>
-                <p className={styles.muted}>Browse collections or create one and add this media.</p>
+            <section className="media-detail-section media-detail-section--collections">
+              <div className="media-detail-section__header">
+                <div>
+                  <h2>Collections</h2>
+                  <p>Add this title to a public or private collection from the existing collections workspace.</p>
+                </div>
+              </div>
+              <div className="media-detail-collections-cta">
+                <span>
+                  <Library size={22} aria-hidden="true" />
+                </span>
+                <div>
+                  <h3>Build a list with this title</h3>
+                  <p>This page does not expose a containing-collections feed yet, so collection management opens in the existing flow.</p>
+                </div>
                 <Button
-                  type="button"
-                  onClick={() => navigate(`/collections?mediaId=${id}`)}
+                  as={Link}
+                  to={`/collections?mediaId=${id}`}
+                  variant="primary"
                 >
                   Open Collections
                 </Button>
-              </Stack>
+              </div>
             </section>
           ) : null}
 
           {activeTab === 'Similar' ? (
-            <section className={styles.section}>
-              <Stack className={styles.sectionStack}>
-                <h2 className={styles.sectionTitle}>Similar Media</h2>
+            <section className="media-detail-section">
+              <div className="media-detail-section__header">
+                <div>
+                  <h2>Similar media</h2>
+                  <p>Related movies, series, and books from the current discovery service.</p>
+                </div>
+              </div>
+              {similar.length ? (
                 <MediaRow items={similar} />
-              </Stack>
+              ) : (
+                <EmptyState title="No similar media yet" description="Related titles will appear here when the discovery service returns matches." />
+              )}
             </section>
           ) : null}
-        </Stack>
+
+          <Button type="button" variant="ghost" className="media-detail-bottom-back" onClick={() => navigate('/media')}>
+            <ArrowLeft size={16} aria-hidden="true" />
+            Back to Explore
+          </Button>
+        </div>
       </Container>
     </PageLayout>
   );

@@ -1,3 +1,67 @@
+RateOple Media Detail cinematic refactor results
+
+Summary:
+- Refactored `/media/:id` into a cinematic detail page for movies, TV series, and books.
+- Preserved the existing media details, ratings, reviews, status, seasons, episodes, collections navigation, and similar-media contracts.
+- Built into the backend-hosted app at `backend/RateOple/wwwroot` after frontend verification.
+
+Files changed:
+- frontend/src/features/media/pages/MediaDetailPage.jsx
+- frontend/src/index.css
+- backend/RateOple/wwwroot
+- results.txt
+
+Exact UX improvements:
+- Added a poster-led cinematic hero with cover/backdrop treatment, title typography, type/year/runtime/author/season/episode chips, genre/tag chips, overview copy, rating summary, Reviews CTA, and Back to Explore link.
+- Replaced bare rating/status forms with polished action modules that keep the existing 1-10 rating save flow, media rating delete/clear behavior, status enum values, and unauthenticated messaging.
+- Reworked tabs into a stronger detail tab bar with Overview, Reviews, Collections, and Similar sections.
+- Added intentional loading skeletons, clean error/not-found presentation, empty states, and no-cover placeholder handling.
+
+Movie / TV / book behavior:
+- Movies show runtime, director, year, genres/tags, rating/status controls, reviews, collections CTA, and similar media.
+- Books show author/pages/ISBN when available, book-specific status labels, rating/status controls, reviews, collections CTA, and similar media.
+- TV series show season and episode counts in the hero and details, plus the seasons/episodes browser in Overview.
+
+TV seasons / episodes behavior:
+- Existing season and episode rating/review capabilities are preserved through the existing season/episode rating summary and rating mutation hooks.
+- Seasons now render as polished accordions with season number, episode count, average/user rating summary, and View/Hide controls.
+- Expanded seasons show the season rating/review module plus compact episode cards.
+- Episode rows show episode number, title, runtime, rating summary, and compact rating/review controls without becoming an admin-style editor.
+- Empty season and episode states are explicit.
+
+Rating / status / review behavior preserved:
+- Media rating uses the existing `/media/{id}/ratings` mutation and existing summary refetch behavior.
+- Media rating clear uses the existing `useDeleteMediaRatingMutation` backend-supported delete flow.
+- Status updates still use existing `STATUS_TYPES` values: `Plan`, `On it`, `Done`, `Dropped`; labels adapt by media type without changing values.
+- Media reviews still require an existing media rating or rating creation through the current rating/review flow.
+- Season and episode reviews still require rating the target first, matching the previous behavior.
+
+Responsive behavior:
+- Backend-hosted Playwright inspection covered movie, TV, and book detail pages.
+- 320px TV detail, 375px TV detail, 430px movie detail, 430px book detail, desktop TV detail, Reviews tab, Collections tab, Similar tab, light theme, and no-cover fallback were inspected.
+- No document-level horizontal overflow was detected for the inspected Media Detail pages at 320px, 375px, 430px, or 1366px.
+- TV season accordions and episode cards stack cleanly on mobile.
+- Logged-in rating/status controls were verified with a temporary local user after fetching the required CSRF token.
+
+Checks run:
+- npm run lint: passed.
+- npm run build: passed. Build emitted existing Rollup annotation warnings from @microsoft/signalr comments.
+- npm run test:e2e: passed, 2 tests.
+- npm run build:backend: passed.
+- dotnet build backend/RateOple/RateOple.csproj: passed while diagnosing backend launch.
+- Backend-hosted Playwright inspection passed for the detail scenarios listed above.
+
+build:backend status:
+- npm run build:backend: passed.
+- Copied final Vite output into backend/RateOple/wwwroot.
+- The backend HTTPS host was already running on `https://localhost:7167`; an elevated attempted launch confirmed the port was already in use.
+
+Known limitations / manual things to inspect:
+- The Collections tab uses the existing `/collections?mediaId=...` flow because this detail page does not currently fetch containing collections.
+- No backend endpoint was added for a containing-collections feed.
+- Desktop element-level overflow reporting still sees existing header/right-edge and horizontal media-row internals, but document-level overflow remained false and this refactor did not redesign the shell/header again.
+- The missing-cover case was inspected with a Playwright-mocked detail response because the current local catalog did not include a real media item without a cover.
+
 RateOple Media List / Explore cinematic refactor results
 
 Summary:
