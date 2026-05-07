@@ -78,6 +78,30 @@ const STATUS_LABELS = {
   },
 };
 
+const MEDIA_ACTION_LABELS = {
+  Movie: {
+    rateTitle: 'Rate this movie',
+    trackTitle: 'Track movie',
+    reviewsTitle: 'Movie reviews',
+    reviewFirst: 'Rate this movie first to write a review.',
+    signedOutReview: 'Sign in and rate this movie to write a review.',
+  },
+  TvSeries: {
+    rateTitle: 'Rate this series',
+    trackTitle: 'Track series',
+    reviewsTitle: 'Series reviews',
+    reviewFirst: 'Rate this series first to write a review.',
+    signedOutReview: 'Sign in and rate this series to write a review.',
+  },
+  Book: {
+    rateTitle: 'Rate this book',
+    trackTitle: 'Track reading',
+    reviewsTitle: 'Book reviews',
+    reviewFirst: 'Rate this book first to write a review.',
+    signedOutReview: 'Sign in and rate this book to write a review.',
+  },
+};
+
 const compactCount = (value) => {
   const count = Number(value);
   if (!Number.isFinite(count) || count <= 0) return '0';
@@ -97,6 +121,7 @@ const formatRuntime = (minutes) => {
 };
 
 const getStatusLabel = (mediaType, status) => STATUS_LABELS[mediaType]?.[status] ?? status;
+const getMediaActionLabels = (mediaType) => MEDIA_ACTION_LABELS[mediaType] ?? MEDIA_ACTION_LABELS.Movie;
 
 function CoverArtwork({ media, className = '' }) {
   const [failedImageUrl, setFailedImageUrl] = useState('');
@@ -186,6 +211,7 @@ function RatingPicker({ id, value, onChange, disabled = false, compact = false }
 }
 
 function MediaRatingPanel({
+  mediaType,
   summary,
   user,
   initialRatingId,
@@ -196,6 +222,7 @@ function MediaRatingPanel({
   onReviewClick,
 }) {
   const [value, setValue] = useState(summary?.userRating ?? 10);
+  const labels = getMediaActionLabels(mediaType);
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -209,7 +236,7 @@ function MediaRatingPanel({
           <Star size={18} fill="currentColor" aria-hidden="true" />
         </span>
         <div>
-          <h2 id="media-rating-title">Rate this title</h2>
+          <h2 id="media-rating-title">{labels.rateTitle}</h2>
           <p>{summary?.userRating ? `You rated this ${summary.userRating}/10.` : "You haven't rated this yet."}</p>
         </div>
       </div>
@@ -253,6 +280,7 @@ function MediaRatingPanel({
 
 function StatusTracker({ mediaType, currentStatus, user, saving, onSave }) {
   const [status, setStatus] = useState(currentStatus || STATUS_TYPES[0]);
+  const labels = getMediaActionLabels(mediaType);
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -266,7 +294,7 @@ function StatusTracker({ mediaType, currentStatus, user, saving, onSave }) {
           <BookmarkCheck size={18} aria-hidden="true" />
         </span>
         <div>
-          <h2 id="media-status-title">Track progress</h2>
+          <h2 id="media-status-title">{labels.trackTitle}</h2>
           <p>{user ? `Current status: ${getStatusLabel(mediaType, status)}` : 'Sign in to track progress.'}</p>
         </div>
       </div>
@@ -417,9 +445,13 @@ function DetailSpecs({ media, seasons }) {
   );
 }
 
-function TargetRatingReview({
-  targetLabel,
+function TargetActionPanel({
+  targetName,
+  targetNoun,
   targetId,
+  ratingLabel,
+  reviewLabel,
+  reviewFirstMessage,
   summary,
   user,
   ratingDto,
@@ -430,10 +462,11 @@ function TargetRatingReview({
   submittingReview,
   actionError,
   setActionError,
+  activeMode,
+  onActiveModeChange,
   compact = false,
 }) {
   const [value, setValue] = useState(summary?.userRating ?? 10);
-  const [showEditor, setShowEditor] = useState(false);
 
   const handleRate = async (event) => {
     event.preventDefault();
@@ -459,7 +492,7 @@ function TargetRatingReview({
     try {
       const ratingId = await ensureRatingId();
       if (!ratingId) {
-        setActionError(`Please rate this ${targetLabel.toLowerCase()} first.`);
+        setActionError(reviewFirstMessage);
         return;
       }
 
@@ -468,14 +501,45 @@ function TargetRatingReview({
         content,
         containsSpoilers: false,
       });
-      setShowEditor(false);
+      onActiveModeChange(null);
     } catch (error) {
       setActionError(error.response?.data?.message || 'Could not post review.');
     }
   };
 
   const canReview = Boolean(user && (summary?.userRating || ratingDto?.id));
-  const fieldId = `${targetLabel.toLowerCase()}-${targetId}-rating`;
+  const fieldId = `${targetName.toLowerCase().replaceAll(' ', '-')}-${targetId}-rating`;
+  const showRatingPanel = activeMode === 'rate';
+  const showReviewPanel = activeMode === 'review' && canReview;
+  const signInMessage = `Sign in to rate or review this ${targetNoun}.`;
+
+  const handleRateClick = () => {
+    if (!user) {
+      setActionError(signInMessage);
+      onActiveModeChange(null);
+      return;
+    }
+
+    setActionError('');
+    onActiveModeChange(showRatingPanel ? null : 'rate');
+  };
+
+  const handleReviewClick = () => {
+    if (!user) {
+      setActionError(signInMessage);
+      onActiveModeChange(null);
+      return;
+    }
+
+    if (!canReview) {
+      setActionError(reviewFirstMessage);
+      onActiveModeChange(null);
+      return;
+    }
+
+    setActionError('');
+    onActiveModeChange(activeMode === 'review' ? null : 'review');
+  };
 
   return (
     <div className={clsx('media-detail-target-rating', compact && 'media-detail-target-rating--compact')}>
@@ -486,10 +550,31 @@ function TargetRatingReview({
         compact
       />
 
-      {user ? (
+      <div className="media-detail-target-actions">
+        <Button
+          type="button"
+          size="sm"
+          variant={showRatingPanel ? 'primary' : 'default'}
+          onClick={handleRateClick}
+        >
+          {ratingLabel}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant={showReviewPanel ? 'primary' : 'ghost'}
+          onClick={handleReviewClick}
+          disabled={submittingReview}
+        >
+          <PencilLine size={14} aria-hidden="true" />
+          {reviewLabel}
+        </Button>
+      </div>
+
+      {showRatingPanel ? (
         <form className="media-detail-target-rating__form" onSubmit={handleRate}>
           <label className="media-detail-field-label" htmlFor={fieldId}>
-            Rate {targetLabel.toLowerCase()}
+            Your rating for this {targetName.toLowerCase()}
           </label>
           <RatingPicker
             id={fieldId}
@@ -499,26 +584,12 @@ function TargetRatingReview({
             compact={compact}
           />
           <Button type="submit" size="sm" variant={compact ? 'default' : 'primary'} disabled={submittingRating}>
-            {submittingRating ? 'Saving...' : 'Save'}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            onClick={() => setShowEditor((current) => !current)}
-            disabled={!canReview || submittingReview}
-          >
-            <PencilLine size={14} aria-hidden="true" />
-            Review
+            {submittingRating ? 'Saving...' : 'Save rating'}
           </Button>
         </form>
       ) : null}
 
-      {user && !canReview ? (
-        <p className="media-detail-target-note">Rate this {targetLabel.toLowerCase()} first to post a review.</p>
-      ) : null}
-
-      {showEditor && canReview ? (
+      {showReviewPanel ? (
         <div className="media-detail-target-editor">
           <ReviewEditor onSubmit={handleCreateReview} submitting={submittingReview} />
         </div>
@@ -529,7 +600,7 @@ function TargetRatingReview({
   );
 }
 
-function SeasonRatingReview({ seasonId, user }) {
+function SeasonRatingReview({ seasonId, seasonNumber, user, activeMode, onActiveModeChange }) {
   const [ratingDto, setRatingDto] = useState(null);
   const [actionError, setActionError] = useState('');
   const { data: summary, refetch } = useSeasonRatingSummaryQuery(seasonId);
@@ -543,10 +614,14 @@ function SeasonRatingReview({ seasonId, user }) {
   };
 
   return (
-    <TargetRatingReview
+    <TargetActionPanel
       key={`season-target-${summary?.userRating ?? 'none'}`}
-      targetLabel="Season"
+      targetName={`Season ${seasonNumber}`}
+      targetNoun="season"
       targetId={seasonId}
+      ratingLabel="Rate season"
+      reviewLabel="Review season"
+      reviewFirstMessage="Rate this season first to write a review."
       summary={summary}
       user={user}
       ratingDto={ratingDto}
@@ -557,13 +632,16 @@ function SeasonRatingReview({ seasonId, user }) {
       submittingReview={submittingReview}
       actionError={actionError}
       setActionError={setActionError}
+      activeMode={activeMode}
+      onActiveModeChange={onActiveModeChange}
     />
   );
 }
 
-function EpisodeRatingReview({ episodeId, user }) {
+function EpisodeRatingReview({ episode, user, activeMode, onActiveModeChange }) {
   const [ratingDto, setRatingDto] = useState(null);
   const [actionError, setActionError] = useState('');
+  const episodeId = episode.id;
   const { data: summary, refetch } = useEpisodeRatingSummaryQuery(episodeId);
   const { mutate: rateEpisode, loading: submittingRating } = useRateEpisodeMutation();
   const { createReview, loading: submittingReview } = useReviewMutations();
@@ -575,10 +653,14 @@ function EpisodeRatingReview({ episodeId, user }) {
   };
 
   return (
-    <TargetRatingReview
+    <TargetActionPanel
       key={`episode-target-${summary?.userRating ?? 'none'}`}
-      targetLabel="Episode"
+      targetName={`Episode ${episode.episodeNumber}`}
+      targetNoun="episode"
       targetId={episodeId}
+      ratingLabel="Rate episode"
+      reviewLabel="Review episode"
+      reviewFirstMessage="Rate this episode first to write a review."
       summary={summary}
       user={user}
       ratingDto={ratingDto}
@@ -589,6 +671,8 @@ function EpisodeRatingReview({ episodeId, user }) {
       submittingReview={submittingReview}
       actionError={actionError}
       setActionError={setActionError}
+      activeMode={activeMode}
+      onActiveModeChange={onActiveModeChange}
       compact
     />
   );
@@ -607,7 +691,7 @@ function SeasonSummary({ seasonId }) {
   );
 }
 
-function EpisodeCard({ episode, user }) {
+function EpisodeCard({ episode, user, activeMode, onActiveModeChange }) {
   return (
     <article className="media-detail-episode-card">
       <div className="media-detail-episode-card__main">
@@ -617,14 +701,24 @@ function EpisodeCard({ episode, user }) {
           <p>
             {episode.duration ? `${episode.duration} min` : 'Runtime not listed'}
           </p>
+          {episode.description ? (
+            <p className="media-detail-episode-description">{episode.description}</p>
+          ) : null}
         </div>
       </div>
-      <EpisodeRatingReview episodeId={episode.id} user={user} />
+      <EpisodeRatingReview
+        episode={episode}
+        user={user}
+        activeMode={activeMode}
+        onActiveModeChange={onActiveModeChange}
+      />
     </article>
   );
 }
 
 function SeasonAccordion({ season, user, isOpen, onToggle }) {
+  const [seasonAction, setSeasonAction] = useState(null);
+  const [activeEpisodeAction, setActiveEpisodeAction] = useState(null);
   const episodes = Array.isArray(season.episodes) ? season.episodes : [];
 
   return (
@@ -645,19 +739,45 @@ function SeasonAccordion({ season, user, isOpen, onToggle }) {
         </span>
         <span className="media-detail-season-card__toggle">
           {isOpen ? <ChevronUp size={18} aria-hidden="true" /> : <ChevronDown size={18} aria-hidden="true" />}
-          {isOpen ? 'Hide' : 'View'}
+          {isOpen ? 'Close' : 'Open'}
         </span>
       </button>
 
       {isOpen ? (
         <div className="media-detail-season-card__body">
-          <SeasonRatingReview seasonId={season.id} user={user} />
+          <div className="media-detail-season-context">
+            <div>
+              <h3>Season {season.seasonNumber}</h3>
+              <p>
+                {episodes.length} episode{episodes.length === 1 ? '' : 's'} available. Season actions apply only to this season.
+              </p>
+            </div>
+          </div>
+
+          <SeasonRatingReview
+            seasonId={season.id}
+            seasonNumber={season.seasonNumber}
+            user={user}
+            activeMode={seasonAction}
+            onActiveModeChange={setSeasonAction}
+          />
 
           {episodes.length ? (
             <div className="media-detail-episode-list" aria-label={`Season ${season.seasonNumber} episodes`}>
-              {episodes.map((episode) => (
-                <EpisodeCard key={episode.id} episode={episode} user={user} />
-              ))}
+              {episodes.map((episode) => {
+                const isActiveEpisode = activeEpisodeAction?.episodeId === episode.id;
+                return (
+                  <EpisodeCard
+                    key={episode.id}
+                    episode={episode}
+                    user={user}
+                    activeMode={isActiveEpisode ? activeEpisodeAction.mode : null}
+                    onActiveModeChange={(mode) =>
+                      setActiveEpisodeAction(mode ? { episodeId: episode.id, mode } : null)
+                    }
+                  />
+                );
+              })}
             </div>
           ) : (
             <EmptyState title="No episodes available" description="This season does not have episode data yet." />
@@ -912,6 +1032,7 @@ function MediaDetailPage() {
               <div className="media-detail-action-grid">
                 <MediaRatingPanel
                   key={`media-rating-${summary?.userRating ?? 'none'}`}
+                  mediaType={media.type}
                   summary={summary}
                   user={user}
                   initialRatingId={ratingDto?.id}
@@ -950,10 +1071,14 @@ function MediaDetailPage() {
             <section className="media-detail-section media-detail-section--reviews">
               <div className="media-detail-section__header">
                 <div>
-                  <h2>Reviews</h2>
-                  <p>Read community reactions or add your own after rating this title.</p>
+                  <h2>{getMediaActionLabels(media.type).reviewsTitle}</h2>
+                  <p>
+                    {media.type === 'TvSeries'
+                      ? 'This tab is for the series itself. Season and episode review actions stay inside opened seasons.'
+                      : 'Read community reactions or add your own after rating this title.'}
+                  </p>
                 </div>
-                <ReviewFilters value={sortBy} onChange={setSortBy} />
+                {media.type !== 'TvSeries' ? <ReviewFilters value={sortBy} onChange={setSortBy} /> : null}
               </div>
 
               {user && (summary?.userRating || ratingDto?.id) ? (
@@ -966,18 +1091,32 @@ function MediaDetailPage() {
               ) : null}
 
               {user && !summary?.userRating && !ratingDto?.id ? (
-                <InlineMessage tone="info">Rate this media first to post a review.</InlineMessage>
+                <InlineMessage tone="info">{getMediaActionLabels(media.type).reviewFirst}</InlineMessage>
               ) : null}
 
               {!user ? (
-                <InlineMessage tone="info">Sign in and rate this title to write a review.</InlineMessage>
+                <InlineMessage tone="info">{getMediaActionLabels(media.type).signedOutReview}</InlineMessage>
               ) : null}
 
-              <ReviewsList
-                reviews={sortedReviews}
-                loading={reviewLoading}
-                error={reviewError ? reviewErrorMessage : ''}
-              />
+              {media.type === 'TvSeries' ? (
+                <div className="media-detail-contract-state">
+                  <MessageCircle size={22} aria-hidden="true" />
+                  <div>
+                    <h3>Series review feed needs target metadata</h3>
+                    <p>
+                      The current review response does not expose whether each TV review targets the series,
+                      a season, or an episode. To avoid showing mixed reviews as generic series reviews,
+                      season and episode review flows remain in their own context.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <ReviewsList
+                  reviews={sortedReviews}
+                  loading={reviewLoading}
+                  error={reviewError ? reviewErrorMessage : ''}
+                />
+              )}
             </section>
           ) : null}
 
@@ -985,8 +1124,8 @@ function MediaDetailPage() {
             <section className="media-detail-section media-detail-section--collections">
               <div className="media-detail-section__header">
                 <div>
-                  <h2>Collections</h2>
-                  <p>Add this title to a public or private collection from the existing collections workspace.</p>
+                  <h2>Collections containing this title</h2>
+                  <p>This detail page does not yet fetch collection appearances.</p>
                 </div>
               </div>
               <div className="media-detail-collections-cta">
@@ -994,16 +1133,19 @@ function MediaDetailPage() {
                   <Library size={22} aria-hidden="true" />
                 </span>
                 <div>
-                  <h3>Build a list with this title</h3>
-                  <p>This page does not expose a containing-collections feed yet, so collection management opens in the existing flow.</p>
+                  <h3>Containing collections are not wired yet</h3>
+                  <p>A backend endpoint is needed before this tab can display real collections that include this media.</p>
                 </div>
-                <Button
-                  as={Link}
-                  to={`/collections?mediaId=${id}`}
-                  variant="primary"
-                >
-                  Open Collections
-                </Button>
+                <div className="media-detail-collections-cta__actions">
+                  <Button as={Link} to="/collections" variant="primary">
+                    Browse collections
+                  </Button>
+                  {user ? (
+                    <Button as={Link} to={`/collections?mediaId=${id}`} variant="ghost">
+                      Create collection
+                    </Button>
+                  ) : null}
+                </div>
               </div>
             </section>
           ) : null}

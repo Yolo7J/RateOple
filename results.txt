@@ -1,3 +1,76 @@
+RateOple Media Detail IA / TV season-episode UX remodel results
+
+Summary:
+- Remodeled `/media/:id` from a visual-only cinematic detail page into a clearer media hub with media-level actions, contract-aware reviews, explicit collections status, and a focused TV seasons/episodes workflow.
+- Preserved existing backend contracts, route paths, media/status/rating mutations, review creation flow, season/episode rating hooks, similar media, and backend-hosted build output.
+- Kept the implementation scoped to the Media Detail page and its Media Detail CSS.
+
+Files changed:
+- frontend/src/features/media/pages/MediaDetailPage.jsx
+- frontend/src/index.css
+- backend/RateOple/wwwroot
+- results.txt
+
+What changed vs previous visual-only pass:
+- Added media-type-specific action labels: "Rate this movie" / "Track movie", "Rate this series" / "Track series", and "Rate this book" / "Track reading".
+- Reworked TV seasons from always-visible season/episode controls into collapsed season rows, focused season actions, compact episode cards, and one open episode rating/review panel at a time per season.
+- Replaced the previous weak Collections CTA with an explicit "Collections containing this title" state that does not pretend a containing-collections feed exists.
+- Made the TV Reviews tab contract-aware instead of rendering unlabeled mixed series/season/episode reviews.
+
+Movie/book behavior:
+- Movies keep hero, movie-level rating/status, media-level reviews, collections status, and similar media.
+- Books keep hero, book-level rating/status, media-level reviews, collections status, and similar media.
+- Movie and book Reviews tabs still render the existing `/media/{id}/reviews` feed with sorting.
+
+TV series behavior:
+- The hero and top action modules now clearly communicate series-level actions only.
+- Seasons render as collapsed rows with S-number badge, episode count, average rating, user rating state, and Open/Close controls.
+- Expanded seasons show a season context summary, compact season rating/review actions, and compact episode cards.
+- Episode cards show episode number, title, runtime, average/user rating state, and Rate episode / Review episode actions.
+
+Season/episode rating/review behavior:
+- Season and episode rating/review functionality remains backed by the existing season/episode rating mutation hooks and the existing review creation flow.
+- Season rating/review controls only open after clicking Rate season or Review season.
+- Episode rating/review controls only open after clicking Rate episode or Review episode.
+- Only one episode rating/review panel is open inside a season at a time.
+- Signed-out episode/season rows show action buttons without repeating sign-in messages on every row; the sign-in message appears after the attempted action.
+- Review actions still require an existing target rating; the UI explains "Rate this season first to write a review." or "Rate this episode first to write a review."
+
+Reviews tab behavior:
+- Movie/book Reviews tabs show media-level reviews from the current frontend review query.
+- TV Reviews defaults to series-level intent, but the current backend ReviewDto only exposes mediaId/ratingId and does not expose whether each review targets the series, a season, or an episode.
+- To avoid showing season/episode reviews as unlabeled generic series reviews, the TV Reviews tab does not render the mixed media review feed and instead explains the target-metadata contract gap.
+- Season and episode review actions stay in their season/episode context.
+
+Collections tab status:
+- No frontend service/query or backend endpoint was found for "collections containing this media".
+- The tab now shows a polished "Collections containing this title" state with Browse collections and, for signed-in users, Create collection through the existing `/collections?mediaId=...` flow.
+- A backend endpoint is still needed for real containing-collections display.
+
+Responsive behavior:
+- Backend-hosted Playwright inspection covered desktop movie detail, desktop book detail, desktop TV detail top, TV seasons collapsed, one TV season expanded, one episode rating panel opened with a logged-in temporary user, TV Reviews tab, TV Collections tab, TV Similar tab, 320px TV detail, 375px TV detail, 430px movie detail, and light theme.
+- No document-level horizontal overflow was detected in the inspected Media Detail scenarios at 320px, 375px, 430px, or 1366px.
+- Mobile TV detail keeps metadata chips wrapped, tabs usable, season rows compact, and episode forms hidden until focused.
+- The backend-hosted logged-in inspection verified that opening Rate episode creates exactly one episode rating form in the open season.
+
+Checks run:
+- npm run lint: passed.
+- npm run build: passed. Build emitted existing Rollup annotation warnings from @microsoft/signalr comments.
+- npm run test:e2e: passed, 2 tests.
+- npm run build:backend: passed.
+- Backend-hosted Playwright inspection passed for the detail scenarios listed above.
+
+build:backend status:
+- npm run build:backend: passed.
+- Copied final Vite output into backend/RateOple/wwwroot.
+- Build emitted the same existing Rollup annotation warnings from @microsoft/signalr comments.
+
+Known limitations / manual things to inspect:
+- TV Reviews needs backend target metadata or a series-only review endpoint before the tab can display real series reviews while excluding or labeling season/episode reviews.
+- Collections containing this title needs a backend endpoint before real collection appearances can be listed.
+- The 320px TV page is necessarily long for 20-episode seasons, but episode rating/review forms are no longer expanded by default and document-level overflow remained false.
+- Manual authenticated review submission was not posted during inspection; authenticated episode rating-panel visibility was verified with a temporary local user.
+
 RateOple Media Detail cinematic refactor results
 
 Summary:
