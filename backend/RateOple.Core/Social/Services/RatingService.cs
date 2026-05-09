@@ -55,12 +55,16 @@ public class RatingService : IRatingService
             : 0;
 
         int? userRating = null;
+        Guid? currentUserRatingId = null;
         if (userId.HasValue)
         {
-            userRating = await query
+            var currentUserRating = await query
                 .Where(r => r.UserId == userId.Value)
-                .Select(r => (int?)r.Value)
+                .Select(r => new { Id = (Guid?)r.Id, Value = (int?)r.Value })
                 .FirstOrDefaultAsync();
+
+            userRating = currentUserRating?.Value;
+            currentUserRatingId = currentUserRating?.Id;
         }
 
         return new MediaRatingSummaryDto
@@ -68,7 +72,8 @@ public class RatingService : IRatingService
             MediaId = mediaId,
             AverageRating = averageRating,
             RatingsCount = ratingsCount,
-            UserRating = userRating
+            UserRating = userRating,
+            CurrentUserRatingId = currentUserRatingId
         };
     }
 
@@ -227,12 +232,16 @@ public class RatingService : IRatingService
             : 0;
 
         int? userRating = null;
+        Guid? currentUserRatingId = null;
         if (userId.HasValue)
         {
-            userRating = await query
+            var currentUserRating = await query
                 .Where(r => r.UserId == userId.Value)
-                .Select(r => (int?)r.Value)
+                .Select(r => new { Id = (Guid?)r.Id, Value = (int?)r.Value })
                 .FirstOrDefaultAsync();
+
+            userRating = currentUserRating?.Value;
+            currentUserRatingId = currentUserRating?.Id;
         }
 
         return new TargetRatingSummaryDto
@@ -242,7 +251,8 @@ public class RatingService : IRatingService
             EpisodeId = episodeId,
             AverageRating = averageRating,
             RatingsCount = ratingsCount,
-            UserRating = userRating
+            UserRating = userRating,
+            CurrentUserRatingId = currentUserRatingId
         };
     }
 

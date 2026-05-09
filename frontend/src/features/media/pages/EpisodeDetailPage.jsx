@@ -17,7 +17,9 @@ import { useEpisodeRatingSummaryQuery } from '../../ratings/queries/useEpisodeRa
 import { useRateEpisodeMutation } from '../../ratings/queries/useRateEpisodeMutation';
 import { useDeleteEpisodeRatingMutation } from '../../ratings/queries/useDeleteEpisodeRatingMutation';
 import { useEpisodeReviewsQuery } from '../../reviews/queries/useReviewsQuery';
+import { useReviewMutations } from '../../reviews/queries/useReviewMutations';
 import RatingStars from '../../ratings/components/RatingStars';
+import TargetReviewComposer from '../../reviews/components/TargetReviewComposer';
 import ReviewsList from '../../reviews/components/ReviewsList';
 import { buildImageUrl } from '../../../shared/utils/buildImageUrl';
 import PageLayout from '../../../layouts/PageLayout';
@@ -207,6 +209,7 @@ function RouteState({ title, description, mediaId, seasonNumber }) {
 
 function EpisodeDetailPage() {
   const { id, seasonNumber: seasonNumberParam, episodeNumber: episodeNumberParam } = useParams();
+  const { user } = useAuth();
   const seasonNumber = normalizeNumberParam(seasonNumberParam);
   const episodeNumber = normalizeNumberParam(episodeNumberParam);
   const { data: media, loading: mediaLoading, error: mediaError } = useMediaDetailsQuery(id);
@@ -222,10 +225,21 @@ function EpisodeDetailPage() {
     data: reviewsData,
     loading: reviewsLoading,
     error: reviewsError,
+    refetch: refetchReviews,
   } = useEpisodeReviewsQuery(episode?.id);
+  const { data: episodeSummary } = useEpisodeRatingSummaryQuery(episode?.id);
+  const { createReview, loading: submittingReview } = useReviewMutations();
   const reviews = useMemo(() => (Array.isArray(reviewsData) ? reviewsData : []), [reviewsData]);
   const reviewsErrorMessage = reviewsError?.response?.data?.message || 'Failed to load episode reviews.';
   const loading = mediaLoading || (shouldFetchSeasons && seasonsLoading && !seasons.length);
+
+  const handleCreateReview = async ({ ratingId, content }) => {
+    await createReview({
+      ratingId,
+      content,
+      containsSpoilers: false,
+    });
+  };
 
   if (loading) {
     return (
@@ -328,11 +342,23 @@ function EpisodeDetailPage() {
                   <p>Reviews written for {episode.title || `Episode ${episode.episodeNumber}`}.</p>
                 </div>
               </div>
+              <TargetReviewComposer
+                targetLabel="episode"
+                ratingId={episodeSummary?.currentUserRatingId ?? null}
+                userRating={episodeSummary?.userRating ?? null}
+                user={user}
+                submitting={submittingReview}
+                onSubmit={handleCreateReview}
+                onSuccess={refetchReviews}
+                lockedMessage="Rate this episode first to write a review."
+                signedOutMessage="Sign in and rate this episode to write a review."
+              />
               <ReviewsList
                 reviews={reviews}
                 loading={reviewsLoading}
                 error={reviewsError ? reviewsErrorMessage : ''}
                 surface={false}
+                emptyMessage="No episode reviews yet."
               />
             </section>
           </div>

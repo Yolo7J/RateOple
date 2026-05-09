@@ -29,7 +29,7 @@ import { useReviewMutations } from '../../reviews/queries/useReviewMutations';
 import { useSimilarMediaQuery } from '../../discovery/queries/useSimilarMediaQuery';
 import { useMediaStatusMutation } from '../../users/queries/useMediaStatusMutation';
 import RatingStars from '../../ratings/components/RatingStars';
-import ReviewEditor from '../../reviews/components/ReviewEditor';
+import TargetReviewComposer from '../../reviews/components/TargetReviewComposer';
 import ReviewFilters from '../../reviews/components/ReviewFilters';
 import ReviewsList from '../../reviews/components/ReviewsList';
 import MediaRow from '../../discovery/components/MediaRow';
@@ -630,35 +630,13 @@ function MediaDetailPage() {
     }
   };
 
-  const ensureRatingId = async () => {
-    if (ratingDto?.id) return ratingDto.id;
-    if (!summary?.userRating) return null;
-
-    const dto = await rateMedia(id, summary.userRating);
-    setRatingDto(dto);
-    return dto.id;
-  };
-
-  const handleCreateReview = async (content) => {
+  const handleCreateReview = async ({ ratingId, content }) => {
     setActionError('');
-
-    try {
-      const ratingId = await ensureRatingId();
-      if (!ratingId) {
-        setActionError('Please rate this media first.');
-        return;
-      }
-
-      await createReview({
-        ratingId,
-        content,
-        containsSpoilers: false,
-      });
-
-      await refetchReviews();
-    } catch (e) {
-      setActionError(e.response?.data?.message || 'Could not post review.');
-    }
+    await createReview({
+      ratingId,
+      content,
+      containsSpoilers: false,
+    });
   };
 
   const handleSaveStatus = async (status) => {
@@ -671,6 +649,8 @@ function MediaDetailPage() {
   };
 
   const showReviews = () => setActiveTab('Reviews');
+  const directMediaRatingId = ratingDto?.id ?? summary?.currentUserRatingId ?? null;
+  const targetLabel = media?.type === 'TvSeries' ? 'series' : media?.type === 'Book' ? 'book' : 'movie';
 
   if (loading) {
     return <LoadingDetail />;
@@ -767,27 +747,25 @@ function MediaDetailPage() {
                 <ReviewFilters value={sortBy} onChange={setSortBy} />
               </div>
 
-              {user && (summary?.userRating || ratingDto?.id) ? (
-                <div className="media-detail-review-editor">
-                  <ReviewEditor
-                    onSubmit={handleCreateReview}
-                    submitting={submittingReview}
-                  />
-                </div>
-              ) : null}
-
-              {user && !summary?.userRating && !ratingDto?.id ? (
-                <InlineMessage tone="info">{getMediaActionLabels(media.type).reviewFirst}</InlineMessage>
-              ) : null}
-
-              {!user ? (
-                <InlineMessage tone="info">{getMediaActionLabels(media.type).signedOutReview}</InlineMessage>
-              ) : null}
+              <div className="media-detail-review-editor">
+                <TargetReviewComposer
+                  targetLabel={targetLabel}
+                  ratingId={directMediaRatingId}
+                  userRating={ratingDto?.value ?? summary?.userRating ?? null}
+                  user={user}
+                  submitting={submittingReview}
+                  onSubmit={handleCreateReview}
+                  onSuccess={refetchReviews}
+                  lockedMessage={getMediaActionLabels(media.type).reviewFirst}
+                  signedOutMessage={getMediaActionLabels(media.type).signedOutReview}
+                />
+              </div>
 
               <ReviewsList
                 reviews={sortedReviews}
                 loading={reviewLoading}
                 error={reviewError ? reviewErrorMessage : ''}
+                emptyMessage={`No ${targetLabel} reviews yet.`}
               />
             </section>
           ) : null}

@@ -8,4 +8,5 @@ public class TargetRatingSummaryDto
     public double AverageRating { get; set; }
     public int RatingsCount { get; set; }
     public int? UserRating { get; set; }
+    public Guid? CurrentUserRatingId { get; set; }
 }

@@ -10,6 +10,7 @@ export const useReviewMutations = () => {
       queryClient.invalidateQueries({ queryKey: ['media', 'detail', mediaId], exact: true });
       queryClient.invalidateQueries({ queryKey: ['ratings', 'summary', mediaId], exact: true });
     }
+    queryClient.invalidateQueries({ queryKey: ['reviews', 'me'], exact: true });
     queryClient.invalidateQueries({ queryKey: ['users', 'account'], exact: true });
     queryClient.invalidateQueries({ queryKey: ['discovery', 'home'] });
   };

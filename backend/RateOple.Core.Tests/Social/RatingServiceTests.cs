@@ -131,6 +131,62 @@ public class RatingServiceTests
     }
 
     [Fact]
+    public async Task GetMediaRatingSummaryAsync_ForCurrentUserIncludesRatingId()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var user = data.Users.Add(data.Users.Normal("summary-media-user"));
+        var media = data.Media.Movie("Summary Rating Movie");
+        var rating = data.Reviews.RatingForMedia(user, media, 8);
+        await data.SaveAsync();
+        var service = CreateService(db);
+
+        var summary = await service.GetMediaRatingSummaryAsync(media.Id, user.Id);
+
+        Assert.Equal(8, summary.UserRating);
+        Assert.Equal(rating.Id, summary.CurrentUserRatingId);
+    }
+
+    [Fact]
+    public async Task GetSeasonRatingSummaryAsync_ForCurrentUserIncludesRatingId()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var user = data.Users.Add(data.Users.Normal("summary-season-user"));
+        var series = data.Media.TvSeries("Summary Season Series");
+        await data.SaveAsync();
+        var season = await data.Media.CreateSeasonAsync(series);
+        var rating = data.Reviews.RatingForSeason(user, season, 7);
+        await data.SaveAsync();
+        var service = CreateService(db);
+
+        var summary = await service.GetSeasonRatingSummaryAsync(season.Id, user.Id);
+
+        Assert.Equal(7, summary.UserRating);
+        Assert.Equal(rating.Id, summary.CurrentUserRatingId);
+    }
+
+    [Fact]
+    public async Task GetEpisodeRatingSummaryAsync_ForCurrentUserIncludesRatingId()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var user = data.Users.Add(data.Users.Normal("summary-episode-user"));
+        var series = data.Media.TvSeries("Summary Episode Series");
+        await data.SaveAsync();
+        var season = await data.Media.CreateSeasonAsync(series);
+        var episode = await data.Media.CreateEpisodeAsync(season);
+        var rating = data.Reviews.RatingForEpisode(user, episode, 9);
+        await data.SaveAsync();
+        var service = CreateService(db);
+
+        var summary = await service.GetEpisodeRatingSummaryAsync(episode.Id, user.Id);
+
+        Assert.Equal(9, summary.UserRating);
+        Assert.Equal(rating.Id, summary.CurrentUserRatingId);
+    }
+
+    [Fact]
     public async Task RateSeasonAsync_CreatingRatingTriggersTasteRecalculationForSeries()
     {
         await using var db = await SqliteTestDb.CreateAsync();

@@ -16,7 +16,9 @@ import { useSeasonRatingSummaryQuery } from '../../ratings/queries/useSeasonRati
 import { useRateSeasonMutation } from '../../ratings/queries/useRateSeasonMutation';
 import { useDeleteSeasonRatingMutation } from '../../ratings/queries/useDeleteSeasonRatingMutation';
 import { useSeasonReviewsQuery } from '../../reviews/queries/useReviewsQuery';
+import { useReviewMutations } from '../../reviews/queries/useReviewMutations';
 import RatingStars from '../../ratings/components/RatingStars';
+import TargetReviewComposer from '../../reviews/components/TargetReviewComposer';
 import ReviewsList from '../../reviews/components/ReviewsList';
 import { buildImageUrl } from '../../../shared/utils/buildImageUrl';
 import PageLayout from '../../../layouts/PageLayout';
@@ -203,6 +205,7 @@ function RouteState({ title, description, mediaId }) {
 
 function SeasonDetailPage() {
   const { id, seasonNumber: seasonNumberParam } = useParams();
+  const { user } = useAuth();
   const seasonNumber = normalizeNumberParam(seasonNumberParam);
   const { data: media, loading: mediaLoading, error: mediaError } = useMediaDetailsQuery(id);
   const shouldFetchSeasons = media?.type === 'TvSeries';
@@ -217,10 +220,21 @@ function SeasonDetailPage() {
     data: reviewsData,
     loading: reviewsLoading,
     error: reviewsError,
+    refetch: refetchReviews,
   } = useSeasonReviewsQuery(season?.id);
+  const { data: seasonSummary } = useSeasonRatingSummaryQuery(season?.id);
+  const { createReview, loading: submittingReview } = useReviewMutations();
   const reviews = useMemo(() => (Array.isArray(reviewsData) ? reviewsData : []), [reviewsData]);
   const reviewsErrorMessage = reviewsError?.response?.data?.message || 'Failed to load season reviews.';
   const loading = mediaLoading || (shouldFetchSeasons && seasonsLoading && !seasons.length);
+
+  const handleCreateReview = async ({ ratingId, content }) => {
+    await createReview({
+      ratingId,
+      content,
+      containsSpoilers: false,
+    });
+  };
 
   if (loading) {
     return (
@@ -303,11 +317,23 @@ function SeasonDetailPage() {
                   <p>Reviews written for Season {season.seasonNumber}.</p>
                 </div>
               </div>
+              <TargetReviewComposer
+                targetLabel="season"
+                ratingId={seasonSummary?.currentUserRatingId ?? null}
+                userRating={seasonSummary?.userRating ?? null}
+                user={user}
+                submitting={submittingReview}
+                onSubmit={handleCreateReview}
+                onSuccess={refetchReviews}
+                lockedMessage={`Rate Season ${season.seasonNumber} first to write a review.`}
+                signedOutMessage={`Sign in and rate Season ${season.seasonNumber} to write a review.`}
+              />
               <ReviewsList
                 reviews={reviews}
                 loading={reviewsLoading}
                 error={reviewsError ? reviewsErrorMessage : ''}
                 surface={false}
+                emptyMessage="No season reviews yet."
               />
             </section>
           </div>

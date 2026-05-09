@@ -1,3 +1,70 @@
+RateOple target-aware review composer results
+
+Summary:
+- Added a reusable target-aware review composer for media, direct TV series, season, and episode review writing.
+- The composer posts reviews only with the current target's real rating ID and clears/refetches after successful submission.
+- Season and episode detail pages now support writing reviews, not only reading target-specific review feeds.
+
+Backend files changed:
+- backend/RateOple.Core/Social/DTOs/MediaRatingSummaryDto.cs
+- backend/RateOple.Core/Social/DTOs/TargetRatingSummaryDto.cs
+- backend/RateOple.Core/Social/Services/RatingService.cs
+- backend/RateOple.Core.Tests/Social/RatingServiceTests.cs
+
+Frontend files changed:
+- frontend/src/features/reviews/components/TargetReviewComposer.jsx
+- frontend/src/features/reviews/components/ReviewsList.jsx
+- frontend/src/features/reviews/queries/useReviewMutations.js
+- frontend/src/features/media/pages/MediaDetailPage.jsx
+- frontend/src/features/media/pages/SeasonDetailPage.jsx
+- frontend/src/features/media/pages/EpisodeDetailPage.jsx
+
+Whether rating summary needed ratingId changes:
+- Yes. `currentUserRatingId` was added to media, season, and episode rating summaries.
+- This avoids guessing or reusing the wrong target rating ID when creating reviews.
+- Backend tests now verify media, season, and episode summaries include the current user's rating ID.
+
+Movie/book review writing behavior:
+- Movie and book Reviews tabs use the direct media rating ID.
+- Rated signed-in users see the composer and post to `/api/reviews` with the media rating ID.
+- Unrated users see the existing "Rate this movie/book first" lock message.
+- After posting, the direct media review feed is refetched.
+
+TV series review writing behavior:
+- TV series Reviews tab uses only the direct series media rating ID.
+- Rated signed-in users can write direct series reviews from the series Reviews tab.
+- Season and episode ratings are not used for series review creation.
+- Manual inspection confirmed season/episode review text does not appear in the direct series Reviews tab.
+
+Season review writing behavior:
+- Season detail pages use `currentUserRatingId` from the season rating summary.
+- Rated signed-in users can write season reviews from the season page.
+- Unrated users see "Rate Season N first to write a review."
+- After posting, `/api/seasons/{seasonId}/reviews` is refetched.
+
+Episode review writing behavior:
+- Episode detail pages use `currentUserRatingId` from the episode rating summary.
+- Rated signed-in users can write episode reviews from the episode page.
+- Unrated users see "Rate this episode first to write a review."
+- After posting, `/api/episodes/{episodeId}/reviews` is refetched.
+
+Checks run:
+- `cd backend && dotnet test RateOple.sln`: passed, 315 total tests.
+- `cd frontend && npm run lint`: passed.
+- `cd frontend && npm run build`: passed. Build emitted existing Rollup annotation warnings from @microsoft/signalr comments.
+- `cd frontend && npm run test:e2e`: passed, 2 tests.
+- `cd frontend && npm run build:backend`: passed.
+- Backend-hosted manual inspection used this branch on temporary `https://localhost:7168` with `VITE_API_BASE_URL=https://localhost:7168/api` for the smoke build, then rebuilt normally afterward. A temporary user rated and wrote movie, book, direct series, season, and episode reviews through the UI. The 320px episode route had no document-level horizontal overflow.
+
+build:backend status:
+- Final `npm run build:backend` passed after inspection.
+- Final Vite output was copied into `backend/RateOple/wwwroot` for the normal backend HTTPS host configuration.
+
+Known limitations:
+- The composer creates or updates the single review associated with a rating, matching the backend's one-review-per-rating model.
+- The UI does not add review editing controls in this task; existing update/delete behavior remains elsewhere.
+- Collections remain intentionally untouched.
+
 RateOple target-aware review feeds results
 
 Summary:
