@@ -26,6 +26,7 @@ import { useDeleteMediaRatingMutation } from '../../ratings/queries/useDeleteMed
 import { useSeasonRatingSummaryQuery } from '../../ratings/queries/useSeasonRatingSummaryQuery';
 import { useReviewsQuery } from '../../reviews/queries/useReviewsQuery';
 import { useReviewMutations } from '../../reviews/queries/useReviewMutations';
+import { useCollectionsContainingMediaQuery } from '../../collections/queries/useCollectionsQuery';
 import { useSimilarMediaQuery } from '../../discovery/queries/useSimilarMediaQuery';
 import { useMediaStatusMutation } from '../../users/queries/useMediaStatusMutation';
 import RatingStars from '../../ratings/components/RatingStars';
@@ -518,6 +519,40 @@ function TvSeasonsPanel({ mediaId, seasons, loading, error }) {
   );
 }
 
+function MediaCollectionCard({ collection }) {
+  const coverUrl = collection.coverImageUrl || collection.items?.[0]?.coverUrl;
+  const itemCount = collection.items?.length ?? 0;
+  const followersCount = collection.followersCount ?? 0;
+
+  return (
+    <article className="media-detail-collection-card">
+      <Link to={`/collections/${collection.id}`} className="media-detail-collection-card__cover" aria-label={`Open ${collection.name}`}>
+        {coverUrl ? (
+          <img src={buildImageUrl(coverUrl)} alt="" loading="lazy" />
+        ) : (
+          <Library size={22} aria-hidden="true" />
+        )}
+      </Link>
+      <div className="media-detail-collection-card__body">
+        <div>
+          <h3>
+            <Link to={`/collections/${collection.id}`}>{collection.name}</Link>
+          </h3>
+          <p className="media-detail-collection-card__meta">
+            {itemCount} item{itemCount === 1 ? '' : 's'} · {compactCount(followersCount)} follower{followersCount === 1 ? '' : 's'}
+          </p>
+        </div>
+        {collection.description ? (
+          <p className="media-detail-collection-card__description">{collection.description}</p>
+        ) : null}
+        <Button as={Link} to={`/collections/${collection.id}`} variant="ghost" className="media-detail-collection-card__action">
+          Open collection
+        </Button>
+      </div>
+    </article>
+  );
+}
+
 function LoadingDetail() {
   return (
     <PageLayout>
@@ -571,6 +606,11 @@ function MediaDetailPage() {
     error: reviewError,
     refetch: refetchReviews,
   } = useReviewsQuery(id, { target: 'media' });
+  const {
+    data: collectionsContainingData,
+    loading: collectionsLoading,
+    error: collectionsError,
+  } = useCollectionsContainingMediaQuery(id, activeTab === 'Collections');
   const { data: similarData } = useSimilarMediaQuery(id, 20);
 
   const { mutate: rateMedia, loading: submittingRating } = useRateMediaMutation();
@@ -579,6 +619,10 @@ function MediaDetailPage() {
   const { mutate: saveMediaStatus, loading: savingStatus } = useMediaStatusMutation();
 
   const reviews = useMemo(() => (Array.isArray(reviewsData) ? reviewsData : []), [reviewsData]);
+  const collectionsContaining = useMemo(
+    () => (Array.isArray(collectionsContainingData) ? collectionsContainingData : []),
+    [collectionsContainingData],
+  );
   const similar = Array.isArray(similarData) ? similarData : [];
   const seasons = useMemo(() => {
     if (Array.isArray(seasonsData) && seasonsData.length) return seasonsData;
@@ -775,28 +819,48 @@ function MediaDetailPage() {
               <div className="media-detail-section__header">
                 <div>
                   <h2>Collections containing this title</h2>
-                  <p>This detail page does not yet fetch collection appearances.</p>
+                  <p>Browse public collections that include this title, plus your own private matches when signed in.</p>
                 </div>
               </div>
-              <div className="media-detail-collections-cta">
-                <span>
-                  <Library size={22} aria-hidden="true" />
-                </span>
-                <div>
-                  <h3>Containing collections are not wired yet</h3>
-                  <p>A backend endpoint is needed before this tab can display real collections that include this media.</p>
+
+              {collectionsLoading ? (
+                <div className="media-detail-collections-skeleton" role="status" aria-label="Loading collections">
+                  {Array.from({ length: 3 }).map((_, index) => (
+                    <div key={index} className="ui-skeleton" />
+                  ))}
                 </div>
-                <div className="media-detail-collections-cta__actions">
-                  <Button as={Link} to="/collections" variant="primary">
-                    Browse collections
-                  </Button>
-                  {user ? (
-                    <Button as={Link} to={`/collections?mediaId=${id}`} variant="ghost">
-                      Create collection
-                    </Button>
-                  ) : null}
+              ) : null}
+
+              {collectionsError ? (
+                <InlineMessage tone="error">Failed to load collections containing this title.</InlineMessage>
+              ) : null}
+
+              {!collectionsLoading && !collectionsError && collectionsContaining.length > 0 ? (
+                <div className="media-detail-collections-grid">
+                  {collectionsContaining.map((collection) => (
+                    <MediaCollectionCard key={collection.id} collection={collection} />
+                  ))}
                 </div>
-              </div>
+              ) : null}
+
+              {!collectionsLoading && !collectionsError && collectionsContaining.length === 0 ? (
+                <EmptyState
+                  title="No public collections include this title yet."
+                  description="Start from the collections hub or create a new collection with this title already attached."
+                  action={(
+                    <div className="media-detail-collections-empty-actions">
+                      <Button as={Link} to="/collections" variant="primary">
+                        Browse collections
+                      </Button>
+                      {user ? (
+                        <Button as={Link} to={`/collections?mediaId=${id}`} variant="ghost">
+                          Create collection
+                        </Button>
+                      ) : null}
+                    </div>
+                  )}
+                />
+              ) : null}
             </section>
           ) : null}
 

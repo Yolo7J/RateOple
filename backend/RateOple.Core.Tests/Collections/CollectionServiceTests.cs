@@ -263,6 +263,74 @@ public class CollectionServiceTests
         Assert.Equal(100, result.PageSize);
     }
 
+    [Fact]
+    public async Task GetContainingMediaAsync_ReturnsPublicCollectionsContainingMedia()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var owner = data.Users.Add(data.Users.Normal("containing-owner"));
+        var target = data.Media.Movie("Contained Movie");
+        var otherMedia = data.Media.Movie("Other Movie");
+        var containing = data.Collections.UserCollection(owner, "Containing Collection");
+        var unrelated = data.Collections.UserCollection(owner, "Unrelated Collection");
+        data.Collections.Item(containing, target);
+        data.Collections.Item(unrelated, otherMedia);
+        await data.SaveAsync();
+        var service = CreateService(db);
+
+        var result = await service.GetContainingMediaAsync(target.Id);
+
+        var collection = Assert.Single(result);
+        Assert.Equal(containing.Id, collection.Id);
+        Assert.Equal("Containing Collection", collection.Name);
+        Assert.Contains(collection.Items, item => item.MediaId == target.Id && item.MediaTitle == "Contained Movie");
+    }
+
+    [Fact]
+    public async Task GetContainingMediaAsync_ReturnsEmptyWhenMediaHasNoCollections()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var media = data.Media.Movie("Uncollected Movie");
+        await data.SaveAsync();
+        var service = CreateService(db);
+
+        var result = await service.GetContainingMediaAsync(media.Id);
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task GetContainingMediaAsync_RespectsPrivateCollectionVisibility()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var owner = data.Users.Add(data.Users.Normal("private-containing-owner"));
+        var outsider = data.Users.Add(data.Users.Normal("private-containing-outsider"));
+        var media = data.Media.Movie("Privately Collected Movie");
+        var collection = data.Collections.UserCollection(owner, "Private Containing Collection");
+        collection.Visibility = CollectionVisibility.Private;
+        data.Collections.Item(collection, media);
+        await data.SaveAsync();
+        var service = CreateService(db);
+
+        Assert.Empty(await service.GetContainingMediaAsync(media.Id));
+        Assert.Empty(await service.GetContainingMediaAsync(media.Id, outsider.Id));
+
+        var ownerResult = await service.GetContainingMediaAsync(media.Id, owner.Id);
+        var ownerCollection = Assert.Single(ownerResult);
+        Assert.Equal(collection.Id, ownerCollection.Id);
+    }
+
+    [Fact]
+    public async Task GetContainingMediaAsync_MissingMediaThrows()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var service = CreateService(db);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => service.GetContainingMediaAsync(Guid.NewGuid()));
+    }
+
     private static CollectionService CreateService(SqliteTestDb db) => new(db.Context);
 
     private static async Task<SqliteTestDb> SeedUserCollectionAsync()

@@ -82,60 +82,7 @@ public class CollectionService : ICollectionService
             .Take(pagination.PageSize)
             .ToListAsync();
 
-        var collectionIds = collections.Select(c => c.Id).ToList();
-
-        var followersByCollection = await _context.FollowCollections
-            .AsNoTracking()
-            .Where(f => collectionIds.Contains(f.CollectionId))
-            .GroupBy(f => f.CollectionId)
-            .Select(g => new { CollectionId = g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.CollectionId, x => x.Count);
-
-        var collectionItems = await _context.CollectionItems
-            .AsNoTracking()
-            .Where(i => collectionIds.Contains(i.CollectionId))
-            .Include(i => i.Media)
-            .ToListAsync();
-
-        var itemsByCollection = collectionItems
-            .GroupBy(i => i.CollectionId)
-            .ToDictionary(g => g.Key, g => g.ToList());
-
-        var items = collections.Select(c =>
-        {
-            itemsByCollection.TryGetValue(c.Id, out var currentItems);
-            currentItems ??= [];
-
-            IEnumerable<CollectionItem> ordered = c.SortMode switch
-            {
-                CollectionSortMode.Rating => currentItems.OrderByDescending(i => i.Media.AverageRating).ThenBy(i => i.OrderIndex),
-                CollectionSortMode.ReleaseYear => currentItems.OrderBy(i => i.Media.ReleaseDate).ThenBy(i => i.OrderIndex),
-                CollectionSortMode.Duration => currentItems.OrderBy(i => i.Media.Movie != null ? i.Media.Movie.Duration : null).ThenBy(i => i.OrderIndex),
-                CollectionSortMode.Alphabetical => currentItems.OrderBy(i => i.Media.Title).ThenBy(i => i.OrderIndex),
-                _ => currentItems.OrderBy(i => i.OrderIndex)
-            };
-
-            return new CollectionDto
-            {
-                Id = c.Id,
-                Name = string.IsNullOrWhiteSpace(c.Name) ? c.Title : c.Name,
-                Description = c.Description,
-                ParentCollectionId = c.ParentCollectionId,
-                OwnerType = c.OwnerType,
-                OwnerId = c.OwnerId,
-                SortMode = c.SortMode,
-                CoverImageUrl = c.CoverImageUrl,
-                CreatedAt = c.CreatedAt,
-                FollowersCount = followersByCollection.TryGetValue(c.Id, out var count) ? count : 0,
-                Items = ordered.Select(i => new CollectionItemDto
-                {
-                    MediaId = i.MediaId,
-                    OrderIndex = i.OrderIndex,
-                    MediaTitle = i.Media.Title,
-                    CoverUrl = i.Media.CoverUrl
-                }).ToList()
-            };
-        }).ToList();
+        var items = await MapCollectionsAsync(collections);
 
         return new PagedCollectionsDto
         {
@@ -144,6 +91,27 @@ public class CollectionService : ICollectionService
             Page = pagination.Page,
             PageSize = pagination.PageSize
         };
+    }
+
+    public async Task<IReadOnlyList<CollectionDto>> GetContainingMediaAsync(Guid mediaId, Guid? viewerId = null)
+    {
+        var mediaExists = await _context.Media
+            .AsNoTracking()
+            .AnyAsync(m => m.Id == mediaId && !m.IsDeleted);
+        if (!mediaExists)
+            throw new KeyNotFoundException("Media not found.");
+
+        var query = _context.Collections
+            .AsNoTracking()
+            .Where(c => c.Items.Any(i => i.MediaId == mediaId));
+
+        query = ApplyVisibilityFilter(query, viewerId);
+
+        var collections = await query
+            .OrderByDescending(c => c.CreatedAt)
+            .ToListAsync();
+
+        return await MapCollectionsAsync(collections);
     }
 
     public async Task<CollectionDto> UpdateAsync(Guid userId, Guid id, UpdateCollectionDto dto)
@@ -439,47 +407,68 @@ public class CollectionService : ICollectionService
             .FirstOrDefaultAsync(c => c.Id == collectionId)
             ?? throw new KeyNotFoundException("Collection not found.");
 
-        var followersCount = await _context.FollowCollections
-            .CountAsync(f => f.CollectionId == collectionId);
+        var mapped = await MapCollectionsAsync([collection]);
+        return mapped[0];
+    }
 
-        var itemQuery = _context.CollectionItems
+    private async Task<List<CollectionDto>> MapCollectionsAsync(IReadOnlyCollection<Collection> collections)
+    {
+        if (collections.Count == 0)
+            return [];
+
+        var collectionIds = collections.Select(c => c.Id).ToList();
+
+        var followersByCollection = await _context.FollowCollections
             .AsNoTracking()
-            .Where(i => i.CollectionId == collectionId)
+            .Where(f => collectionIds.Contains(f.CollectionId))
+            .GroupBy(f => f.CollectionId)
+            .Select(g => new { CollectionId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.CollectionId, x => x.Count);
+
+        var collectionItems = await _context.CollectionItems
+            .AsNoTracking()
+            .Where(i => collectionIds.Contains(i.CollectionId))
             .Include(i => i.Media)
-            .AsQueryable();
-
-        itemQuery = collection.SortMode switch
-        {
-            CollectionSortMode.Rating => itemQuery.OrderByDescending(i => i.Media.AverageRating).ThenBy(i => i.OrderIndex),
-            CollectionSortMode.ReleaseYear => itemQuery.OrderBy(i => i.Media.ReleaseDate).ThenBy(i => i.OrderIndex),
-            CollectionSortMode.Duration => itemQuery.OrderBy(i => i.Media.Movie != null ? i.Media.Movie.Duration : null).ThenBy(i => i.OrderIndex),
-            CollectionSortMode.Alphabetical => itemQuery.OrderBy(i => i.Media.Title).ThenBy(i => i.OrderIndex),
-            _ => itemQuery.OrderBy(i => i.OrderIndex)
-        };
-
-        var items = await itemQuery
-            .Select(i => new CollectionItemDto
-            {
-                MediaId = i.MediaId,
-                OrderIndex = i.OrderIndex,
-                MediaTitle = i.Media.Title,
-                CoverUrl = i.Media.CoverUrl
-            })
             .ToListAsync();
 
-        return new CollectionDto
+        var itemsByCollection = collectionItems
+            .GroupBy(i => i.CollectionId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        return collections.Select(c =>
         {
-            Id = collection.Id,
-            Name = string.IsNullOrWhiteSpace(collection.Name) ? collection.Title : collection.Name,
-            Description = collection.Description,
-            ParentCollectionId = collection.ParentCollectionId,
-            OwnerType = collection.OwnerType,
-            OwnerId = collection.OwnerId,
-            SortMode = collection.SortMode,
-            CoverImageUrl = collection.CoverImageUrl,
-            CreatedAt = collection.CreatedAt,
-            FollowersCount = followersCount,
-            Items = items
-        };
+            itemsByCollection.TryGetValue(c.Id, out var currentItems);
+            currentItems ??= [];
+
+            IEnumerable<CollectionItem> ordered = c.SortMode switch
+            {
+                CollectionSortMode.Rating => currentItems.OrderByDescending(i => i.Media.AverageRating).ThenBy(i => i.OrderIndex),
+                CollectionSortMode.ReleaseYear => currentItems.OrderBy(i => i.Media.ReleaseDate).ThenBy(i => i.OrderIndex),
+                CollectionSortMode.Duration => currentItems.OrderBy(i => i.Media.Movie != null ? i.Media.Movie.Duration : null).ThenBy(i => i.OrderIndex),
+                CollectionSortMode.Alphabetical => currentItems.OrderBy(i => i.Media.Title).ThenBy(i => i.OrderIndex),
+                _ => currentItems.OrderBy(i => i.OrderIndex)
+            };
+
+            return new CollectionDto
+            {
+                Id = c.Id,
+                Name = string.IsNullOrWhiteSpace(c.Name) ? c.Title : c.Name,
+                Description = c.Description,
+                ParentCollectionId = c.ParentCollectionId,
+                OwnerType = c.OwnerType,
+                OwnerId = c.OwnerId,
+                SortMode = c.SortMode,
+                CoverImageUrl = c.CoverImageUrl,
+                CreatedAt = c.CreatedAt,
+                FollowersCount = followersByCollection.TryGetValue(c.Id, out var count) ? count : 0,
+                Items = ordered.Select(i => new CollectionItemDto
+                {
+                    MediaId = i.MediaId,
+                    OrderIndex = i.OrderIndex,
+                    MediaTitle = i.Media.Title,
+                    CoverUrl = i.Media.CoverUrl
+                }).ToList()
+            };
+        }).ToList();
     }
 }

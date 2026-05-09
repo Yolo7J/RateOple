@@ -17,3 +17,12 @@ export const useCollectionsQuery = (params = {}, enabled = true) => {
     initialData: { items: [], totalCount: 0, page: queryParams.page, pageSize: queryParams.pageSize },
   });
 };
+
+export const useCollectionsContainingMediaQuery = (mediaId, enabled = true) => {
+  return useQueryResource({
+    queryKey: ['collections', 'containing-media', mediaId],
+    queryFn: () => collectionService.getCollectionsContainingMedia(mediaId),
+    enabled: Boolean(mediaId) && enabled,
+    initialData: null,
+  });
+};

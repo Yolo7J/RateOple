@@ -6,6 +6,7 @@ export const useCollectionMutations = () => {
 
   const invalidateCollections = (collectionId = null) => {
     queryClient.invalidateQueries({ queryKey: ['collections', 'list'] });
+    queryClient.invalidateQueries({ queryKey: ['collections', 'containing-media'] });
     if (collectionId) {
       queryClient.invalidateQueries({ queryKey: ['collections', 'detail', collectionId], exact: true });
     }

@@ -31,6 +31,13 @@ public class CollectionsController : ControllerBase
         return collection == null ? NotFound() : Ok(collection);
     }
 
+    [HttpGet("/api/media/{mediaId:guid}/collections")]
+    public async Task<ActionResult<IReadOnlyList<CollectionDto>>> GetContainingMedia(Guid mediaId)
+    {
+        var collections = await _collectionService.GetContainingMediaAsync(mediaId, User.GetUserIdOrNull());
+        return Ok(collections);
+    }
+
     [HttpPost]
     [Authorize]
     public async Task<ActionResult<CollectionDto>> Create([FromBody] CreateCollectionDto dto)

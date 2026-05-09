@@ -1,3 +1,53 @@
+RateOple collections containing media detail feed results
+
+Summary:
+- Added a target media collections feed backed by real collection items.
+- Media Detail Collections tabs now fetch and render real collection appearances instead of the placeholder.
+- The implementation reuses the existing collection list/card DTO shape and current collection visibility rules.
+
+Backend files changed:
+- backend/RateOple/Controllers/Collections/CollectionsController.cs
+- backend/RateOple.Core/Collections/Interfaces/ICollectionService.cs
+- backend/RateOple.Core/Collections/Services/CollectionService.cs
+- backend/RateOple.Core.Tests/Collections/CollectionServiceTests.cs
+- backend/RateOple.Api.Tests/Collections/CollectionContainingContractTests.cs
+
+Frontend files changed:
+- frontend/src/features/collections/services/collectionService.js
+- frontend/src/features/collections/queries/useCollectionsQuery.js
+- frontend/src/features/collections/queries/useCollectionMutations.js
+- frontend/src/features/media/pages/MediaDetailPage.jsx
+- frontend/src/index.css
+
+New endpoint:
+- `GET /api/media/{mediaId}/collections`
+
+Visibility rules:
+- Anonymous users see public collections containing the media.
+- Signed-in users also see their own private collections and follower/group-visible collections according to the existing collection visibility filter.
+- Other users' private collections are not returned.
+- Missing or deleted media IDs return 404 problem details.
+
+Media Detail Collections behavior:
+- The Collections tab shows loading skeletons, an error message, a real empty state, or compact collection cards.
+- Collection cards link to the existing `/collections/{id}` detail route and show title, description, item count, follower count, and preview art when available.
+- Empty state says "No public collections include this title yet." with Browse collections and signed-in Create collection actions.
+
+Tests/checks run:
+- `cd backend && dotnet test RateOple.sln`: passed, 322 total tests.
+- `cd frontend && npm run lint`: passed.
+- `cd frontend && npm run build`: passed. Build emitted existing Rollup annotation warnings from @microsoft/signalr comments.
+- `cd frontend && npm run test:e2e`: passed, 2 tests.
+- `cd frontend && npm run build:backend`: passed.
+- Backend-hosted smoke inspection used temporary `https://localhost:7168` with a temporary `VITE_API_BASE_URL=https://localhost:7168/api` build, then restored the normal `npm run build:backend` output. Movie Collections tab showed an existing real collection, TV series and book tabs showed the empty state, and 320px movie Collections tab had no horizontal overflow.
+
+build:backend status:
+- Final `npm run build:backend` passed and copied the normal build output to `backend/RateOple/wwwroot`.
+
+Known limitations:
+- The returned DTO does not add owner username or visibility chips because the existing `CollectionDto` does not expose those fields.
+- Manual signed-in private collection UI visibility was not exercised; backend service and API tests cover private owner vs. anonymous/other-user behavior.
+
 RateOple target-aware review composer results
 
 Summary:

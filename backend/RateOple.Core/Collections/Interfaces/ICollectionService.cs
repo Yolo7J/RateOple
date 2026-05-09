@@ -7,6 +7,7 @@ public interface ICollectionService
     Task<CollectionDto> CreateAsync(Guid userId, CreateCollectionDto dto);
     Task<CollectionDto?> GetByIdAsync(Guid id, Guid? viewerId = null);
     Task<PagedCollectionsDto> QueryAsync(CollectionQueryDto query, Guid? viewerId = null);
+    Task<IReadOnlyList<CollectionDto>> GetContainingMediaAsync(Guid mediaId, Guid? viewerId = null);
     Task<CollectionDto> UpdateAsync(Guid userId, Guid id, UpdateCollectionDto dto);
     Task DeleteAsync(Guid userId, Guid id);
     Task<CollectionDto> AddItemAsync(Guid userId, Guid collectionId, AddCollectionItemDto dto);

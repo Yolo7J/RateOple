@@ -11,6 +11,11 @@ const collectionService = {
     return response.data;
   },
 
+  getCollectionsContainingMedia: async (mediaId) => {
+    const response = await api.get(`/media/${mediaId}/collections`);
+    return response.data;
+  },
+
   create: async (payload) => {
     const response = await api.post('/collections', payload);
     return response.data;
