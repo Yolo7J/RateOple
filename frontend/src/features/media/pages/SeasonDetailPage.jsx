@@ -15,7 +15,9 @@ import { useTvSeriesSeasonsQuery } from '../queries/useTvSeriesSeasonsQuery';
 import { useSeasonRatingSummaryQuery } from '../../ratings/queries/useSeasonRatingSummaryQuery';
 import { useRateSeasonMutation } from '../../ratings/queries/useRateSeasonMutation';
 import { useDeleteSeasonRatingMutation } from '../../ratings/queries/useDeleteSeasonRatingMutation';
+import { useSeasonReviewsQuery } from '../../reviews/queries/useReviewsQuery';
 import RatingStars from '../../ratings/components/RatingStars';
+import ReviewsList from '../../reviews/components/ReviewsList';
 import { buildImageUrl } from '../../../shared/utils/buildImageUrl';
 import PageLayout from '../../../layouts/PageLayout';
 import Container from '../../../shared/ui/Container';
@@ -211,6 +213,13 @@ function SeasonDetailPage() {
   const seasons = useMemo(() => getTvSeasons(media, seasonsData), [media, seasonsData]);
   const season = useMemo(() => findSeasonByNumber(seasons, seasonNumber), [seasons, seasonNumber]);
   const episodes = Array.isArray(season?.episodes) ? season.episodes : [];
+  const {
+    data: reviewsData,
+    loading: reviewsLoading,
+    error: reviewsError,
+  } = useSeasonReviewsQuery(season?.id);
+  const reviews = useMemo(() => (Array.isArray(reviewsData) ? reviewsData : []), [reviewsData]);
+  const reviewsErrorMessage = reviewsError?.response?.data?.message || 'Failed to load season reviews.';
   const loading = mediaLoading || (shouldFetchSeasons && seasonsLoading && !seasons.length);
 
   if (loading) {
@@ -291,10 +300,15 @@ function SeasonDetailPage() {
                 </span>
                 <div>
                   <h2 id="season-reviews-title">Season reviews</h2>
-                  <p>Season review feed is coming after target-aware review endpoints.</p>
+                  <p>Reviews written for Season {season.seasonNumber}.</p>
                 </div>
               </div>
-              <InlineMessage tone="info">Season reviews need backend target review endpoints.</InlineMessage>
+              <ReviewsList
+                reviews={reviews}
+                loading={reviewsLoading}
+                error={reviewsError ? reviewsErrorMessage : ''}
+                surface={false}
+              />
             </section>
           </div>
 

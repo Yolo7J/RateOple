@@ -30,7 +30,21 @@ public class ReviewDto
     public string? UserDisplayName { get; set; }
     public Guid MediaId { get; set; }
     public Guid RatingId { get; set; }
+    public string TargetType { get; set; } = string.Empty;
+    public int RatingValue { get; set; }
+    public Guid? SeasonId { get; set; }
+    public Guid? EpisodeId { get; set; }
+    public int? SeasonNumber { get; set; }
+    public int? EpisodeNumber { get; set; }
+    public string TargetTitle { get; set; } = string.Empty;
+    public string? MediaTitle { get; set; }
     public string Content { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+}
+
+public enum ReviewTargetFilter
+{
+    All,
+    Media
 }

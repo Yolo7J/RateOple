@@ -40,9 +40,29 @@ public class ReviewsController : ControllerBase
     }
 
     [HttpGet("media/{mediaId:guid}/reviews")]
-    public async Task<ActionResult<IReadOnlyList<ReviewDto>>> GetMediaReviews(Guid mediaId)
+    public async Task<ActionResult<IReadOnlyList<ReviewDto>>> GetMediaReviews(Guid mediaId, [FromQuery] string target = "all")
     {
-        var reviews = await _reviewService.GetMediaReviewsAsync(mediaId);
+        if (!TryParseTargetFilter(target, out var filter))
+        {
+            ModelState.AddModelError(nameof(target), "Target must be either 'all' or 'media'.");
+            return ValidationProblem(ModelState);
+        }
+
+        var reviews = await _reviewService.GetMediaReviewsAsync(mediaId, filter);
+        return Ok(reviews);
+    }
+
+    [HttpGet("seasons/{seasonId:guid}/reviews")]
+    public async Task<ActionResult<IReadOnlyList<ReviewDto>>> GetSeasonReviews(Guid seasonId)
+    {
+        var reviews = await _reviewService.GetSeasonReviewsAsync(seasonId);
+        return Ok(reviews);
+    }
+
+    [HttpGet("episodes/{episodeId:guid}/reviews")]
+    public async Task<ActionResult<IReadOnlyList<ReviewDto>>> GetEpisodeReviews(Guid episodeId)
+    {
+        var reviews = await _reviewService.GetEpisodeReviewsAsync(episodeId);
         return Ok(reviews);
     }
 
@@ -52,4 +72,21 @@ public class ReviewsController : ControllerBase
         return Ok(result);
     }
 
+    private static bool TryParseTargetFilter(string? value, out ReviewTargetFilter filter)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value.Equals("all", StringComparison.OrdinalIgnoreCase))
+        {
+            filter = ReviewTargetFilter.All;
+            return true;
+        }
+
+        if (value.Equals("media", StringComparison.OrdinalIgnoreCase))
+        {
+            filter = ReviewTargetFilter.Media;
+            return true;
+        }
+
+        filter = ReviewTargetFilter.All;
+        return false;
+    }
 }

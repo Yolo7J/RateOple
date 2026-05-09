@@ -570,7 +570,7 @@ function MediaDetailPage() {
     loading: reviewLoading,
     error: reviewError,
     refetch: refetchReviews,
-  } = useReviewsQuery(id);
+  } = useReviewsQuery(id, { target: 'media' });
   const { data: similarData } = useSimilarMediaQuery(id, 20);
 
   const { mutate: rateMedia, loading: submittingRating } = useRateMediaMutation();
@@ -760,49 +760,35 @@ function MediaDetailPage() {
                   <h2>{getMediaActionLabels(media.type).reviewsTitle}</h2>
                   <p>
                     {media.type === 'TvSeries'
-                      ? 'Series, season, and episode reviews need backend target metadata before they can be separated correctly.'
+                      ? 'Read direct series reviews or add your own after rating this title.'
                       : 'Read community reactions or add your own after rating this title.'}
                   </p>
                 </div>
-                {media.type !== 'TvSeries' ? <ReviewFilters value={sortBy} onChange={setSortBy} /> : null}
+                <ReviewFilters value={sortBy} onChange={setSortBy} />
               </div>
 
-              {media.type === 'TvSeries' ? (
-                <div className="media-detail-contract-state">
-                  <MessageCircle size={22} aria-hidden="true" />
-                  <div>
-                    <h3>Target-aware reviews are required</h3>
-                    <p>
-                      Series, season, and episode reviews need backend target metadata before they can be separated correctly.
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  {user && (summary?.userRating || ratingDto?.id) ? (
-                    <div className="media-detail-review-editor">
-                      <ReviewEditor
-                        onSubmit={handleCreateReview}
-                        submitting={submittingReview}
-                      />
-                    </div>
-                  ) : null}
-
-                  {user && !summary?.userRating && !ratingDto?.id ? (
-                    <InlineMessage tone="info">{getMediaActionLabels(media.type).reviewFirst}</InlineMessage>
-                  ) : null}
-
-                  {!user ? (
-                    <InlineMessage tone="info">{getMediaActionLabels(media.type).signedOutReview}</InlineMessage>
-                  ) : null}
-
-                  <ReviewsList
-                    reviews={sortedReviews}
-                    loading={reviewLoading}
-                    error={reviewError ? reviewErrorMessage : ''}
+              {user && (summary?.userRating || ratingDto?.id) ? (
+                <div className="media-detail-review-editor">
+                  <ReviewEditor
+                    onSubmit={handleCreateReview}
+                    submitting={submittingReview}
                   />
-                </>
-              )}
+                </div>
+              ) : null}
+
+              {user && !summary?.userRating && !ratingDto?.id ? (
+                <InlineMessage tone="info">{getMediaActionLabels(media.type).reviewFirst}</InlineMessage>
+              ) : null}
+
+              {!user ? (
+                <InlineMessage tone="info">{getMediaActionLabels(media.type).signedOutReview}</InlineMessage>
+              ) : null}
+
+              <ReviewsList
+                reviews={sortedReviews}
+                loading={reviewLoading}
+                error={reviewError ? reviewErrorMessage : ''}
+              />
             </section>
           ) : null}
 

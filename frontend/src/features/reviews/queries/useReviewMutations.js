@@ -6,7 +6,7 @@ export const useReviewMutations = () => {
 
   const invalidateReviewRelatedData = (mediaId) => {
     if (mediaId) {
-      queryClient.invalidateQueries({ queryKey: ['reviews', 'media', mediaId], exact: true });
+      queryClient.invalidateQueries({ queryKey: ['reviews', 'media', mediaId] });
       queryClient.invalidateQueries({ queryKey: ['media', 'detail', mediaId], exact: true });
       queryClient.invalidateQueries({ queryKey: ['ratings', 'summary', mediaId], exact: true });
     }
@@ -18,6 +18,12 @@ export const useReviewMutations = () => {
     mutationFn: (payload) => reviewService.createReview(payload),
     onSuccess: (reviewDto) => {
       invalidateReviewRelatedData(reviewDto?.mediaId);
+      if (reviewDto?.seasonId) {
+        queryClient.invalidateQueries({ queryKey: ['reviews', 'season', reviewDto.seasonId], exact: true });
+      }
+      if (reviewDto?.episodeId) {
+        queryClient.invalidateQueries({ queryKey: ['reviews', 'episode', reviewDto.episodeId], exact: true });
+      }
     },
   });
 
@@ -25,6 +31,12 @@ export const useReviewMutations = () => {
     mutationFn: ({ reviewId, payload }) => reviewService.updateReview(reviewId, payload),
     onSuccess: (reviewDto) => {
       invalidateReviewRelatedData(reviewDto?.mediaId);
+      if (reviewDto?.seasonId) {
+        queryClient.invalidateQueries({ queryKey: ['reviews', 'season', reviewDto.seasonId], exact: true });
+      }
+      if (reviewDto?.episodeId) {
+        queryClient.invalidateQueries({ queryKey: ['reviews', 'episode', reviewDto.episodeId], exact: true });
+      }
     },
   });
 

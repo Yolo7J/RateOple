@@ -30,6 +30,9 @@ public class ReviewServiceTests
         Assert.Equal(user.Id, review.UserId);
         Assert.Equal(media.Id, review.MediaId);
         Assert.Equal(rating.Id, review.RatingId);
+        Assert.Equal("Media", review.TargetType);
+        Assert.Equal(8, review.RatingValue);
+        Assert.Equal("Reviewable Movie", review.TargetTitle);
         Assert.Equal("Strong review.", review.Content);
         Assert.Single(await db.Context.Reviews.ToListAsync());
     }
@@ -53,6 +56,11 @@ public class ReviewServiceTests
 
         Assert.Equal(series.Id, review.MediaId);
         Assert.Equal(rating.Id, review.RatingId);
+        Assert.Equal("Season", review.TargetType);
+        Assert.Equal(7, review.RatingValue);
+        Assert.Equal(season.Id, review.SeasonId);
+        Assert.Equal(1, review.SeasonNumber);
+        Assert.Equal("Season 1", review.TargetTitle);
     }
 
     [Fact]
@@ -75,6 +83,12 @@ public class ReviewServiceTests
 
         Assert.Equal(series.Id, review.MediaId);
         Assert.Equal(rating.Id, review.RatingId);
+        Assert.Equal("Episode", review.TargetType);
+        Assert.Equal(9, review.RatingValue);
+        Assert.Equal(episode.Id, review.EpisodeId);
+        Assert.Equal(1, review.SeasonNumber);
+        Assert.Equal(1, review.EpisodeNumber);
+        Assert.Equal("Episode 1", review.TargetTitle);
     }
 
     [Fact]
@@ -788,6 +802,136 @@ public class ReviewServiceTests
         var reviews = await service.GetMediaReviewsAsync(media.Id);
 
         Assert.Empty(reviews);
+    }
+
+    [Fact]
+    public async Task GetMediaReviewsAsync_WithMediaTargetOnlyExcludesSeasonAndEpisodeReviews()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var mediaUser = data.Users.Add(data.Users.Normal("media-target-reviewer"));
+        var seasonUser = data.Users.Add(data.Users.Normal("season-target-reviewer"));
+        var episodeUser = data.Users.Add(data.Users.Normal("episode-target-reviewer"));
+        var series = data.Media.TvSeries("Target Filter Series");
+        await data.SaveAsync();
+        var season = await data.Media.CreateSeasonAsync(series, 2);
+        var episode = await data.Media.CreateEpisodeAsync(season, 3, "Target Episode");
+        var mediaRating = data.Reviews.RatingForMedia(mediaUser, series, 8);
+        var seasonRating = data.Reviews.RatingForSeason(seasonUser, season, 7);
+        var episodeRating = data.Reviews.RatingForEpisode(episodeUser, episode, 9);
+        var mediaReview = data.Reviews.Review(mediaUser, series, mediaRating, "Series review");
+        data.Reviews.Review(seasonUser, series, seasonRating, "Season review");
+        data.Reviews.Review(episodeUser, series, episodeRating, "Episode review");
+        await data.SaveAsync();
+        var service = CreateService(db);
+
+        var reviews = await service.GetMediaReviewsAsync(series.Id, ReviewTargetFilter.Media);
+
+        var review = Assert.Single(reviews);
+        Assert.Equal(mediaReview.Id, review.Id);
+        Assert.Equal("Media", review.TargetType);
+        Assert.Equal(8, review.RatingValue);
+        Assert.Equal("Target Filter Series", review.TargetTitle);
+    }
+
+    [Fact]
+    public async Task GetMediaReviewsAsync_WithAllTargetIncludesMediaSeasonAndEpisodeReviewsWithLabels()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var mediaUser = data.Users.Add(data.Users.Normal("all-media-reviewer"));
+        var seasonUser = data.Users.Add(data.Users.Normal("all-season-reviewer"));
+        var episodeUser = data.Users.Add(data.Users.Normal("all-episode-reviewer"));
+        var series = data.Media.TvSeries("All Target Series");
+        await data.SaveAsync();
+        var season = await data.Media.CreateSeasonAsync(series, 4);
+        var episode = await data.Media.CreateEpisodeAsync(season, 5, "Finale");
+        var mediaRating = data.Reviews.RatingForMedia(mediaUser, series, 6);
+        var seasonRating = data.Reviews.RatingForSeason(seasonUser, season, 7);
+        var episodeRating = data.Reviews.RatingForEpisode(episodeUser, episode, 9);
+        data.Reviews.Review(mediaUser, series, mediaRating, "Series review");
+        data.Reviews.Review(seasonUser, series, seasonRating, "Season review");
+        data.Reviews.Review(episodeUser, series, episodeRating, "Episode review");
+        await data.SaveAsync();
+        var service = CreateService(db);
+
+        var reviews = await service.GetMediaReviewsAsync(series.Id, ReviewTargetFilter.All);
+
+        Assert.Equal(3, reviews.Count);
+        Assert.Contains(reviews, r =>
+            r.TargetType == "Media" &&
+            r.RatingValue == 6 &&
+            r.TargetTitle == "All Target Series");
+        Assert.Contains(reviews, r =>
+            r.TargetType == "Season" &&
+            r.SeasonId == season.Id &&
+            r.SeasonNumber == 4 &&
+            r.RatingValue == 7 &&
+            r.TargetTitle == "Season 4");
+        Assert.Contains(reviews, r =>
+            r.TargetType == "Episode" &&
+            r.EpisodeId == episode.Id &&
+            r.SeasonNumber == 4 &&
+            r.EpisodeNumber == 5 &&
+            r.RatingValue == 9 &&
+            r.TargetTitle == "Finale");
+    }
+
+    [Fact]
+    public async Task GetSeasonReviewsAsync_ReturnsOnlySeasonTargetReviews()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var user = data.Users.Add(data.Users.Normal("season-feed-reviewer"));
+        var series = data.Media.TvSeries("Season Feed Series");
+        await data.SaveAsync();
+        var season = await data.Media.CreateSeasonAsync(series, 3);
+        var episode = await data.Media.CreateEpisodeAsync(season, 1, "Episode One");
+        var seasonRating = data.Reviews.RatingForSeason(user, season, 7);
+        var episodeRating = data.Reviews.RatingForEpisode(user, episode, 9);
+        var seasonReview = data.Reviews.Review(user, series, seasonRating, "Season-only review");
+        data.Reviews.Review(user, series, episodeRating, "Episode-only review");
+        await data.SaveAsync();
+        var service = CreateService(db);
+
+        var reviews = await service.GetSeasonReviewsAsync(season.Id);
+
+        var review = Assert.Single(reviews);
+        Assert.Equal(seasonReview.Id, review.Id);
+        Assert.Equal("Season", review.TargetType);
+        Assert.Equal(season.Id, review.SeasonId);
+        Assert.Equal(3, review.SeasonNumber);
+        Assert.Equal(7, review.RatingValue);
+        Assert.Equal("Season 3", review.TargetTitle);
+    }
+
+    [Fact]
+    public async Task GetEpisodeReviewsAsync_ReturnsOnlyEpisodeTargetReviews()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var user = data.Users.Add(data.Users.Normal("episode-feed-reviewer"));
+        var series = data.Media.TvSeries("Episode Feed Series");
+        await data.SaveAsync();
+        var season = await data.Media.CreateSeasonAsync(series, 5);
+        var episode = await data.Media.CreateEpisodeAsync(season, 6, "The Episode Target");
+        var seasonRating = data.Reviews.RatingForSeason(user, season, 7);
+        var episodeRating = data.Reviews.RatingForEpisode(user, episode, 9);
+        data.Reviews.Review(user, series, seasonRating, "Season-only review");
+        var episodeReview = data.Reviews.Review(user, series, episodeRating, "Episode-only review");
+        await data.SaveAsync();
+        var service = CreateService(db);
+
+        var reviews = await service.GetEpisodeReviewsAsync(episode.Id);
+
+        var review = Assert.Single(reviews);
+        Assert.Equal(episodeReview.Id, review.Id);
+        Assert.Equal("Episode", review.TargetType);
+        Assert.Equal(episode.Id, review.EpisodeId);
+        Assert.Equal(5, review.SeasonNumber);
+        Assert.Equal(6, review.EpisodeNumber);
+        Assert.Equal(9, review.RatingValue);
+        Assert.Equal("The Episode Target", review.TargetTitle);
     }
 
     private static ReviewService CreateService(

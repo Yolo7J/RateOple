@@ -8,6 +8,10 @@ namespace RateOple.Core.Social.Services;
 
 public class ReviewService : IReviewService
 {
+    private const string MediaTargetType = "Media";
+    private const string SeasonTargetType = "Season";
+    private const string EpisodeTargetType = "Episode";
+
     private readonly ApplicationDbContext _context;
     private readonly IRatingService _ratingService;
     private readonly IInteractionService _interactionService;
@@ -57,7 +61,7 @@ public class ReviewService : IReviewService
             if (!ratingValueUpdated)
                 await _userTasteService.RecalculateForMediaContextAsync(userId, existingReview.MediaId);
             await transaction.CommitAsync();
-            return await MapWithDisplayNameAsync(existingReview);
+            return await MapByIdAsync(existingReview.Id);
         }
 
         var review = new Review
@@ -75,7 +79,7 @@ public class ReviewService : IReviewService
         await _context.SaveChangesAsync();
         await _interactionService.TrackReviewCreatedAsync(userId, rating.MediaId, rating.SeasonId, rating.EpisodeId);
         await transaction.CommitAsync();
-        return await MapWithDisplayNameAsync(review);
+        return await MapByIdAsync(review.Id);
     }
 
     public async Task<ReviewDto> UpdateReviewAsync(Guid userId, Guid reviewId, UpdateReviewDto dto)
@@ -106,7 +110,7 @@ public class ReviewService : IReviewService
             await _userTasteService.RecalculateForMediaContextAsync(userId, review.MediaId);
 
         await transaction.CommitAsync();
-        return await MapWithDisplayNameAsync(review);
+        return await MapByIdAsync(review.Id);
     }
 
     public async Task DeleteReviewAsync(Guid userId, Guid reviewId, bool deleteRating)
@@ -148,48 +152,36 @@ public class ReviewService : IReviewService
         await transaction.CommitAsync();
     }
 
-    public async Task<IReadOnlyList<ReviewDto>> GetMediaReviewsAsync(Guid mediaId)
+    public async Task<IReadOnlyList<ReviewDto>> GetMediaReviewsAsync(Guid mediaId, ReviewTargetFilter target = ReviewTargetFilter.All)
     {
-        return await _context.Reviews
-            .AsNoTracking()
-            .Where(r => r.MediaId == mediaId && !r.Media.IsDeleted)
-            .OrderByDescending(r => r.UpdatedAt)
-            .Select(r => new ReviewDto
-            {
-                Id = r.Id,
-                UserId = r.UserId,
-                UserDisplayName = r.User.Profile != null
-                    ? r.User.Profile.DisplayName
-                    : r.User.UserName,
-                MediaId = r.MediaId,
-                RatingId = r.RatingId,
-                Content = r.Content,
-                CreatedAt = r.CreatedAt,
-                UpdatedAt = r.UpdatedAt
-            })
-            .ToListAsync();
+        var query = ActiveTargetReviews(_context.Reviews.AsNoTracking())
+            .Where(r => r.MediaId == mediaId);
+
+        if (target == ReviewTargetFilter.Media)
+            query = query.Where(r => r.Rating.MediaId == mediaId);
+
+        return await ProjectReviewsAsync(query);
+    }
+
+    public async Task<IReadOnlyList<ReviewDto>> GetSeasonReviewsAsync(Guid seasonId)
+    {
+        return await ProjectReviewsAsync(
+            ActiveTargetReviews(_context.Reviews.AsNoTracking())
+                .Where(r => r.Rating.SeasonId == seasonId));
+    }
+
+    public async Task<IReadOnlyList<ReviewDto>> GetEpisodeReviewsAsync(Guid episodeId)
+    {
+        return await ProjectReviewsAsync(
+            ActiveTargetReviews(_context.Reviews.AsNoTracking())
+                .Where(r => r.Rating.EpisodeId == episodeId));
     }
 
     public async Task<IReadOnlyList<ReviewDto>> GetUserReviewsAsync(Guid userId)
     {
-        return await _context.Reviews
-            .AsNoTracking()
-            .Where(r => r.UserId == userId && !r.Media.IsDeleted)
-            .OrderByDescending(r => r.UpdatedAt)
-            .Select(r => new ReviewDto
-            {
-                Id = r.Id,
-                UserId = r.UserId,
-                UserDisplayName = r.User.Profile != null
-                    ? r.User.Profile.DisplayName
-                    : r.User.UserName,
-                MediaId = r.MediaId,
-                RatingId = r.RatingId,
-                Content = r.Content,
-                CreatedAt = r.CreatedAt,
-                UpdatedAt = r.UpdatedAt
-            })
-            .ToListAsync();
+        return await ProjectReviewsAsync(
+            ActiveTargetReviews(_context.Reviews.AsNoTracking())
+                .Where(r => r.UserId == userId));
     }
 
     private async Task<Guid> ResolveMediaIdFromRatingAsync(Rating rating)
@@ -294,27 +286,123 @@ public class ReviewService : IReviewService
             throw new InvalidOperationException("Rating target is invalid.");
     }
 
-    private static ReviewDto Map(Review review) => new()
+    private async Task<ReviewDto> MapByIdAsync(Guid reviewId)
     {
-        Id = review.Id,
-        UserId = review.UserId,
-        UserDisplayName = null,
-        MediaId = review.MediaId,
-        RatingId = review.RatingId,
-        Content = review.Content,
-        CreatedAt = review.CreatedAt,
-        UpdatedAt = review.UpdatedAt
-    };
+        var reviews = await ProjectReviewsAsync(
+            ActiveTargetReviews(_context.Reviews.AsNoTracking())
+                .Where(r => r.Id == reviewId));
 
-    private async Task<ReviewDto> MapWithDisplayNameAsync(Review review)
+        return reviews.Single();
+    }
+
+    private async Task<IReadOnlyList<ReviewDto>> ProjectReviewsAsync(IQueryable<Review> query)
     {
-        var dto = Map(review);
-        dto.UserDisplayName = await _context.Users
-            .AsNoTracking()
-            .Where(u => u.Id == review.UserId)
-            .Select(u => u.Profile != null ? u.Profile.DisplayName : u.UserName)
-            .FirstOrDefaultAsync();
+        var projections = await query
+            .OrderByDescending(r => r.UpdatedAt)
+            .Select(r => new ReviewProjection
+            {
+                Id = r.Id,
+                UserId = r.UserId,
+                UserDisplayName = r.User.Profile != null
+                    ? r.User.Profile.DisplayName
+                    : r.User.UserName,
+                MediaId = r.MediaId,
+                RatingId = r.RatingId,
+                Content = r.Content,
+                CreatedAt = r.CreatedAt,
+                UpdatedAt = r.UpdatedAt,
+                TargetType = r.Rating.MediaId.HasValue
+                    ? MediaTargetType
+                    : r.Rating.SeasonId.HasValue
+                        ? SeasonTargetType
+                        : EpisodeTargetType,
+                RatingValue = r.Rating.Value,
+                SeasonId = r.Rating.SeasonId,
+                EpisodeId = r.Rating.EpisodeId,
+                SeasonNumber = r.Rating.SeasonId.HasValue
+                    ? r.Rating.Season!.SeasonNumber
+                    : r.Rating.EpisodeId.HasValue
+                        ? r.Rating.Episode!.Season.SeasonNumber
+                        : null,
+                EpisodeNumber = r.Rating.EpisodeId.HasValue
+                    ? r.Rating.Episode!.EpisodeNumber
+                    : null,
+                EpisodeTitle = r.Rating.EpisodeId.HasValue
+                    ? r.Rating.Episode!.Title
+                    : null,
+                MediaTitle = r.Media.Title
+            })
+            .ToListAsync();
 
-        return dto;
+        return projections.Select(MapProjection).ToList();
+    }
+
+    private static IQueryable<Review> ActiveTargetReviews(IQueryable<Review> query) =>
+        query.Where(r =>
+            !r.Media.IsDeleted &&
+            (
+                (r.Rating.MediaId.HasValue && !r.Rating.Media!.IsDeleted) ||
+                (r.Rating.SeasonId.HasValue &&
+                    !r.Rating.Season!.IsDeleted &&
+                    !r.Rating.Season.TvSeries.Media.IsDeleted) ||
+                (r.Rating.EpisodeId.HasValue &&
+                    !r.Rating.Episode!.IsDeleted &&
+                    !r.Rating.Episode.Season.IsDeleted &&
+                    !r.Rating.Episode.Season.TvSeries.Media.IsDeleted)
+            ));
+
+    private static ReviewDto MapProjection(ReviewProjection review)
+    {
+        var targetTitle = review.TargetType switch
+        {
+            MediaTargetType => review.MediaTitle ?? string.Empty,
+            SeasonTargetType => review.SeasonNumber.HasValue ? $"Season {review.SeasonNumber.Value}" : "Season",
+            EpisodeTargetType => !string.IsNullOrWhiteSpace(review.EpisodeTitle)
+                ? review.EpisodeTitle!
+                : review.SeasonNumber.HasValue && review.EpisodeNumber.HasValue
+                    ? $"S{review.SeasonNumber.Value} · E{review.EpisodeNumber.Value}"
+                    : "Episode",
+            _ => throw new InvalidOperationException("Rating target is invalid.")
+        };
+
+        return new ReviewDto
+        {
+            Id = review.Id,
+            UserId = review.UserId,
+            UserDisplayName = review.UserDisplayName,
+            MediaId = review.MediaId,
+            RatingId = review.RatingId,
+            TargetType = review.TargetType,
+            RatingValue = review.RatingValue,
+            SeasonId = review.SeasonId,
+            EpisodeId = review.EpisodeId,
+            SeasonNumber = review.SeasonNumber,
+            EpisodeNumber = review.EpisodeNumber,
+            TargetTitle = targetTitle,
+            MediaTitle = review.MediaTitle,
+            Content = review.Content,
+            CreatedAt = review.CreatedAt,
+            UpdatedAt = review.UpdatedAt
+        };
+    }
+
+    private sealed class ReviewProjection
+    {
+        public Guid Id { get; set; }
+        public Guid UserId { get; set; }
+        public string? UserDisplayName { get; set; }
+        public Guid MediaId { get; set; }
+        public Guid RatingId { get; set; }
+        public string Content { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
+        public string TargetType { get; set; } = string.Empty;
+        public int RatingValue { get; set; }
+        public Guid? SeasonId { get; set; }
+        public Guid? EpisodeId { get; set; }
+        public int? SeasonNumber { get; set; }
+        public int? EpisodeNumber { get; set; }
+        public string? EpisodeTitle { get; set; }
+        public string? MediaTitle { get; set; }
     }
 }

@@ -1,3 +1,75 @@
+RateOple target-aware review feeds results
+
+Summary:
+- Implemented target-aware review DTO metadata backed by the existing Review -> Rating relation, with no database migration.
+- Added media review filtering plus direct season and episode review feed endpoints.
+- Wired the frontend media, season, and episode pages to real target-specific review feeds instead of placeholders.
+
+Backend files changed:
+- backend/RateOple/Controllers/Media/ReviewsController.cs
+- backend/RateOple.Core/Social/DTOs/ReviewDtos.cs
+- backend/RateOple.Core/Social/Interfaces/IReviewService.cs
+- backend/RateOple.Core/Social/Services/ReviewService.cs
+- backend/RateOple.Core.Tests/Social/ReviewServiceTests.cs
+- backend/RateOple.Api.Tests/Social/ReviewContractTests.cs
+
+Frontend files changed:
+- frontend/src/features/reviews/services/reviewService.js
+- frontend/src/features/reviews/queries/useReviewsQuery.js
+- frontend/src/features/reviews/queries/useReviewMutations.js
+- frontend/src/features/reviews/components/ReviewCard.jsx
+- frontend/src/features/reviews/components/ReviewsList.jsx
+- frontend/src/features/media/pages/MediaDetailPage.jsx
+- frontend/src/features/media/pages/SeasonDetailPage.jsx
+- frontend/src/features/media/pages/EpisodeDetailPage.jsx
+
+New/changed endpoints:
+- `GET /api/media/{mediaId}/reviews?target=media`
+- `GET /api/media/{mediaId}/reviews?target=all`
+- `GET /api/seasons/{seasonId}/reviews`
+- `GET /api/episodes/{episodeId}/reviews`
+- Invalid media review `target` values return validation problem details.
+
+ReviewDto fields added:
+- `targetType`
+- `ratingValue`
+- `seasonId`
+- `episodeId`
+- `seasonNumber`
+- `episodeNumber`
+- `targetTitle`
+- `mediaTitle`
+
+TV series reviews behavior:
+- The TV series Reviews tab now requests `target=media`, so it shows direct series reviews only.
+- Season and episode reviews are no longer exposed as unlabeled generic series reviews.
+- Existing movie/book media review behavior remains on the same media review endpoint with target metadata included.
+
+Season reviews behavior:
+- Season detail pages fetch `/api/seasons/{seasonId}/reviews`.
+- Returned season reviews include `targetType: Season`, the season ID, season number, rating value, media title, and `Season N` target title.
+
+Episode reviews behavior:
+- Episode detail pages fetch `/api/episodes/{episodeId}/reviews`.
+- Returned episode reviews include `targetType: Episode`, the episode ID, season number, episode number, rating value, media title, and episode title target label.
+
+Tests/checks run:
+- `cd backend && dotnet test RateOple.sln`: passed, 312 total tests.
+- `cd frontend && npm run lint`: passed.
+- `cd frontend && npm run build`: passed. Build emitted existing Rollup annotation warnings from @microsoft/signalr comments.
+- `cd frontend && npm run test:e2e`: passed, 2 tests.
+- `cd frontend && npm run build:backend`: passed.
+- Backend-hosted smoke inspection used this branch on temporary `https://localhost:7168` because an older backend was already bound to 7167. API checks verified target metadata for movie, season, episode, and aggregate TV reviews. Playwright checks verified movie/book/TV Reviews tabs, season reviews, episode reviews, placeholder removal, and no 320px horizontal overflow on TV, season, and episode routes.
+
+build:backend status:
+- Final `npm run build:backend` passed after smoke inspection.
+- Final Vite output was copied into `backend/RateOple/wwwroot` for the normal local backend host configuration.
+
+Known limitations:
+- Existing season/episode pages now read real review feeds, but they still do not add a new review editor flow beyond behavior already present before this task.
+- The series Reviews tab can be empty when existing reviews for that series were actually season or episode reviews; aggregate `target=all` remains available for contexts that need mixed feeds with labels.
+- Collections remain intentionally untouched and still need a separate backend endpoint.
+
 RateOple TV series season episode route split results
 
 Summary:

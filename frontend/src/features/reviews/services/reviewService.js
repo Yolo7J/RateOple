@@ -1,8 +1,20 @@
 import api from '../../../shared/api/apiClient';
 
 const reviewService = {
-    getMediaReviews: async (mediaId) => {
-        const response = await api.get(`/media/${mediaId}/reviews`);
+    getMediaReviews: async (mediaId, options = {}) => {
+        const response = await api.get(`/media/${mediaId}/reviews`, {
+            params: { target: options.target },
+        });
+        return response.data;
+    },
+
+    getSeasonReviews: async (seasonId) => {
+        const response = await api.get(`/seasons/${seasonId}/reviews`);
+        return response.data;
+    },
+
+    getEpisodeReviews: async (episodeId) => {
+        const response = await api.get(`/episodes/${episodeId}/reviews`);
         return response.data;
     },
 

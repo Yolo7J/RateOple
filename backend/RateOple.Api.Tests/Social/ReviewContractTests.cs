@@ -217,6 +217,116 @@ public class ReviewContractTests
         var items = body.EnumerateArray().ToList();
         Assert.Single(items);
         Assert.Equal("Public review", items[0].GetProperty("content").GetString());
+        Assert.Equal("Media", items[0].GetProperty("targetType").GetString());
+        Assert.Equal(8, items[0].GetProperty("ratingValue").GetInt32());
+        Assert.Equal("Review API Movie", items[0].GetProperty("targetTitle").GetString());
+    }
+
+    [Fact]
+    public async Task PublicMediaReviews_WithMediaTargetExcludesSeasonAndEpisodeReviews()
+    {
+        using var factory = new ApiTestFactory(useTestAuth: true);
+        var client = factory.CreateClient();
+        var user = await factory.AddUserAsync("review-media-target-api", RoleConstants.User);
+        var ids = await SeedTargetAwareReviewSetAsync(factory, user.Id);
+
+        var response = await client.GetAsync($"/api/media/{ids.MediaId}/reviews?target=media");
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var item = Assert.Single(body.EnumerateArray().ToList());
+        Assert.Equal(ids.MediaReviewId, item.GetProperty("id").GetGuid());
+        Assert.Equal("Media", item.GetProperty("targetType").GetString());
+        Assert.Equal(6, item.GetProperty("ratingValue").GetInt32());
+    }
+
+    [Fact]
+    public async Task PublicMediaReviews_WithAllTargetIncludesMediaSeasonAndEpisodeLabels()
+    {
+        using var factory = new ApiTestFactory(useTestAuth: true);
+        var client = factory.CreateClient();
+        var user = await factory.AddUserAsync("review-all-target-api", RoleConstants.User);
+        var ids = await SeedTargetAwareReviewSetAsync(factory, user.Id);
+
+        var response = await client.GetAsync($"/api/media/{ids.MediaId}/reviews?target=all");
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var items = body.EnumerateArray().ToList();
+        Assert.Equal(3, items.Count);
+        Assert.Contains(items, item =>
+            item.GetProperty("targetType").GetString() == "Media" &&
+            item.GetProperty("targetTitle").GetString() == "Review API Series");
+        Assert.Contains(items, item =>
+            item.GetProperty("targetType").GetString() == "Season" &&
+            item.GetProperty("seasonId").GetGuid() == ids.SeasonId &&
+            item.GetProperty("seasonNumber").GetInt32() == 2 &&
+            item.GetProperty("targetTitle").GetString() == "Season 2");
+        Assert.Contains(items, item =>
+            item.GetProperty("targetType").GetString() == "Episode" &&
+            item.GetProperty("episodeId").GetGuid() == ids.EpisodeId &&
+            item.GetProperty("seasonNumber").GetInt32() == 2 &&
+            item.GetProperty("episodeNumber").GetInt32() == 4 &&
+            item.GetProperty("targetTitle").GetString() == "The API Episode");
+    }
+
+    [Fact]
+    public async Task PublicMediaReviews_WithInvalidTargetReturnsValidationProblem()
+    {
+        using var factory = new ApiTestFactory(useTestAuth: true);
+        var client = factory.CreateClient();
+        var user = await factory.AddUserAsync("review-invalid-target-api", RoleConstants.User);
+        var ids = await SeedTargetAwareReviewSetAsync(factory, user.Id);
+
+        var response = await client.GetAsync($"/api/media/{ids.MediaId}/reviews?target=episodes");
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+        Assert.True(json.RootElement.TryGetProperty("errors", out _));
+    }
+
+    [Fact]
+    public async Task PublicSeasonReviews_ReturnOnlySeasonTargetReviews()
+    {
+        using var factory = new ApiTestFactory(useTestAuth: true);
+        var client = factory.CreateClient();
+        var user = await factory.AddUserAsync("review-season-target-api", RoleConstants.User);
+        var ids = await SeedTargetAwareReviewSetAsync(factory, user.Id);
+
+        var response = await client.GetAsync($"/api/seasons/{ids.SeasonId}/reviews");
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var item = Assert.Single(body.EnumerateArray().ToList());
+        Assert.Equal(ids.SeasonReviewId, item.GetProperty("id").GetGuid());
+        Assert.Equal("Season", item.GetProperty("targetType").GetString());
+        Assert.Equal(ids.SeasonId, item.GetProperty("seasonId").GetGuid());
+        Assert.Equal(2, item.GetProperty("seasonNumber").GetInt32());
+        Assert.Equal(7, item.GetProperty("ratingValue").GetInt32());
+        Assert.Equal("Season 2", item.GetProperty("targetTitle").GetString());
+    }
+
+    [Fact]
+    public async Task PublicEpisodeReviews_ReturnOnlyEpisodeTargetReviews()
+    {
+        using var factory = new ApiTestFactory(useTestAuth: true);
+        var client = factory.CreateClient();
+        var user = await factory.AddUserAsync("review-episode-target-api", RoleConstants.User);
+        var ids = await SeedTargetAwareReviewSetAsync(factory, user.Id);
+
+        var response = await client.GetAsync($"/api/episodes/{ids.EpisodeId}/reviews");
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var item = Assert.Single(body.EnumerateArray().ToList());
+        Assert.Equal(ids.EpisodeReviewId, item.GetProperty("id").GetGuid());
+        Assert.Equal("Episode", item.GetProperty("targetType").GetString());
+        Assert.Equal(ids.EpisodeId, item.GetProperty("episodeId").GetGuid());
+        Assert.Equal(2, item.GetProperty("seasonNumber").GetInt32());
+        Assert.Equal(4, item.GetProperty("episodeNumber").GetInt32());
+        Assert.Equal(9, item.GetProperty("ratingValue").GetInt32());
+        Assert.Equal("The API Episode", item.GetProperty("targetTitle").GetString());
     }
 
     private static async Task<(Guid MediaId, Guid RatingId)> SeedMediaRatingAsync(
@@ -283,6 +393,126 @@ public class ReviewContractTests
 
         return (mediaId, ratingId, reviewId);
     }
+
+    private static async Task<TargetAwareReviewIds> SeedTargetAwareReviewSetAsync(
+        ApiTestFactory factory,
+        Guid userId)
+    {
+        var mediaId = Guid.NewGuid();
+        var seasonId = Guid.NewGuid();
+        var episodeId = Guid.NewGuid();
+        var mediaRatingId = Guid.NewGuid();
+        var seasonRatingId = Guid.NewGuid();
+        var episodeRatingId = Guid.NewGuid();
+        var mediaReviewId = Guid.NewGuid();
+        var seasonReviewId = Guid.NewGuid();
+        var episodeReviewId = Guid.NewGuid();
+
+        await factory.WithDbAsync(db =>
+        {
+            db.Media.Add(new Media
+            {
+                Id = mediaId,
+                Type = MediaType.TvSeries,
+                Title = "Review API Series",
+                CreatedAt = DateTime.UtcNow
+            });
+            db.TvSeries.Add(new TvSeries { MediaId = mediaId, SeasonsCount = 1 });
+            db.Seasons.Add(new Season
+            {
+                Id = seasonId,
+                TvSeriesId = mediaId,
+                SeasonNumber = 2
+            });
+            db.Episodes.Add(new Episode
+            {
+                Id = episodeId,
+                SeasonId = seasonId,
+                EpisodeNumber = 4,
+                Title = "The API Episode",
+                Duration = 44
+            });
+
+            db.Ratings.AddRange(
+                new Rating
+                {
+                    Id = mediaRatingId,
+                    UserId = userId,
+                    MediaId = mediaId,
+                    Value = 6,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                },
+                new Rating
+                {
+                    Id = seasonRatingId,
+                    UserId = userId,
+                    SeasonId = seasonId,
+                    Value = 7,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                },
+                new Rating
+                {
+                    Id = episodeRatingId,
+                    UserId = userId,
+                    EpisodeId = episodeId,
+                    Value = 9,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+
+            db.Reviews.AddRange(
+                new Review
+                {
+                    Id = mediaReviewId,
+                    UserId = userId,
+                    MediaId = mediaId,
+                    RatingId = mediaRatingId,
+                    Content = "Series API review",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow.AddMinutes(-3)
+                },
+                new Review
+                {
+                    Id = seasonReviewId,
+                    UserId = userId,
+                    MediaId = mediaId,
+                    RatingId = seasonRatingId,
+                    Content = "Season API review",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow.AddMinutes(-2)
+                },
+                new Review
+                {
+                    Id = episodeReviewId,
+                    UserId = userId,
+                    MediaId = mediaId,
+                    RatingId = episodeRatingId,
+                    Content = "Episode API review",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow.AddMinutes(-1)
+                });
+
+            return Task.CompletedTask;
+        });
+
+        return new TargetAwareReviewIds(
+            mediaId,
+            seasonId,
+            episodeId,
+            mediaReviewId,
+            seasonReviewId,
+            episodeReviewId);
+    }
+
+    private sealed record TargetAwareReviewIds(
+        Guid MediaId,
+        Guid SeasonId,
+        Guid EpisodeId,
+        Guid MediaReviewId,
+        Guid SeasonReviewId,
+        Guid EpisodeReviewId);
 
     private static HttpRequestMessage AuthenticatedRequest(
         User user,

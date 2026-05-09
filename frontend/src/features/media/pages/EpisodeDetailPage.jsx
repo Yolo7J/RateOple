@@ -16,7 +16,9 @@ import { useTvSeriesSeasonsQuery } from '../queries/useTvSeriesSeasonsQuery';
 import { useEpisodeRatingSummaryQuery } from '../../ratings/queries/useEpisodeRatingSummaryQuery';
 import { useRateEpisodeMutation } from '../../ratings/queries/useRateEpisodeMutation';
 import { useDeleteEpisodeRatingMutation } from '../../ratings/queries/useDeleteEpisodeRatingMutation';
+import { useEpisodeReviewsQuery } from '../../reviews/queries/useReviewsQuery';
 import RatingStars from '../../ratings/components/RatingStars';
+import ReviewsList from '../../reviews/components/ReviewsList';
 import { buildImageUrl } from '../../../shared/utils/buildImageUrl';
 import PageLayout from '../../../layouts/PageLayout';
 import Container from '../../../shared/ui/Container';
@@ -216,6 +218,13 @@ function EpisodeDetailPage() {
   const seasons = useMemo(() => getTvSeasons(media, seasonsData), [media, seasonsData]);
   const season = useMemo(() => findSeasonByNumber(seasons, seasonNumber), [seasons, seasonNumber]);
   const episode = useMemo(() => findEpisodeByNumber(season, episodeNumber), [season, episodeNumber]);
+  const {
+    data: reviewsData,
+    loading: reviewsLoading,
+    error: reviewsError,
+  } = useEpisodeReviewsQuery(episode?.id);
+  const reviews = useMemo(() => (Array.isArray(reviewsData) ? reviewsData : []), [reviewsData]);
+  const reviewsErrorMessage = reviewsError?.response?.data?.message || 'Failed to load episode reviews.';
   const loading = mediaLoading || (shouldFetchSeasons && seasonsLoading && !seasons.length);
 
   if (loading) {
@@ -316,10 +325,15 @@ function EpisodeDetailPage() {
                 </span>
                 <div>
                   <h2 id="episode-reviews-title">Episode reviews</h2>
-                  <p>Episode review feed is coming after target-aware review endpoints.</p>
+                  <p>Reviews written for {episode.title || `Episode ${episode.episodeNumber}`}.</p>
                 </div>
               </div>
-              <InlineMessage tone="info">Episode reviews need backend target review endpoints.</InlineMessage>
+              <ReviewsList
+                reviews={reviews}
+                loading={reviewsLoading}
+                error={reviewsError ? reviewsErrorMessage : ''}
+                surface={false}
+              />
             </section>
           </div>
 
