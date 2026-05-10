@@ -1,3 +1,68 @@
+RateOple Staff/Admin/Media-management UX refactor results
+
+Summary of Staff/Admin/Media-management UX refactor:
+- Redesigned the staff-facing catalog and moderation surfaces into dark-first operational workspaces with cinematic headers, clear sections, readable labels, stronger action hierarchy, separated danger actions, and responsive card layouts.
+- Preserved existing frontend/backend payload shapes, route guards, media cart behavior, moderation status mutations, moderator assignment mutations, and season/episode create/update/delete contracts.
+- No backend contracts, enum values, DTO payloads, dependencies, fake admin data, or public Home/Explore/Media Detail/Groups/Collections/Auth/Account redesigns were added.
+
+Files changed:
+- frontend/src/features/admin/admin.css
+- frontend/src/features/admin/pages/AdminDashboardPage.jsx
+- frontend/src/features/media/media-management.css
+- frontend/src/features/media/pages/AddMediaPage.jsx
+- frontend/src/features/media/pages/AdminMediaPage.jsx
+- frontend/src/features/media/pages/EditMediaPage.jsx
+- frontend/src/features/media/pages/SeasonManagerPage.jsx
+- frontend/src/features/moderation/moderation.css
+- frontend/src/features/moderation/components/ModerationReportRow.jsx
+- frontend/src/features/moderation/components/ModeratorAssignmentList.jsx
+- frontend/src/features/moderation/pages/AuditLogPage.jsx
+- frontend/src/features/moderation/pages/ModerationPage.jsx
+- results.txt
+
+Add media behavior:
+- `/media/add` keeps the existing admin role guard and media cart flow.
+- The flow now starts with Movie / TV Series / Book type cards, then source search, then a sectioned form for Basic identity, Artwork, Metadata, Description, and TV draft seasons/episodes when supported.
+- Existing fields only are rendered and submitted: title, description, cover URL, release year, director/duration, author/pages/ISBN/subjects, genre IDs, external IDs, and TV seasons/episodes.
+- Backend/search/save errors remain visible through readable inline messages.
+
+Edit media behavior:
+- `/admin/media/:id/edit` now has a staff hero with current media title/type, sectioned edit form matching Add media, sticky save/cancel actions, and a separated danger zone for the existing delete capability.
+- Movie, Book, and TV Series update payloads are unchanged.
+- TV Series season/episode edits remain linked to the dedicated season manager.
+
+Season manager behavior:
+- `/media/:id/seasons` now presents "Manage seasons & episodes" with parent series context, TMDB import as a separate operational panel, season cards, readable episode rows, visible edit/delete controls, and labeled inline add/edit forms.
+- Existing TMDB import, manual season add, season number edit, episode add/edit/delete, and soft-delete confirmation behavior is preserved.
+- Empty states remain for missing seasons and missing episodes.
+
+Moderation/admin behavior:
+- `/admin/media` now uses a staff catalog table on desktop and responsive cards on mobile, with edit and delete actions separated clearly.
+- `/admin/moderation` now has a moderation queue hero, status tabs for All/Pending/In review/Resolved/Rejected, report cards showing type, target, reason, reporter, status, created/updated dates, and clear supported status actions.
+- Moderator assignments now render as readable cards with scoped remove actions. The assignment form keeps the existing user/scope payload.
+- `/admin/moderation/audit-logs` and `/admin` were lightly polished to match the staff workspace.
+
+Responsive behavior:
+- Staff media tables switch to cards on mobile instead of requiring horizontal table scrolling.
+- Add/edit media, season manager, moderation reports, assignments, and audit cards use min-width-safe grids and wrapped controls for 320px layouts.
+- Backend-hosted protected-route smoke checks at 1280px and 320px confirmed unauthenticated `/media/add?from=admin`, `/admin/media`, `/admin/moderation`, and `/admin/moderation/audit-logs` redirect to `/login` with no document-level horizontal overflow.
+
+Checks run:
+- `cd frontend && npm run lint`: passed.
+- `cd frontend && npm run build`: passed. Build emitted existing Rollup annotation warnings from @microsoft/signalr comments.
+- `cd frontend && npm run test:e2e`: passed, 2 tests.
+- `cd frontend && npm run build:backend`: passed.
+- Backend tests were not run because no backend source/contracts were changed.
+
+build:backend status:
+- `npm run build:backend` passed and copied the Vite output to `backend/RateOple/wwwroot`.
+
+Known limitations:
+- The current checkout's HTTPS profile is serving on `https://localhost:7167`; `https://localhost:7168` was not listening.
+- Full authenticated backend-hosted visual inspection of real staff pages was blocked by the lack of an admin browser session/credentials in the repo. I did not create fake admin data or alter backend state to bypass that.
+- Report DTOs do not expose a target URL or assigned moderator display name, so the moderation card does not invent "open target" links or assignment names.
+- Light-theme inspection of the actual authenticated staff pages was not completed for the same session limitation; the new CSS uses existing theme variables.
+
 RateOple Auth onboarding screens refactor results
 
 Summary of Auth UX refactor:

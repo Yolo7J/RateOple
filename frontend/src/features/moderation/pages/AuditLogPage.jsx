@@ -1,27 +1,14 @@
 import { useState } from 'react';
+import { History } from 'lucide-react';
 import { useModerationAuditLogsQuery } from '../queries/useModerationAuditLogsQuery';
 import PageLayout from '../../../layouts/PageLayout';
 import Container from '../../../shared/ui/Container';
-import Grid from '../../../shared/ui/Grid';
-import Stack from '../../../shared/ui/Stack';
 import EmptyState from '../../../shared/ui/EmptyState';
 import InlineMessage from '../../../shared/ui/InlineMessage';
 import LoadingState from '../../../shared/ui/LoadingState';
-import PageHeader from '../../../shared/ui/PageHeader';
 import Badge from '../../../shared/ui/Badge';
 import Select from '../../../shared/ui/Select';
-
-const styles = {
-  pageStack: 'gap-6',
-  muted: 'text-[var(--text-muted)]',
-  section: 'ui-card p-4 sm:p-6',
-  sectionTitle: 'ui-section-title',
-  filters: 'flex flex-wrap items-center gap-3',
-  card: 'ui-card flex flex-col gap-2 p-4',
-  cardTitle: 'text-base font-semibold text-[var(--text-primary)]',
-  meta: 'text-sm text-[var(--text-muted)]',
-  grid: 'gap-3',
-};
+import '../moderation.css';
 
 const ACTION_LABELS = {
   1: 'Report marked pending',
@@ -66,17 +53,28 @@ function AuditLogPage() {
 
   return (
     <PageLayout>
-      <Container>
-        <Stack className={styles.pageStack}>
-          <PageHeader title="Audit Logs" subtitle="Trace moderation actions across reports, assignments, and scopes." />
+      <Container size="xxl">
+        <div className="moderation-workspace">
+          <header className="moderation-hero">
+            <p className="staff-eyebrow">Staff operations</p>
+            <h1 className="moderation-hero__title">Audit logs</h1>
+            <p className="moderation-hero__copy">
+              Trace moderation decisions, assignment changes, and group actions across supported scopes.
+            </p>
+            <div className="staff-hero__meta mt-4">
+              <Badge tone="accent">{data?.totalCount ?? logs.length} records</Badge>
+            </div>
+          </header>
 
-          <section className={styles.section}>
-            <Stack className="gap-4">
-              <h2 className={styles.sectionTitle}>Moderation activity</h2>
-              <div className={styles.filters}>
-                <label htmlFor="audit-action" className="text-sm text-[var(--text-secondary)]">Action:</label>
+          <section className="moderation-section" aria-labelledby="audit-activity-title">
+            <header className="moderation-section__header">
+              <div>
+                <h2 className="moderation-section__title" id="audit-activity-title">Moderation activity</h2>
+                <p className="moderation-section__copy">Filter the log without changing any moderation state.</p>
+              </div>
+              <label className="staff-field min-w-[220px]" htmlFor="audit-action">
+                <span className="staff-label">Action</span>
                 <Select
-                  className="min-w-[180px]"
                   id="audit-action"
                   value={actionFilter}
                   onChange={(e) => setActionFilter(e.target.value)}
@@ -88,46 +86,62 @@ function AuditLogPage() {
                     </option>
                   ))}
                 </Select>
-              </div>
+              </label>
+            </header>
 
-              {loading ? <LoadingState label="Loading audit logs..." /> : null}
-              {error ? <InlineMessage tone="error">Failed to load audit logs.</InlineMessage> : null}
+            {loading ? <LoadingState label="Loading audit logs..." /> : null}
+            {error ? <InlineMessage tone="error">Failed to load audit logs.</InlineMessage> : null}
 
-              {!loading && !error ? (
-                <Grid cols="grid-cols-1 md:grid-cols-2 xl:grid-cols-3" className={styles.grid}>
+            {!loading && !error ? (
+              logs.length > 0 ? (
+                <div className="moderation-audit-grid">
                   {logs.map((log) => (
-                    <article key={log.id} className={styles.card}>
-                      <h3 className={styles.cardTitle}>
-                        {ACTION_LABELS[log.action] || `Action ${log.action}`}
-                      </h3>
-                      <Badge tone={[3, 5, 8].includes(Number(log.action)) ? 'success' : [4, 6, 7].includes(Number(log.action)) ? 'warning' : 'info'}>
-                        {SCOPE_LABELS[log.scopeType] || 'Moderation'}
-                      </Badge>
-                      <p className={styles.meta}>
-                        Moderator: {log.performedByDisplayName || 'Unknown user'}
-                      </p>
-                      <p className={styles.meta}>
-                        Target: {log.targetDisplayName || '—'}
-                      </p>
-                      {log.scopeType ? (
-                        <p className={styles.meta}>
-                          Scope: {log.scopeName || SCOPE_LABELS[log.scopeType] || log.scopeType}
-                        </p>
-                      ) : null}
-                      {log.notes ? (
-                        <p className={styles.meta}>Notes: {log.notes}</p>
-                      ) : null}
-                      <p className={styles.meta}>
-                        Date: {new Date(log.createdAt).toLocaleString()}
-                      </p>
+                    <article key={log.id} className="moderation-audit-card">
+                      <header className="moderation-audit-card__header">
+                        <div>
+                          <h3 className="moderation-audit-card__title">
+                            {ACTION_LABELS[log.action] || `Action ${log.action}`}
+                          </h3>
+                          <p className="moderation-muted">{new Date(log.createdAt).toLocaleString()}</p>
+                        </div>
+                        <History className="h-5 w-5 text-[var(--accent)]" aria-hidden="true" />
+                      </header>
+                      <div className="moderation-audit-card__badge-row">
+                        <Badge tone={[3, 5, 8].includes(Number(log.action)) ? 'success' : [4, 6, 7].includes(Number(log.action)) ? 'warning' : 'info'}>
+                          {SCOPE_LABELS[log.scopeType] || 'Moderation'}
+                        </Badge>
+                      </div>
+                      <div className="moderation-meta-grid">
+                        <div className="moderation-meta-item">
+                          <span>Moderator</span>
+                          <span>{log.performedByDisplayName || 'Unknown user'}</span>
+                        </div>
+                        <div className="moderation-meta-item">
+                          <span>Target</span>
+                          <span>{log.targetDisplayName || '-'}</span>
+                        </div>
+                        {log.scopeType ? (
+                          <div className="moderation-meta-item">
+                            <span>Scope</span>
+                            <span>{log.scopeName || SCOPE_LABELS[log.scopeType] || log.scopeType}</span>
+                          </div>
+                        ) : null}
+                        {log.notes ? (
+                          <div className="moderation-meta-item">
+                            <span>Notes</span>
+                            <span>{log.notes}</span>
+                          </div>
+                        ) : null}
+                      </div>
                     </article>
                   ))}
-                  {logs.length === 0 ? <EmptyState title="No audit logs found" /> : null}
-                </Grid>
-              ) : null}
-            </Stack>
+                </div>
+              ) : (
+                <EmptyState title="No audit logs found" />
+              )
+            ) : null}
           </section>
-        </Stack>
+        </div>
       </Container>
     </PageLayout>
   );

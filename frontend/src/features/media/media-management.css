@@ -1,0 +1,759 @@
+.staff-workspace {
+  display: grid;
+  gap: 1.25rem;
+  min-width: 0;
+  padding-bottom: 2.5rem;
+}
+
+.staff-hero {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(135deg, rgba(245, 197, 24, 0.16), transparent 38%),
+    linear-gradient(145deg, color-mix(in srgb, var(--card-bg) 92%, #111827), var(--bg-secondary));
+  box-shadow: var(--shadow-raised);
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+
+.staff-hero::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--accent), transparent 72%);
+  opacity: 0.85;
+}
+
+.staff-hero__content {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.staff-eyebrow {
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.staff-hero__title {
+  max-width: 12ch;
+  color: var(--text-primary);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 800;
+  line-height: 0.98;
+}
+
+.staff-hero__copy {
+  max-width: 68ch;
+  color: var(--text-secondary);
+  font-size: clamp(0.95rem, 1.8vw, 1.08rem);
+}
+
+.staff-hero__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.staff-hero__actions,
+.staff-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.staff-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.staff-panel,
+.staff-form-section,
+.staff-list-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-soft);
+}
+
+.staff-panel {
+  padding: clamp(1rem, 2.5vw, 1.5rem);
+}
+
+.staff-form {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.staff-form-section {
+  display: grid;
+  gap: 1rem;
+  padding: clamp(1rem, 2.5vw, 1.35rem);
+}
+
+.staff-form-section__header {
+  display: grid;
+  gap: 0.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.staff-form-section__title {
+  color: var(--text-primary);
+  font-size: 1.05rem;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.staff-form-section__copy {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.staff-form-grid {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.staff-form-grid--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.staff-form-grid--artwork {
+  grid-template-columns: minmax(120px, 180px) minmax(0, 1fr);
+  align-items: start;
+}
+
+.staff-field {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.staff-label {
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.staff-field__hint {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.staff-cover-preview {
+  display: grid;
+  aspect-ratio: 2 / 3;
+  width: min(100%, 180px);
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(145deg, var(--card-cover-bg), color-mix(in srgb, var(--card-cover-bg) 72%, var(--bg-primary)));
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.staff-cover-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.staff-type-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.staff-type-card {
+  display: grid;
+  min-height: 12rem;
+  place-items: center;
+  gap: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+  color: var(--text-primary);
+  padding: 1.25rem;
+  text-align: center;
+  box-shadow: var(--shadow-soft);
+  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.staff-type-card:hover,
+.staff-type-card:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 56%, var(--border));
+  background: var(--card-hover);
+  box-shadow: var(--shadow-raised);
+  transform: translateY(-1px);
+}
+
+.staff-type-card__icon {
+  display: grid;
+  width: 3.25rem;
+  height: 3.25rem;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--border));
+  border-radius: var(--radius-md);
+  background: var(--primary-color-alpha);
+  color: var(--accent);
+}
+
+.staff-type-card__title {
+  display: block;
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  font-weight: 750;
+}
+
+.staff-type-card__copy {
+  color: var(--text-muted);
+  font-size: 0.86rem;
+}
+
+.staff-search-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.staff-search-results {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.staff-search-result {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 0.9rem;
+  align-items: center;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  color: var(--text-primary);
+  padding: 0.55rem;
+  text-align: left;
+}
+
+.staff-search-result:hover,
+.staff-search-result:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+  background: var(--card-hover);
+}
+
+.staff-search-result__cover {
+  display: grid;
+  width: 52px;
+  height: 76px;
+  place-items: center;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--card-cover-bg);
+  color: var(--text-muted);
+}
+
+.staff-search-result__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.staff-search-result__title {
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+  font-weight: 750;
+}
+
+.staff-search-result__meta {
+  color: var(--text-muted);
+  font-size: 0.86rem;
+}
+
+.staff-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.staff-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  padding: 0.35rem 0.7rem;
+  font-size: 0.82rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.staff-chip:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--primary-color-alpha);
+  color: var(--text-primary);
+}
+
+.staff-chip input {
+  flex: 0 0 auto;
+}
+
+.staff-season-builder {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.staff-season-builder__header,
+.staff-season-card__header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.staff-season-card {
+  display: grid;
+  gap: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-secondary);
+  padding: 1rem;
+}
+
+.staff-season-card__title {
+  color: var(--text-primary);
+  font-weight: 750;
+}
+
+.staff-episode-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.staff-episode-row {
+  display: grid;
+  grid-template-columns: minmax(42px, auto) minmax(0, 1fr) minmax(92px, 120px) auto;
+  gap: 0.65rem;
+  align-items: end;
+}
+
+.staff-episode-index {
+  align-self: center;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.staff-sticky-actions {
+  position: sticky;
+  bottom: 0.75rem;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--card-bg) 92%, transparent);
+  box-shadow: var(--shadow-raised);
+  padding: 0.85rem;
+  backdrop-filter: blur(14px);
+}
+
+.staff-danger-zone {
+  border: 1px solid color-mix(in srgb, var(--status-danger) 40%, var(--border));
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--status-danger-bg) 42%, var(--card-bg));
+  padding: clamp(1rem, 2vw, 1.25rem);
+}
+
+.staff-danger-zone__body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.staff-media-table {
+  width: 100%;
+  border-collapse: collapse;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-soft);
+}
+
+.staff-media-table th,
+.staff-media-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 0.85rem 1rem;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.staff-media-table th {
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.staff-media-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.staff-media-title {
+  color: var(--text-primary);
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+
+.staff-media-meta {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.staff-media-card-list {
+  display: none;
+  gap: 0.8rem;
+}
+
+.staff-media-card {
+  display: grid;
+  gap: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-soft);
+  padding: 1rem;
+}
+
+.staff-media-card__meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.staff-key-value {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.staff-key-value span:first-child {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.staff-key-value span:last-child {
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.season-manager-hero {
+  display: grid;
+  grid-template-columns: minmax(88px, 126px) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: end;
+}
+
+.season-manager-hero__cover {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card-cover-bg);
+  box-shadow: 0 18px 38px -28px var(--shadow-color);
+}
+
+.season-manager-hero__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.season-manager-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.season-card {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-soft);
+}
+
+.season-card--open {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+}
+
+.season-card__button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  gap: 0.75rem;
+  align-items: center;
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-primary);
+  padding: 1rem;
+  text-align: left;
+}
+
+.season-card__button:hover {
+  background: var(--card-hover);
+}
+
+.season-card__title {
+  min-width: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.season-card__meta {
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  white-space: nowrap;
+}
+
+.season-card__actions,
+.season-episode__actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.staff-icon-button {
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-muted);
+  padding: 0;
+}
+
+.staff-icon-button:hover:not(:disabled) {
+  border-color: var(--border);
+  background: var(--button-hover-bg);
+  color: var(--text-primary);
+}
+
+.staff-icon-button--danger {
+  color: var(--status-danger);
+}
+
+.staff-icon-button--danger:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--status-danger) 38%, var(--border));
+  background: var(--status-danger-bg);
+}
+
+.season-card__body {
+  display: grid;
+  gap: 0.75rem;
+  border-top: 1px solid var(--border);
+  padding: 1rem;
+}
+
+.season-episode {
+  display: grid;
+  grid-template-columns: minmax(40px, auto) minmax(0, 1fr) auto auto;
+  gap: 0.75rem;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  padding: 0.65rem;
+}
+
+.season-episode:hover,
+.season-episode--editing {
+  border-color: var(--border);
+  background: var(--bg-secondary);
+}
+
+.season-episode__number {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.season-episode__title {
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.season-episode__duration {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.season-inline-form,
+.season-add-form {
+  display: grid;
+  gap: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-secondary);
+  padding: 0.85rem;
+}
+
+.season-inline-form {
+  grid-template-columns: minmax(40px, auto) minmax(0, 1fr) minmax(92px, 120px) auto auto;
+  align-items: end;
+}
+
+.season-number-edit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: end;
+}
+
+.tmdb-import-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.tmdb-import-card {
+  display: grid;
+  gap: 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-secondary);
+  padding: 0.85rem;
+}
+
+.tmdb-import-card--saved {
+  opacity: 0.78;
+}
+
+@media (max-width: 760px) {
+  .staff-type-grid,
+  .staff-form-grid--two,
+  .staff-form-grid--artwork,
+  .season-manager-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .staff-type-card {
+    min-height: 9rem;
+  }
+
+  .staff-cover-preview {
+    width: min(100%, 148px);
+  }
+
+  .staff-episode-row,
+  .season-inline-form {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .staff-episode-index {
+    align-self: auto;
+  }
+
+  .staff-sticky-actions {
+    position: static;
+  }
+
+  .staff-sticky-actions .ui-button,
+  .staff-actions .ui-button {
+    width: 100%;
+  }
+
+  .staff-media-table {
+    display: none;
+  }
+
+  .staff-media-card-list {
+    display: grid;
+  }
+
+  .staff-danger-zone__body {
+    align-items: stretch;
+  }
+
+  .staff-danger-zone__body .ui-button {
+    width: 100%;
+  }
+
+  .season-card__button {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .season-card__meta,
+  .season-card__actions {
+    grid-column: 1 / -1;
+  }
+
+  .season-episode {
+    grid-template-columns: minmax(36px, auto) minmax(0, 1fr);
+  }
+
+  .season-episode__duration,
+  .season-episode__actions {
+    grid-column: 2;
+  }
+
+  .season-episode__actions .ui-button,
+  .season-episode__actions .staff-icon-button {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 420px) {
+  .staff-hero {
+    padding: 1rem;
+  }
+
+  .staff-hero__title {
+    font-size: 2rem;
+  }
+
+  .staff-panel,
+  .staff-form-section,
+  .staff-media-card,
+  .season-card__body {
+    padding: 0.9rem;
+  }
+
+  .staff-media-card__meta {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import { CheckCircle2, RotateCcw, ShieldAlert, XCircle } from 'lucide-react';
 import { formatDate } from '../../../shared/utils/formatDate';
 import { EntityPicker } from '../../../shared/ui/EntityPicker';
 import Badge from '../../../shared/ui/Badge';
@@ -9,23 +10,18 @@ import Input from '../../../shared/ui/Input';
 import { searchModerationUsers } from '../../users/services/userLookupService';
 import { searchModerationScopes } from '../services/scopeLookupService';
 
-const styles = {
-  card: 'ui-card flex flex-col gap-2 p-4',
-  highlight: 'live-highlight',
-  header: 'flex flex-wrap items-center justify-between gap-2',
-  title: 'text-base font-semibold text-[var(--text-primary)]',
-  subtitle: 'text-sm text-[var(--text-muted)]',
-  meta: 'text-sm text-[var(--text-muted)]',
-  actions: 'flex flex-wrap items-center gap-2',
-  banSection: 'mt-2 grid gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] p-3',
-  banRow: 'grid gap-3',
-};
-
 const STATUS_LABELS = {
   1: 'Pending',
   2: 'In review',
   3: 'Resolved',
   4: 'Rejected',
+};
+
+const STATUS_TONES = {
+  1: 'warning',
+  2: 'info',
+  3: 'success',
+  4: 'danger',
 };
 
 const TARGET_LABELS = {
@@ -34,6 +30,13 @@ const TARGET_LABELS = {
   3: 'Post',
   4: 'Review',
 };
+
+const Field = ({ label, children }) => (
+  <label className="staff-field">
+    <span className="staff-label">{label}</span>
+    {children}
+  </label>
+);
 
 function ModerationReportRow({
   report,
@@ -55,16 +58,14 @@ function ModerationReportRow({
   const targetDisplay = report.targetDisplayName || targetLabel;
   const reporterDisplay = report.reporterDisplayName || 'Unknown user';
   const statusLabel = STATUS_LABELS[report.status] || `Status ${report.status}`;
-  const isResolved = Number(report.status) === 3;
-  const isRejected = Number(report.status) === 4;
-  const isActionLocked = disabled || confirming || isResolved || isRejected;
+  const isActionLocked = disabled || confirming;
   const isGroupRelated = useMemo(() => [2, 3].includes(Number(report.targetType)), [report.targetType]);
   const searchGroups = useCallback((params) => (
     searchModerationScopes({ ...params, scopeType: 2 })
   ), []);
 
   const handleAction = async (status, label) => {
-    if (isActionLocked) return;
+    if (isActionLocked || Number(report.status) === Number(status)) return;
     setPendingStatus({ status, label });
   };
 
@@ -118,49 +119,81 @@ function ModerationReportRow({
 
   return (
     <>
-    <article className={`${styles.card} ${isRecent ? styles.highlight : ''}`}>
-      <header className={styles.header}>
-        <div>
-          <h3 className={styles.title}>Report</h3>
-          <p className={styles.subtitle}>
-            {targetDisplay}
-          </p>
+      <article className={`moderation-report-card ${isRecent ? 'live-highlight' : ''}`}>
+        <header className="moderation-report-card__header">
+          <div>
+            <h3 className="moderation-report-card__title">{targetLabel} report</h3>
+            <p className="moderation-report-card__target">{targetDisplay}</p>
+          </div>
+          <Badge tone={STATUS_TONES[report.status] || 'neutral'}>{statusLabel}</Badge>
+        </header>
+
+        <div className="moderation-meta-grid">
+          <div className="moderation-meta-item">
+            <span>Reporter</span>
+            <span>{reporterDisplay}</span>
+          </div>
+          <div className="moderation-meta-item">
+            <span>Target type</span>
+            <span>{targetLabel}</span>
+          </div>
+          <div className="moderation-meta-item">
+            <span>Created</span>
+            <span>{formatDate(report.createdAt)}</span>
+          </div>
+          <div className="moderation-meta-item">
+            <span>Updated</span>
+            <span>{report.updatedAt ? formatDate(report.updatedAt) : 'Not reviewed'}</span>
+          </div>
         </div>
-        <Badge tone={isResolved ? 'success' : isRejected ? 'danger' : 'warning'}>{statusLabel}</Badge>
-      </header>
 
-      <p className={styles.meta}>
-        Reporter: {reporterDisplay}
-      </p>
-      <p className={styles.meta}>
-        Target: {targetDisplay}
-      </p>
-      <p className={styles.meta}>
-        Created: {formatDate(report.createdAt)}
-      </p>
-      <p className="text-sm text-[var(--text-secondary)]">{report.reason}</p>
+        <p className="moderation-report-reason">{report.reason || 'No reason supplied.'}</p>
 
-      <div className={styles.actions}>
-        <Button
-          size="sm"
-          disabled={isActionLocked || isResolved}
-          onClick={() => handleAction(3, 'resolved')}
-        >
-          Mark as Resolved
-        </Button>
-        <Button
-          size="sm"
-          disabled={isActionLocked || isRejected}
-          onClick={() => handleAction(4, 'rejected')}
-        >
-          Mark as Rejected
-        </Button>
-      </div>
+        <div className="moderation-card-actions" aria-label={`Actions for ${targetLabel} report`}>
+          <Button
+            size="sm"
+            disabled={isActionLocked || Number(report.status) === 2}
+            onClick={() => handleAction(2, 'in review')}
+          >
+            <ShieldAlert size={14} aria-hidden="true" />
+            In review
+          </Button>
+          <Button
+            size="sm"
+            disabled={isActionLocked || Number(report.status) === 3}
+            onClick={() => handleAction(3, 'resolved')}
+          >
+            <CheckCircle2 size={14} aria-hidden="true" />
+            Resolve
+          </Button>
+          <Button
+            size="sm"
+            variant="danger"
+            disabled={isActionLocked || Number(report.status) === 4}
+            onClick={() => handleAction(4, 'rejected')}
+          >
+            <XCircle size={14} aria-hidden="true" />
+            Reject
+          </Button>
+          {[3, 4].includes(Number(report.status)) ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={isActionLocked}
+              onClick={() => handleAction(1, 'pending')}
+            >
+              <RotateCcw size={14} aria-hidden="true" />
+              Reopen
+            </Button>
+          ) : null}
+        </div>
 
-      {isGroupRelated ? (
-        <div className={styles.banSection}>
-          <p className={styles.meta}>Group ban controls (for group-related reports)</p>
-          <div className={styles.banRow}>
+        {isGroupRelated ? (
+          <div className="moderation-ban-panel">
+            <div>
+              <h4 className="moderation-ban-panel__title">Group membership action</h4>
+              <p className="moderation-section__copy">Use only when the report target belongs to a group context.</p>
+            </div>
             <EntityPicker
               label="Group"
               placeholder="Search groups by name"
@@ -177,71 +210,74 @@ function ModerationReportRow({
               searchFn={searchModerationUsers}
               disabled={disabled || banPending}
             />
-            <Input
-              className="min-w-[180px]"
-              placeholder="Reason (optional)"
-              value={banForm.reason}
-              onChange={(e) => setBanForm((prev) => ({ ...prev, reason: e.target.value }))}
-            />
-            <Button
-              size="sm"
-              disabled={disabled || banPending || !banForm.group || !banForm.user}
-              onClick={handleBan}
-            >
-              {banPending ? 'Processing...' : 'Ban user (group)'}
-            </Button>
-            <Button
-              size="sm"
-              disabled={disabled || banPending || !banForm.group || !banForm.user}
-              onClick={handleUnban}
-            >
-              {banPending ? 'Processing...' : 'Unban user'}
-            </Button>
+            <Field label="Reason">
+              <Input
+                value={banForm.reason}
+                onChange={(e) => setBanForm((prev) => ({ ...prev, reason: e.target.value }))}
+              />
+            </Field>
+            <div className="moderation-danger-actions">
+              <Button
+                size="sm"
+                variant="danger"
+                disabled={disabled || banPending || !banForm.group || !banForm.user}
+                onClick={handleBan}
+              >
+                {banPending ? 'Processing...' : 'Ban user'}
+              </Button>
+              <Button
+                size="sm"
+                disabled={disabled || banPending || !banForm.group || !banForm.user}
+                onClick={handleUnban}
+              >
+                {banPending ? 'Processing...' : 'Unban user'}
+              </Button>
+            </div>
+            {banError ? <InlineMessage tone="error">{banError}</InlineMessage> : null}
           </div>
-          {banError ? <InlineMessage tone="error">{banError}</InlineMessage> : null}
-        </div>
-      ) : null}
-    </article>
-    <Dialog
-      open={Boolean(pendingStatus)}
-      title="Update report status?"
-      description={`Mark this report as ${pendingStatus?.label}?`}
-      onClose={() => {
-        if (!confirming) setPendingStatus(null);
-      }}
-      actions={(
-        <>
-          <Button variant="ghost" onClick={() => setPendingStatus(null)} disabled={confirming}>Cancel</Button>
-          <Button variant="primary" onClick={confirmStatusAction} disabled={confirming}>
-            {confirming ? 'Updating...' : 'Update status'}
-          </Button>
-        </>
-      )}
-    />
-    <Dialog
-      open={Boolean(pendingBanAction)}
-      title={pendingBanAction === 'ban' ? 'Ban user from group?' : 'Unban user from group?'}
-      description={`${pendingBanAction === 'ban' ? 'Ban' : 'Unban'} ${banForm.user?.label || 'this user'} from ${banForm.group?.label || 'this group'}?`}
-      onClose={() => {
-        if (!banPending) setPendingBanAction(null);
-      }}
-      actions={(
-        <>
-          <Button variant="ghost" onClick={() => setPendingBanAction(null)} disabled={banPending}>Cancel</Button>
-          <Button
-            variant={pendingBanAction === 'ban' ? 'danger' : 'primary'}
-            onClick={confirmBanAction}
-            disabled={banPending}
-          >
-            {banPending ? 'Processing...' : pendingBanAction === 'ban' ? 'Ban user' : 'Unban user'}
-          </Button>
-        </>
-      )}
-    >
-      {pendingBanAction === 'ban' && banForm.reason.trim() ? (
-        <p className="text-sm text-[var(--text-muted)]">Reason: {banForm.reason.trim()}</p>
-      ) : null}
-    </Dialog>
+        ) : null}
+      </article>
+
+      <Dialog
+        open={Boolean(pendingStatus)}
+        title="Update report status?"
+        description={`Mark this report as ${pendingStatus?.label}?`}
+        onClose={() => {
+          if (!confirming) setPendingStatus(null);
+        }}
+        actions={(
+          <>
+            <Button variant="ghost" onClick={() => setPendingStatus(null)} disabled={confirming}>Cancel</Button>
+            <Button variant="primary" onClick={confirmStatusAction} disabled={confirming}>
+              {confirming ? 'Updating...' : 'Update status'}
+            </Button>
+          </>
+        )}
+      />
+      <Dialog
+        open={Boolean(pendingBanAction)}
+        title={pendingBanAction === 'ban' ? 'Ban user from group?' : 'Unban user from group?'}
+        description={`${pendingBanAction === 'ban' ? 'Ban' : 'Unban'} ${banForm.user?.label || 'this user'} from ${banForm.group?.label || 'this group'}?`}
+        onClose={() => {
+          if (!banPending) setPendingBanAction(null);
+        }}
+        actions={(
+          <>
+            <Button variant="ghost" onClick={() => setPendingBanAction(null)} disabled={banPending}>Cancel</Button>
+            <Button
+              variant={pendingBanAction === 'ban' ? 'danger' : 'primary'}
+              onClick={confirmBanAction}
+              disabled={banPending}
+            >
+              {banPending ? 'Processing...' : pendingBanAction === 'ban' ? 'Ban user' : 'Unban user'}
+            </Button>
+          </>
+        )}
+      >
+        {pendingBanAction === 'ban' && banForm.reason.trim() ? (
+          <p className="text-sm text-[var(--text-muted)]">Reason: {banForm.reason.trim()}</p>
+        ) : null}
+      </Dialog>
     </>
   );
 }

@@ -1,53 +1,53 @@
 import { Link } from 'react-router-dom';
+import { Clapperboard, ShieldCheck } from 'lucide-react';
 import PageLayout from '../../../layouts/PageLayout';
 import Container from '../../../shared/ui/Container';
-import Grid from '../../../shared/ui/Grid';
-import Stack from '../../../shared/ui/Stack';
-import PageHeader from '../../../shared/ui/PageHeader';
-
-const styles = {
-  pageStack: 'gap-6',
-  grid: 'gap-4 sm:grid-cols-2',
-  card: [
-    'ui-card-interactive group flex flex-col gap-3 p-5',
-  ].join(' '),
-  cardTitle: 'text-lg font-semibold text-[var(--text-primary)]',
-  cardBody: 'text-sm text-[var(--text-muted)]',
-  cardCta: 'text-sm font-semibold text-[var(--accent)]',
-};
+import '../admin.css';
 
 const ADMIN_LINKS = [
   {
-    title: 'Media Management',
-    description: 'Create, edit, and curate the media catalog.',
+    title: 'Media management',
+    description: 'Create, edit, and curate movies, TV series, and books.',
     to: '/admin/media',
+    icon: Clapperboard,
   },
   {
     title: 'Moderation',
     description: 'Review reports and manage moderator assignments.',
     to: '/admin/moderation',
+    icon: ShieldCheck,
   },
 ];
 
 const AdminDashboardPage = () => {
   return (
     <PageLayout>
-      <Container>
-        <Stack className={styles.pageStack}>
-          <PageHeader title="Admin Dashboard" subtitle="Manage platform content and operations." />
+      <Container size="xxl">
+        <div className="admin-workspace">
+          <header className="admin-hero">
+            <p className="admin-eyebrow">Staff workspace</p>
+            <h1 className="admin-hero__title">Admin dashboard</h1>
+            <p className="admin-hero__copy">
+              Jump into catalog and moderation workflows from a focused operational start point.
+            </p>
+          </header>
 
-          <Grid cols={styles.grid}>
-            {ADMIN_LINKS.map((item) => (
-              <Link key={item.to} to={item.to} className={styles.card}>
-                <div>
-                  <h2 className={styles.cardTitle}>{item.title}</h2>
-                  <p className={styles.cardBody}>{item.description}</p>
-                </div>
-                <span className={styles.cardCta}>Open section →</span>
-              </Link>
-            ))}
-          </Grid>
-        </Stack>
+          <div className="admin-grid">
+            {ADMIN_LINKS.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link key={item.to} to={item.to} className="admin-card">
+                  <Icon className="h-6 w-6 text-[var(--accent)]" aria-hidden="true" />
+                  <div>
+                    <h2 className="admin-card__title">{item.title}</h2>
+                    <p className="admin-card__body">{item.description}</p>
+                  </div>
+                  <span className="admin-card__cta">Open section</span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
       </Container>
     </PageLayout>
   );

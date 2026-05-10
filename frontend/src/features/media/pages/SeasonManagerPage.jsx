@@ -1,112 +1,51 @@
-import { useState, useEffect, useCallback } from "react";
-import clsx from "clsx";
-import { useParams, useNavigate } from "react-router-dom";
-import { useMediaDetailsQuery } from "../queries/useMediaDetailsQuery";
-import { useTvSeriesSeasonsQuery } from "../queries/useTvSeriesSeasonsQuery";
-import { useMediaCommands } from "../queries/useMediaCommands";
-import PageLayout from "../../../layouts/PageLayout";
-import Container from "../../../shared/ui/Container";
-import Badge from "../../../shared/ui/Badge";
-import Button from "../../../shared/ui/Button";
-import Dialog from "../../../shared/ui/Dialog";
-import EmptyState from "../../../shared/ui/EmptyState";
-import InlineMessage from "../../../shared/ui/InlineMessage";
-import LoadingState from "../../../shared/ui/LoadingState";
-import PageHeader from "../../../shared/ui/PageHeader";
+import { useState, useEffect, useCallback } from 'react';
+import clsx from 'clsx';
+import { Link, useParams, useNavigate } from 'react-router-dom';
+import {
+  ArrowLeft,
+  ChevronDown,
+  CloudDownload,
+  LoaderCircle,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Search,
+  Trash2,
+  X,
+} from 'lucide-react';
+import { useMediaDetailsQuery } from '../queries/useMediaDetailsQuery';
+import { useTvSeriesSeasonsQuery } from '../queries/useTvSeriesSeasonsQuery';
+import { useMediaCommands } from '../queries/useMediaCommands';
+import PageLayout from '../../../layouts/PageLayout';
+import Container from '../../../shared/ui/Container';
+import Badge from '../../../shared/ui/Badge';
+import Button from '../../../shared/ui/Button';
+import Dialog from '../../../shared/ui/Dialog';
+import EmptyState from '../../../shared/ui/EmptyState';
+import InlineMessage from '../../../shared/ui/InlineMessage';
+import LoadingState from '../../../shared/ui/LoadingState';
+import '../media-management.css';
 
-// ── Icons (inline SVG to avoid deps) ─────────────────────────────────────────
-const ChevronDown = ({ open }) => (
-  <svg
-    width="18" height="18" viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-    style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}
-  >
-    <polyline points="6 9 12 15 18 9" />
-  </svg>
-);
-
-const Spinner = () => (
-  <div style={{
-    width: 20, height: 20, border: "2px solid #e5e7eb",
-    borderTopColor: "#6366f1", borderRadius: "50%",
-    animation: "spin 0.7s linear infinite", display: "inline-block"
-  }} />
-);
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-const emptyEpisode = (epNum) => ({ episodeNumber: epNum, title: "", duration: "" });
+const emptyEpisode = (epNum) => ({ episodeNumber: epNum, title: '', duration: '' });
 const emptySeasonForm = (nextNum) => ({
   seasonNumber: nextNum,
   episodes: [emptyEpisode(1)],
 });
 
-const styles = {
-  page: "space-y-6 pb-10 text-[var(--text-primary)]",
-  header: "ui-card p-4 sm:p-5",
-  back: "mb-3 text-sm font-semibold text-[var(--accent)] hover:underline",
-  titleRow: "flex items-center gap-4",
-  cover: "h-[126px] w-[90px] rounded-xl border border-[var(--border)] object-cover shadow-[0_10px_28px_rgba(0,0,0,0.2)]",
-  title: "ui-page-title",
-  meta: "text-sm text-[var(--text-muted)]",
-  tmdbBanner: "ui-card p-4 sm:p-5",
-  tmdbBannerHeader: "mb-2 flex items-center justify-between gap-3",
-  tmdbLabel: "text-sm font-semibold text-[var(--text-primary)]",
-  tmdbReload: "ui-button inline-flex items-center gap-2 px-3 py-1 text-xs",
-  tmdbSub: "text-sm text-[var(--text-muted)]",
-  tmdbError: "text-sm text-[var(--status-danger)]",
-  tmdbSuccess: "text-sm text-[var(--status-success)]",
-  tmdbSeasons: "mt-2 flex flex-wrap gap-2",
-  tmdbSeason: "ui-panel px-3 py-2 text-xs",
-  tmdbSeasonExists: "opacity-50",
-  tmdbSeasonHeader: "flex items-center gap-2",
-  tmdbSeasonName: "font-semibold",
-  tmdbEpCount: "text-[10px] text-[var(--text-muted)]",
-  tmdbSeasonActions: "mt-2 flex items-center gap-2",
-  tmdbDismiss: "text-xs text-[var(--text-muted)] hover:text-[var(--status-danger)]",
-  tmdbTrigger: "",
-  tmdbCandidates: "mt-3 flex flex-wrap gap-2",
-  seasons: "flex flex-col gap-3",
-  season: "ui-card",
-  seasonOpen: "border-[var(--accent)]/40 shadow-[0_16px_32px_-26px_var(--shadow-color)]",
-  seasonHeader: "flex w-full items-center gap-3 px-4 py-3 text-left",
-  seasonNum: "flex-1 text-base font-semibold",
-  seasonEpCount: "text-sm text-[var(--text-muted)]",
-  seasonActions: "flex gap-1",
-  seasonEdit: "flex flex-1 items-center gap-2",
-  seasonEditInput: "w-[90px]",
-  episodes: "border-t border-[var(--border)] px-3 py-3",
-  noEpisodes: "text-sm text-[var(--text-muted)]",
-  episode: "flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition hover:bg-[var(--card-hover)]",
-  episodeEditing: "bg-[var(--primary-color-alpha)]",
-  epNum: "min-w-[28px] text-xs font-bold text-[var(--text-muted)]",
-  epTitle: "flex-1",
-  epDuration: "text-xs text-[var(--text-muted)]",
-  epActions: "flex gap-1 opacity-0 transition group-hover:opacity-100",
-  epEdit: "flex flex-1 flex-wrap items-center gap-2",
-  epInput: "ui-input h-9 flex-1 min-w-[120px] px-2 py-1 text-xs",
-  epInputShort: "w-[64px]",
-  addEpBtn: "w-full rounded-lg border border-dashed border-[var(--border)] px-3 py-2 text-xs text-[var(--text-muted)] hover:border-[var(--accent)] hover:bg-[var(--primary-color-alpha)] hover:text-[var(--text-primary)]",
-  addEpForm: "ui-panel mt-2 flex flex-wrap items-center gap-2 p-2",
-  addSeasonRow: "",
-  addSeasonForm: "ui-card p-4 sm:p-5",
-  addSeasonFormHeader: "mb-4 flex items-center justify-between",
-  newEpisodes: "my-4",
-  newEpLabel: "mb-2 text-xs font-semibold text-[var(--text-muted)]",
-  newEpRow: "mb-2 flex items-center gap-2",
-  formLabel: "mb-3 flex flex-col gap-1 text-xs font-medium text-[var(--text-muted)]",
-  formInput: "ui-input w-[120px]",
-  formError: "text-xs text-[var(--status-danger)]",
-  formActions: "mt-4 flex gap-3",
-  btn: "ui-button inline-flex items-center gap-2",
-  btnPrimary: "ui-button-primary",
-  btnSecondary: "",
-  btnGhost: "",
-  btnDanger: "border-[var(--status-danger)]/40 text-[var(--status-danger)] hover:bg-[var(--status-danger-bg)]",
-  btnXs: "px-2.5 py-1 text-xs",
-  iconBtn: "rounded-md p-1 text-sm text-[var(--text-muted)] hover:bg-[var(--button-hover-bg)]",
-  iconBtnDanger: "text-[var(--status-danger)] hover:bg-[var(--status-danger-bg)]",
-  loading: "flex min-h-[40vh] flex-col items-center justify-center gap-4 text-[var(--text-muted)]",
-  modalNote: "text-xs text-[var(--text-muted)]",
+const Spinner = () => <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />;
+
+const Field = ({ label, children, hint }) => (
+  <label className="staff-field">
+    <span className="staff-label">{label}</span>
+    {children}
+    {hint ? <span className="staff-field__hint">{hint}</span> : null}
+  </label>
+);
+
+const getTmdbItems = (response) => {
+  if (Array.isArray(response?.data)) return response.data;
+  if (Array.isArray(response)) return response;
+  return [];
 };
 
 export default function SeasonManagerPage() {
@@ -131,16 +70,13 @@ export default function SeasonManagerPage() {
   } = useTvSeriesSeasonsQuery(id);
 
   const [media, setMedia] = useState(null);
-  const [seasons, setSeasons] = useState([]);   // from DB (authoritative)
+  const [seasons, setSeasons] = useState([]);
   const [error, setError] = useState(null);
-
-  // Which season accordion is open
   const [openSeasonId, setOpenSeasonId] = useState(null);
 
-  // TMDB import state
   const [tmdbLoading, setTmdbLoading] = useState(false);
   const [tmdbError, setTmdbError] = useState(null);
-  const [tmdbPreview, setTmdbPreview] = useState(null); // raw TMDB seasons before import
+  const [tmdbPreview, setTmdbPreview] = useState(null);
   const [tmdbImportResult, setTmdbImportResult] = useState(null);
   const [tmdbSyncingSeason, setTmdbSyncingSeason] = useState(null);
   const [activeTmdbId, setActiveTmdbId] = useState(null);
@@ -148,34 +84,32 @@ export default function SeasonManagerPage() {
   const [tmdbLookupError, setTmdbLookupError] = useState(null);
   const [tmdbCandidates, setTmdbCandidates] = useState([]);
 
-  // Add season form
   const [showAddSeason, setShowAddSeason] = useState(false);
   const [addSeasonForm, setAddSeasonForm] = useState(null);
   const [addSeasonSaving, setAddSeasonSaving] = useState(false);
   const [addSeasonError, setAddSeasonError] = useState(null);
   const [seasonEdit, setSeasonEdit] = useState(null);
 
-  // Per-episode inline edit: { seasonNumber, episodeNumber } | null
   const [editingEpisode, setEditingEpisode] = useState(null);
   const [editEpForm, setEditEpForm] = useState({});
   const [editEpSaving, setEditEpSaving] = useState(false);
+  const [editEpError, setEditEpError] = useState('');
 
-  // Delete confirmation
-  const [confirmDelete, setConfirmDelete] = useState(null); // { type: 'season'|'episode', seasonNumber, episodeNumber? }
+  const [confirmDelete, setConfirmDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
-  // ── Load media + seasons ────────────────────────────────────────────────────
   const loadSeasons = useCallback(async () => {
     try {
       await refetchSeasons();
     } catch {
-      setError("Failed to load seasons.");
+      setError('Failed to load seasons.');
     }
   }, [refetchSeasons]);
 
   useEffect(() => {
     if (mediaData) {
-      if (mediaData.type !== "TvSeries") {
+      if (mediaData.type !== 'TvSeries') {
         navigate(`/media/${id}`);
         return;
       }
@@ -193,7 +127,7 @@ export default function SeasonManagerPage() {
 
   useEffect(() => {
     if (mediaError || seasonsError) {
-      setError("Failed to load series.");
+      setError('Failed to load series.');
     }
   }, [mediaError, seasonsError]);
 
@@ -204,7 +138,6 @@ export default function SeasonManagerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [media?.tmdbId, seasons.length]);
 
-  // ── TMDB auto/manual load ───────────────────────────────────────────────────
   async function autoLoadTmdb(tmdbId) {
     setTmdbLoading(true);
     setTmdbError(null);
@@ -215,7 +148,7 @@ export default function SeasonManagerPage() {
       setActiveTmdbId(tmdbId);
       setTmdbPreview(details.seasons ?? []);
     } catch {
-      setTmdbError("Could not fetch seasons from TMDB.");
+      setTmdbError('Could not fetch seasons from TMDB.');
     } finally {
       setTmdbLoading(false);
     }
@@ -232,13 +165,14 @@ export default function SeasonManagerPage() {
     setTmdbLookupLoading(true);
     setTmdbLookupError(null);
     try {
-      const results = await searchTmdb(media.title.trim(), "tv");
-      setTmdbCandidates(results ?? []);
-      if (!results || results.length === 0) {
-        setTmdbLookupError("No TMDB matches found for this title.");
+      const response = await searchTmdb(media.title.trim(), 'tv');
+      const results = getTmdbItems(response);
+      setTmdbCandidates(results);
+      if (results.length === 0) {
+        setTmdbLookupError('No TMDB matches found for this title.');
       }
     } catch {
-      setTmdbLookupError("Could not search TMDB by title.");
+      setTmdbLookupError('Could not search TMDB by title.');
       setTmdbCandidates([]);
     } finally {
       setTmdbLookupLoading(false);
@@ -246,12 +180,12 @@ export default function SeasonManagerPage() {
   }
 
   async function syncSingleTmdbSeason(tmdbSeason, existingSeasons = seasons) {
-    const mappedEpisodes = (tmdbSeason.episodes ?? []).map((e) => ({
-      episodeNumber: e.episodeNumber,
-      title: e.title,
-      duration: e.duration ?? null,
+    const mappedEpisodes = (tmdbSeason.episodes ?? []).map((episode) => ({
+      episodeNumber: episode.episodeNumber,
+      title: episode.title,
+      duration: episode.duration ?? null,
     }));
-    const existingSeason = existingSeasons.find((dbS) => dbS.seasonNumber === tmdbSeason.seasonNumber);
+    const existingSeason = existingSeasons.find((dbSeason) => dbSeason.seasonNumber === tmdbSeason.seasonNumber);
 
     if (!existingSeason) {
       await addSeason(id, {
@@ -272,7 +206,6 @@ export default function SeasonManagerPage() {
     return { createdSeasons: 0, updatedSeasons: 1, addedEpisodes: missingEpisodesCount };
   }
 
-  // ── Import all TMDB preview seasons into DB ─────────────────────────────────
   async function handleImportTmdb() {
     if (!tmdbPreview) return;
     setTmdbLoading(true);
@@ -284,13 +217,13 @@ export default function SeasonManagerPage() {
       let addedEpisodes = 0;
       let workingSeasons = [...seasons];
 
-      for (const s of tmdbPreview) {
-        const result = await syncSingleTmdbSeason(s, workingSeasons);
+      for (const season of tmdbPreview) {
+        const result = await syncSingleTmdbSeason(season, workingSeasons);
         createdSeasons += result.createdSeasons;
         updatedSeasons += result.updatedSeasons;
         addedEpisodes += result.addedEpisodes;
-        if (!workingSeasons.some((season) => season.seasonNumber === s.seasonNumber)) {
-          workingSeasons.push({ seasonNumber: s.seasonNumber, episodes: s.episodes ?? [] });
+        if (!workingSeasons.some((existingSeason) => existingSeason.seasonNumber === season.seasonNumber)) {
+          workingSeasons.push({ seasonNumber: season.seasonNumber, episodes: season.episodes ?? [] });
         }
       }
 
@@ -298,15 +231,14 @@ export default function SeasonManagerPage() {
       setTmdbImportResult({ createdSeasons, updatedSeasons, addedEpisodes });
       setTmdbPreview(null);
     } catch {
-      setTmdbError("Import failed. Some seasons may not have been saved.");
+      setTmdbError('Import failed. Some seasons may not have been saved.');
     } finally {
       setTmdbLoading(false);
     }
   }
 
-  // ── Dismiss a single season from TMDB preview ───────────────────────────────
   function dismissTmdbSeason(seasonNumber) {
-    setTmdbPreview((prev) => prev.filter((s) => s.seasonNumber !== seasonNumber));
+    setTmdbPreview((prev) => prev.filter((season) => season.seasonNumber !== seasonNumber));
   }
 
   async function handleSyncTmdbSeason(tmdbSeason) {
@@ -323,10 +255,9 @@ export default function SeasonManagerPage() {
     }
   }
 
-  // ── Add season (manual) ─────────────────────────────────────────────────────
   function openAddSeason() {
     const nextNum = seasons.length > 0
-      ? Math.max(...seasons.map((s) => s.seasonNumber)) + 1
+      ? Math.max(...seasons.map((season) => season.seasonNumber)) + 1
       : 1;
     setAddSeasonForm(emptySeasonForm(nextNum));
     setShowAddSeason(true);
@@ -366,19 +297,19 @@ export default function SeasonManagerPage() {
     if (!addSeasonForm) return;
     const seasonNumber = Number(addSeasonForm.seasonNumber);
     if (!Number.isInteger(seasonNumber) || seasonNumber < 1) {
-      setAddSeasonError("Season number must be a positive integer.");
+      setAddSeasonError('Season number must be a positive integer.');
       return;
     }
 
-    if (seasons.some((s) => s.seasonNumber === seasonNumber)) {
+    if (seasons.some((season) => season.seasonNumber === seasonNumber)) {
       setAddSeasonError(`Season ${seasonNumber} already exists.`);
       return;
     }
 
-    const episodesPayload = addSeasonForm.episodes.map((e, index) => ({
-      episodeNumber: Number(e.episodeNumber) || index + 1,
-      title: e.title.trim() ? e.title.trim() : null,
-      duration: e.duration ? Number(e.duration) : null,
+    const episodesPayload = addSeasonForm.episodes.map((episode, index) => ({
+      episodeNumber: Number(episode.episodeNumber) || index + 1,
+      title: episode.title.trim() ? episode.title.trim() : null,
+      duration: episode.duration ? Number(episode.duration) : null,
     }));
 
     setAddSeasonSaving(true);
@@ -392,20 +323,21 @@ export default function SeasonManagerPage() {
       setShowAddSeason(false);
       setAddSeasonForm(null);
     } catch (err) {
-      setAddSeasonError(err?.response?.data || "Failed to save season.");
+      setAddSeasonError(err?.response?.data || 'Failed to save season.');
     } finally {
       setAddSeasonSaving(false);
     }
   }
 
-  // ── Inline episode edit ─────────────────────────────────────────────────────
   function startEditEpisode(season, episode) {
     setEditingEpisode({ seasonNumber: season.seasonNumber, episodeNumber: episode.episodeNumber });
-    setEditEpForm({ title: episode.title, duration: episode.duration ?? "" });
+    setEditEpForm({ title: episode.title ?? '', duration: episode.duration ?? '' });
+    setEditEpError('');
   }
 
   async function saveEditEpisode(season, episode) {
     setEditEpSaving(true);
+    setEditEpError('');
     try {
       await updateEpisode(id, season.seasonNumber, episode.episodeNumber, {
         title: editEpForm.title || null,
@@ -413,8 +345,8 @@ export default function SeasonManagerPage() {
       });
       await loadSeasons();
       setEditingEpisode(null);
-    } catch {
-      // keep editing open, user can retry
+    } catch (err) {
+      setEditEpError(err?.response?.data || 'Failed to update episode.');
     } finally {
       setEditEpSaving(false);
     }
@@ -434,12 +366,12 @@ export default function SeasonManagerPage() {
     if (!seasonEdit) return;
     const parsedSeasonNumber = Number(seasonEdit.newSeasonNumber);
     if (!Number.isInteger(parsedSeasonNumber) || parsedSeasonNumber < 1) {
-      setSeasonEdit((prev) => ({ ...prev, error: "Season number must be a positive integer." }));
+      setSeasonEdit((prev) => ({ ...prev, error: 'Season number must be a positive integer.' }));
       return;
     }
 
     const duplicateExists = seasons.some(
-      (s) => s.id !== season.id && s.seasonNumber === parsedSeasonNumber
+      (item) => item.id !== season.id && item.seasonNumber === parsedSeasonNumber
     );
     if (duplicateExists) {
       setSeasonEdit((prev) => ({ ...prev, error: `Season ${parsedSeasonNumber} already exists.` }));
@@ -458,32 +390,32 @@ export default function SeasonManagerPage() {
       setSeasonEdit((prev) => ({
         ...prev,
         saving: false,
-        error: err?.response?.data || "Failed to update season number.",
+        error: err?.response?.data || 'Failed to update season number.',
       }));
     }
   }
 
-  // ── Delete (season or episode) ──────────────────────────────────────────────
   async function handleConfirmDelete() {
     if (!confirmDelete) return;
     setDeleting(true);
+    setDeleteError('');
     try {
-      if (confirmDelete.type === "season") {
+      if (confirmDelete.type === 'season') {
         await deleteSeason(id, confirmDelete.seasonNumber);
       } else {
         await deleteEpisode(id, confirmDelete.seasonNumber, confirmDelete.episodeNumber);
       }
       await loadSeasons();
-    } catch {
-      // silent — could show a toast here
+      setConfirmDelete(null);
+    } catch (err) {
+      setDeleteError(err?.response?.data || 'Delete failed.');
     } finally {
       setDeleting(false);
-      setConfirmDelete(null);
     }
   }
 
-  // ── Render ──────────────────────────────────────────────────────────────────
   const loading = mediaLoading || seasonsLoading;
+  const episodeCount = seasons.reduce((sum, season) => sum + season.episodes.length, 0);
 
   if (loading) {
     return (
@@ -499,11 +431,11 @@ export default function SeasonManagerPage() {
     return (
       <PageLayout>
         <Container>
-          <InlineMessage
-            tone="error"
-            action={<Button variant="ghost" onClick={() => navigate(-1)}>Go back</Button>}
-          >
-            {error}
+          <InlineMessage tone="error">
+            {error}{' '}
+            <button type="button" className="underline" onClick={() => navigate(-1)}>
+              Go back
+            </button>
           </InlineMessage>
         </Container>
       </PageLayout>
@@ -512,434 +444,464 @@ export default function SeasonManagerPage() {
 
   return (
     <PageLayout>
-      <Container>
-        <div className={styles.page}>
-        <PageHeader
-          title="Season Manager"
-          subtitle="Import, edit, and maintain seasons and episodes for this TV series."
-        />
-        {/* Header */}
-        <div className={styles.header}>
-          <button className={styles.back} onClick={() => navigate(`/media/${id}`)}>
-            Back to series
-          </button>
-          <div className={styles.titleRow}>
-            {media?.coverUrl && (
-              <img src={media.coverUrl} alt={media.title} className={styles.cover} />
-            )}
-            <div>
-              <h1 className={styles.title}>{media?.title}</h1>
-              <p className={styles.meta}>
-                {seasons.length} season{seasons.length !== 1 ? "s" : ""} ·{" "}
-                {seasons.reduce((a, s) => a + s.episodes.length, 0)} episodes in database
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* TMDB banner */}
-        {(tmdbPreview || tmdbLoading || tmdbError) && (
-          <div className={styles.tmdbBanner}>
-            <div className={styles.tmdbBannerHeader}>
-              <span className={styles.tmdbLabel}>🎬 TMDB Import</span>
-              {media?.tmdbId && (
-                <button
-                  className={styles.tmdbReload}
-                  onClick={handleReloadTmdb}
-                  disabled={tmdbLoading}
-                >
-                  {tmdbLoading ? <Spinner /> : "↺ Reload from TMDB"}
-                </button>
-              )}
-            </div>
-
-            {tmdbError && <p className={styles.tmdbError}>{tmdbError}</p>}
-            {tmdbImportResult && (
-              <p className={styles.tmdbSuccess}>
-                Synced {tmdbImportResult.createdSeasons} new season{tmdbImportResult.createdSeasons !== 1 ? "s" : ""},{" "}
-                updated {tmdbImportResult.updatedSeasons} existing season{tmdbImportResult.updatedSeasons !== 1 ? "s" : ""},{" "}
-                and added {tmdbImportResult.addedEpisodes} new episode{tmdbImportResult.addedEpisodes !== 1 ? "s" : ""}.
-              </p>
-            )}
-
-            {tmdbPreview && tmdbPreview.length > 0 && (
-              <>
-                <p className={styles.tmdbSub}>
-                  {tmdbPreview.length} season{tmdbPreview.length !== 1 ? "s" : ""} found.
-                  Remove any you don't want, then import.
+      <Container size="xxl">
+        <div className="staff-workspace">
+          <header className="staff-hero">
+            <div className="staff-hero__content season-manager-hero">
+              <div className="season-manager-hero__cover" aria-hidden={!media?.coverUrl}>
+                {media?.coverUrl ? <img src={media.coverUrl} alt="" /> : null}
+              </div>
+              <div className="min-w-0">
+                <p className="staff-eyebrow">TV catalog operations</p>
+                <h1 className="staff-hero__title">Manage seasons & episodes</h1>
+                <p className="staff-hero__copy">
+                  Maintain the episode structure for {media?.title || 'this TV series'} without changing the parent media record.
                 </p>
-                <div className={styles.tmdbSeasons}>
-                  {tmdbPreview.map((s) => {
-                    const alreadyInDb = seasons.some((db) => db.seasonNumber === s.seasonNumber);
-                    const isSyncing = tmdbSyncingSeason === s.seasonNumber;
-                    return (
-                      <div key={s.seasonNumber} className={clsx(styles.tmdbSeason, alreadyInDb && styles.tmdbSeasonExists)}>
-                        <div className={styles.tmdbSeasonHeader}>
-                          <span className={styles.tmdbSeasonName}>
-                            Season {s.seasonNumber}
-                            {alreadyInDb && <Badge tone="success" className="ml-2">already saved</Badge>}
-                          </span>
-                          <span className={styles.tmdbEpCount}>{s.episodes?.length ?? 0} eps</span>
-                        </div>
-                        <div className={styles.tmdbSeasonActions}>
-                          <button
-                            className={`${styles.btn} ${styles.btnXs} ${styles.btnSecondary}`}
-                            onClick={() => handleSyncTmdbSeason(s)}
-                            disabled={isSyncing || tmdbLoading}
-                          >
-                            {isSyncing ? <><Spinner /> Syncing…</> : alreadyInDb ? "Update from TMDB" : "Import from TMDB"}
-                          </button>
-                          <button
-                            className={styles.tmdbDismiss}
-                            onClick={() => dismissTmdbSeason(s.seasonNumber)}
-                            title="Remove from list"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="staff-hero__meta">
+                  <Badge tone="accent">{media?.title || 'TV Series'}</Badge>
+                  <Badge>{seasons.length} season{seasons.length === 1 ? '' : 's'}</Badge>
+                  <Badge>{episodeCount} episode{episodeCount === 1 ? '' : 's'}</Badge>
                 </div>
-                <button
-                  className={`${styles.btn} ${styles.btnPrimary}`}
-                  onClick={handleImportTmdb}
-                  disabled={tmdbLoading}
-                >
-                  {tmdbLoading ? <><Spinner /> Importing…</> : `Import ${tmdbPreview.filter(s => !seasons.some(db => db.seasonNumber === s.seasonNumber)).length} seasons`}
-                </button>
-              </>
-            )}
+                <div className="staff-hero__actions">
+                  <Button as={Link} variant="ghost" to={`/media/${id}`}>
+                    <ArrowLeft size={16} aria-hidden="true" />
+                    Back to series
+                  </Button>
+                  <Button type="button" onClick={openAddSeason} disabled={showAddSeason}>
+                    <Plus size={16} aria-hidden="true" />
+                    Add season
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </header>
 
-            {tmdbPreview && tmdbPreview.length === 0 && (
-              <p className={styles.tmdbSub}>No seasons returned from TMDB.</p>
-            )}
-          </div>
-        )}
+          <section className="staff-panel" aria-labelledby="tmdb-import-title">
+            <div className="staff-toolbar">
+              <div>
+                <h2 className="staff-form-section__title" id="tmdb-import-title">TMDB import</h2>
+                <p className="staff-form-section__copy">Import missing seasons or refresh existing episode metadata when a TMDB match is available.</p>
+              </div>
+              <div className="staff-actions">
+                {(media?.tmdbId || activeTmdbId) ? (
+                  <Button type="button" onClick={handleReloadTmdb} disabled={tmdbLoading}>
+                    {tmdbLoading ? <Spinner /> : <RefreshCw size={16} aria-hidden="true" />}
+                    Load from TMDB
+                  </Button>
+                ) : (
+                  <Button type="button" onClick={handleLookupTmdbByTitle} disabled={tmdbLookupLoading}>
+                    {tmdbLookupLoading ? <Spinner /> : <Search size={16} aria-hidden="true" />}
+                    Find by title
+                  </Button>
+                )}
+              </div>
+            </div>
 
-        {/* TMDB reload button when no preview shown */}
-        {!tmdbPreview && !tmdbLoading && (media?.tmdbId || activeTmdbId) && (
-          <div className={styles.tmdbTrigger}>
-            <button className={`${styles.btn} ${styles.btnGhost}`} onClick={handleReloadTmdb}>
-              🎬 Load seasons from TMDB
-            </button>
-          </div>
-        )}
+            {tmdbError ? <InlineMessage tone="error">{tmdbError}</InlineMessage> : null}
+            {tmdbLookupError ? <InlineMessage tone="error">{tmdbLookupError}</InlineMessage> : null}
+            {tmdbImportResult ? (
+              <InlineMessage tone="success">
+                Synced {tmdbImportResult.createdSeasons} new season{tmdbImportResult.createdSeasons !== 1 ? 's' : ''},
+                {' '}updated {tmdbImportResult.updatedSeasons} existing season{tmdbImportResult.updatedSeasons !== 1 ? 's' : ''},
+                {' '}and added {tmdbImportResult.addedEpisodes} new episode{tmdbImportResult.addedEpisodes !== 1 ? 's' : ''}.
+              </InlineMessage>
+            ) : null}
 
-        {!tmdbPreview && !tmdbLoading && !media?.tmdbId && !activeTmdbId && (
-          <div className={styles.tmdbTrigger}>
-            <button
-              className={`${styles.btn} ${styles.btnGhost}`}
-              onClick={handleLookupTmdbByTitle}
-              disabled={tmdbLookupLoading}
-            >
-              {tmdbLookupLoading ? <><Spinner /> Searching TMDB…</> : "🎬 Find on TMDB by title"}
-            </button>
-            {tmdbLookupError && <p className={styles.tmdbError}>{tmdbLookupError}</p>}
-            {tmdbCandidates.length > 0 && (
-              <div className={styles.tmdbCandidates}>
+            {tmdbCandidates.length > 0 ? (
+              <div className="staff-chip-grid">
                 {tmdbCandidates.map((candidate) => (
-                  <button
+                  <Button
                     key={candidate.tmdbId}
-                    className={`${styles.btn} ${styles.btnSecondary} ${styles.btnXs}`}
+                    type="button"
+                    size="sm"
                     onClick={() => autoLoadTmdb(candidate.tmdbId)}
                   >
                     {candidate.title}
-                    {candidate.releaseYear ? ` (${candidate.releaseYear})` : ""}
-                  </button>
+                    {candidate.releaseYear ? ` (${candidate.releaseYear})` : ''}
+                  </Button>
                 ))}
               </div>
-            )}
-          </div>
-        )}
+            ) : null}
 
-        {/* Seasons accordion */}
-        <div className={styles.seasons}>
-          {seasons.length === 0 && !tmdbPreview && (
-            <EmptyState
-              title="No seasons yet"
-              description="Import from TMDB or add a season manually."
-            />
-          )}
-
-          {seasons.map((season) => {
-            const isOpen = openSeasonId === season.id;
-            const isEditingSeason = seasonEdit?.seasonId === season.id;
-            return (
-              <div key={season.id} className={clsx(styles.season, isOpen && styles.seasonOpen)}>
-                {/* Season header */}
-                <button
-                  className={styles.seasonHeader}
-                  onClick={() => setOpenSeasonId(isOpen ? null : season.id)}
-                >
-                  {isEditingSeason ? (
-                    <div className={styles.seasonEdit} onClick={(e) => e.stopPropagation()}>
-                      <input
-                        className={`${styles.formInput} ${styles.seasonEditInput}`}
-                        type="number"
-                        min="1"
-                        value={seasonEdit.newSeasonNumber}
-                        onChange={(e) =>
-                          setSeasonEdit((prev) => ({ ...prev, newSeasonNumber: e.target.value }))
-                        }
-                      />
-                      <button
-                        className={`${styles.btn} ${styles.btnXs} ${styles.btnPrimary}`}
-                        onClick={() => saveSeasonNumberEdit(season)}
-                        disabled={seasonEdit.saving}
-                      >
-                        {seasonEdit.saving ? <Spinner /> : "Save"}
-                      </button>
-                      <button
-                        className={`${styles.btn} ${styles.btnXs} ${styles.btnGhost}`}
-                        onClick={() => setSeasonEdit(null)}
-                        disabled={seasonEdit.saving}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <span className={styles.seasonNum}>Season {season.seasonNumber}</span>
-                  )}
-                  <span className={styles.seasonEpCount}>
-                    {season.episodes.length} episode{season.episodes.length !== 1 ? "s" : ""}
-                  </span>
-                  <div className={styles.seasonActions} onClick={(e) => e.stopPropagation()}>
-                    <button
-                      className={styles.iconBtn}
-                      title="Edit season number"
-                      onClick={() => startSeasonNumberEdit(season)}
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
-                      title="Delete season"
-                      onClick={() => setConfirmDelete({ type: "season", seasonNumber: season.seasonNumber })}
-                    >
-                      🗑
-                    </button>
-                  </div>
-                  <ChevronDown open={isOpen} />
-                </button>
-
-                {/* Episodes */}
-                {isOpen && (
-                  <div className={styles.episodes}>
-                    {isEditingSeason && seasonEdit?.error && (
-                      <p className={styles.formError}>{seasonEdit.error}</p>
-                    )}
-                    {season.episodes.length === 0 && (
-                      <p className={styles.noEpisodes}>No episodes in this season.</p>
-                    )}
-
-                    {season.episodes.map((ep) => {
-                      const isEditing =
-                        editingEpisode?.seasonNumber === season.seasonNumber &&
-                        editingEpisode?.episodeNumber === ep.episodeNumber;
-
-                      return (
-                        <div key={ep.id} className={clsx("group", styles.episode, isEditing && styles.episodeEditing)}>
-                          <span className={styles.epNum}>E{ep.episodeNumber}</span>
-
-                          {isEditing ? (
-                            <div className={styles.epEdit}>
-                              <input
-                                className={styles.epInput}
-                                value={editEpForm.title}
-                                onChange={(e) => setEditEpForm((p) => ({ ...p, title: e.target.value }))}
-                                placeholder="Title"
-                              />
-                              <input
-                                className={`${styles.epInput} ${styles.epInputShort}`}
-                                type="number"
-                                value={editEpForm.duration}
-                                onChange={(e) => setEditEpForm((p) => ({ ...p, duration: e.target.value }))}
-                                placeholder="min"
-                              />
-                              <button
-                                className={`${styles.btn} ${styles.btnXs} ${styles.btnPrimary}`}
-                                onClick={() => saveEditEpisode(season, ep)}
-                                disabled={editEpSaving}
-                              >
-                                {editEpSaving ? <Spinner /> : "Save"}
-                              </button>
-                              <button
-                                className={`${styles.btn} ${styles.btnXs} ${styles.btnGhost}`}
-                                onClick={() => setEditingEpisode(null)}
-                              >
-                                Cancel
-                              </button>
+            {tmdbPreview ? (
+              <div className="mt-4">
+                {tmdbPreview.length > 0 ? (
+                  <>
+                    <p className="staff-form-section__copy">
+                      {tmdbPreview.length} season{tmdbPreview.length !== 1 ? 's' : ''} found. Import all or handle seasons one at a time.
+                    </p>
+                    <div className="tmdb-import-grid">
+                      {tmdbPreview.map((season) => {
+                        const alreadyInDb = seasons.some((db) => db.seasonNumber === season.seasonNumber);
+                        const isSyncing = tmdbSyncingSeason === season.seasonNumber;
+                        return (
+                          <article
+                            key={season.seasonNumber}
+                            className={clsx('tmdb-import-card', alreadyInDb && 'tmdb-import-card--saved')}
+                          >
+                            <div className="staff-toolbar">
+                              <div>
+                                <h3 className="staff-media-title">Season {season.seasonNumber}</h3>
+                                <p className="staff-media-meta">{season.episodes?.length ?? 0} episodes</p>
+                              </div>
+                              {alreadyInDb ? <Badge tone="success">Saved</Badge> : <Badge tone="warning">New</Badge>}
                             </div>
-                          ) : (
-                            <>
-                              <span className={styles.epTitle}>{ep.title}</span>
-                              {ep.duration && (
-                                <span className={styles.epDuration}>{ep.duration}m</span>
-                              )}
-                              <div className={styles.epActions}>
-                                <button
-                                  className={styles.iconBtn}
-                                  title="Edit episode"
-                                  onClick={() => startEditEpisode(season, ep)}
+                            <div className="staff-actions">
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => handleSyncTmdbSeason(season)}
+                                disabled={isSyncing || tmdbLoading}
+                              >
+                                {isSyncing ? <Spinner /> : <CloudDownload size={14} aria-hidden="true" />}
+                                {alreadyInDb ? 'Update' : 'Import'}
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => dismissTmdbSeason(season.seasonNumber)}
+                              >
+                                Dismiss
+                              </Button>
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                    <div className="staff-actions mt-4">
+                      <Button type="button" variant="primary" onClick={handleImportTmdb} disabled={tmdbLoading}>
+                        {tmdbLoading ? <Spinner /> : <CloudDownload size={16} aria-hidden="true" />}
+                        Import {tmdbPreview.filter((season) => !seasons.some((db) => db.seasonNumber === season.seasonNumber)).length} seasons
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <InlineMessage tone="info">No seasons returned from TMDB.</InlineMessage>
+                )}
+              </div>
+            ) : null}
+          </section>
+
+          <section className="staff-panel" aria-labelledby="season-list-title">
+            <div className="staff-toolbar">
+              <div>
+                <h2 className="staff-form-section__title" id="season-list-title">Season list</h2>
+                <p className="staff-form-section__copy">Open a season to review, edit, add, or remove episodes.</p>
+              </div>
+              <Button type="button" onClick={openAddSeason} disabled={showAddSeason}>
+                <Plus size={16} aria-hidden="true" />
+                Add season manually
+              </Button>
+            </div>
+
+            <div className="season-manager-grid">
+              {seasons.length === 0 && !tmdbPreview ? (
+                <EmptyState title="No seasons yet" description="Import from TMDB or add a season manually." />
+              ) : null}
+
+              {seasons.map((season) => {
+                const isOpen = openSeasonId === season.id;
+                const isEditingSeason = seasonEdit?.seasonId === season.id;
+                return (
+                  <article key={season.id} className={clsx('season-card', isOpen && 'season-card--open')}>
+                    <button
+                      type="button"
+                      className="season-card__button"
+                      onClick={() => setOpenSeasonId(isOpen ? null : season.id)}
+                      aria-expanded={isOpen}
+                    >
+                      {isEditingSeason ? (
+                        <div className="season-number-edit" onClick={(event) => event.stopPropagation()}>
+                          <Field label="Season number">
+                            <input
+                              className="ui-input max-w-[120px]"
+                              type="number"
+                              min="1"
+                              value={seasonEdit.newSeasonNumber}
+                              onChange={(event) =>
+                                setSeasonEdit((prev) => ({ ...prev, newSeasonNumber: event.target.value }))
+                              }
+                            />
+                          </Field>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="primary"
+                            onClick={() => saveSeasonNumberEdit(season)}
+                            disabled={seasonEdit.saving}
+                          >
+                            {seasonEdit.saving ? <Spinner /> : 'Save'}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setSeasonEdit(null)}
+                            disabled={seasonEdit.saving}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="season-card__title">Season {season.seasonNumber}</span>
+                      )}
+                      <span className="season-card__meta">
+                        {season.episodes.length} episode{season.episodes.length !== 1 ? 's' : ''}
+                      </span>
+                      <span className="season-card__actions" onClick={(event) => event.stopPropagation()}>
+                        <button
+                          type="button"
+                          className="staff-icon-button"
+                          aria-label={`Edit season ${season.seasonNumber} number`}
+                          onClick={() => startSeasonNumberEdit(season)}
+                        >
+                          <Pencil size={15} aria-hidden="true" />
+                        </button>
+                        <button
+                          type="button"
+                          className="staff-icon-button staff-icon-button--danger"
+                          aria-label={`Delete season ${season.seasonNumber}`}
+                          onClick={() => setConfirmDelete({ type: 'season', seasonNumber: season.seasonNumber })}
+                        >
+                          <Trash2 size={15} aria-hidden="true" />
+                        </button>
+                      </span>
+                      <ChevronDown
+                        className={clsx('h-5 w-5 text-[var(--text-muted)] transition', isOpen && 'rotate-180')}
+                        aria-hidden="true"
+                      />
+                    </button>
+
+                    {isOpen ? (
+                      <div className="season-card__body">
+                        {isEditingSeason && seasonEdit?.error ? (
+                          <InlineMessage tone="error">{seasonEdit.error}</InlineMessage>
+                        ) : null}
+                        {season.episodes.length === 0 ? (
+                          <InlineMessage tone="info">No episodes in this season.</InlineMessage>
+                        ) : null}
+
+                        {season.episodes.map((episode) => {
+                          const isEditing =
+                            editingEpisode?.seasonNumber === season.seasonNumber &&
+                            editingEpisode?.episodeNumber === episode.episodeNumber;
+
+                          if (isEditing) {
+                            return (
+                              <div key={episode.id} className="season-inline-form">
+                                <span className="season-episode__number">E{episode.episodeNumber}</span>
+                                <Field label={`Season ${season.seasonNumber} episode ${episode.episodeNumber} title`}>
+                                  <input
+                                    className="ui-input"
+                                    value={editEpForm.title}
+                                    onChange={(event) => setEditEpForm((prev) => ({ ...prev, title: event.target.value }))}
+                                  />
+                                </Field>
+                                <Field label="Minutes">
+                                  <input
+                                    className="ui-input"
+                                    type="number"
+                                    value={editEpForm.duration}
+                                    onChange={(event) => setEditEpForm((prev) => ({ ...prev, duration: event.target.value }))}
+                                  />
+                                </Field>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="primary"
+                                  onClick={() => saveEditEpisode(season, episode)}
+                                  disabled={editEpSaving}
                                 >
-                                  ✏️
+                                  {editEpSaving ? <Spinner /> : 'Save'}
+                                </Button>
+                                <Button type="button" size="sm" variant="ghost" onClick={() => setEditingEpisode(null)}>
+                                  Cancel
+                                </Button>
+                                {editEpError ? <InlineMessage tone="error" className="sm:col-span-full">{editEpError}</InlineMessage> : null}
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div key={episode.id} className="season-episode">
+                              <span className="season-episode__number">E{episode.episodeNumber}</span>
+                              <span className="season-episode__title">{episode.title || `Episode ${episode.episodeNumber}`}</span>
+                              <span className="season-episode__duration">{episode.duration ? `${episode.duration}m` : 'No runtime'}</span>
+                              <span className="season-episode__actions">
+                                <button
+                                  type="button"
+                                  className="staff-icon-button"
+                                  aria-label={`Edit episode ${episode.episodeNumber}`}
+                                  onClick={() => startEditEpisode(season, episode)}
+                                >
+                                  <Pencil size={15} aria-hidden="true" />
                                 </button>
                                 <button
-                                  className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
-                                  title="Delete episode"
+                                  type="button"
+                                  className="staff-icon-button staff-icon-button--danger"
+                                  aria-label={`Delete episode ${episode.episodeNumber}`}
                                   onClick={() =>
                                     setConfirmDelete({
-                                      type: "episode",
+                                      type: 'episode',
                                       seasonNumber: season.seasonNumber,
-                                      episodeNumber: ep.episodeNumber,
+                                      episodeNumber: episode.episodeNumber,
                                     })
                                   }
                                 >
-                                  🗑
+                                  <Trash2 size={15} aria-hidden="true" />
                                 </button>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      );
-                    })}
+                              </span>
+                            </div>
+                          );
+                        })}
 
-                    {/* Add episode inline */}
-                    <AddEpisodeInline
-                      nextEpisodeNumber={
-                        season.episodes.length > 0
-                          ? Math.max(...season.episodes.map((ep) => ep.episodeNumber)) + 1
-                          : 1
-                      }
-                      onAdd={async (dto) => {
-                        await addEpisode(id, season.seasonNumber, dto);
-                        await loadSeasons();
-                      }}
-                    />
+                        <AddEpisodeInline
+                          seasonNumber={season.seasonNumber}
+                          nextEpisodeNumber={
+                            season.episodes.length > 0
+                              ? Math.max(...season.episodes.map((episode) => episode.episodeNumber)) + 1
+                              : 1
+                          }
+                          onAdd={async (dto) => {
+                            await addEpisode(id, season.seasonNumber, dto);
+                            await loadSeasons();
+                          }}
+                        />
+                      </div>
+                    ) : null}
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+
+          {showAddSeason ? (
+            <section className="staff-form-section" aria-labelledby="new-season-title">
+              <header className="staff-form-section__header">
+                <div className="staff-toolbar">
+                  <div>
+                    <h2 className="staff-form-section__title" id="new-season-title">New season</h2>
+                    <p className="staff-form-section__copy">Create a season with one or more episodes.</p>
                   </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+                  <button
+                    type="button"
+                    className="staff-icon-button"
+                    aria-label="Close new season form"
+                    onClick={() => setShowAddSeason(false)}
+                  >
+                    <X size={16} aria-hidden="true" />
+                  </button>
+                </div>
+              </header>
 
-        {/* Add season button */}
-        <div className={styles.addSeasonRow}>
-          {!showAddSeason ? (
-            <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={openAddSeason}>
-              + Add Season Manually
-            </button>
-          ) : (
-            <div className={styles.addSeasonForm}>
-              <div className={styles.addSeasonFormHeader}>
-                <h3>New Season</h3>
-                <button className={styles.iconBtn} onClick={() => setShowAddSeason(false)}>✕</button>
-              </div>
-
-              <label className={styles.formLabel}>
-                Season Number
+              <Field label="Season number">
                 <input
-                  className={styles.formInput}
+                  className="ui-input max-w-[140px]"
                   type="number"
                   min="1"
-                  value={addSeasonForm?.seasonNumber ?? ""}
-                  onChange={(e) =>
-                    setAddSeasonForm((p) => ({ ...p, seasonNumber: e.target.value }))
+                  value={addSeasonForm?.seasonNumber ?? ''}
+                  onChange={(event) =>
+                    setAddSeasonForm((prev) => ({ ...prev, seasonNumber: event.target.value }))
                   }
                 />
-              </label>
+              </Field>
 
-              <div className={styles.newEpisodes}>
-                <p className={styles.newEpLabel}>Episodes</p>
-                {addSeasonForm?.episodes.map((ep, idx) => (
-                  <div key={idx} className={styles.newEpRow}>
-                    <span className={styles.epNum}>E{ep.episodeNumber}</span>
-                    <input
-                      className={styles.epInput}
-                      placeholder="Title"
-                      value={ep.title}
-                      onChange={(e) => updateAddSeasonEpisode(idx, "title", e.target.value)}
-                    />
-                    <input
-                      className={`${styles.epInput} ${styles.epInputShort}`}
-                      type="number"
-                      placeholder="min"
-                      value={ep.duration}
-                      onChange={(e) => updateAddSeasonEpisode(idx, "duration", e.target.value)}
-                    />
-                    <button
-                      className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
+              <div className="staff-episode-list">
+                <p className="staff-label">Episodes</p>
+                {addSeasonForm?.episodes.map((episode, idx) => (
+                  <div key={idx} className="staff-episode-row">
+                    <span className="staff-episode-index">E{episode.episodeNumber}</span>
+                    <Field label={`New episode ${episode.episodeNumber} title`}>
+                      <input
+                        className="ui-input"
+                        value={episode.title}
+                        onChange={(event) => updateAddSeasonEpisode(idx, 'title', event.target.value)}
+                      />
+                    </Field>
+                    <Field label="Minutes">
+                      <input
+                        className="ui-input"
+                        type="number"
+                        value={episode.duration}
+                        onChange={(event) => updateAddSeasonEpisode(idx, 'duration', event.target.value)}
+                      />
+                    </Field>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="danger"
                       onClick={() => removeEpisodeFromForm(idx)}
                       disabled={addSeasonForm.episodes.length === 1}
                     >
-                      ✕
-                    </button>
+                      Remove
+                    </Button>
                   </div>
                 ))}
-                <button className={`${styles.btn} ${styles.btnGhost} ${styles.btnXs}`} onClick={addEpisodeToForm}>
-                  + Add episode
-                </button>
+                <div>
+                  <Button type="button" size="sm" onClick={addEpisodeToForm}>
+                    <Plus size={14} aria-hidden="true" />
+                    Add episode
+                  </Button>
+                </div>
               </div>
 
-              {addSeasonError && <p className={styles.formError}>{addSeasonError}</p>}
+              {addSeasonError ? <InlineMessage tone="error">{addSeasonError}</InlineMessage> : null}
 
-              <div className={styles.formActions}>
-                <button
-                  className={`${styles.btn} ${styles.btnPrimary}`}
-                  onClick={handleSaveNewSeason}
-                  disabled={addSeasonSaving}
-                >
-                  {addSeasonSaving ? <><Spinner /> Saving…</> : "Save Season"}
-                </button>
-                <button
-                  className={`${styles.btn} ${styles.btnGhost}`}
-                  onClick={() => setShowAddSeason(false)}
-                >
+              <div className="staff-actions">
+                <Button type="button" variant="primary" onClick={handleSaveNewSeason} disabled={addSeasonSaving}>
+                  {addSeasonSaving ? <Spinner /> : 'Save season'}
+                </Button>
+                <Button type="button" variant="ghost" onClick={() => setShowAddSeason(false)}>
                   Cancel
-                </button>
+                </Button>
               </div>
-            </div>
-          )}
-        </div>
+            </section>
+          ) : null}
 
-        <Dialog
-          open={Boolean(confirmDelete)}
-          title="Confirm delete"
-          description={confirmDelete?.type === "season"
-            ? `Delete Season ${confirmDelete?.seasonNumber} and all its episodes?`
-            : `Delete Episode ${confirmDelete?.episodeNumber} from Season ${confirmDelete?.seasonNumber}?`}
-          onClose={() => {
-            if (!deleting) setConfirmDelete(null);
-          }}
-          actions={(
-            <>
-              <Button variant="ghost" onClick={() => setConfirmDelete(null)} disabled={deleting}>
-                Cancel
-              </Button>
-              <Button variant="danger" onClick={handleConfirmDelete} disabled={deleting}>
-                {deleting ? "Deleting..." : "Delete"}
-              </Button>
-            </>
-          )}
-        >
-          <p className={styles.modalNote}>This is a soft delete. Data is kept in the database.</p>
-        </Dialog>
+          <Dialog
+            open={Boolean(confirmDelete)}
+            title="Confirm delete"
+            description={confirmDelete?.type === 'season'
+              ? `Delete Season ${confirmDelete?.seasonNumber} and all its episodes?`
+              : `Delete Episode ${confirmDelete?.episodeNumber} from Season ${confirmDelete?.seasonNumber}?`}
+            onClose={() => {
+              if (!deleting) {
+                setConfirmDelete(null);
+                setDeleteError('');
+              }
+            }}
+            actions={(
+              <>
+                <Button variant="ghost" onClick={() => setConfirmDelete(null)} disabled={deleting}>
+                  Cancel
+                </Button>
+                <Button variant="danger" onClick={handleConfirmDelete} disabled={deleting}>
+                  {deleting ? 'Deleting...' : 'Delete'}
+                </Button>
+              </>
+            )}
+          >
+            <p className="text-sm text-[var(--text-muted)]">This is a soft delete. Data is kept in the database.</p>
+            {deleteError ? <InlineMessage tone="error" className="mt-3">{deleteError}</InlineMessage> : null}
+          </Dialog>
         </div>
       </Container>
     </PageLayout>
   );
 }
 
-// ── Add episode inline sub-component ─────────────────────────────────────────
-function AddEpisodeInline({ nextEpisodeNumber, onAdd }) {
+function AddEpisodeInline({ seasonNumber, nextEpisodeNumber, onAdd }) {
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ title: "", duration: "" });
+  const [form, setForm] = useState({ title: '', duration: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
   async function handleSave() {
-    if (!form.title.trim()) { setError("Title is required."); return; }
+    if (!form.title.trim()) {
+      setError('Title is required.');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -948,10 +910,10 @@ function AddEpisodeInline({ nextEpisodeNumber, onAdd }) {
         title: form.title.trim(),
         duration: form.duration ? Number(form.duration) : null,
       });
-      setForm({ title: "", duration: "" });
+      setForm({ title: '', duration: '' });
       setOpen(false);
     } catch {
-      setError("Failed to add episode.");
+      setError('Failed to add episode.');
     } finally {
       setSaving(false);
     }
@@ -959,36 +921,39 @@ function AddEpisodeInline({ nextEpisodeNumber, onAdd }) {
 
   if (!open) {
     return (
-      <button className={styles.addEpBtn} onClick={() => setOpen(true)}>
-        + Add episode
-      </button>
+      <Button type="button" variant="ghost" onClick={() => setOpen(true)}>
+        <Plus size={16} aria-hidden="true" />
+        Add episode
+      </Button>
     );
   }
 
   return (
-    <div className={styles.addEpForm}>
-      <span className={styles.epNum}>E{nextEpisodeNumber}</span>
-      <input
-        className={styles.epInput}
-        placeholder="Episode title"
-        value={form.title}
-        onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
-        autoFocus
-      />
-      <input
-        className={`${styles.epInput} ${styles.epInputShort}`}
-        type="number"
-        placeholder="min"
-        value={form.duration}
-        onChange={(e) => setForm((p) => ({ ...p, duration: e.target.value }))}
-      />
-      {error && <span className={styles.formError}>{error}</span>}
-      <button className={`${styles.btn} ${styles.btnXs} ${styles.btnPrimary}`} onClick={handleSave} disabled={saving}>
-        {saving ? <Spinner /> : "Add"}
-      </button>
-      <button className={`${styles.btn} ${styles.btnXs} ${styles.btnGhost}`} onClick={() => setOpen(false)}>
+    <div className="season-inline-form">
+      <span className="season-episode__number">E{nextEpisodeNumber}</span>
+      <Field label={`Season ${seasonNumber} new episode title`}>
+        <input
+          className="ui-input"
+          value={form.title}
+          onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
+          autoFocus
+        />
+      </Field>
+      <Field label="Minutes">
+        <input
+          className="ui-input"
+          type="number"
+          value={form.duration}
+          onChange={(event) => setForm((prev) => ({ ...prev, duration: event.target.value }))}
+        />
+      </Field>
+      <Button type="button" size="sm" variant="primary" onClick={handleSave} disabled={saving}>
+        {saving ? <Spinner /> : 'Add'}
+      </Button>
+      <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
         Cancel
-      </button>
+      </Button>
+      {error ? <InlineMessage tone="error" className="sm:col-span-full">{error}</InlineMessage> : null}
     </div>
   );
 }

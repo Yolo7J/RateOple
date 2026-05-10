@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import { ShieldCheck, UserPlus } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useModerationReportsQuery } from '../queries/useModerationReportsQuery';
 import { useModeratorAssignmentsQuery } from '../queries/useModeratorAssignmentsQuery';
@@ -9,31 +10,21 @@ import ModerationReportRow from '../components/ModerationReportRow';
 import ModeratorAssignmentList from '../components/ModeratorAssignmentList';
 import PageLayout from '../../../layouts/PageLayout';
 import Container from '../../../shared/ui/Container';
-import Grid from '../../../shared/ui/Grid';
-import Stack from '../../../shared/ui/Stack';
 import EmptyState from '../../../shared/ui/EmptyState';
 import InlineMessage from '../../../shared/ui/InlineMessage';
 import LoadingState from '../../../shared/ui/LoadingState';
-import PageHeader from '../../../shared/ui/PageHeader';
 import Button from '../../../shared/ui/Button';
 import Select from '../../../shared/ui/Select';
+import Badge from '../../../shared/ui/Badge';
 import { EntityPicker } from '../../../shared/ui/EntityPicker';
 import { searchModerationUsers } from '../../users/services/userLookupService';
 import { searchModerationScopes } from '../services/scopeLookupService';
-
-const styles = {
-  pageStack: 'gap-6',
-  muted: 'text-[var(--text-muted)]',
-  section: 'ui-card p-4 sm:p-6',
-  sectionTitle: 'ui-section-title',
-  filters: 'flex flex-wrap items-center gap-3',
-  form: 'grid gap-3 max-w-2xl',
-  grid: 'gap-3',
-};
+import '../moderation.css';
 
 const REPORT_STATUS_OPTIONS = [
-  { value: '', label: 'All statuses' },
+  { value: '', label: 'All' },
   { value: '1', label: 'Pending' },
+  { value: '2', label: 'In review' },
   { value: '3', label: 'Resolved' },
   { value: '4', label: 'Rejected' },
 ];
@@ -77,6 +68,7 @@ function ModerationPage() {
 
   const reports = Array.isArray(reportsData?.items) ? reportsData.items : [];
   const assignments = Array.isArray(assignmentsData) ? assignmentsData : [];
+  const currentStatusLabel = REPORT_STATUS_OPTIONS.find((option) => option.value === statusFilter)?.label ?? 'Reports';
 
   const searchAssignmentScope = useCallback((params) => (
     searchModerationScopes({ ...params, scopeType: Number(assignmentForm.scopeType) })
@@ -147,37 +139,51 @@ function ModerationPage() {
 
   return (
     <PageLayout>
-      <Container>
-        <Stack className={styles.pageStack}>
-          <PageHeader title="Moderation" subtitle="Review reports, assignments, and realtime moderation events." />
+      <Container size="xxl">
+        <div className="moderation-workspace">
+          <header className="moderation-hero">
+            <p className="staff-eyebrow">Staff operations</p>
+            <h1 className="moderation-hero__title">Moderation queue</h1>
+            <p className="moderation-hero__copy">
+              Review reports, triage status changes, and manage moderator coverage without leaving the admin workspace.
+            </p>
+            <div className="staff-hero__meta mt-4">
+              <Badge tone="accent">{currentStatusLabel}</Badge>
+              <Badge>{reportsData?.totalCount ?? reports.length} reports</Badge>
+              {isAdmin ? <Badge tone="info">{assignments.length} assignments</Badge> : null}
+            </div>
+          </header>
 
-          <section className={styles.section}>
-            <Stack className="gap-4">
-              <h2 className={styles.sectionTitle}>Reports</h2>
-              <div className={styles.filters}>
-                <label htmlFor="report-status" className="text-sm text-[var(--text-secondary)]">Status:</label>
-                <Select
-                  className="min-w-[150px]"
-                  id="report-status"
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  disabled={reportsLoading}
-                >
-                  {REPORT_STATUS_OPTIONS.map((option) => (
-                    <option key={option.value || 'all'} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </Select>
+          <section className="moderation-section" aria-labelledby="reports-title">
+            <header className="moderation-section__header">
+              <div>
+                <h2 className="moderation-section__title" id="reports-title">Reports</h2>
+                <p className="moderation-section__copy">Filter the queue and apply the supported report status mutations.</p>
               </div>
+              <div className="moderation-tabs" role="tablist" aria-label="Report status filters">
+                {REPORT_STATUS_OPTIONS.map((option) => (
+                  <button
+                    key={option.value || 'all'}
+                    type="button"
+                    className={option.value === statusFilter ? 'moderation-tab moderation-tab--active' : 'moderation-tab'}
+                    onClick={() => setStatusFilter(option.value)}
+                    aria-pressed={option.value === statusFilter}
+                    disabled={reportsLoading}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </header>
 
-              {reportsLoading ? <LoadingState label="Loading reports..." /> : null}
-              {reportsError ? <InlineMessage tone="error">Failed to load reports.</InlineMessage> : null}
-              {isMutating ? <InlineMessage tone="info">Applying moderation changes...</InlineMessage> : null}
-              {actionError ? <InlineMessage tone="error">{actionError}</InlineMessage> : null}
+            {reportsLoading ? <LoadingState label="Loading reports..." /> : null}
+            {reportsError ? <InlineMessage tone="error">Failed to load reports.</InlineMessage> : null}
+            {isMutating ? <InlineMessage tone="info">Applying moderation changes...</InlineMessage> : null}
+            {actionError ? <InlineMessage tone="error">{actionError}</InlineMessage> : null}
 
-              {!reportsLoading && !reportsError ? (
-                <Grid cols="grid-cols-1 md:grid-cols-2 xl:grid-cols-3" className={styles.grid}>
+            {!reportsLoading && !reportsError ? (
+              reports.length > 0 ? (
+                <div className="moderation-report-grid">
                   {reports.map((report) => (
                     <ModerationReportRow
                       key={`${report.id}-${report.status}`}
@@ -188,25 +194,34 @@ function ModerationPage() {
                       disabled={isMutating}
                     />
                   ))}
-                  {reports.length === 0 ? <EmptyState title="No reports found" /> : null}
-                </Grid>
-              ) : null}
-            </Stack>
+                </div>
+              ) : (
+                <EmptyState title="No reports found" />
+              )
+            ) : null}
           </section>
 
           {isAdmin ? (
-            <section className={styles.section}>
-              <Stack className="gap-4">
-                <h2 className={styles.sectionTitle}>Moderator assignments</h2>
-                <form className={styles.form} onSubmit={handleCreateAssignment}>
-                  <EntityPicker
-                    label="Moderator"
-                    placeholder="Search users by name, username, or email"
-                    value={assignmentUser}
-                    onChange={setAssignmentUser}
-                    searchFn={searchModerationUsers}
-                    disabled={isMutating}
-                  />
+            <section className="moderation-section" aria-labelledby="assignments-title">
+              <header className="moderation-section__header">
+                <div>
+                  <h2 className="moderation-section__title" id="assignments-title">Moderator assignments</h2>
+                  <p className="moderation-section__copy">Grant or remove moderator coverage for supported scopes.</p>
+                </div>
+                <ShieldCheck className="h-5 w-5 text-[var(--accent)]" aria-hidden="true" />
+              </header>
+
+              <form className="moderation-assignment-form" onSubmit={handleCreateAssignment}>
+                <EntityPicker
+                  label="Moderator"
+                  placeholder="Search users by name, username, or email"
+                  value={assignmentUser}
+                  onChange={setAssignmentUser}
+                  searchFn={searchModerationUsers}
+                  disabled={isMutating}
+                />
+                <label className="staff-field">
+                  <span className="staff-label">Scope type</span>
                   <Select
                     value={assignmentForm.scopeType}
                     onChange={(e) => {
@@ -220,47 +235,50 @@ function ModerationPage() {
                       </option>
                     ))}
                   </Select>
-                  {assignmentForm.scopeType !== '1' ? (
-                    <EntityPicker
-                      label={`${SCOPE_OPTIONS.find((option) => option.value === assignmentForm.scopeType)?.label ?? 'Scope'} scope`}
-                      placeholder="Search scope by name"
-                      value={assignmentScope}
-                      onChange={setAssignmentScope}
-                      searchFn={searchAssignmentScope}
-                      disabled={isMutating}
-                    />
-                  ) : (
-                    <p className={styles.muted}>Global assignments apply across all moderation scopes.</p>
-                  )}
-                  {assignmentUser ? (
-                    <p className={styles.muted}>
-                      Assign {assignmentUser.label} as moderator for{' '}
-                      {assignmentForm.scopeType === '1' ? 'Global' : assignmentScope?.label ?? 'selected scope'}.
-                    </p>
-                  ) : null}
+                </label>
+                {assignmentForm.scopeType !== '1' ? (
+                  <EntityPicker
+                    label={`${SCOPE_OPTIONS.find((option) => option.value === assignmentForm.scopeType)?.label ?? 'Scope'} scope`}
+                    placeholder="Search scope by name"
+                    value={assignmentScope}
+                    onChange={setAssignmentScope}
+                    searchFn={searchAssignmentScope}
+                    disabled={isMutating}
+                  />
+                ) : (
+                  <p className="moderation-muted">Global assignments apply across all moderation scopes.</p>
+                )}
+                {assignmentUser ? (
+                  <p className="moderation-muted">
+                    Assign {assignmentUser.label} as moderator for{' '}
+                    {assignmentForm.scopeType === '1' ? 'Global' : assignmentScope?.label ?? 'selected scope'}.
+                  </p>
+                ) : null}
+                <div className="moderation-card-actions">
                   <Button
                     variant="primary"
                     type="submit"
                     disabled={isMutating || !assignmentUser || (assignmentForm.scopeType !== '1' && !assignmentScope)}
                   >
+                    <UserPlus size={16} aria-hidden="true" />
                     Assign moderator
                   </Button>
-                </form>
+                </div>
+              </form>
 
-                {assignmentsLoading ? <LoadingState label="Loading assignments..." /> : null}
-                {assignmentsError ? <InlineMessage tone="error">Failed to load assignments.</InlineMessage> : null}
+              {assignmentsLoading ? <LoadingState label="Loading assignments..." /> : null}
+              {assignmentsError ? <InlineMessage tone="error">Failed to load assignments.</InlineMessage> : null}
 
-                {!assignmentsLoading && !assignmentsError ? (
-                  <ModeratorAssignmentList
-                    assignments={assignments}
-                    onRemove={handleRemoveAssignment}
-                    disabled={isMutating}
-                  />
-                ) : null}
-              </Stack>
+              {!assignmentsLoading && !assignmentsError ? (
+                <ModeratorAssignmentList
+                  assignments={assignments}
+                  onRemove={handleRemoveAssignment}
+                  disabled={isMutating}
+                />
+              ) : null}
             </section>
           ) : null}
-        </Stack>
+        </div>
       </Container>
     </PageLayout>
   );
