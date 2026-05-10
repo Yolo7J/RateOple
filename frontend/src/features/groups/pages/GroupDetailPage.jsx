@@ -1,61 +1,76 @@
+import {
+  ArrowLeft,
+  BookOpen,
+  Crown,
+  Lock,
+  MessageSquarePlus,
+  Pin,
+  ShieldCheck,
+  Users,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { useAuth } from '../../../context/AuthContext';
-import { useGroupDetailsQuery } from '../queries/useGroupDetailsQuery';
-import { useGroupPostsQuery } from '../queries/useGroupPostsQuery';
-import { useGroupPinnedMediaQuery } from '../queries/useGroupPinnedMediaQuery';
-import { useGroupMembersQuery } from '../queries/useGroupMembersQuery';
-import { useGroupStaffMessagesQuery } from '../queries/useGroupStaffMessagesQuery';
-import { useGroupMutations } from '../queries/useGroupMutations';
-import GroupPostCard from '../components/GroupPostCard';
-import PageLayout from '../../../layouts/PageLayout';
-import Container from '../../../shared/ui/Container';
-import Grid from '../../../shared/ui/Grid';
-import Stack from '../../../shared/ui/Stack';
-import { EntityPicker, MultiEntityPicker } from '../../../shared/ui/EntityPicker';
-import { searchMedia } from '../../media/services/mediaLookupService';
+import { Link, useParams } from 'react-router-dom';
+import Badge from '../../../shared/ui/Badge';
 import Button from '../../../shared/ui/Button';
+import Container from '../../../shared/ui/Container';
 import Dialog from '../../../shared/ui/Dialog';
 import EmptyState from '../../../shared/ui/EmptyState';
+import { EntityPicker, MultiEntityPicker } from '../../../shared/ui/EntityPicker';
+import FormField from '../../../shared/ui/FormField';
 import InlineMessage from '../../../shared/ui/InlineMessage';
-import LoadingState from '../../../shared/ui/LoadingState';
-import PageHeader from '../../../shared/ui/PageHeader';
+import Input from '../../../shared/ui/Input';
+import { Skeleton } from '../../../shared/ui/LoadingState';
 import Textarea from '../../../shared/ui/Textarea';
+import { buildImageUrl } from '../../../shared/utils/buildImageUrl';
+import { useAuth } from '../../../context/AuthContext';
+import PageLayout from '../../../layouts/PageLayout';
+import GroupPostCard from '../components/GroupPostCard';
+import { useGroupDetailsQuery } from '../queries/useGroupDetailsQuery';
+import { useGroupMembersQuery } from '../queries/useGroupMembersQuery';
+import { useGroupMutations } from '../queries/useGroupMutations';
+import { useGroupPinnedMediaQuery } from '../queries/useGroupPinnedMediaQuery';
+import { useGroupPostsQuery } from '../queries/useGroupPostsQuery';
+import { useGroupStaffMessagesQuery } from '../queries/useGroupStaffMessagesQuery';
+import {
+  canManageGroupRoles,
+  canModerateGroup,
+  formatDate,
+  formatDateTime,
+  formatRoleLabel,
+  formatVisibilityLabel,
+  getRoleValue,
+  GROUP_ROLE,
+  isPublicGroup,
+  pluralize,
+} from '../utils/groupFormatters';
+import { searchMedia } from '../../media/services/mediaLookupService';
+import '../groups.css';
 
-const styles = {
-  pageStack: 'gap-6',
-  description: 'text-[var(--text-secondary)]',
-  muted: 'text-[var(--text-muted)]',
-  controls: 'flex flex-wrap gap-2',
-  button: 'ui-button',
-  section: 'ui-card p-4 sm:p-6',
-  sectionTitle: 'ui-section-title',
-  form: 'grid gap-3 max-w-2xl',
-  input: 'ui-input',
-  pinnedGrid: 'gap-3',
-  pinnedItem: 'rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] p-3',
-  posts: 'grid gap-4',
-  staffGrid: 'grid gap-3',
-  staffMessage: 'ui-panel p-3',
-  staffHeader: 'flex flex-wrap items-center justify-between gap-2',
-  memberRow: 'ui-panel flex flex-wrap items-center justify-between gap-2 p-3',
-  roleBadge: 'ui-badge',
-  actionRow: 'flex flex-wrap gap-2',
-};
-
-const GROUP_ROLE = {
-  Member: 1,
-  GroupModerator: 2,
-  GroupAdmin: 3,
-  Owner: 4,
-};
-
-const ROLE_LABELS = {
-  1: 'Member',
-  2: 'Group Moderator',
-  3: 'Group Admin',
-  4: 'Owner',
-};
+function GroupDetailSkeleton() {
+  return (
+    <PageLayout className="groups-page">
+      <Container size="xxl">
+        <div className="group-detail-shell">
+          <section className="group-detail-hero group-detail-hero--loading" aria-label="Loading group">
+            <Skeleton className="group-detail-loading__title" />
+            <Skeleton className="group-detail-loading__line" />
+            <Skeleton className="group-detail-loading__line short" />
+          </section>
+          <div className="group-detail-layout">
+            <div className="group-detail-main">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <Skeleton key={index} className="group-detail-loading__card" />
+              ))}
+            </div>
+            <aside className="group-detail-sidebar">
+              <Skeleton className="group-detail-loading__card" />
+            </aside>
+          </div>
+        </div>
+      </Container>
+    </PageLayout>
+  );
+}
 
 function GroupDetailPage() {
   const { id } = useParams();
@@ -65,15 +80,19 @@ function GroupDetailPage() {
   const { data: pinnedData } = useGroupPinnedMediaQuery(id);
   const { joinGroup, leaveGroup, createPost, addPinnedMedia, setMemberRole, banUser, createStaffMessage, loading: mutating } = useGroupMutations();
 
+  const viewerRole = group?.viewerRole ?? null;
+  const viewerRoleValue = getRoleValue(viewerRole);
+  const isMember = Boolean(viewerRoleValue);
+  const canManageRoles = canManageGroupRoles(viewerRole);
+  const canModerate = canModerateGroup(viewerRole);
+  const canCreatePost = Boolean(user && isMember);
+  const canJoin = Boolean(user && group && !isMember && isPublicGroup(group));
+
+  const { data: membersData, isLoading: membersLoading, error: membersError } = useGroupMembersQuery(id, canManageRoles);
+  const { data: staffData, isLoading: staffLoading, error: staffError } = useGroupStaffMessagesQuery(id, canModerate);
+
   const posts = useMemo(() => (Array.isArray(postsData?.items) ? postsData.items : []), [postsData]);
   const pinned = Array.isArray(pinnedData) ? pinnedData : [];
-  const viewerRole = group?.viewerRole ?? null;
-  const isMember = Boolean(viewerRole);
-  const canManageRoles = viewerRole === GROUP_ROLE.Owner || viewerRole === GROUP_ROLE.GroupAdmin;
-  const canModerate = viewerRole === GROUP_ROLE.Owner || viewerRole === GROUP_ROLE.GroupAdmin || viewerRole === GROUP_ROLE.GroupModerator;
-
-  const { data: membersData } = useGroupMembersQuery(id, canManageRoles);
-  const { data: staffData } = useGroupStaffMessagesQuery(id, canModerate);
   const members = Array.isArray(membersData) ? membersData : [];
   const staffMessages = Array.isArray(staffData) ? staffData : [];
 
@@ -104,8 +123,8 @@ function GroupDetailPage() {
     }
   };
 
-  const handleCreatePost = async (e) => {
-    e.preventDefault();
+  const handleCreatePost = async (event) => {
+    event.preventDefault();
     if (!id) return;
 
     setActionError('');
@@ -122,8 +141,8 @@ function GroupDetailPage() {
     }
   };
 
-  const handlePinMedia = async (e) => {
-    e.preventDefault();
+  const handlePinMedia = async (event) => {
+    event.preventDefault();
     if (!id || !pinMedia?.id) return;
     setActionError('');
     try {
@@ -135,7 +154,7 @@ function GroupDetailPage() {
   };
 
   const handleRoleChange = async (userId, role) => {
-    if (!id) return;
+    if (!id || !userId) return;
     setActionError('');
     try {
       await setMemberRole(id, userId, role);
@@ -145,8 +164,7 @@ function GroupDetailPage() {
   };
 
   const handleBanUser = async () => {
-    if (!id) return;
-    if (!banTarget) return;
+    if (!id || !banTarget?.userId) return;
     setActionError('');
     try {
       await banUser(id, { userId: banTarget.userId });
@@ -156,261 +174,403 @@ function GroupDetailPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <PageLayout>
-        <Container>
-          <LoadingState label="Loading group..." />
-        </Container>
-      </PageLayout>
-    );
-  }
+  const handleStaffMessage = async (event) => {
+    event.preventDefault();
+    if (!staffMessage.trim() || !id) return;
+    setActionError('');
+    try {
+      await createStaffMessage(id, { content: staffMessage.trim() });
+      setStaffMessage('');
+    } catch (err) {
+      setActionError(err?.response?.data?.message || 'Could not send staff message.');
+    }
+  };
+
+  if (loading) return <GroupDetailSkeleton />;
 
   if (error || !group) {
     return (
-      <PageLayout>
-        <Container>
+      <PageLayout className="groups-page">
+        <Container size="lg">
           <InlineMessage tone="error">Group not found.</InlineMessage>
         </Container>
       </PageLayout>
     );
   }
 
-  return (
-    <PageLayout>
-      <Container>
-        <Stack className={styles.pageStack}>
-          <Stack className="gap-2">
-            <PageHeader
-              title={group.name}
-              subtitle={`${group.membersCount ?? 0} members · ${group.postsCount ?? 0} posts`}
-            />
-            {group.description ? <p className={styles.description}>{group.description}</p> : null}
-          </Stack>
+  const visibilityLabel = formatVisibilityLabel(group.visibility);
+  const roleLabel = formatRoleLabel(viewerRole);
 
-          {user ? (
-            <div className={styles.controls}>
-              {!isMember ? (
-                <Button type="button" onClick={handleJoin} disabled={mutating}>
-                  Join Group
+  return (
+    <PageLayout className="groups-page">
+      <Container size="xxl">
+        <div className="group-detail-shell">
+          <Link className="groups-back-link" to="/groups">
+            <ArrowLeft aria-hidden="true" />
+            Groups
+          </Link>
+
+          <section className="group-detail-hero" aria-labelledby="group-detail-title">
+            <div className="group-detail-hero__content">
+              <div className="group-detail-hero__badges">
+                <Badge tone={visibilityLabel === 'Private' ? 'warning' : 'success'}>
+                  {visibilityLabel === 'Private' ? <Lock aria-hidden="true" /> : <Users aria-hidden="true" />}
+                  {visibilityLabel}
+                </Badge>
+                {roleLabel ? (
+                  <Badge tone={viewerRoleValue === GROUP_ROLE.Owner ? 'accent' : canModerate ? 'info' : 'success'}>
+                    {viewerRoleValue === GROUP_ROLE.Owner ? (
+                      <Crown aria-hidden="true" />
+                    ) : canModerate ? (
+                      <ShieldCheck aria-hidden="true" />
+                    ) : null}
+                    {roleLabel}
+                  </Badge>
+                ) : null}
+              </div>
+              <h1 id="group-detail-title">{group.name}</h1>
+              <p>{group.description || 'This group has not added a description yet.'}</p>
+              <dl className="group-detail-stats" aria-label={`${group.name} statistics`}>
+                <div>
+                  <dt>Members</dt>
+                  <dd>{pluralize(group.membersCount, 'member')}</dd>
+                </div>
+                <div>
+                  <dt>Posts</dt>
+                  <dd>{pluralize(group.postsCount, 'post')}</dd>
+                </div>
+                <div>
+                  <dt>Created</dt>
+                  <dd>{formatDate(group.createdAt) || 'Unavailable'}</dd>
+                </div>
+              </dl>
+            </div>
+
+            <div className="group-detail-hero__actions">
+              {canJoin ? (
+                <Button type="button" variant="primary" size="lg" onClick={handleJoin} disabled={mutating}>
+                  <Users aria-hidden="true" />
+                  {mutating ? 'Joining...' : 'Join group'}
                 </Button>
               ) : null}
-              {isMember && viewerRole !== GROUP_ROLE.Owner ? (
-                <Button type="button" variant="ghost" onClick={handleLeave} disabled={mutating}>
-                  Leave Group
+              {isMember && viewerRoleValue !== GROUP_ROLE.Owner ? (
+                <Button type="button" variant="ghost" size="lg" onClick={handleLeave} disabled={mutating}>
+                  Leave group
+                </Button>
+              ) : null}
+              {canCreatePost ? (
+                <Button as="a" href="#group-create-post" size="lg">
+                  <MessageSquarePlus aria-hidden="true" />
+                  Create post
+                </Button>
+              ) : null}
+              {!user ? (
+                <Button as={Link} to="/login" size="lg">
+                  Sign in to join
                 </Button>
               ) : null}
             </div>
-          ) : null}
+          </section>
 
           {actionError ? <InlineMessage tone="error">{actionError}</InlineMessage> : null}
 
-          <section className={styles.section}>
-            <Stack className="gap-4">
-              <h2 className={styles.sectionTitle}>Pinned Media</h2>
-              {canModerate ? (
-                <form className={styles.form} onSubmit={handlePinMedia}>
-                  <EntityPicker
-                    label="Media to pin"
-                    placeholder="Search media by title"
-                    value={pinMedia}
-                    onChange={setPinMedia}
-                    searchFn={searchMedia}
-                    disabled={mutating}
-                  />
-                  <Button type="submit" disabled={mutating || !pinMedia}>
-                    Pin {pinMedia?.label ?? 'Media'}
-                  </Button>
-                </form>
-              ) : null}
-              <Grid cols="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" className={styles.pinnedGrid}>
-                {pinned.map((item) => (
-                  <article key={item.mediaId} className={styles.pinnedItem}>
-                    <p className="text-sm font-medium text-[var(--text-primary)]">{item.title}</p>
-                    <p className={styles.muted}>{new Date(item.addedAt).toLocaleDateString()}</p>
-                  </article>
-                ))}
-                {pinned.length === 0 ? <EmptyState title="No pinned media yet" description="Moderators can pin media for group context." /> : null}
-              </Grid>
-            </Stack>
-          </section>
+          <div className="group-detail-layout">
+            <main className="group-detail-main">
+              <section id="group-create-post" className="group-section" aria-labelledby="group-create-post-title">
+                <div className="group-section__header">
+                  <div>
+                    <span className="groups-eyebrow">Start a thread</span>
+                    <h2 id="group-create-post-title">Create post</h2>
+                  </div>
+                </div>
 
-          <section className={styles.section}>
-            <Stack className="gap-4">
-              <h2 className={styles.sectionTitle}>Create Post</h2>
-              {user && isMember ? (
-                <form className={styles.form} onSubmit={handleCreatePost}>
-                  <input
-                    className={styles.input}
-                    placeholder="Post title"
-                    value={postForm.title}
-                    onChange={(e) => setPostForm((prev) => ({ ...prev, title: e.target.value }))}
-                    required
+                {canCreatePost ? (
+                  <form className="group-form" onSubmit={handleCreatePost}>
+                    <FormField label="Post title">
+                      {(fieldProps) => (
+                        <Input
+                          {...fieldProps}
+                          maxLength={160}
+                          placeholder="What should the group discuss?"
+                          value={postForm.title}
+                          onChange={(event) => setPostForm((prev) => ({ ...prev, title: event.target.value }))}
+                          required
+                        />
+                      )}
+                    </FormField>
+                    <FormField label="Post content">
+                      {(fieldProps) => (
+                        <Textarea
+                          {...fieldProps}
+                          rows={5}
+                          maxLength={8000}
+                          placeholder="Share your take, question, theory, or recommendation..."
+                          value={postForm.content}
+                          onChange={(event) => setPostForm((prev) => ({ ...prev, content: event.target.value }))}
+                          required
+                        />
+                      )}
+                    </FormField>
+                    <MultiEntityPicker
+                      label="Linked media"
+                      placeholder="Search media by title"
+                      value={postMedia}
+                      onChange={setPostMedia}
+                      searchFn={searchMedia}
+                      disabled={mutating}
+                      emptySelectionText="No media linked."
+                    />
+                    <div className="group-form__actions">
+                      <Button
+                        type="submit"
+                        variant="primary"
+                        disabled={mutating || !postForm.title.trim() || !postForm.content.trim()}
+                      >
+                        {mutating ? 'Publishing...' : 'Publish post'}
+                      </Button>
+                    </div>
+                  </form>
+                ) : (
+                  <EmptyState
+                    title={user ? 'Join to start a discussion' : 'Sign in to start a discussion'}
+                    description={user ? 'Members can create posts and link movies, TV series, or books.' : 'Create an account or sign in before posting to groups.'}
+                    action={canJoin ? (
+                      <Button type="button" variant="primary" onClick={handleJoin} disabled={mutating}>
+                        Join group
+                      </Button>
+                    ) : !user ? (
+                      <Button as={Link} to="/login">Sign in</Button>
+                    ) : null}
                   />
-                  <Textarea
-                    rows={4}
-                    placeholder="Post content"
-                    value={postForm.content}
-                    onChange={(e) => setPostForm((prev) => ({ ...prev, content: e.target.value }))}
-                    required
-                  />
-                  <MultiEntityPicker
-                    label="Attached media"
-                    placeholder="Search media by title"
-                    value={postMedia}
-                    onChange={setPostMedia}
-                    searchFn={searchMedia}
-                    disabled={mutating}
-                    emptySelectionText="No media attached."
-                  />
-                  <Button type="submit" disabled={mutating}>
-                    Publish Post
-                  </Button>
-                </form>
-              ) : (
-                <p className={styles.muted}>Join the group to create posts.</p>
-              )}
-            </Stack>
-          </section>
+                )}
+              </section>
+
+              <section className="group-section" aria-labelledby="group-feed-title">
+                <div className="group-section__header">
+                  <div>
+                    <span className="groups-eyebrow">Discussion feed</span>
+                    <h2 id="group-feed-title">Posts</h2>
+                    <p>{postsLoading ? 'Loading posts...' : pluralize(postsData?.totalCount ?? posts.length, 'post')}</p>
+                  </div>
+                </div>
+
+                {postsError ? <InlineMessage tone="error">Failed to load posts.</InlineMessage> : null}
+                {postsLoading ? (
+                  <div className="group-feed-list" aria-label="Loading posts">
+                    {Array.from({ length: 3 }).map((_, index) => (
+                      <Skeleton key={index} className="group-post-skeleton" />
+                    ))}
+                  </div>
+                ) : null}
+                {!postsLoading && !postsError ? (
+                  <div className="group-feed-list">
+                    {posts.map((post) => (
+                      <GroupPostCard key={post.id} post={post} />
+                    ))}
+                    {posts.length === 0 ? (
+                      <EmptyState
+                        title="No posts yet"
+                        description="Start the first discussion for this group."
+                        action={canCreatePost ? (
+                          <Button as="a" href="#group-create-post" variant="primary">
+                            Create post
+                          </Button>
+                        ) : null}
+                      />
+                    ) : null}
+                  </div>
+                ) : null}
+              </section>
+            </main>
+
+            <aside className="group-detail-sidebar" aria-label="Group information">
+              <section className="group-section group-section--compact" aria-labelledby="group-about-title">
+                <div className="group-section__header">
+                  <div>
+                    <span className="groups-eyebrow">About</span>
+                    <h2 id="group-about-title">Group info</h2>
+                  </div>
+                </div>
+                <dl className="group-info-list">
+                  <div>
+                    <dt>Visibility</dt>
+                    <dd>{visibilityLabel}</dd>
+                  </div>
+                  <div>
+                    <dt>Members</dt>
+                    <dd>{pluralize(group.membersCount, 'member')}</dd>
+                  </div>
+                  <div>
+                    <dt>Posts</dt>
+                    <dd>{pluralize(group.postsCount, 'post')}</dd>
+                  </div>
+                  {roleLabel ? (
+                    <div>
+                      <dt>Your role</dt>
+                      <dd>{roleLabel}</dd>
+                    </div>
+                  ) : null}
+                </dl>
+              </section>
+
+              <section className="group-section group-section--compact" aria-labelledby="group-pinned-title">
+                <div className="group-section__header">
+                  <div>
+                    <span className="groups-eyebrow">Context</span>
+                    <h2 id="group-pinned-title">Pinned media</h2>
+                  </div>
+                </div>
+                {canModerate ? (
+                  <form className="group-form group-form--compact" onSubmit={handlePinMedia}>
+                    <EntityPicker
+                      label="Media to pin"
+                      placeholder="Search media by title"
+                      value={pinMedia}
+                      onChange={setPinMedia}
+                      searchFn={searchMedia}
+                      disabled={mutating}
+                    />
+                    <Button type="submit" disabled={mutating || !pinMedia}>
+                      <Pin aria-hidden="true" />
+                      Pin media
+                    </Button>
+                  </form>
+                ) : null}
+
+                {pinned.length > 0 ? (
+                  <div className="group-pinned-list">
+                    {pinned.map((item) => (
+                      <Link key={item.mediaId} className="group-pinned-card" to={`/media/${item.mediaId}`}>
+                        <div className="group-pinned-card__cover">
+                          {item.coverUrl ? (
+                            <img src={buildImageUrl(item.coverUrl)} alt="" />
+                          ) : (
+                            <BookOpen aria-hidden="true" />
+                          )}
+                        </div>
+                        <div>
+                          <strong>{item.title}</strong>
+                          {item.addedAt ? <span>Pinned {formatDate(item.addedAt)}</span> : null}
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState title="No pinned media yet" description="Pinned movies, TV series, and books will appear here." />
+                )}
+              </section>
+            </aside>
+          </div>
 
           {canManageRoles ? (
-            <section className={styles.section}>
-              <Stack className="gap-4">
-                <h2 className={styles.sectionTitle}>Members</h2>
-                <div className={styles.staffGrid}>
+            <section className="group-section" aria-labelledby="group-members-title">
+              <div className="group-section__header">
+                <div>
+                  <span className="groups-eyebrow">Owner tools</span>
+                  <h2 id="group-members-title">Members</h2>
+                </div>
+              </div>
+              {membersError ? <InlineMessage tone="error">Failed to load members.</InlineMessage> : null}
+              {membersLoading ? <Skeleton className="group-admin-skeleton" /> : null}
+              {!membersLoading && !membersError ? (
+                <div className="group-member-list">
                   {members.map((member) => {
-                    const canSetGroupAdmin = viewerRole === GROUP_ROLE.Owner && member.role !== GROUP_ROLE.Owner;
+                    const memberRole = getRoleValue(member.role);
+                    const canSetGroupAdmin = viewerRoleValue === GROUP_ROLE.Owner && memberRole !== GROUP_ROLE.Owner;
                     const canSetGroupModerator =
-                      member.role !== GROUP_ROLE.Owner &&
-                      (viewerRole === GROUP_ROLE.Owner || viewerRole === GROUP_ROLE.GroupAdmin);
+                      memberRole !== GROUP_ROLE.Owner &&
+                      (viewerRoleValue === GROUP_ROLE.Owner || viewerRoleValue === GROUP_ROLE.GroupAdmin);
                     const canDemote =
-                      member.role !== GROUP_ROLE.Owner &&
-                      (viewerRole === GROUP_ROLE.Owner || viewerRole === GROUP_ROLE.GroupAdmin);
+                      memberRole !== GROUP_ROLE.Owner &&
+                      (viewerRoleValue === GROUP_ROLE.Owner || viewerRoleValue === GROUP_ROLE.GroupAdmin);
                     const canBan =
-                      member.role !== GROUP_ROLE.Owner &&
-                      (viewerRole === GROUP_ROLE.Owner ||
-                        (viewerRole === GROUP_ROLE.GroupAdmin && member.role !== GROUP_ROLE.GroupAdmin));
+                      memberRole !== GROUP_ROLE.Owner &&
+                      (viewerRoleValue === GROUP_ROLE.Owner ||
+                        (viewerRoleValue === GROUP_ROLE.GroupAdmin && memberRole !== GROUP_ROLE.GroupAdmin));
 
                     return (
-                      <div key={member.userId} className={styles.memberRow}>
+                      <article key={member.userId ?? member.userName} className="group-member-row">
                         <div>
-                          <p className="text-sm font-semibold text-[var(--text-primary)]">
-                            {member.userName || member.userId}
-                          </p>
-                          <span className={styles.roleBadge}>Role: {ROLE_LABELS[member.role] || member.role}</span>
+                          <strong>{member.userName || member.userId}</strong>
+                          <span>{formatRoleLabel(member.role)} · Joined {formatDate(member.joinedAt) || 'unknown date'}</span>
                         </div>
-                        <div className={styles.actionRow}>
+                        <div className="group-member-row__actions">
                           {canSetGroupAdmin ? (
-                            <button
-                              className={styles.button}
-                              type="button"
-                              onClick={() => handleRoleChange(member.userId, GROUP_ROLE.GroupAdmin)}
-                              disabled={mutating}
-                            >
-                              Make group admin
-                            </button>
+                            <Button size="sm" type="button" onClick={() => handleRoleChange(member.userId, GROUP_ROLE.GroupAdmin)} disabled={mutating || !member.userId}>
+                              Make admin
+                            </Button>
                           ) : null}
                           {canSetGroupModerator ? (
-                            <button
-                              className={styles.button}
-                              type="button"
-                              onClick={() => handleRoleChange(member.userId, GROUP_ROLE.GroupModerator)}
-                              disabled={mutating}
-                            >
-                              Make group moderator
-                            </button>
+                            <Button size="sm" type="button" onClick={() => handleRoleChange(member.userId, GROUP_ROLE.GroupModerator)} disabled={mutating || !member.userId}>
+                              Make moderator
+                            </Button>
                           ) : null}
                           {canDemote ? (
-                            <button
-                              className={styles.button}
-                              type="button"
-                              onClick={() => handleRoleChange(member.userId, GROUP_ROLE.Member)}
-                              disabled={mutating}
-                            >
+                            <Button size="sm" type="button" onClick={() => handleRoleChange(member.userId, GROUP_ROLE.Member)} disabled={mutating || !member.userId}>
                               Make member
-                            </button>
+                            </Button>
                           ) : null}
                           {canBan ? (
-                            <button
-                              className={styles.button}
-                              type="button"
-                              onClick={() => setBanTarget(member)}
-                              disabled={mutating}
-                            >
+                            <Button size="sm" type="button" variant="danger" onClick={() => setBanTarget(member)} disabled={mutating || !member.userId}>
                               Ban
-                            </button>
+                            </Button>
                           ) : null}
                         </div>
-                      </div>
+                      </article>
                     );
                   })}
-                  {members.length === 0 ? <p className={styles.muted}>No members loaded.</p> : null}
+                  {members.length === 0 ? <EmptyState title="No members loaded" /> : null}
                 </div>
-              </Stack>
+              ) : null}
             </section>
           ) : null}
 
           {canModerate ? (
-            <section className={styles.section}>
-              <Stack className="gap-4">
-                <h2 className={styles.sectionTitle}>Staff Chat</h2>
-                <form
-                  className={styles.form}
-                  onSubmit={async (e) => {
-                    e.preventDefault();
-                    if (!staffMessage.trim() || !id) return;
-                    setActionError('');
-                    try {
-                      await createStaffMessage(id, { content: staffMessage.trim() });
-                      setStaffMessage('');
-                    } catch (err) {
-                      setActionError(err?.response?.data?.message || 'Could not send staff message.');
-                    }
-                  }}
-                >
-                  <Textarea
-                    rows={3}
-                    placeholder="Share a note with admins/mods..."
-                    value={staffMessage}
-                    onChange={(e) => setStaffMessage(e.target.value)}
-                  />
-                  <Button type="submit" disabled={mutating}>
-                    Send
+            <section className="group-section" aria-labelledby="group-staff-title">
+              <div className="group-section__header">
+                <div>
+                  <span className="groups-eyebrow">Moderator space</span>
+                  <h2 id="group-staff-title">Staff chat</h2>
+                </div>
+              </div>
+              <form className="group-form" onSubmit={handleStaffMessage}>
+                <FormField label="Staff message">
+                  {(fieldProps) => (
+                    <Textarea
+                      {...fieldProps}
+                      rows={3}
+                      maxLength={4000}
+                      placeholder="Share a note with admins and moderators..."
+                      value={staffMessage}
+                      onChange={(event) => setStaffMessage(event.target.value)}
+                    />
+                  )}
+                </FormField>
+                <div className="group-form__actions">
+                  <Button type="submit" disabled={mutating || !staffMessage.trim()}>
+                    Send message
                   </Button>
-                </form>
-                <div className={styles.staffGrid}>
+                </div>
+              </form>
+              {staffError ? <InlineMessage tone="error">Failed to load staff messages.</InlineMessage> : null}
+              {staffLoading ? <Skeleton className="group-admin-skeleton" /> : null}
+              {!staffLoading && !staffError ? (
+                <div className="group-staff-list">
                   {staffMessages.map((message) => (
-                    <article key={message.id} className={styles.staffMessage}>
-                      <div className={styles.staffHeader}>
-                        <p className="text-sm font-semibold text-[var(--text-primary)]">
-                          {message.authorName || message.authorId}
-                        </p>
-                        <p className={styles.muted}>{new Date(message.createdAt).toLocaleString()}</p>
-                      </div>
-                      <p className="text-sm text-[var(--text-secondary)]">{message.content}</p>
+                    <article key={message.id} className="group-staff-message">
+                      <header>
+                        <strong>{message.authorName || message.authorId}</strong>
+                        <span>{formatDateTime(message.createdAt)}</span>
+                      </header>
+                      <p>{message.content}</p>
                     </article>
                   ))}
                   {staffMessages.length === 0 ? <EmptyState title="No staff messages yet" /> : null}
                 </div>
-              </Stack>
+              ) : null}
             </section>
           ) : null}
 
-          <section className={styles.section}>
-            <Stack className="gap-4">
-              <h2 className={styles.sectionTitle}>Feed</h2>
-              {postsLoading ? <LoadingState label="Loading posts..." /> : null}
-              {postsError ? <InlineMessage tone="error">Failed to load posts.</InlineMessage> : null}
-              {!postsLoading && !postsError ? (
-                <div className={styles.posts}>
-                  {posts.map((post) => (
-                    <GroupPostCard key={post.id} post={post} />
-                  ))}
-                  {posts.length === 0 ? <EmptyState title="No posts yet" description="Create the first post to start the group feed." /> : null}
-                </div>
-              ) : null}
-            </Stack>
-          </section>
           <Dialog
             open={Boolean(banTarget)}
             title="Ban group member?"
@@ -425,7 +585,7 @@ function GroupDetailPage() {
               </>
             )}
           />
-        </Stack>
+        </div>
       </Container>
     </PageLayout>
   );

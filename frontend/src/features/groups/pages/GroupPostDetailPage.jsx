@@ -1,53 +1,44 @@
+import {
+  ArrowLeft,
+  BookOpen,
+  Flag,
+  MessageCircle,
+  Reply,
+  ThumbsDown,
+  ThumbsUp,
+  Trash2,
+  UserRound,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { useAuth } from '../../../context/AuthContext';
-import { useGroupPostQuery } from '../queries/useGroupPostQuery';
-import { useGroupPostCommentsQuery } from '../queries/useGroupPostCommentsQuery';
-import { useGroupMutations } from '../queries/useGroupMutations';
-import { useGroupDetailsQuery } from '../queries/useGroupDetailsQuery';
-import { useModerationMutations } from '../../moderation/queries/useModerationMutations';
-import { buildImageUrl } from '../../../shared/utils/buildImageUrl';
-import PageLayout from '../../../layouts/PageLayout';
-import Container from '../../../shared/ui/Container';
-import Stack from '../../../shared/ui/Stack';
 import Button from '../../../shared/ui/Button';
+import Container from '../../../shared/ui/Container';
 import Dialog from '../../../shared/ui/Dialog';
 import EmptyState from '../../../shared/ui/EmptyState';
+import FormField from '../../../shared/ui/FormField';
 import InlineMessage from '../../../shared/ui/InlineMessage';
-import LoadingState from '../../../shared/ui/LoadingState';
-import PageHeader from '../../../shared/ui/PageHeader';
+import { Skeleton } from '../../../shared/ui/LoadingState';
 import Textarea from '../../../shared/ui/Textarea';
+import { buildImageUrl } from '../../../shared/utils/buildImageUrl';
+import { useAuth } from '../../../context/AuthContext';
+import { useModerationMutations } from '../../moderation/queries/useModerationMutations';
+import PageLayout from '../../../layouts/PageLayout';
+import { useGroupDetailsQuery } from '../queries/useGroupDetailsQuery';
+import { useGroupMutations } from '../queries/useGroupMutations';
+import { useGroupPostCommentsQuery } from '../queries/useGroupPostCommentsQuery';
+import { useGroupPostQuery } from '../queries/useGroupPostQuery';
+import {
+  canModerateGroup,
+  formatDateTime,
+  getCommentAuthorLabel,
+  getPostAuthorLabel,
+  getRoleValue,
+  pluralize,
+} from '../utils/groupFormatters';
+import '../groups.css';
 
 const REPORT_TARGET = {
   Comment: 2,
-};
-
-const GROUP_ROLE = {
-  Member: 1,
-  GroupModerator: 2,
-  GroupAdmin: 3,
-  Owner: 4,
-};
-
-const styles = {
-  pageStack: 'gap-6',
-  muted: 'text-[var(--text-muted)]',
-  meta: 'text-sm text-[var(--text-muted)]',
-  section: 'ui-card p-4 sm:p-6',
-  voteRow: 'flex flex-wrap items-center gap-2',
-  voteCount: 'text-sm font-semibold text-[var(--text-primary)]',
-  mediaGrid: 'mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2',
-  mediaItem: 'rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] p-2',
-  mediaImage: 'mb-1 w-full rounded-md object-cover aspect-[2/3]',
-  mediaTitle: 'text-xs text-[var(--text-secondary)]',
-  form: 'grid gap-3',
-  comments: 'grid gap-3',
-  commentCard: 'ui-panel p-3',
-  commentHeader: 'flex flex-wrap items-center justify-between gap-2',
-  commentMeta: 'text-xs text-[var(--text-muted)]',
-  commentActions: 'flex flex-wrap gap-2',
-  commentBody: 'text-sm text-[var(--text-secondary)]',
-  replyIndent: 'ml-6 border-l border-[var(--border)] pl-4',
 };
 
 function GroupPostDetailPage() {
@@ -65,10 +56,15 @@ function GroupPostDetailPage() {
   const [reportTarget, setReportTarget] = useState(null);
   const [reportReason, setReportReason] = useState('');
   const [actionError, setActionError] = useState('');
-  const viewerRole = group?.viewerRole ?? null;
-  const canModerate = viewerRole === GROUP_ROLE.Owner || viewerRole === GROUP_ROLE.GroupAdmin || viewerRole === GROUP_ROLE.GroupModerator;
 
+  const viewerRole = group?.viewerRole ?? null;
+  const isMember = Boolean(getRoleValue(viewerRole));
+  const canModerate = canModerateGroup(viewerRole);
+  const canInteract = Boolean(user && isMember);
   const comments = useMemo(() => (Array.isArray(commentsData) ? commentsData : []), [commentsData]);
+  const media = Array.isArray(post?.media) ? post.media : [];
+  const score = (Number(post?.upvotes) || 0) - (Number(post?.downvotes) || 0);
+  const replyTarget = useMemo(() => comments.find((comment) => comment.id === replyTo), [comments, replyTo]);
 
   const commentTree = useMemo(() => {
     const byParent = new Map();
@@ -81,7 +77,7 @@ function GroupPostDetailPage() {
   }, [comments]);
 
   const handleVote = async (value) => {
-    if (!groupId || !postId) return;
+    if (!groupId || !postId || !canInteract) return;
     setActionError('');
     try {
       await votePost(groupId, postId, value);
@@ -90,9 +86,9 @@ function GroupPostDetailPage() {
     }
   };
 
-  const handleSubmitComment = async (e) => {
-    e.preventDefault();
-    if (!groupId || !postId || !commentText.trim()) return;
+  const handleSubmitComment = async (event) => {
+    event.preventDefault();
+    if (!groupId || !postId || !commentText.trim() || !canInteract) return;
 
     setActionError('');
     try {
@@ -120,6 +116,7 @@ function GroupPostDetailPage() {
 
   const handleReportComment = async () => {
     if (!reportTarget || !reportReason.trim()) return;
+    setActionError('');
     try {
       await createReport({ targetType: REPORT_TARGET.Comment, targetId: reportTarget.id, reason: reportReason.trim() });
       setReportTarget(null);
@@ -131,49 +128,53 @@ function GroupPostDetailPage() {
 
   const renderComments = (parentId = 'root', depth = 0) => {
     const items = commentTree.get(parentId) || [];
+
     return items.map((comment) => {
-      const isAuthor = Boolean(user && comment.authorId === user.id);
+      const authorLabel = getCommentAuthorLabel(comment);
+      const authorId = comment.authorId ?? comment.userId;
+      const isAuthor = Boolean(
+        user?.id &&
+        authorId &&
+        String(authorId).toLowerCase() === String(user.id).toLowerCase(),
+      );
       const canDelete = isAuthor || canModerate;
+      const avatarUrl = comment.avatarUrl ? buildImageUrl(comment.avatarUrl) : null;
+
       return (
-        <div key={comment.id} className={depth > 0 ? styles.replyIndent : undefined}>
-          <article className={styles.commentCard}>
-            <div className={styles.commentHeader}>
-              <div>
-                <p className={styles.commentMeta}>{comment.authorName || 'Anonymous'}</p>
-                <p className={styles.commentMeta}>{new Date(comment.createdAt).toLocaleString()}</p>
+        <div key={comment.id} className={depth > 0 ? 'group-comment-thread' : undefined}>
+          <article className="group-comment-card">
+            <header className="group-comment-card__header">
+              <div className="group-comment-card__author">
+                <div className="group-comment-card__avatar" aria-hidden="true">
+                  {avatarUrl ? <img src={avatarUrl} alt="" /> : <UserRound />}
+                </div>
+                <div>
+                  <strong>{authorLabel}</strong>
+                  <span>{formatDateTime(comment.createdAt)}</span>
+                </div>
               </div>
-              <div className={styles.commentActions}>
-                {user ? (
-                  <Button
-                    size="sm"
-                    type="button"
-                    onClick={() => setReplyTo(comment.id)}
-                  >
+              <div className="group-comment-card__actions">
+                {canInteract ? (
+                  <Button size="sm" type="button" onClick={() => setReplyTo(comment.id)}>
+                    <Reply aria-hidden="true" />
                     Reply
                   </Button>
                 ) : null}
                 {canDelete ? (
-                  <button
-                    className="ui-button px-3 py-1.5 text-xs"
-                    type="button"
-                    disabled={mutating}
-                    onClick={() => setDeleteTarget(comment)}
-                  >
+                  <Button size="sm" type="button" variant="danger" disabled={mutating} onClick={() => setDeleteTarget(comment)}>
+                    <Trash2 aria-hidden="true" />
                     Delete
-                  </button>
+                  </Button>
                 ) : null}
                 {user ? (
-                  <button
-                    className="ui-button px-3 py-1.5 text-xs"
-                    type="button"
-                    onClick={() => setReportTarget(comment)}
-                  >
+                  <Button size="sm" type="button" onClick={() => setReportTarget(comment)}>
+                    <Flag aria-hidden="true" />
                     Report
-                  </button>
+                  </Button>
                 ) : null}
               </div>
-            </div>
-            <p className={styles.commentBody}>{comment.content}</p>
+            </header>
+            <p>{comment.content}</p>
           </article>
           {renderComments(comment.id, depth + 1)}
         </div>
@@ -183,9 +184,12 @@ function GroupPostDetailPage() {
 
   if (loading) {
     return (
-      <PageLayout>
-        <Container>
-          <LoadingState label="Loading post..." />
+      <PageLayout className="groups-page">
+        <Container size="xxl">
+          <div className="group-post-shell">
+            <Skeleton className="group-post-loading__hero" />
+            <Skeleton className="group-post-loading__comments" />
+          </div>
         </Container>
       </PageLayout>
     );
@@ -193,98 +197,160 @@ function GroupPostDetailPage() {
 
   if (error || !post) {
     return (
-      <PageLayout>
-        <Container>
+      <PageLayout className="groups-page">
+        <Container size="lg">
           <InlineMessage tone="error">Post not found.</InlineMessage>
         </Container>
       </PageLayout>
     );
   }
 
-  const media = Array.isArray(post.media) ? post.media : [];
-
   return (
-    <PageLayout>
-      <Container>
-        <Stack className={styles.pageStack}>
-          <Link className={styles.meta} to={`/groups/${groupId}`}>
-            Back to group
-          </Link>
-          <section className={styles.section}>
-            <Stack className="gap-3">
-              <PageHeader title={post.title} subtitle={new Date(post.createdAt).toLocaleString()} />
-              <p className="text-[var(--text-secondary)]">{post.content}</p>
-              <div className={styles.voteRow}>
-                <Button size="sm" type="button" onClick={() => handleVote(1)} disabled={mutating}>
-                  {post.userVote === 1 ? 'Upvoted' : 'Upvote'}
-                </Button>
-                <Button size="sm" type="button" onClick={() => handleVote(-1)} disabled={mutating}>
-                  {post.userVote === -1 ? 'Downvoted' : 'Downvote'}
-                </Button>
-                {user ? (
-                  <Button size="sm" type="button" onClick={() => handleVote(0)} disabled={mutating}>
-                    Clear
-                  </Button>
-                ) : null}
-                <span className={styles.voteCount}>
-                  {post.upvotes - post.downvotes} score · {post.commentCount ?? 0} comments
-                </span>
-              </div>
-              {media.length ? (
-                <div className={styles.mediaGrid}>
-                  {media.map((item) => (
-                    <div key={item.mediaId} className={styles.mediaItem}>
-                      <img className={styles.mediaImage} src={buildImageUrl(item.coverUrl)} alt={item.title} />
-                      <span className={styles.mediaTitle}>{item.title}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-            </Stack>
-          </section>
+    <PageLayout className="groups-page">
+      <Container size="xxl">
+        <div className="group-post-shell">
+          <nav className="group-breadcrumb" aria-label="Group post breadcrumb">
+            <Link to="/groups">Groups</Link>
+            <Link to={`/groups/${groupId}`}>{group?.name || 'Group'}</Link>
+            <span>{post.title}</span>
+          </nav>
 
-          <section className={styles.section}>
-            <Stack className="gap-3">
-              <h2 className="text-xl font-semibold text-[var(--text-primary)]">Comments</h2>
-              {user ? (
-                <form className={styles.form} onSubmit={handleSubmitComment}>
-                  {replyTo ? (
-                    <p className={styles.meta}>
-                      Replying to comment {replyTo}.{' '}
-                      <Button
-                        size="sm"
-                        type="button"
-                        onClick={() => setReplyTo(null)}
-                      >
-                        Cancel
-                      </Button>
-                    </p>
+          <article className="group-post-article">
+            <Link className="groups-back-link" to={`/groups/${groupId}`}>
+              <ArrowLeft aria-hidden="true" />
+              Back to group
+            </Link>
+            <header className="group-post-article__header">
+              <div className="group-post-article__meta">
+                <span>{getPostAuthorLabel(post)}</span>
+                {post.createdAt ? <span>{formatDateTime(post.createdAt)}</span> : null}
+              </div>
+              <h1>{post.title}</h1>
+            </header>
+
+            <p className="group-post-article__body">{post.content}</p>
+
+            {media.length ? (
+              <div className="group-post-media-grid" aria-label="Linked media">
+                {media.map((item) => (
+                  <Link key={item.mediaId} className="group-post-media-card" to={`/media/${item.mediaId}`}>
+                    <div>
+                      {item.coverUrl ? (
+                        <img src={buildImageUrl(item.coverUrl)} alt="" />
+                      ) : (
+                        <BookOpen aria-hidden="true" />
+                      )}
+                    </div>
+                    <strong>{item.title}</strong>
+                  </Link>
+                ))}
+              </div>
+            ) : null}
+
+            <footer className="group-post-article__footer">
+              {canInteract ? (
+                <div className="group-vote-row" aria-label="Post voting">
+                  <Button
+                    size="sm"
+                    type="button"
+                    aria-pressed={post.userVote === 1}
+                    onClick={() => handleVote(1)}
+                    disabled={mutating}
+                  >
+                    <ThumbsUp aria-hidden="true" />
+                    {post.userVote === 1 ? 'Upvoted' : 'Upvote'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    type="button"
+                    aria-pressed={post.userVote === -1}
+                    onClick={() => handleVote(-1)}
+                    disabled={mutating}
+                  >
+                    <ThumbsDown aria-hidden="true" />
+                    {post.userVote === -1 ? 'Downvoted' : 'Downvote'}
+                  </Button>
+                  {post.userVote ? (
+                    <Button size="sm" type="button" variant="ghost" onClick={() => handleVote(0)} disabled={mutating}>
+                      Clear vote
+                    </Button>
                   ) : null}
-                  <Textarea
-                    rows={3}
-                    placeholder="Write a comment..."
-                    value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
-                    required
-                  />
-                  <Button type="submit" disabled={mutating}>
+                </div>
+              ) : (
+                <p className="group-post-article__note">
+                  {user ? 'Join the group to vote or comment.' : 'Sign in and join the group to vote or comment.'}
+                </p>
+              )}
+              <div className="group-post-article__stats">
+                <span><ThumbsUp aria-hidden="true" /> {score} score</span>
+                <span><MessageCircle aria-hidden="true" /> {pluralize(post.commentCount, 'comment')}</span>
+              </div>
+            </footer>
+          </article>
+
+          <section className="group-section" aria-labelledby="group-comments-title">
+            <div className="group-section__header">
+              <div>
+                <span className="groups-eyebrow">Replies</span>
+                <h2 id="group-comments-title">Comments</h2>
+                <p>{commentsLoading ? 'Loading comments...' : pluralize(comments.length, 'comment')}</p>
+              </div>
+            </div>
+
+            {canInteract ? (
+              <form className="group-form group-comment-form" onSubmit={handleSubmitComment}>
+                {replyTo ? (
+                  <div className="group-reply-context">
+                    Replying to {replyTarget ? getCommentAuthorLabel(replyTarget) : 'a comment'}
+                    <Button size="sm" type="button" variant="ghost" onClick={() => setReplyTo(null)}>
+                      Cancel reply
+                    </Button>
+                  </div>
+                ) : null}
+                <FormField label={replyTo ? 'Reply' : 'Comment'}>
+                  {(fieldProps) => (
+                    <Textarea
+                      {...fieldProps}
+                      rows={3}
+                      maxLength={4000}
+                      placeholder="Write a thoughtful reply..."
+                      value={commentText}
+                      onChange={(event) => setCommentText(event.target.value)}
+                      required
+                    />
+                  )}
+                </FormField>
+                <div className="group-form__actions">
+                  <Button type="submit" variant="primary" disabled={mutating || !commentText.trim()}>
                     Post comment
                   </Button>
-                </form>
-              ) : (
-                <p className={styles.muted}>Sign in to comment.</p>
-              )}
-              {commentsLoading ? <LoadingState label="Loading comments..." /> : null}
-              {commentsError ? <InlineMessage tone="error">Failed to load comments.</InlineMessage> : null}
-              {!commentsLoading && !commentsError ? (
-                <div className={styles.comments}>
-                  {renderComments()}
-                  {comments.length === 0 ? <EmptyState title="No comments yet" description="Start the discussion with the first comment." /> : null}
                 </div>
-              ) : null}
-              {actionError ? <InlineMessage tone="error">{actionError}</InlineMessage> : null}
-            </Stack>
+              </form>
+            ) : (
+              <InlineMessage tone="info">
+                {user ? 'Join this group before commenting.' : 'Sign in before commenting.'}
+              </InlineMessage>
+            )}
+
+            {commentsLoading ? (
+              <div className="group-comments-list" aria-label="Loading comments">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <Skeleton key={index} className="group-comment-skeleton" />
+                ))}
+              </div>
+            ) : null}
+            {commentsError ? <InlineMessage tone="error">Failed to load comments.</InlineMessage> : null}
+            {!commentsLoading && !commentsError ? (
+              <div className="group-comments-list">
+                {renderComments()}
+                {comments.length === 0 ? (
+                  <EmptyState title="No comments yet" description="Start the discussion with the first comment." />
+                ) : null}
+              </div>
+            ) : null}
+            {actionError ? <InlineMessage tone="error">{actionError}</InlineMessage> : null}
           </section>
+
           <Dialog
             open={Boolean(deleteTarget)}
             title="Delete comment?"
@@ -324,14 +390,19 @@ function GroupPostDetailPage() {
               </>
             )}
           >
-            <Textarea
-              value={reportReason}
-              onChange={(e) => setReportReason(e.target.value)}
-              placeholder="Reason for report"
-              rows={4}
-            />
+            <FormField label="Reason for report">
+              {(fieldProps) => (
+                <Textarea
+                  {...fieldProps}
+                  value={reportReason}
+                  onChange={(event) => setReportReason(event.target.value)}
+                  placeholder="What should moderators review?"
+                  rows={4}
+                />
+              )}
+            </FormField>
           </Dialog>
-        </Stack>
+        </div>
       </Container>
     </PageLayout>
   );

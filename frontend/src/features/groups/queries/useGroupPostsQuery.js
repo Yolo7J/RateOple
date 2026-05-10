@@ -11,6 +11,5 @@ export const useGroupPostsQuery = (groupId, params = {}) => {
     queryKey: ['groups', 'posts', groupId, queryParams],
     queryFn: () => groupService.getPosts(groupId, queryParams),
     enabled: Boolean(groupId),
-    initialData: { items: [], totalCount: 0, page: queryParams.page, pageSize: queryParams.pageSize },
   });
 };

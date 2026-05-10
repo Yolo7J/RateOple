@@ -13,6 +13,5 @@ export const useGroupsQuery = (params = {}, enabled = true) => {
     queryKey: ['groups', 'list', queryParams],
     queryFn: () => groupService.listGroups(queryParams),
     enabled,
-    initialData: { items: [], totalCount: 0, page: queryParams.page, pageSize: queryParams.pageSize },
   });
 };

@@ -1,3 +1,63 @@
+RateOple Groups cinematic discussion hub results
+
+Summary of Groups UX refactor:
+- Redesigned Groups into a dark-first discussion hub with cinematic page heroes, polished cards, readable post previews, stronger empty states, and mobile-first layouts.
+- Preserved the existing group APIs, join/leave/create group/create post/comment/vote/pin/moderation flows, and current role-gated controls.
+- Added shared group formatting helpers for visibility, roles, dates, counts, and fallback author labels based on real contract fields.
+
+Files changed:
+- frontend/src/features/groups/components/GroupCard.jsx
+- frontend/src/features/groups/components/GroupPostCard.jsx
+- frontend/src/features/groups/pages/GroupsPage.jsx
+- frontend/src/features/groups/pages/GroupDetailPage.jsx
+- frontend/src/features/groups/pages/GroupPostDetailPage.jsx
+- frontend/src/features/groups/pages/CreateGroupPage.jsx
+- frontend/src/features/groups/queries/useGroupsQuery.js
+- frontend/src/features/groups/queries/useGroupPostsQuery.js
+- frontend/src/features/groups/queries/useGroupPostQuery.js
+- frontend/src/features/groups/queries/useGroupPostCommentsQuery.js
+- frontend/src/features/groups/groups.css
+- frontend/src/features/groups/utils/groupFormatters.js
+
+Group list behavior:
+- `/groups` now has a community hero, signed-in Create group CTA, Browse media CTA, labeled search/visibility controls, real count summary, loading skeleton cards, error retry, and empty-state actions.
+- Group cards show real name, description, visibility, viewer role when available, member/post counts, created date, and an Open group action.
+
+Group detail behavior:
+- `/groups/:id` now renders a group hero with real description, visibility, member/post/created stats, join/leave/create post actions based on auth and role, and a two-column discussion layout on desktop.
+- The feed uses readable post cards with score/comment metadata and linked media previews.
+- Pinned media, about/info, member management, staff chat, role changes, bans, and pin controls remain gated by existing viewer role checks.
+- Empty post feeds show "No posts yet" with a create-post action only when the viewer is allowed to post.
+
+Group post detail behavior:
+- `/groups/:groupId/posts/:postId` now has breadcrumbs, a back link, a cinematic post content card, linked media cards, score/comment stats, member-gated voting, comments, reply composer, report/delete comment actions, and an empty comments state.
+- Comments use real author/display/avatar fields when available and avoid horizontal overflow in nested replies.
+
+Create group/post behavior:
+- Create group now has a polished form with labels, hints, validation messaging, visibility preview, Cancel, and submit actions, then navigates to the created group.
+- Inline create-post remains on group detail, now with labeled title/content fields, linked media picker, disabled invalid submit, and member-only visibility.
+
+Responsive behavior:
+- Backend-hosted Playwright inspection covered `/groups`, group detail with posts, group detail with no posts, post detail, and create group at desktop and 320px mobile.
+- All inspected routes reported no document-level horizontal overflow.
+- Light theme was checked on `/groups` and rendered with the new group surfaces.
+
+Checks run:
+- `cd frontend && npm run lint`: passed.
+- `cd frontend && npm run build`: passed. Build emitted existing Rollup annotation warnings from @microsoft/signalr comments.
+- `cd frontend && npm run test:e2e`: passed, 2 tests.
+- `cd frontend && npm run build:backend`: passed.
+- `cd backend && dotnet build RateOple.sln`: passed; run to diagnose backend host startup, not because backend contracts changed.
+- Backend-hosted manual inspection used `https://localhost:7167` from local launchSettings. The documented user note says 7168, but this checkout's `launchSettings.json` has the HTTPS profile on 7167.
+
+build:backend status:
+- `npm run build:backend` passed and copied the Vite output to `backend/RateOple/wwwroot`.
+
+Known limitations:
+- No backend contracts were changed, so group posts still do not expose post author names; the UI displays a generic real-data fallback when only `authorId` is available.
+- True signed-in member create-post/comment/vote flows were not manually exercised because no local credentials are committed. The create group page was visually inspected with mocked auth only; no fake groups, users, posts, counts, or activity were added.
+- Unauthenticated route inspection naturally produced expected auth/session `401` console events.
+
 RateOple collections containing media detail feed results
 
 Summary:
