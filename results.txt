@@ -1,3 +1,57 @@
+RateOple Auth onboarding screens refactor results
+
+Summary of Auth UX refactor:
+- Redesigned the authentication experience into a dark-first cinematic onboarding shell with a responsive RateOple brand panel on desktop and compact brand header on mobile.
+- Reworked login, register, and external auth callback cards with polished surfaces, clear "rate, review, discuss" positioning, accessible labels, readable inputs, visible error states, and loading/disabled submit states.
+- Preserved the existing auth routes, RequireGuest signed-in redirect behavior, CSRF/session/cookie behavior, Google sign-in entry point, and exact login/register payload shapes.
+
+Files changed:
+- frontend/src/layouts/AuthLayout.jsx
+- frontend/src/features/auth/auth.css
+- frontend/src/features/auth/components/AuthCard.jsx
+- frontend/src/features/auth/components/LoginForm.jsx
+- frontend/src/features/auth/components/RegisterForm.jsx
+- frontend/src/features/auth/pages/LoginPage.jsx
+- frontend/src/features/auth/pages/RegisterPage.jsx
+- frontend/src/features/auth/pages/ExternalLoginCallbackPage.jsx
+- frontend/src/locales/en.json
+- frontend/src/locales/bg.json
+- results.txt
+
+Login behavior:
+- `/login` now shows "Welcome back" with the requested subtitle, labeled email/password fields, backend validation errors, a disabled/loading submit state, Google sign-in, and the register link.
+- Login still calls `login(email, password)`, which posts the unchanged `{ email, password }` payload.
+- Backend-hosted invalid login inspection displayed the real backend error: "Incorrect Email or Password".
+- A temporary account was registered, logged in successfully, verified for signed-in `/login` guest redirect to `/`, and then deleted through the existing account deletion endpoint.
+
+Register behavior:
+- `/register` now shows "Create your RateOple account" with the requested subtitle, existing email/username/password/confirm-password fields only, the existing client password requirement check, visible validation errors, loading/disabled state, Google sign-in, and the login link.
+- Register still calls `register({ email, username, password })`, which posts the unchanged `{ email, username, password }` payload.
+
+Password/reset/confirm behavior:
+- No frontend forgot-password, reset-password, or confirm-email routes/components exist in this checkout, so no missing flows were invented.
+- The existing external Google callback page was restyled to match the auth card system and still redirects through the existing callback behavior.
+
+Responsive behavior:
+- Backend-hosted Playwright inspection covered `/login`, `/register`, and `/auth/callback` at 1280px desktop, 375px mobile, and 320px mobile; all reported no document-level horizontal overflow.
+- Light-theme backend-hosted inspection covered 320px `/login` and `/register`; both reported no document-level horizontal overflow.
+- Screenshots were checked after the final build, including desktop login and mobile register.
+
+Checks run:
+- `cd frontend && npm run lint`: passed.
+- `cd frontend && npm run build`: passed. Build emitted existing Rollup annotation warnings from @microsoft/signalr comments.
+- `cd frontend && npm run test:e2e`: passed, 2 tests.
+- `cd frontend && npm run build:backend`: passed.
+- Backend tests were not run because no backend source/contracts were changed.
+
+build:backend status:
+- `npm run build:backend` passed and copied the Vite output to `backend/RateOple/wwwroot`.
+
+Known limitations:
+- The backend HTTPS host in this checkout is `https://localhost:7167` per `launchSettings.json`; `https://localhost:7168` was not listening during inspection.
+- No forgot/reset/confirm frontend pages are currently routed, so the auth refactor covers login, register, and the existing external callback only.
+- A temporary user was created only to verify registration, successful login, and signed-in guest redirect, then deleted successfully.
+
 RateOple Account/Watchlist card overflow fix results
 
 Summary of Account/Watchlist overflow fix:

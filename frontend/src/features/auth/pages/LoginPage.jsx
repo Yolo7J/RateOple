@@ -6,11 +6,13 @@ const LoginPage = () => {
   const { t } = useLanguage();
 
   return (
-    <>
-    <AuthCard title={t("auth.login")}>
+    <AuthCard
+      eyebrow={t("auth.positioning")}
+      title={t("auth.loginTitle")}
+      subtitle={t("auth.loginSubtitle")}
+    >
       <LoginForm />
     </AuthCard>
-    </>
   );
 };
 

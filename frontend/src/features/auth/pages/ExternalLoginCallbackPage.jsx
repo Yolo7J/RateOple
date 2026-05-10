@@ -77,7 +77,11 @@ function ExternalLoginCallbackPage() {
   }, [externalLoginError, externalLoginResult, navigate, refreshSession, returnUrl, t]);
 
   return (
-    <AuthCard title={t('auth.google')}>
+    <AuthCard
+      eyebrow={t('auth.positioning')}
+      title={t('auth.google')}
+      subtitle={t('auth.googleCallbackSubtitle')}
+    >
       <div className={styles.stack}>
         <p className={styles.message}>{message}</p>
       </div>

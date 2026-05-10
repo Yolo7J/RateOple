@@ -6,12 +6,13 @@ const RegisterPage = () => {
   const { t } = useLanguage();
 
   return (
-    <>
-    <AuthCard title={t("auth.register")}>
+    <AuthCard
+      eyebrow={t("auth.positioning")}
+      title={t("auth.registerTitle")}
+      subtitle={t("auth.registerSubtitle")}
+    >
       <RegisterForm />
     </AuthCard>
-    </>
-    
   );
 };
 
