@@ -23,6 +23,8 @@ const SeasonDetailPage = lazy(() => import('../features/media/pages/SeasonDetail
 const EpisodeDetailPage = lazy(() => import('../features/media/pages/EpisodeDetailPage'));
 const CollectionsPage = lazy(() => import('../features/collections/pages/CollectionsPage'));
 const CollectionDetailPage = lazy(() => import('../features/collections/pages/CollectionDetailPage'));
+const CreateCollectionPage = lazy(() => import('../features/collections/pages/CreateCollectionPage'));
+const EditCollectionPage = lazy(() => import('../features/collections/pages/EditCollectionPage'));
 const NotificationsPage = lazy(() => import('../features/notifications/pages/NotificationsPage'));
 const WatchlistPage = lazy(() => import('../features/users/pages/WatchlistPage'));
 const AccountPage = lazy(() => import('../features/users/pages/AccountPage'));
@@ -53,6 +55,8 @@ const Router = () => {
         <Route path="/collections" element={renderLazyRoute(CollectionsPage)} />
         <Route path="/collections/:id" element={renderLazyRoute(CollectionDetailPage)} />
         <Route element={<RequireAuth />}>
+          <Route path="/collections/new" element={renderLazyRoute(CreateCollectionPage)} />
+          <Route path="/collections/:id/edit" element={renderLazyRoute(EditCollectionPage)} />
           <Route element={<RequireRole allow={['Admin', 'SuperAdmin']} />}>
             <Route path="/media/add" element={renderLazyRoute(AddMediaPage)} />
           </Route>

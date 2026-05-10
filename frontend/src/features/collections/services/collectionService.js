@@ -26,6 +26,10 @@ const collectionService = {
     return response.data;
   },
 
+  delete: async (collectionId) => {
+    await api.delete(`/collections/${collectionId}`);
+  },
+
   addItem: async (collectionId, mediaId, orderIndex = null) => {
     const response = await api.post(`/collections/${collectionId}/items`, {
       mediaId,

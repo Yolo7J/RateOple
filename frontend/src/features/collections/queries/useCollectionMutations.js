@@ -48,6 +48,14 @@ export const useCollectionMutations = () => {
     },
   });
 
+  const deleteCollectionMutation = useMutation({
+    mutationFn: (collectionId) => collectionService.delete(collectionId),
+    onSuccess: (_data, collectionId) => {
+      invalidateCollections(collectionId);
+      queryClient.removeQueries({ queryKey: ['collections', 'detail', collectionId], exact: true });
+    },
+  });
+
   const followMutation = useMutation({
     mutationFn: (collectionId) => collectionService.follow(collectionId),
     onSuccess: (_data, collectionId) => {
@@ -72,6 +80,7 @@ export const useCollectionMutations = () => {
       reorderItemsMutation.mutateAsync({ collectionId, mediaIds }),
     updateCollection: (collectionId, payload) =>
       updateCollectionMutation.mutateAsync({ collectionId, payload }),
+    deleteCollection: deleteCollectionMutation.mutateAsync,
     followCollection: followMutation.mutateAsync,
     unfollowCollection: unfollowMutation.mutateAsync,
     loading:
@@ -80,6 +89,7 @@ export const useCollectionMutations = () => {
       removeItemMutation.isPending ||
       reorderItemsMutation.isPending ||
       updateCollectionMutation.isPending ||
+      deleteCollectionMutation.isPending ||
       followMutation.isPending ||
       unfollowMutation.isPending,
     error:
@@ -88,6 +98,7 @@ export const useCollectionMutations = () => {
       removeItemMutation.error ||
       reorderItemsMutation.error ||
       updateCollectionMutation.error ||
+      deleteCollectionMutation.error ||
       followMutation.error ||
       unfollowMutation.error,
   };

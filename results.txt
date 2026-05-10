@@ -1,3 +1,63 @@
+RateOple Collections cinematic saved-lists hub results
+
+Summary of Collections UX refactor:
+- Redesigned Collections into a dark-first saved-lists hub with a cinematic hero, real artwork shelf previews, polished collection cards, labeled search/filter controls, loading skeletons, retry errors, and empty-state actions.
+- Added dedicated authenticated create and edit routes while preserving the existing collection APIs and the Media Detail `mediaId` add-to-collection flow.
+- Refactored CollectionCard into a reusable card used by the collections list, nested collection surfaces, and the Media Detail collections feed.
+
+Files changed:
+- frontend/src/app/router.jsx
+- frontend/src/features/collections/collections.css
+- frontend/src/features/collections/components/CollectionCard.jsx
+- frontend/src/features/collections/pages/CollectionsPage.jsx
+- frontend/src/features/collections/pages/CollectionDetailPage.jsx
+- frontend/src/features/collections/pages/CreateCollectionPage.jsx
+- frontend/src/features/collections/pages/EditCollectionPage.jsx
+- frontend/src/features/collections/queries/useCollectionMutations.js
+- frontend/src/features/collections/services/collectionService.js
+- frontend/src/features/media/pages/MediaDetailPage.jsx
+
+Collections list behavior:
+- `/collections` now shows the requested title/subtitle, Browse media CTA, signed-in Create collection CTA, real collection/artwork summaries, client-side search, owner-type filtering, loading skeletons, error retry, and "No collections found" empty state.
+- Cards show real title, description/fallback empty copy, item count, follower count, owner type, preview artwork, Open, and signed-in follow/unfollow action based on the existing follow endpoints.
+
+Collection detail behavior:
+- `/collections/:id` now has a hero/header with real title, description, item/follower/nested-list stats, owner type, sort state, artwork shelf, follow/unfollow, Browse media, and owner-manager Edit/Delete actions.
+- Media items use the shared MediaCard with safe DTO adaptation from collection item fields.
+- Empty collections show "No media in this collection yet." and an Add media action for authorized managers.
+- Nested collections remain supported and now render with the reusable CollectionCard.
+
+Create/edit behavior:
+- Added `/collections/new` and `/collections/:id/edit` under existing auth routing.
+- Create form has labels, hints, validation/error states, sort-mode selection, Cancel, submit, and `?mediaId=` preview/add behavior when the selected media can be loaded.
+- Edit form preserves existing update behavior for title, description, and sort mode, with Cancel and Delete actions using the existing delete endpoint.
+
+Media add/remove behavior:
+- Detail add flow keeps the existing EntityPicker search/add behavior, shows selected/current media clearly, prevents duplicate adds, and keeps current-media add from Media Detail.
+- Authorized managers can reorder and remove media with labeled buttons and confirmation before removal.
+- Delete collection is now wired through the existing frontend mutation layer and invalidates collection list/detail queries.
+
+Responsive behavior:
+- Backend-hosted Playwright inspection covered `/collections`, a collection detail with media, an empty collection detail, mobile 320px list/detail, 430px detail, unauthenticated create/edit redirects, and light-theme `/collections`.
+- All inspected routes reported no document-level horizontal overflow.
+- The backend HTTPS host in this checkout is `https://localhost:7167` per `launchSettings.json`; `https://localhost:7168` was not listening.
+
+Checks run:
+- `cd frontend && npm run lint`: passed.
+- `cd frontend && npm run build`: passed. Build emitted existing Rollup annotation warnings from @microsoft/signalr comments.
+- `cd frontend && npm run test:e2e`: passed, 2 tests.
+- `cd frontend && npm run build:backend`: passed.
+- `cd backend && dotnet build RateOple.sln`: passed; run only to diagnose backend host startup, not because backend contracts changed.
+- Backend tests were not run because no backend source/contracts were changed.
+
+build:backend status:
+- `npm run build:backend` passed and copied the Vite output to `backend/RateOple/wwwroot`.
+
+Known limitations:
+- The collection DTO still does not expose visibility, owner username, or initial viewer follow state, so the UI only displays real owner type/count fields and updates follow state after a user action.
+- Authenticated create/edit visual inspection was blocked by local demo credentials not matching the current database users; unauthenticated redirects were verified and no fake users or collections were added.
+- Unauthenticated route inspection naturally produced expected auth/session `401` console events.
+
 RateOple Groups cinematic discussion hub results
 
 Summary of Groups UX refactor:

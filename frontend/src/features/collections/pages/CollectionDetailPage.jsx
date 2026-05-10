@@ -1,50 +1,92 @@
-import { useState } from 'react';
-import { useSearchParams, useParams, useNavigate } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import {
+  ArrowLeft,
+  ArrowDown,
+  ArrowUp,
+  Library,
+  PencilLine,
+  RefreshCw,
+  Trash2,
+  UserRound,
+  UsersRound,
+} from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { buildImageUrl } from '../../../shared/utils/buildImageUrl';
 import { useCollectionDetailsQuery } from '../queries/useCollectionDetailsQuery';
 import { useCollectionsQuery } from '../queries/useCollectionsQuery';
 import { useCollectionMutations } from '../queries/useCollectionMutations';
+import { useMediaDetailsQuery } from '../../media/queries/useMediaDetailsQuery';
 import { searchMedia } from '../../media/services/mediaLookupService';
-import CollectionTree from '../components/CollectionTree';
+import CollectionCard from '../components/CollectionCard';
+import MediaCard from '../../../shared/components/MediaCard/MediaCard';
 import PageLayout from '../../../layouts/PageLayout';
 import Container from '../../../shared/ui/Container';
-import Grid from '../../../shared/ui/Grid';
-import Stack from '../../../shared/ui/Stack';
 import { EntityPicker } from '../../../shared/ui/EntityPicker';
 import Button from '../../../shared/ui/Button';
 import Dialog from '../../../shared/ui/Dialog';
 import EmptyState from '../../../shared/ui/EmptyState';
+import FormField from '../../../shared/ui/FormField';
 import InlineMessage from '../../../shared/ui/InlineMessage';
-import LoadingState from '../../../shared/ui/LoadingState';
-import PageHeader from '../../../shared/ui/PageHeader';
+import Input from '../../../shared/ui/Input';
 import Select from '../../../shared/ui/Select';
+import '../collections.css';
 
-const styles = {
-  pageStack: 'gap-6',
-  titleRow: 'flex flex-wrap items-center gap-2',
-  description: 'text-[var(--text-secondary)]',
-  muted: 'text-[var(--text-muted)]',
-  inputError: 'text-sm text-[#ff7f7f]',
-  controls: 'flex flex-wrap gap-2',
-  sectionHeader: 'flex flex-wrap items-center justify-between gap-2',
-  button: 'ui-button',
-  iconButton: 'ui-button px-3 py-1.5 text-xs',
-  section: 'ui-card p-4 sm:p-6',
-  sectionTitle: 'ui-section-title',
-  itemsGrid: 'gap-3',
-  itemCard: 'ui-card-interactive cursor-pointer p-3',
-  itemImage: 'mb-2 w-full rounded-md object-cover aspect-[2/3]',
-  titleInput: 'ui-input text-2xl font-semibold',
-  itemActions: 'mt-2 flex flex-wrap gap-2',
-  searchForm: 'flex flex-wrap gap-2',
-  searchInput: 'ui-input min-w-[220px] flex-1',
+const SORT_OPTIONS = [
+  { value: 3, label: 'Release chronology' },
+  { value: 1, label: 'Manual order' },
+  { value: 5, label: 'Alphabetical' },
+  { value: 2, label: 'Highest rated' },
+  { value: 4, label: 'Duration' },
+];
+
+const OWNER_LABELS = {
+  1: 'RateOple',
+  2: 'Personal',
+  3: 'Group',
 };
 
-const SORT_MODES = {
-  MANUAL: 1,
-  RELEASE_YEAR: 3,
+const sameId = (left, right) => (
+  Boolean(left && right) && String(left).toLowerCase() === String(right).toLowerCase()
+);
+
+const canManage = (collection, user) => Boolean(user) && (
+  (collection?.ownerType === 2 && sameId(collection?.ownerId, user?.id)) ||
+  collection?.ownerType === 3
+);
+
+const getArtwork = (collection) => {
+  const urls = [
+    collection?.coverImageUrl,
+    ...(Array.isArray(collection?.items) ? collection.items.map((item) => item.coverUrl) : []),
+  ];
+
+  return [...new Set(urls.filter(Boolean))].slice(0, 5);
 };
+
+const toMediaCardItem = (item) => ({
+  id: item.mediaId,
+  title: item.mediaTitle,
+  coverUrl: item.coverUrl,
+});
+
+const pluralize = (count, singular) => `${count} ${singular}${count === 1 ? '' : 's'}`;
+
+function DetailSkeleton() {
+  return (
+    <div className="collection-detail-page">
+      <div className="collections-skeleton-card">
+        <div className="ui-skeleton collections-skeleton-card__art" />
+        <div className="collections-skeleton-card__body">
+          <div className="ui-skeleton collections-skeleton-line short" />
+          <div className="ui-skeleton collections-skeleton-line" />
+          <div className="ui-skeleton collections-skeleton-line" />
+          <div className="ui-skeleton collections-skeleton-line short" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function CollectionDetailPage() {
   const { id } = useParams();
@@ -52,18 +94,8 @@ function CollectionDetailPage() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const mediaId = searchParams.get('mediaId');
-  const [selectedMedia, setSelectedMedia] = useState(null);
-  const [childName, setChildName] = useState('');
-  const [childDescription, setChildDescription] = useState('');
-  const [childError, setChildError] = useState('');
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [nameDraft, setNameDraft] = useState('');
-  const [nameError, setNameError] = useState('');
-  const [orderError, setOrderError] = useState('');
-  const [sortError, setSortError] = useState('');
-  const [removeTarget, setRemoveTarget] = useState(null);
-
-  const { data: collection, loading, error } = useCollectionDetailsQuery(id);
+  const { data: currentMedia, loading: currentMediaLoading } = useMediaDetailsQuery(mediaId);
+  const { data: collection, loading, error, refetch } = useCollectionDetailsQuery(id);
   const { data: childData } = useCollectionsQuery({ parentCollectionId: id, page: 1, pageSize: 50 }, Boolean(id));
   const {
     createCollection,
@@ -73,19 +105,46 @@ function CollectionDetailPage() {
     updateCollection,
     followCollection,
     unfollowCollection,
+    deleteCollection,
     loading: mutating,
   } = useCollectionMutations();
-  const childCollections = Array.isArray(childData?.items) ? childData.items : [];
-  const items = Array.isArray(collection?.items) ? collection.items : [];
-  const canManageCollection = Boolean(user) && (
-    (collection?.ownerType === 2 && collection?.ownerId === user?.id) ||
-    collection?.ownerType === 3
-  );
-  const existingMediaIds = new Set(items.map((item) => item.mediaId));
+
+  const [selectedMedia, setSelectedMedia] = useState(null);
+  const [childName, setChildName] = useState('');
+  const [childDescription, setChildDescription] = useState('');
+  const [childError, setChildError] = useState('');
   const [addError, setAddError] = useState('');
+  const [orderError, setOrderError] = useState('');
+  const [sortError, setSortError] = useState('');
+  const [followError, setFollowError] = useState('');
+  const [followState, setFollowState] = useState(null);
+  const [removeTarget, setRemoveTarget] = useState(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
+  const childCollections = useMemo(
+    () => (Array.isArray(childData?.items) ? childData.items : []),
+    [childData],
+  );
+  const items = useMemo(
+    () => (Array.isArray(collection?.items) ? collection.items : []),
+    [collection],
+  );
+  const userCanManage = canManage(collection, user);
+  const existingMediaIds = useMemo(
+    () => new Set(items.map((item) => String(item.mediaId).toLowerCase())),
+    [items],
+  );
+  const isExistingMedia = (mediaIdToCheck) => (
+    Boolean(mediaIdToCheck) && existingMediaIds.has(String(mediaIdToCheck).toLowerCase())
+  );
+  const currentMediaAlreadyAdded = isExistingMedia(mediaId);
+  const artwork = useMemo(() => getArtwork(collection), [collection]);
+  const ownerLabel = OWNER_LABELS[collection?.ownerType] ?? 'Collection';
+  const sortLabel = SORT_OPTIONS.find((option) => option.value === collection?.sortMode)?.label ?? 'Custom order';
 
   const handleAddMedia = async () => {
-    if (!mediaId || !id) return;
+    if (!mediaId || !id || currentMediaAlreadyAdded) return;
     try {
       setAddError('');
       await addItemToCollection(id, mediaId);
@@ -94,19 +153,25 @@ function CollectionDetailPage() {
     }
   };
 
-  const handleFollow = async () => {
-    if (!id) return;
-    await followCollection(id);
+  const handleFollowToggle = async () => {
+    if (!id || !user) return;
+    try {
+      setFollowError('');
+      if (followState === true) {
+        await unfollowCollection(id);
+        setFollowState(false);
+        return;
+      }
+      await followCollection(id);
+      setFollowState(true);
+    } catch (err) {
+      setFollowError(err?.response?.data?.message || 'Could not update follow state.');
+    }
   };
 
-  const handleUnfollow = async () => {
-    if (!id) return;
-    await unfollowCollection(id);
-  };
-
-  const handleAddSelectedMedia = async (e) => {
-    e.preventDefault();
-    if (!id || !selectedMedia?.id || existingMediaIds.has(selectedMedia.id)) return;
+  const handleAddSelectedMedia = async (event) => {
+    event.preventDefault();
+    if (!id || !selectedMedia?.id || isExistingMedia(selectedMedia.id)) return;
     try {
       setAddError('');
       await addItemToCollection(id, selectedMedia.id);
@@ -116,8 +181,8 @@ function CollectionDetailPage() {
     }
   };
 
-  const handleCreateChild = async (e) => {
-    e.preventDefault();
+  const handleCreateChild = async (event) => {
+    event.preventDefault();
     if (!childName.trim() || !id) return;
     try {
       setChildError('');
@@ -135,8 +200,7 @@ function CollectionDetailPage() {
   };
 
   const handleRemoveItem = async () => {
-    if (!id) return;
-    if (!removeTarget) return;
+    if (!id || !removeTarget) return;
     try {
       setOrderError('');
       await removeItemFromCollection(id, removeTarget.mediaId);
@@ -159,9 +223,9 @@ function CollectionDetailPage() {
     }
   };
 
-  const handleSortModeChange = async (e) => {
+  const handleSortModeChange = async (event) => {
     if (!id) return;
-    const nextMode = Number(e.target.value);
+    const nextMode = Number(event.target.value);
     try {
       setSortError('');
       await updateCollection(id, { sortMode: nextMode });
@@ -170,49 +234,26 @@ function CollectionDetailPage() {
     }
   };
 
-  const handleStartRename = () => {
-    setNameDraft(collection?.name ?? '');
-    setNameError('');
-    setIsEditingName(true);
-  };
-
-  const handleCancelRename = () => {
-    setIsEditingName(false);
-    setNameDraft('');
-    setNameError('');
-  };
-
-  const handleSaveRename = async () => {
-    if (!id) return;
-    const trimmed = nameDraft.trim();
-    if (!trimmed) {
-      setNameError('Collection name is required.');
-      return;
-    }
-    if (trimmed.length > 40) {
-      setNameError('Collection name must be 40 characters or fewer.');
-      return;
-    }
-
+  const handleDelete = async () => {
     try {
-      setNameError('');
-      await updateCollection(id, { name: trimmed });
-      setIsEditingName(false);
+      setDeleteError('');
+      await deleteCollection(id);
+      navigate('/collections');
     } catch (err) {
-      setNameError(err?.response?.data?.message || 'Could not rename collection.');
+      setDeleteOpen(false);
+      setDeleteError(err?.response?.data?.message || 'Could not delete collection.');
     }
   };
 
-  const handleItemNavigate = (mediaIdToOpen) => {
-    if (!mediaIdToOpen) return;
-    navigate(`/media/${mediaIdToOpen}`);
+  const handleScrollToAddMedia = () => {
+    document.getElementById('collection-add-media-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   if (loading) {
     return (
       <PageLayout>
-        <Container>
-          <LoadingState label="Loading collection..." />
+        <Container size="xxl">
+          <DetailSkeleton />
         </Container>
       </PageLayout>
     );
@@ -221,8 +262,18 @@ function CollectionDetailPage() {
   if (error || !collection) {
     return (
       <PageLayout>
-        <Container>
-          <InlineMessage tone="error">Collection not found.</InlineMessage>
+        <Container size="lg">
+          <div className="collection-detail-page">
+            <InlineMessage tone="error">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span>Collection not found.</span>
+                <Button type="button" size="sm" onClick={() => refetch()}>
+                  <RefreshCw size={15} aria-hidden="true" />
+                  Retry
+                </Button>
+              </div>
+            </InlineMessage>
+          </div>
         </Container>
       </PageLayout>
     );
@@ -230,223 +281,290 @@ function CollectionDetailPage() {
 
   return (
     <PageLayout>
-      <Container>
-        <Stack className={styles.pageStack}>
-          <Stack className="gap-2">
-            <div className={styles.titleRow}>
-              {isEditingName ? (
-                <div className="flex flex-1 flex-col gap-2">
-                  <input
-                    className={styles.titleInput}
-                    value={nameDraft}
-                    onChange={(e) => setNameDraft(e.target.value)}
-                    maxLength={40}
-                    aria-label="Collection name"
-                  />
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      className={styles.button}
-                      type="button"
-                      onClick={handleSaveRename}
-                      disabled={mutating}
-                    >
-                      {mutating ? 'Saving...' : 'Save'}
-                    </button>
-                    <button className={styles.button} type="button" onClick={handleCancelRename}>
-                      Cancel
-                    </button>
-                  </div>
-                  {nameError ? <p className={styles.inputError}>{nameError}</p> : null}
+      <Container size="xxl">
+        <div className="collection-detail-page">
+          <section className="collection-detail-hero" aria-labelledby="collection-detail-title">
+            <div className="collection-detail-hero__shelf" aria-label="Collection artwork">
+              <div className="collection-detail-shelf-preview">
+                {artwork.length > 0 ? artwork.map((url) => (
+                  <span className="collection-detail-shelf-preview__poster" key={url}>
+                    <img src={buildImageUrl(url, '')} alt="" loading="lazy" />
+                  </span>
+                )) : (
+                  <span className="collection-detail-shelf-preview__empty">
+                    <Library size={24} aria-hidden="true" />
+                    No covers yet
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="collection-detail-hero__copy">
+              <Button as={Link} to="/collections" variant="ghost" size="sm">
+                <ArrowLeft size={15} aria-hidden="true" />
+                Collections
+              </Button>
+              <div className="collection-detail-meta">
+                <span className="collection-pill">
+                  <UserRound aria-hidden="true" />
+                  {ownerLabel}
+                </span>
+                <span className="collection-pill">{sortLabel}</span>
+              </div>
+              <div>
+                <h1 id="collection-detail-title">{collection.name}</h1>
+                {collection.description ? (
+                  <p className="collection-detail-hero__description">{collection.description}</p>
+                ) : (
+                  <p className="collection-detail-hero__description">No description yet.</p>
+                )}
+              </div>
+              <div className="collection-detail-stats" aria-label="Collection stats">
+                <div className="collection-detail-stat">
+                  <strong>{items.length}</strong>
+                  <span>items</span>
                 </div>
-              ) : (
-                <>
-                  <PageHeader
-                    title={collection.name}
-                    subtitle={`${collection.followersCount ?? 0} followers · ${items.length} items`}
-                  />
-                  {canManageCollection ? (
-                    <button
-                      className={styles.iconButton}
-                      type="button"
-                      onClick={handleStartRename}
-                      aria-label="Rename collection"
-                    >
-                      <svg
-                        viewBox="0 0 20 20"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.6"
-                        className="h-4 w-4"
-                        aria-hidden="true"
-                      >
-                        <path d="M4 13.5V16h2.5L15.6 6.9l-2.5-2.5L4 13.5Z" />
-                        <path d="M12.3 4.3 14.8 6.8" />
-                      </svg>
-                    </button>
-                  ) : null}
-                </>
-              )}
-            </div>
-            {collection.description ? <p className={styles.description}>{collection.description}</p> : null}
-          </Stack>
-
-          {user ? (
-            <div className={styles.controls}>
-              <Button type="button" onClick={handleFollow} disabled={mutating}>
-                Follow
-              </Button>
-              <Button type="button" onClick={handleUnfollow} disabled={mutating}>
-                Unfollow
-              </Button>
-              {canManageCollection && mediaId ? (
-                <Button type="button" onClick={handleAddMedia} disabled={mutating}>
-                  {mutating ? 'Saving...' : 'Add Current Media'}
-                </Button>
-              ) : null}
-            </div>
-          ) : null}
-
-          {canManageCollection ? (
-            <section className={styles.section}>
-              <Stack className="gap-4">
-                <h2 className={styles.sectionTitle}>Add Media</h2>
-                <form className="grid gap-3 max-w-2xl" onSubmit={handleAddSelectedMedia}>
-                  <EntityPicker
-                    label="Media"
-                    placeholder="Search media by title"
-                    value={selectedMedia}
-                    onChange={setSelectedMedia}
-                    searchFn={searchMedia}
+                <div className="collection-detail-stat">
+                  <strong>{collection.followersCount ?? 0}</strong>
+                  <span>followers</span>
+                </div>
+                <div className="collection-detail-stat">
+                  <strong>{childCollections.length}</strong>
+                  <span>nested lists</span>
+                </div>
+              </div>
+              <div className="collection-detail-hero__actions">
+                {user ? (
+                  <Button
+                    type="button"
+                    variant={followState === true ? 'ghost' : 'primary'}
+                    onClick={handleFollowToggle}
                     disabled={mutating}
-                  />
-                  <button
-                    className={styles.button}
-                    type="submit"
-                    disabled={mutating || !selectedMedia || existingMediaIds.has(selectedMedia.id)}
+                    aria-label={followState === true ? `Unfollow ${collection.name}` : `Follow ${collection.name}`}
                   >
-                    {selectedMedia && existingMediaIds.has(selectedMedia.id)
-                      ? 'Already in Collection'
-                      : mutating
-                        ? 'Saving...'
-                        : `Add ${selectedMedia?.label ?? 'Media'}`}
-                  </button>
-                </form>
-                {addError ? <InlineMessage tone="error">{addError}</InlineMessage> : null}
-              </Stack>
+                    <UsersRound size={15} aria-hidden="true" />
+                    {followState === true ? 'Following' : 'Follow'}
+                  </Button>
+                ) : null}
+                <Button as={Link} to="/media" variant="ghost">
+                  Browse media
+                </Button>
+                {userCanManage ? (
+                  <>
+                    <Button as={Link} to={`/collections/${id}/edit`} variant="ghost">
+                      <PencilLine size={15} aria-hidden="true" />
+                      Edit
+                    </Button>
+                    <Button type="button" variant="danger" onClick={() => setDeleteOpen(true)} disabled={mutating}>
+                      <Trash2 size={15} aria-hidden="true" />
+                      Delete
+                    </Button>
+                  </>
+                ) : null}
+              </div>
+              {followError ? <InlineMessage tone="error">{followError}</InlineMessage> : null}
+              {deleteError ? <InlineMessage tone="error">{deleteError}</InlineMessage> : null}
+            </div>
+          </section>
+
+          {userCanManage ? (
+            <section className="collection-add-panel" id="collection-add-media-panel" aria-labelledby="collection-add-media-title">
+              <div className="collection-add-panel__header">
+                <div>
+                  <h2 id="collection-add-media-title">Add media</h2>
+                  <p>Search for a title, then add it to this saved list.</p>
+                </div>
+              </div>
+
+              {mediaId ? (
+                <div className="collection-current-media">
+                  <span className="collection-current-media__cover">
+                    {currentMedia?.coverUrl ? (
+                      <img src={buildImageUrl(currentMedia.coverUrl, '')} alt="" loading="lazy" />
+                    ) : (
+                      <Library size={20} aria-hidden="true" />
+                    )}
+                  </span>
+                  <div>
+                    <strong>
+                      {currentMediaLoading ? 'Loading selected media...' : currentMedia?.title || 'Selected media'}
+                    </strong>
+                    <span>
+                      {currentMediaAlreadyAdded
+                        ? 'This media is already saved in the collection.'
+                        : 'Add the media carried from the previous page.'}
+                    </span>
+                  </div>
+                  <Button type="button" onClick={handleAddMedia} disabled={mutating || currentMediaAlreadyAdded}>
+                    {currentMediaAlreadyAdded ? 'Already added' : mutating ? 'Saving...' : 'Add current media'}
+                  </Button>
+                </div>
+              ) : null}
+
+              <form className="collection-add-form" onSubmit={handleAddSelectedMedia}>
+                <EntityPicker
+                  label="Media"
+                  placeholder="Search movies, TV series, or books"
+                  value={selectedMedia}
+                  onChange={setSelectedMedia}
+                  searchFn={searchMedia}
+                  disabled={mutating}
+                  minSearchLength={1}
+                />
+                <Button
+                  type="submit"
+                  disabled={mutating || !selectedMedia || isExistingMedia(selectedMedia.id)}
+                >
+                  {selectedMedia && isExistingMedia(selectedMedia.id)
+                    ? 'Already saved'
+                    : mutating
+                      ? 'Saving...'
+                      : `Add ${selectedMedia?.label ?? 'media'}`}
+                </Button>
+              </form>
+              {addError ? <InlineMessage tone="error">{addError}</InlineMessage> : null}
             </section>
           ) : null}
 
-          <section className={styles.section}>
-            <Stack className="gap-4">
-              <div className={styles.sectionHeader}>
-                <h2 className={styles.sectionTitle}>Items</h2>
-                {canManageCollection ? (
-                  <label className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
-                    Sort
+          <section className="collection-section" aria-labelledby="collection-items-title">
+            <div className="collection-section__header">
+              <div>
+                <h2 id="collection-items-title">Media in this collection</h2>
+                <p>{pluralize(items.length, 'saved title')}</p>
+              </div>
+              {userCanManage ? (
+                <FormField label="Sort items" id="collection-sort-mode">
+                  {(fieldProps) => (
                     <Select
-                      value={
-                        collection.sortMode === SORT_MODES.MANUAL ? SORT_MODES.MANUAL : SORT_MODES.RELEASE_YEAR
-                      }
+                      {...fieldProps}
+                      value={collection.sortMode ?? 3}
                       onChange={handleSortModeChange}
                       disabled={mutating}
                     >
-                      <option value={SORT_MODES.RELEASE_YEAR}>Chronology</option>
-                      <option value={SORT_MODES.MANUAL}>Manual</option>
+                      {SORT_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
                     </Select>
-                  </label>
-                ) : null}
-              </div>
-              <Grid variant="cards" className={styles.itemsGrid}>
+                  )}
+                </FormField>
+              ) : null}
+            </div>
+
+            {items.length > 0 ? (
+              <div className="collection-items-grid">
                 {items.map((item, index) => (
-                  <article
-                    key={item.mediaId}
-                    className={styles.itemCard}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => handleItemNavigate(item.mediaId)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        handleItemNavigate(item.mediaId);
-                      }
-                    }}
-                  >
-                    <img className={styles.itemImage} src={buildImageUrl(item.coverUrl)} alt={item.mediaTitle} />
-                    <p className="text-sm text-[var(--text-primary)]">{item.mediaTitle}</p>
-                    {canManageCollection ? (
-                      <div className={styles.itemActions}>
-                        <button
-                          className={styles.iconButton}
+                  <article className="collection-item-card" key={item.mediaId}>
+                    <MediaCard media={toMediaCardItem(item)} size="sm" />
+                    {userCanManage ? (
+                      <div className="collection-item-actions">
+                        <Button
                           type="button"
+                          size="sm"
+                          variant="ghost"
                           disabled={mutating || index === 0}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleMoveItem(index, index - 1);
-                          }}
+                          onClick={() => handleMoveItem(index, index - 1)}
+                          aria-label={`Move ${item.mediaTitle} up`}
                         >
-                          Move up
-                        </button>
-                        <button
-                          className={styles.iconButton}
+                          <ArrowUp size={14} aria-hidden="true" />
+                          Up
+                        </Button>
+                        <Button
                           type="button"
+                          size="sm"
+                          variant="ghost"
                           disabled={mutating || index === items.length - 1}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleMoveItem(index, index + 1);
-                          }}
+                          onClick={() => handleMoveItem(index, index + 1)}
+                          aria-label={`Move ${item.mediaTitle} down`}
                         >
-                          Move down
-                        </button>
-                        <button
-                          className={styles.iconButton}
+                          <ArrowDown size={14} aria-hidden="true" />
+                          Down
+                        </Button>
+                        <Button
                           type="button"
+                          size="sm"
+                          variant="danger"
                           disabled={mutating}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setRemoveTarget(item);
-                          }}
+                          onClick={() => setRemoveTarget(item)}
+                          aria-label={`Remove ${item.mediaTitle}`}
                         >
                           Remove
-                        </button>
+                        </Button>
                       </div>
                     ) : null}
                   </article>
                 ))}
-                {items.length === 0 ? <EmptyState title="No media items yet" description="Add media to start building this collection." /> : null}
-              </Grid>
-              {orderError ? <InlineMessage tone="error">{orderError}</InlineMessage> : null}
-              {sortError ? <InlineMessage tone="error">{sortError}</InlineMessage> : null}
-            </Stack>
+              </div>
+            ) : (
+              <EmptyState
+                title="No media in this collection yet."
+                description={userCanManage ? 'Use the add media search to start building the list.' : 'Saved titles will appear here when the owner adds them.'}
+                action={userCanManage ? (
+                  <Button type="button" variant="primary" onClick={handleScrollToAddMedia}>
+                    Add media
+                  </Button>
+                ) : null}
+              />
+            )}
+
+            {orderError ? <InlineMessage tone="error">{orderError}</InlineMessage> : null}
+            {sortError ? <InlineMessage tone="error">{sortError}</InlineMessage> : null}
           </section>
 
-          <section className={styles.section}>
-            <Stack className="gap-4">
-              <h2 className={styles.sectionTitle}>Nested Collections</h2>
-              {canManageCollection ? (
-                <form className={styles.searchForm} onSubmit={handleCreateChild}>
-                  <input
-                    className={styles.searchInput}
-                    value={childName}
-                    onChange={(e) => setChildName(e.target.value)}
-                    placeholder="New nested collection name"
-                    maxLength={40}
-                    required
-                  />
-                  <input
-                    className={styles.searchInput}
-                    value={childDescription}
-                    onChange={(e) => setChildDescription(e.target.value)}
-                    placeholder="Description (optional)"
-                  />
-                  <button className={styles.button} type="submit" disabled={mutating}>
-                    {mutating ? 'Saving...' : 'Add nested collection'}
-                  </button>
-                </form>
-              ) : null}
-              {childError ? <InlineMessage tone="error">{childError}</InlineMessage> : null}
-              <CollectionTree collections={childCollections} />
-            </Stack>
+          <section className="collection-section" aria-labelledby="collection-nested-title">
+            <div className="collection-section__header">
+              <div>
+                <h2 id="collection-nested-title">Nested collections</h2>
+                <p>Related shelves inside this saved list.</p>
+              </div>
+            </div>
+
+            {userCanManage ? (
+              <form className="collection-child-form" onSubmit={handleCreateChild}>
+                <FormField label="Nested title" id="child-collection-name">
+                  {(fieldProps) => (
+                    <Input
+                      {...fieldProps}
+                      value={childName}
+                      onChange={(event) => setChildName(event.target.value)}
+                      placeholder="Awards season"
+                      maxLength={40}
+                      required
+                    />
+                  )}
+                </FormField>
+                <FormField label="Description" id="child-collection-description">
+                  {(fieldProps) => (
+                    <Input
+                      {...fieldProps}
+                      value={childDescription}
+                      onChange={(event) => setChildDescription(event.target.value)}
+                      placeholder="Optional context"
+                      maxLength={1000}
+                    />
+                  )}
+                </FormField>
+                <Button type="submit" disabled={mutating}>
+                  {mutating ? 'Saving...' : 'Add nested collection'}
+                </Button>
+              </form>
+            ) : null}
+
+            {childError ? <InlineMessage tone="error">{childError}</InlineMessage> : null}
+
+            {childCollections.length > 0 ? (
+              <div className="collections-detail-grid">
+                {childCollections.map((childCollection) => (
+                  <CollectionCard key={childCollection.id} collection={childCollection} variant="compact" />
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                title="No nested collections yet."
+                description={userCanManage ? 'Create a nested collection when this shelf needs a smaller shelf inside it.' : 'Nested collections will appear here when available.'}
+              />
+            )}
           </section>
+
           <Dialog
             open={Boolean(removeTarget)}
             title="Remove media from collection?"
@@ -461,7 +579,22 @@ function CollectionDetailPage() {
               </>
             )}
           />
-        </Stack>
+
+          <Dialog
+            open={deleteOpen}
+            title="Delete collection?"
+            description={`Delete ${collection.name}? This removes the collection, not the media titles.`}
+            onClose={() => setDeleteOpen(false)}
+            actions={(
+              <>
+                <Button variant="ghost" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+                <Button variant="danger" onClick={handleDelete} disabled={mutating}>
+                  {mutating ? 'Deleting...' : 'Delete collection'}
+                </Button>
+              </>
+            )}
+          />
+        </div>
       </Container>
     </PageLayout>
   );

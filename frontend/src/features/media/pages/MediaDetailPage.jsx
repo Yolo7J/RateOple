@@ -9,7 +9,6 @@ import {
   Clock3,
   Film,
   Layers3,
-  Library,
   MessageCircle,
   PencilLine,
   PlayCircle,
@@ -27,6 +26,7 @@ import { useSeasonRatingSummaryQuery } from '../../ratings/queries/useSeasonRati
 import { useReviewsQuery } from '../../reviews/queries/useReviewsQuery';
 import { useReviewMutations } from '../../reviews/queries/useReviewMutations';
 import { useCollectionsContainingMediaQuery } from '../../collections/queries/useCollectionsQuery';
+import CollectionCard from '../../collections/components/CollectionCard';
 import { useSimilarMediaQuery } from '../../discovery/queries/useSimilarMediaQuery';
 import { useMediaStatusMutation } from '../../users/queries/useMediaStatusMutation';
 import RatingStars from '../../ratings/components/RatingStars';
@@ -519,40 +519,6 @@ function TvSeasonsPanel({ mediaId, seasons, loading, error }) {
   );
 }
 
-function MediaCollectionCard({ collection }) {
-  const coverUrl = collection.coverImageUrl || collection.items?.[0]?.coverUrl;
-  const itemCount = collection.items?.length ?? 0;
-  const followersCount = collection.followersCount ?? 0;
-
-  return (
-    <article className="media-detail-collection-card">
-      <Link to={`/collections/${collection.id}`} className="media-detail-collection-card__cover" aria-label={`Open ${collection.name}`}>
-        {coverUrl ? (
-          <img src={buildImageUrl(coverUrl)} alt="" loading="lazy" />
-        ) : (
-          <Library size={22} aria-hidden="true" />
-        )}
-      </Link>
-      <div className="media-detail-collection-card__body">
-        <div>
-          <h3>
-            <Link to={`/collections/${collection.id}`}>{collection.name}</Link>
-          </h3>
-          <p className="media-detail-collection-card__meta">
-            {itemCount} item{itemCount === 1 ? '' : 's'} · {compactCount(followersCount)} follower{followersCount === 1 ? '' : 's'}
-          </p>
-        </div>
-        {collection.description ? (
-          <p className="media-detail-collection-card__description">{collection.description}</p>
-        ) : null}
-        <Button as={Link} to={`/collections/${collection.id}`} variant="ghost" className="media-detail-collection-card__action">
-          Open collection
-        </Button>
-      </div>
-    </article>
-  );
-}
-
 function LoadingDetail() {
   return (
     <PageLayout>
@@ -838,7 +804,7 @@ function MediaDetailPage() {
               {!collectionsLoading && !collectionsError && collectionsContaining.length > 0 ? (
                 <div className="media-detail-collections-grid">
                   {collectionsContaining.map((collection) => (
-                    <MediaCollectionCard key={collection.id} collection={collection} />
+                    <CollectionCard key={collection.id} collection={collection} variant="compact" />
                   ))}
                 </div>
               ) : null}
@@ -853,7 +819,7 @@ function MediaDetailPage() {
                         Browse collections
                       </Button>
                       {user ? (
-                        <Button as={Link} to={`/collections?mediaId=${id}`} variant="ghost">
+                        <Button as={Link} to={`/collections/new?mediaId=${id}`} variant="ghost">
                           Create collection
                         </Button>
                       ) : null}
