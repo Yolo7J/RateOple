@@ -1,0 +1,178 @@
+  .notifications-hero {
+    display: grid;
+    gap: 1rem;
+    align-items: end;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--primary-color) 20%, var(--border));
+    border-radius: var(--radius-lg);
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--bg-elevated) 96%, transparent), color-mix(in srgb, var(--bg-primary) 94%, #000)),
+      radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--primary-color) 15%, transparent), transparent 34%);
+    box-shadow: var(--shadow-raised);
+    padding: clamp(1.1rem, 3vw, 1.75rem);
+  }
+
+  .notifications-hero h1 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: clamp(2rem, 5vw, 3.25rem);
+    font-weight: 820;
+    letter-spacing: 0;
+    line-height: 1;
+  }
+
+  .account-eyebrow {
+    margin: 0 0 0.45rem;
+    color: var(--primary-color);
+    font-size: 0.75rem;
+    font-weight: 820;
+    letter-spacing: 0;
+    text-transform: uppercase;
+  }
+
+  .notifications-hero p {
+    margin: 0.75rem 0 0;
+    max-width: 60ch;
+    color: var(--text-secondary);
+  }
+
+  .notifications-hero-count {
+    display: grid;
+    width: fit-content;
+    min-width: 8.5rem;
+    justify-items: start;
+    gap: 0.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: color-mix(in srgb, var(--bg-secondary) 70%, transparent);
+    color: var(--text-secondary);
+    padding: 0.9rem;
+  }
+
+  .notifications-hero-count svg {
+    color: var(--primary-color);
+  }
+
+  .notifications-hero-count strong {
+    color: var(--text-primary);
+    font-size: 2rem;
+    font-weight: 840;
+    line-height: 1;
+  }
+
+  .notifications-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+    justify-content: space-between;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--card-bg);
+    box-shadow: var(--shadow-soft);
+    padding: 0.8rem;
+  }
+
+  .notifications-filter-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+  }
+
+  .notifications-filter {
+    display: inline-flex;
+    min-height: 2.35rem;
+    align-items: center;
+    gap: 0.45rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--button-bg);
+    color: var(--text-secondary);
+    padding: 0.35rem 0.8rem;
+    font-weight: 760;
+    transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+  }
+
+  .notifications-filter:hover,
+  .notifications-filter--active {
+    border-color: color-mix(in srgb, var(--primary-color) 44%, var(--border));
+    background: color-mix(in srgb, var(--primary-color-alpha) 62%, var(--button-bg));
+    color: var(--text-primary);
+  }
+
+  .notifications-filter:focus-visible,
+  .notification-item button:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 3px;
+  }
+
+  .notifications-list {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .notification-item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0.8rem;
+    align-items: center;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--card-bg);
+    box-shadow: var(--shadow-soft);
+    padding: 0.85rem;
+  }
+
+  .notification-item--unread {
+    border-color: color-mix(in srgb, var(--primary-color) 46%, var(--border));
+    background: color-mix(in srgb, var(--primary-color-alpha) 20%, var(--card-bg));
+  }
+
+  .notification-item__icon {
+    display: inline-flex;
+    height: 2.2rem;
+    width: 2.2rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--primary-color-alpha) 70%, transparent);
+    color: var(--primary-color);
+  }
+
+  .notification-item__body {
+    min-width: 0;
+  }
+
+  .notification-item__title {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    font-weight: 760;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .notification-item__meta {
+    margin: 0.18rem 0 0;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+  }
+
+  @media (min-width: 640px) {
+    .notifications-hero {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+  }
+
+  @media (max-width: 420px) {
+    .notification-item {
+      grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .notification-item > .ui-button,
+    .notification-item > .ui-badge {
+      grid-column: 1 / -1;
+      width: fit-content;
+      margin-left: 3rem;
+    }
+  }

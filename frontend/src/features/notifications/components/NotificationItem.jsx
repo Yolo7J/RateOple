@@ -1,16 +1,17 @@
 import clsx from 'clsx';
 import { useState } from 'react';
+import { Bell, CheckCircle2 } from 'lucide-react';
 import Badge from '../../../shared/ui/Badge';
 import Button from '../../../shared/ui/Button';
+import { formatDate } from '../../../shared/utils/formatDate';
 
 const styles = {
-  item: [
-    'ui-card flex items-center justify-between gap-3 p-3',
-  ].join(' '),
-  unread: 'border-[var(--accent)]',
+  item: 'notification-item',
+  unread: 'notification-item--unread',
   highlight: 'live-highlight',
-  title: 'text-sm font-semibold text-[var(--text-primary)]',
-  muted: 'text-xs text-[var(--text-muted)]',
+  icon: 'notification-item__icon',
+  title: 'notification-item__title',
+  muted: 'notification-item__meta',
 };
 
 const NOTIFICATION_LABELS = {
@@ -30,9 +31,12 @@ function NotificationItem({ notification, onMarkRead, disabled = false }) {
 
   return (
     <article className={clsx(styles.item, !notification.read && styles.unread, isRecent && styles.highlight)}>
-      <div>
+      <div className={styles.icon} aria-hidden="true">
+        {notification.read ? <CheckCircle2 size={18} strokeWidth={2} /> : <Bell size={18} strokeWidth={2} />}
+      </div>
+      <div className="notification-item__body">
         <h3 className={styles.title}>{label}</h3>
-        <p className={styles.muted}>{new Date(notification.createdAt).toLocaleString()}</p>
+        <p className={styles.muted}>{formatDate(notification.createdAt)}</p>
       </div>
       {!notification.read ? (
         <Button size="sm" onClick={() => onMarkRead(notification.id)} disabled={disabled}>

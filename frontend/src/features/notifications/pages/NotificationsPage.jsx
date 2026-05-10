@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { Bell, CheckCheck, Inbox } from 'lucide-react';
+import clsx from 'clsx';
 import { useNotificationsQuery } from '../queries/useNotificationsQuery';
 import { useNotificationMutations } from '../queries/useNotificationMutations';
 import NotificationItem from '../components/NotificationItem';
@@ -9,13 +11,7 @@ import Button from '../../../shared/ui/Button';
 import EmptyState from '../../../shared/ui/EmptyState';
 import InlineMessage from '../../../shared/ui/InlineMessage';
 import LoadingState from '../../../shared/ui/LoadingState';
-import PageHeader from '../../../shared/ui/PageHeader';
-
-const styles = {
-  pageStack: 'gap-6',
-  actions: 'flex flex-wrap gap-2',
-  list: 'grid gap-3',
-};
+import '../notifications.css';
 
 function NotificationsPage() {
   const [unreadOnly, setUnreadOnly] = useState(false);
@@ -23,6 +19,7 @@ function NotificationsPage() {
   const { markRead, markAllRead, loading: mutating } = useNotificationMutations();
 
   const items = Array.isArray(data?.items) ? data.items : [];
+  const unreadCount = items.filter((item) => !item.read).length;
 
   const handleMarkRead = async (id) => {
     await markRead(id);
@@ -35,31 +32,54 @@ function NotificationsPage() {
   return (
     <PageLayout>
       <Container>
-        <Stack className={styles.pageStack}>
-          <PageHeader title="Notifications" />
-          <div className={styles.actions}>
-            <Button
-              onClick={() => setUnreadOnly(false)}
-              disabled={unreadOnly === false}
-            >
-              All
-            </Button>
-            <Button
-              onClick={() => setUnreadOnly(true)}
-              disabled={unreadOnly === true}
-            >
-              Unread
-            </Button>
-            <Button onClick={handleMarkAllRead} disabled={mutating}>
+        <Stack className="gap-6">
+          <section className="notifications-hero" aria-labelledby="notifications-title">
+            <div>
+              <p className="account-eyebrow">Account signals</p>
+              <h1 id="notifications-title">Notifications</h1>
+              <p>Moderation, group, and system updates for your RateOple account.</p>
+            </div>
+            <div className="notifications-hero-count" aria-label={`${unreadCount} unread notifications`}>
+              <Bell size={22} aria-hidden="true" />
+              <strong>{unreadCount}</strong>
+              <span>unread</span>
+            </div>
+          </section>
+
+          <section className="notifications-toolbar" aria-label="Notification filters">
+            <div className="notifications-filter-group" role="tablist" aria-label="Notification view">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={!unreadOnly}
+                className={clsx('notifications-filter', !unreadOnly && 'notifications-filter--active')}
+                onClick={() => setUnreadOnly(false)}
+              >
+                <Inbox size={16} aria-hidden="true" />
+                All
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={unreadOnly}
+                className={clsx('notifications-filter', unreadOnly && 'notifications-filter--active')}
+                onClick={() => setUnreadOnly(true)}
+              >
+                <Bell size={16} aria-hidden="true" />
+                Unread
+              </button>
+            </div>
+            <Button onClick={handleMarkAllRead} disabled={mutating || unreadCount === 0}>
+              <CheckCheck size={16} aria-hidden="true" />
               Mark all read
             </Button>
-          </div>
+          </section>
 
           {loading ? <LoadingState label="Loading notifications..." /> : null}
           {error ? <InlineMessage tone="error">Failed to load notifications.</InlineMessage> : null}
 
           {!loading && !error ? (
-            <section className={styles.list}>
+            <section className="notifications-list" aria-label="Notifications">
               {items.map((notification) => (
                 <NotificationItem
                   key={notification.id}
@@ -68,7 +88,12 @@ function NotificationsPage() {
                   disabled={mutating}
                 />
               ))}
-              {items.length === 0 ? <EmptyState title="No notifications" /> : null}
+              {items.length === 0 ? (
+                <EmptyState
+                  title={unreadOnly ? 'No unread notifications' : 'No notifications'}
+                  description={unreadOnly ? 'Everything is read.' : 'Account updates will appear here.'}
+                />
+              ) : null}
             </section>
           ) : null}
         </Stack>

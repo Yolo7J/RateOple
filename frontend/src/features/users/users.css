@@ -1,0 +1,591 @@
+  .account-hero,
+  .watchlist-hero {
+    display: grid;
+    gap: 1rem;
+    align-items: end;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--primary-color) 20%, var(--border));
+    border-radius: var(--radius-lg);
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--bg-elevated) 96%, transparent), color-mix(in srgb, var(--bg-primary) 94%, #000)),
+      radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--primary-color) 16%, transparent), transparent 34%);
+    box-shadow: var(--shadow-raised);
+    padding: clamp(1.1rem, 3vw, 1.75rem);
+  }
+
+  .account-hero-main {
+    display: grid;
+    min-width: 0;
+    gap: 1rem;
+  }
+
+  .account-avatar {
+    display: inline-flex;
+    height: 4rem;
+    width: 4rem;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid color-mix(in srgb, var(--primary-color) 38%, var(--border));
+    border-radius: var(--radius-lg);
+    background: color-mix(in srgb, var(--primary-color-alpha) 72%, var(--card-bg));
+    color: var(--primary-color);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .account-title-group,
+  .watchlist-hero > div:first-child {
+    min-width: 0;
+  }
+
+  .account-eyebrow {
+    margin: 0 0 0.45rem;
+    color: var(--primary-color);
+    font-size: 0.75rem;
+    font-weight: 820;
+    letter-spacing: 0;
+    text-transform: uppercase;
+  }
+
+  .account-title-group h1,
+  .watchlist-hero h1 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: clamp(2rem, 5vw, 3.6rem);
+    font-weight: 820;
+    letter-spacing: 0;
+    line-height: 1;
+    overflow-wrap: anywhere;
+  }
+
+  .account-title-group p,
+  .watchlist-hero p {
+    margin: 0.75rem 0 0;
+    max-width: 68ch;
+    color: var(--text-secondary);
+    font-size: clamp(0.96rem, 2vw, 1.08rem);
+  }
+
+  .account-identity-row,
+  .account-hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  .account-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .account-stat-card {
+    display: flex;
+    min-width: 0;
+    gap: 0.8rem;
+    align-items: center;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--card-bg);
+    box-shadow: var(--shadow-soft);
+    padding: 0.9rem;
+  }
+
+  .account-stat-icon,
+  .account-action-icon {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--primary-color-alpha) 70%, transparent);
+    color: var(--primary-color);
+  }
+
+  .account-stat-icon {
+    height: 2.3rem;
+    width: 2.3rem;
+  }
+
+  .account-stat-card div,
+  .account-action-card span:last-child {
+    min-width: 0;
+  }
+
+  .account-stat-card strong {
+    display: block;
+    color: var(--text-primary);
+    font-size: 1.45rem;
+    font-weight: 820;
+    line-height: 1;
+  }
+
+  .account-stat-card span:not(.account-stat-icon) {
+    display: block;
+    margin-top: 0.2rem;
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    font-weight: 720;
+  }
+
+  .account-stat-card small,
+  .account-action-card small,
+  .account-rating-row small,
+  .account-track-row small {
+    display: block;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    line-height: 1.35;
+  }
+
+  .account-action-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .account-action-card {
+    display: flex;
+    min-width: 0;
+    gap: 0.75rem;
+    align-items: center;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: color-mix(in srgb, var(--card-bg) 94%, transparent);
+    color: inherit;
+    padding: 0.9rem;
+    text-decoration: none;
+    transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
+  }
+
+  .account-action-card:hover,
+  .account-action-card:focus-visible {
+    border-color: color-mix(in srgb, var(--primary-color) 42%, var(--border));
+    background: var(--card-hover);
+    color: inherit;
+    transform: translateY(-1px);
+  }
+
+  .account-action-card:focus-visible,
+  .watchlist-tab:focus-visible,
+  .account-track-row:focus-visible,
+  .account-review-footer a:focus-visible,
+  .account-rating-row a:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 3px;
+  }
+
+  .account-action-icon {
+    height: 2.15rem;
+    width: 2.15rem;
+  }
+
+  .account-action-card strong {
+    display: block;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    font-weight: 760;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+
+  .account-dashboard-grid {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .account-dashboard-grid--activity {
+    align-items: start;
+  }
+
+  .account-section {
+    min-width: 0;
+  }
+
+  .account-profile-summary {
+    display: grid;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--bg-secondary) 72%, transparent);
+    padding: 0.9rem;
+  }
+
+  .account-profile-summary p,
+  .account-danger-panel p,
+  .account-integrity-note p {
+    margin: 0;
+    color: var(--text-secondary);
+  }
+
+  .account-profile-facts,
+  .account-form-row,
+  .account-form-actions,
+  .account-security-heading,
+  .watchlist-tabs-label,
+  .watchlist-card-meta {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .account-profile-facts span {
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text-muted);
+    padding: 0.25rem 0.6rem;
+    font-size: 0.8rem;
+    font-weight: 680;
+  }
+
+  .account-form-row > * {
+    flex: 1 1 14rem;
+  }
+
+  .account-security-grid {
+    display: grid;
+    gap: 0.85rem;
+  }
+
+  .account-security-panel {
+    display: grid;
+    gap: 0.85rem;
+    min-width: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--bg-secondary) 70%, transparent);
+    padding: 0.9rem;
+  }
+
+  .account-security-heading {
+    color: var(--text-primary);
+  }
+
+  .account-security-heading h3 {
+    margin: 0;
+    font-size: 0.98rem;
+    font-weight: 760;
+  }
+
+  .account-danger-panel {
+    border-color: color-mix(in srgb, var(--status-danger) 34%, var(--border));
+  }
+
+  .account-list,
+  .account-review-list,
+  .account-rating-list {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .account-track-row,
+  .account-rating-row {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--bg-secondary) 70%, transparent);
+    color: inherit;
+    padding: 0.8rem;
+    text-decoration: none;
+  }
+
+  .account-track-row:hover,
+  .account-rating-row:hover {
+    border-color: color-mix(in srgb, var(--primary-color) 36%, var(--border));
+    background: var(--card-hover);
+    color: inherit;
+  }
+
+  .account-track-row span:first-child,
+  .account-rating-row span:nth-child(2) {
+    min-width: 0;
+  }
+
+  .account-track-row strong,
+  .account-rating-row strong {
+    display: block;
+    color: var(--text-primary);
+    font-size: 0.92rem;
+    font-weight: 760;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .account-review-card {
+    display: grid;
+    gap: 0.75rem;
+    min-width: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--bg-secondary) 70%, transparent);
+    padding: 0.9rem;
+  }
+
+  .account-review-card__header,
+  .account-review-footer {
+    display: flex;
+    min-width: 0;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .account-review-card__header h3 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 0.98rem;
+    font-weight: 780;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .account-review-card__header p,
+  .account-review-content,
+  .account-review-footer {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.84rem;
+  }
+
+  .account-review-content {
+    display: -webkit-box;
+    overflow: hidden;
+    color: var(--text-secondary);
+    line-height: 1.55;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
+  }
+
+  .account-review-footer a,
+  .account-rating-row a {
+    color: var(--primary-color);
+    font-weight: 760;
+    text-decoration: none;
+  }
+
+  .account-rating-score {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--primary-color);
+    font-weight: 800;
+  }
+
+  .account-genre-cloud {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .account-muted {
+    color: var(--text-muted);
+  }
+
+  .account-integrity-note {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: color-mix(in srgb, var(--card-bg) 80%, transparent);
+    color: var(--text-muted);
+    padding: 0.9rem;
+  }
+
+  .account-integrity-note svg {
+    flex: 0 0 auto;
+    color: var(--primary-color);
+  }
+
+  .watchlist-hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .watchlist-hero-stat {
+    display: grid;
+    width: fit-content;
+    min-width: 9rem;
+    justify-items: start;
+    gap: 0.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: color-mix(in srgb, var(--bg-secondary) 70%, transparent);
+    color: var(--text-secondary);
+    padding: 0.9rem;
+  }
+
+  .watchlist-hero-stat svg {
+    color: var(--primary-color);
+  }
+
+  .watchlist-hero-stat strong {
+    color: var(--text-primary);
+    font-size: 2rem;
+    font-weight: 840;
+    line-height: 1;
+  }
+
+  .watchlist-tabs {
+    display: grid;
+    gap: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--card-bg);
+    box-shadow: var(--shadow-soft);
+    padding: 0.85rem;
+  }
+
+  .watchlist-tabs-label {
+    color: var(--text-muted);
+    font-size: 0.84rem;
+    font-weight: 760;
+  }
+
+  .watchlist-tab-list {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .watchlist-tab {
+    display: inline-flex;
+    min-height: 2.45rem;
+    align-items: center;
+    gap: 0.45rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--button-bg);
+    color: var(--text-secondary);
+    padding: 0.35rem 0.45rem 0.35rem 0.8rem;
+    font-weight: 760;
+    transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+  }
+
+  .watchlist-tab:hover,
+  .watchlist-tab--active {
+    border-color: color-mix(in srgb, var(--primary-color) 44%, var(--border));
+    background: color-mix(in srgb, var(--primary-color-alpha) 62%, var(--button-bg));
+    color: var(--text-primary);
+  }
+
+  .watchlist-shelf {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--card-bg);
+    box-shadow: var(--shadow-soft);
+    padding: clamp(0.9rem, 2vw, 1.15rem);
+  }
+
+  .watchlist-shelf-header {
+    display: flex;
+    gap: 1rem;
+    align-items: start;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+
+  .watchlist-shelf-header h2 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1.25rem;
+    font-weight: 820;
+  }
+
+  .watchlist-shelf-header p {
+    margin: 0.2rem 0 0;
+    color: var(--text-muted);
+  }
+
+  .watchlist-card-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.8rem;
+  }
+
+  .watchlist-card-shell {
+    min-width: 0;
+  }
+
+  .watchlist-card-meta {
+    justify-content: space-between;
+    margin-top: 0.45rem;
+    color: var(--text-muted);
+    font-size: 0.76rem;
+  }
+
+  @media (min-width: 640px) {
+    .account-hero,
+    .watchlist-hero {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .account-hero-main {
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: center;
+    }
+
+    .account-hero-actions {
+      justify-content: flex-end;
+    }
+
+    .account-stat-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .account-action-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .account-security-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .watchlist-card-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .account-dashboard-grid {
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+    }
+
+    .account-dashboard-grid--activity {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .watchlist-card-grid {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 420px) {
+    .account-stat-grid,
+    .account-action-grid,
+    .watchlist-card-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .account-review-card__header,
+    .account-review-footer,
+    .account-track-row,
+    .account-rating-row {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .watchlist-tab {
+      flex: 1 1 calc(50% - 0.5rem);
+      justify-content: space-between;
+    }
+  }

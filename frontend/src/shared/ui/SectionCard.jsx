@@ -1,10 +1,10 @@
 import clsx from 'clsx';
 import { createElement } from 'react';
 
-export default function SectionCard({ title, subtitle, actions, className, children, as: Component = 'section' }) {
+export default function SectionCard({ title, subtitle, actions, className, children, as: Component = 'section', ...props }) {
   return createElement(
     Component,
-    { className: clsx('ui-card p-4 sm:p-5', className) },
+    { className: clsx('ui-card p-4 sm:p-5', className), ...props },
     <>
       {(title || subtitle || actions) ? (
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">

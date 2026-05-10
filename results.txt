@@ -1,3 +1,63 @@
+RateOple Account/Profile/Watchlist personal hub results
+
+Summary of Account/Profile/Watchlist UX refactor:
+- Redesigned the authenticated personal area into a dark-first RateOple hub with a cinematic account hero, real account stat cards, quick navigation, profile editing, security controls, tracked media, reviews, ratings, favorite genres, and notifications.
+- Kept all data on existing frontend/backend contracts: account stats come from current ratings/reviews/status/favorite-genre endpoints, watchlist cards come from `/users/me/status`, review target links use review DTO route metadata, and notifications keep the existing SignalR/query behavior.
+- No backend contracts were changed and no fake stats, reviews, ratings, watchlist items, notifications, followers, or activity were added.
+
+Files changed:
+- frontend/src/features/users/pages/AccountPage.jsx
+- frontend/src/features/users/pages/WatchlistPage.jsx
+- frontend/src/features/users/users.css
+- frontend/src/features/notifications/pages/NotificationsPage.jsx
+- frontend/src/features/notifications/components/NotificationItem.jsx
+- frontend/src/features/notifications/notifications.css
+- frontend/src/shared/ui/SectionCard.jsx
+
+Account dashboard behavior:
+- `/account` now greets the user by profile display name or username, shows real counts for ratings, reviews, tracked titles, and favorite genres, and provides quick actions for media, watchlist, reviews, collections, groups, and notifications.
+- Profile edit fields now use supported profile fields only: display name, bio, location, and favorite genres.
+- Security actions remain separate for password change and account deletion, with the existing confirmation dialog preserved.
+- Collection and group totals are intentionally omitted because no user-specific aggregate endpoints were found.
+
+Watchlist/tracked media behavior:
+- `/account/watchlist` now presents a tracked-media shelf with real status filters from `STATUS_TYPES`: Plan, On it, Done, Dropped.
+- The active status panel renders shared `MediaCard` cards adapted from real status DTO fields and shows saved progress/date metadata when present.
+- Empty status panels link back to Browse media and do not invent items.
+
+My reviews/ratings behavior:
+- Account reviews now show real media title, target type/title, rating value, content preview, date, and links to media, season, or episode routes when route metadata exists.
+- Ratings remain summarized from the current rating DTO. Because the rating endpoint exposes values and target IDs but not target titles for every target type, the UI does not invent media names.
+- No dedicated `/account/reviews` or `/account/ratings` route was added; the dashboard anchors to the supported in-page reviews section.
+
+Notifications/settings/profile behavior:
+- `/notifications` now has a polished notifications hero, unread count based on the loaded page, All/Unread filters, Mark all read, unread/read card states, and clean empty states.
+- Existing notification query/mutation/SignalR behavior is preserved.
+- Profile/settings are handled inside `/account`; no unsupported profile fields were added.
+
+Responsive behavior:
+- Account, watchlist, and notifications use wrapped controls, min-width-safe grids, and mobile-specific single-column/card layouts to avoid document-level horizontal overflow.
+- Backend-hosted signed-out redirect inspection covered `/account`, `/account/watchlist`, and `/notifications` at desktop and 320px; all reported no document-level horizontal overflow.
+- Logged-in backend-hosted visual inspection could not be completed because the current local database rejected the configured development demo credentials. No fake login, fake data, or new test user was created.
+- Light-theme account inspection was not completed for the same local login limitation; CSS uses existing theme variables and was covered by production builds.
+
+Checks run:
+- `cd frontend && npm run lint`: passed.
+- `cd frontend && npm run build`: passed. Build emitted existing Rollup annotation warnings from @microsoft/signalr comments.
+- `cd frontend && npm run test:e2e`: passed, 2 tests.
+- `cd frontend && npm run build:backend`: passed.
+- `cd backend && dotnet build RateOple.sln`: passed; run only to diagnose backend host startup/manual inspection, not because backend contracts changed.
+- Backend tests were not run because no backend source/contracts were changed.
+
+build:backend status:
+- `npm run build:backend` passed and copied the Vite output to `backend/RateOple/wwwroot`.
+
+Known limitations:
+- The local HTTPS profile in this checkout listens on `https://localhost:7167`; `https://localhost:7168` was not listening during inspection.
+- The logged-in personal hub displays only the aggregates exposed by current endpoints. There are no real user-specific collection/group counts available to show.
+- The current rating DTO lacks target titles for all rating target types, so ratings are intentionally labeled by target type/value/date instead of fabricated titles.
+- Backend-hosted signed-in visual checks need valid local credentials or a known seeded password reset outside this frontend-only refactor.
+
 RateOple Collections cinematic saved-lists hub results
 
 Summary of Collections UX refactor:
