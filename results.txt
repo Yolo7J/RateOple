@@ -1,3 +1,41 @@
+RateOple Account/Watchlist card overflow fix results
+
+Summary of Account/Watchlist overflow fix:
+- Fixed the `/account/watchlist` tracked-media card containment bug where bottom metadata such as "No progress saved" and dates could render outside the card boundary.
+- Kept the existing Account and Watchlist page design intact and made only focused responsive/container polish changes.
+- No backend contracts, data shapes, dependencies, or fake data were added.
+
+Files changed:
+- frontend/src/features/users/pages/WatchlistPage.jsx
+- frontend/src/features/users/users.css
+- results.txt
+
+Watchlist card containment fix:
+- Converted each watchlist item wrapper into the visible card boundary and rendered the shared `MediaCard` inside it as the poster/title/status/rating area.
+- Moved progress/date metadata inside the same card shell, with reserved bottom padding and `margin-top: auto` so the metadata remains contained even as cards grow.
+- Removed the nested shared card border/shadow only within the watchlist wrapper so the poster, title, status chip, rating line, progress text, and date read as one contained card.
+- Added safe wrapping for metadata text with `min-width: 0`, `max-width: 100%`, and `overflow-wrap: anywhere`.
+
+Responsive behavior:
+- Watchlist cards now use natural content-driven height with stretched grid items and no fixed card heights that can clip metadata.
+- At narrow widths, the metadata row stacks vertically and cards get slightly larger gaps.
+- Status chips/tabs continue to wrap into usable two-column controls at very small widths.
+- Account quick-action cards, stat cards, form rows, and security panels got focused `min-width`, wrapping, and overflow safeguards so text and controls stay within their containers.
+- Backend-hosted signed-out route inspection covered `/account/watchlist` and `/account` at desktop, 375px, and 320px; all reported no document-level horizontal overflow. Light-theme `/account/watchlist` redirect rendering also reported no overflow.
+
+Checks run:
+- `cd frontend && npm run lint`: passed.
+- `cd frontend && npm run build`: passed. Build emitted existing Rollup annotation warnings from @microsoft/signalr comments.
+- `cd frontend && npm run test:e2e`: passed, 2 tests.
+- `cd frontend && npm run build:backend`: passed.
+
+build:backend status:
+- `npm run build:backend` passed and copied the Vite output to `backend/RateOple/wwwroot`.
+
+Known limitations:
+- Backend-hosted signed-in visual inspection of real watchlist cards was blocked by the protected route requiring a valid logged-in browser state; I did not create users, reset passwords, mock APIs, or fabricate watchlist items.
+- The local checkout's HTTPS profile is currently served on `https://localhost:7167`; the requested backend-host path remains the correct way to view the built app.
+
 RateOple Account/Profile/Watchlist personal hub results
 
 Summary of Account/Profile/Watchlist UX refactor:

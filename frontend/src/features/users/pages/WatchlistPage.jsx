@@ -124,13 +124,13 @@ function WatchlistPage() {
                     {activeItems.map((item) => {
                       const progress = getProgressLabel(item);
                       return (
-                        <article key={item.mediaId} className="watchlist-card-shell">
-                          <MediaCard media={toMediaCard(item)} size="sm" />
+                        <div key={item.mediaId} className="watchlist-card-shell">
+                          <MediaCard media={toMediaCard(item)} size="sm" className="watchlist-card-media" />
                           <div className="watchlist-card-meta">
                             <span>{progress || 'No progress saved'}</span>
                             <span>{formatDate(item.updatedAt)}</span>
                           </div>
-                        </article>
+                        </div>
                       );
                     })}
                   </div>
