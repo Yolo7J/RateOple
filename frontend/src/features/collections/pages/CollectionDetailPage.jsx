@@ -58,11 +58,17 @@ const canManage = (collection, user) => Boolean(user) && (
 const getArtwork = (collection) => {
   const urls = [
     collection?.coverImageUrl,
-    ...(Array.isArray(collection?.items) ? collection.items.map((item) => item.coverUrl) : []),
+    ...(Array.isArray(collection?.items)
+      ? collection.items
+        .filter((item) => item?.mediaId && item?.mediaTitle)
+        .map((item) => item.coverUrl)
+      : []),
   ];
 
   return [...new Set(urls.filter(Boolean))].slice(0, 5);
 };
+
+const isValidCollectionItem = (item) => Boolean(item?.mediaId && item?.mediaTitle);
 
 const toMediaCardItem = (item) => ({
   id: item.mediaId,
@@ -453,17 +459,25 @@ function CollectionDetailPage() {
             {items.length > 0 ? (
               <div className="collection-items-grid">
                 {items.map((item, index) => (
-                  <article className="collection-item-card" key={item.mediaId}>
-                    <MediaCard media={toMediaCardItem(item)} size="sm" />
+                  <article className="collection-item-card" key={item.mediaId || `removed-${index}`}>
+                    {isValidCollectionItem(item) ? (
+                      <MediaCard media={toMediaCardItem(item)} size="sm" />
+                    ) : (
+                      <div className="collection-removed-media" aria-disabled="true">
+                        <Library size={22} aria-hidden="true" />
+                        <strong>Removed media</strong>
+                        <span>This title is no longer available in the public catalog.</span>
+                      </div>
+                    )}
                     {userCanManage ? (
                       <div className="collection-item-actions">
                         <Button
                           type="button"
                           size="sm"
                           variant="ghost"
-                          disabled={mutating || index === 0}
+                          disabled={mutating || index === 0 || !isValidCollectionItem(item)}
                           onClick={() => handleMoveItem(index, index - 1)}
-                          aria-label={`Move ${item.mediaTitle} up`}
+                          aria-label={`Move ${item.mediaTitle || 'removed media'} up`}
                         >
                           <ArrowUp size={14} aria-hidden="true" />
                           Up
@@ -472,9 +486,9 @@ function CollectionDetailPage() {
                           type="button"
                           size="sm"
                           variant="ghost"
-                          disabled={mutating || index === items.length - 1}
+                          disabled={mutating || index === items.length - 1 || !isValidCollectionItem(item)}
                           onClick={() => handleMoveItem(index, index + 1)}
-                          aria-label={`Move ${item.mediaTitle} down`}
+                          aria-label={`Move ${item.mediaTitle || 'removed media'} down`}
                         >
                           <ArrowDown size={14} aria-hidden="true" />
                           Down
@@ -485,7 +499,7 @@ function CollectionDetailPage() {
                           variant="danger"
                           disabled={mutating}
                           onClick={() => setRemoveTarget(item)}
-                          aria-label={`Remove ${item.mediaTitle}`}
+                          aria-label={`Remove ${item.mediaTitle || 'removed media'}`}
                         >
                           Remove
                         </Button>

@@ -1,7 +1,8 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import SidebarLayout from './SidebarLayout';
+import '../features/admin/admin.css';
 
 const navLinkClass = ({ isActive }) =>
   [
@@ -42,6 +43,26 @@ const AdminLayout = () => {
 
   return (
     <SidebarLayout
+      header={(
+        <header className="admin-shell-header">
+          <Link to="/" className="admin-shell-brand" aria-label="RateOple home">
+            <span className="admin-shell-brand__mark" aria-hidden="true">R</span>
+            <span>
+              <span className="admin-shell-brand__name">RateOple</span>
+              <span className="admin-shell-brand__meta">{title} workspace</span>
+            </span>
+          </Link>
+          <nav className="admin-shell-public-nav" aria-label="Public app navigation">
+            <Link to="/">Home</Link>
+            <Link to="/media">Media</Link>
+            <Link to="/collections">Collections</Link>
+            <Link to="/groups">Groups</Link>
+          </nav>
+          <Link to="/" className="admin-shell-back">
+            Back to site
+          </Link>
+        </header>
+      )}
       sidebar={(
         <>
           <div>

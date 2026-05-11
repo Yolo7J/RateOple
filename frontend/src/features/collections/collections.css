@@ -615,6 +615,30 @@
   gap: 0.55rem;
 }
 
+.collection-removed-media {
+  display: grid;
+  min-height: 13.5rem;
+  place-items: center;
+  gap: 0.45rem;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--card-bg) 84%, var(--bg-primary));
+  color: var(--text-muted);
+  padding: 1rem;
+  text-align: center;
+}
+
+.collection-removed-media strong {
+  color: var(--text-primary);
+  font-size: 0.95rem;
+}
+
+.collection-removed-media span {
+  max-width: 18ch;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
 .collection-item-actions {
   display: grid;
   min-width: 0;

@@ -57,7 +57,7 @@ const AdminMediaPage = () => {
       await refetch();
       setDeleteTarget(null);
     } catch (err) {
-      const message = err?.response?.data?.message || 'Failed to delete media.';
+      const message = err?.response?.data?.message || 'Failed to archive media.';
       setDeleteError(message);
     } finally {
       setDeleting(false);
@@ -80,7 +80,7 @@ const AdminMediaPage = () => {
         disabled={Boolean(deletingId)}
       >
         <Trash2 size={14} aria-hidden="true" />
-        Delete
+            Archive
       </Button>
     </div>
   );
@@ -189,8 +189,8 @@ const AdminMediaPage = () => {
 
       <Dialog
         open={Boolean(deleteTarget)}
-        title="Delete media?"
-        description={`You are about to delete ${deleteTarget?.title || 'this media item'}. This action cannot be undone.`}
+        title="Archive media?"
+        description={`Remove ${deleteTarget?.title || 'this media item'} from the public catalog and collection media cards. Existing records are retained for staff and audit history.`}
         onClose={() => {
           if (deleting) return;
           setDeleteTarget(null);
@@ -208,7 +208,7 @@ const AdminMediaPage = () => {
               Cancel
             </Button>
             <Button variant="danger" onClick={handleDelete} disabled={deleting}>
-              {deleting ? 'Deleting...' : 'Delete'}
+              {deleting ? 'Archiving...' : 'Archive media'}
             </Button>
           </>
         )}

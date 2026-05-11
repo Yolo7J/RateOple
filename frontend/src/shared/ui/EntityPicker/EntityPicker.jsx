@@ -36,6 +36,8 @@ export default function EntityPicker({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const requestId = useRef(0);
+  const rootRef = useRef(null);
+  const inputRef = useRef(null);
 
   const canSearch = search.trim().length >= minSearchLength;
   const selected = useMemo(() => value ?? null, [value]);
@@ -73,6 +75,27 @@ export default function EntityPicker({
     return () => window.clearTimeout(handle);
   }, [canSearch, disabled, errorText, open, pageSize, search, searchFn]);
 
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (rootRef.current?.contains(event.target)) return;
+      setOpen(false);
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key !== 'Escape') return;
+      setOpen(false);
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [open]);
+
   const handleSelect = (option) => {
     onChange?.(option);
     setSearch('');
@@ -86,17 +109,26 @@ export default function EntityPicker({
   };
 
   return (
-    <div className={styles.root}>
+    <div className={styles.root} ref={rootRef}>
       {label ? <label className={styles.label} htmlFor={inputId}>{label}</label> : null}
       {selected ? (
         <div className={styles.selected}>
           <SelectedEntityPill option={selected} onRemove={handleClear} disabled={disabled} />
-          <button className={styles.clear} type="button" onClick={() => setOpen(true)} disabled={disabled}>
+          <button
+            className={styles.clear}
+            type="button"
+            onClick={() => {
+              setOpen(true);
+              inputRef.current?.focus();
+            }}
+            disabled={disabled}
+          >
             Change
           </button>
         </div>
       ) : null}
       <input
+        ref={inputRef}
         id={inputId}
         className={styles.input}
         type="search"

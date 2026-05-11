@@ -13,13 +13,19 @@ const OWNER_LABELS = {
 
 const getItemCount = (collection) => {
   if (typeof collection?.itemsCount === 'number') return collection.itemsCount;
-  return Array.isArray(collection?.items) ? collection.items.length : 0;
+  return Array.isArray(collection?.items)
+    ? collection.items.filter((item) => item?.mediaId && item?.mediaTitle).length
+    : 0;
 };
 
 const getArtwork = (collection, limit = 4) => {
   const urls = [
     collection?.coverImageUrl,
-    ...(Array.isArray(collection?.items) ? collection.items.map((item) => item.coverUrl) : []),
+    ...(Array.isArray(collection?.items)
+      ? collection.items
+        .filter((item) => item?.mediaId && item?.mediaTitle)
+        .map((item) => item.coverUrl)
+      : []),
   ];
 
   return [...new Set(urls.filter(Boolean))].slice(0, limit);

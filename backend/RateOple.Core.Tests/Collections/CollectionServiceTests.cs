@@ -148,6 +148,51 @@ public class CollectionServiceTests
     }
 
     [Fact]
+    public async Task GetByIdAsync_ExcludesDeletedMediaItems()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var owner = data.Users.Add(data.Users.Normal("deleted-item-owner"));
+        var visible = data.Media.Movie("Visible Collection Movie");
+        var deleted = data.Media.Movie("Deleted Collection Movie", isDeleted: true);
+        var collection = data.Collections.UserCollection(owner, "Collection With Deleted Media");
+        data.Collections.Item(collection, visible, 1);
+        data.Collections.Item(collection, deleted, 2);
+        collection.CoverImageUrl = deleted.CoverUrl;
+        await data.SaveAsync();
+        var service = CreateService(db);
+
+        var result = await service.GetByIdAsync(collection.Id, owner.Id);
+
+        Assert.NotNull(result);
+        var item = Assert.Single(result.Items);
+        Assert.Equal(visible.Id, item.MediaId);
+        Assert.Null(result.CoverImageUrl);
+    }
+
+    [Fact]
+    public async Task QueryAsync_PreviewItemsExcludeDeletedMedia()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var owner = data.Users.Add(data.Users.Normal("deleted-preview-owner"));
+        var visible = data.Media.Movie("Visible Preview Movie");
+        var deleted = data.Media.Movie("Deleted Preview Movie", isDeleted: true);
+        var collection = data.Collections.UserCollection(owner, "Preview Collection");
+        data.Collections.Item(collection, deleted, 1);
+        data.Collections.Item(collection, visible, 2);
+        await data.SaveAsync();
+        var service = CreateService(db);
+
+        var result = await service.QueryAsync(new CollectionQueryDto(), owner.Id);
+
+        var mapped = Assert.Single(result.Items);
+        var item = Assert.Single(mapped.Items);
+        Assert.Equal(visible.Id, item.MediaId);
+        Assert.DoesNotContain(mapped.Items, i => i.MediaId == deleted.Id);
+    }
+
+    [Fact]
     public async Task ReorderItemsAsync_RequiresAllItemsWithoutDuplicates()
     {
         await using var db = await SeedUserCollectionAsync();
@@ -185,6 +230,29 @@ public class CollectionServiceTests
         Assert.Equal(1, reordered.Items[0].OrderIndex);
         Assert.Equal(first.Id, reordered.Items[1].MediaId);
         Assert.Equal(2, reordered.Items[1].OrderIndex);
+    }
+
+    [Fact]
+    public async Task ReorderItemsAsync_IgnoresDeletedMediaItems()
+    {
+        await using var db = await SeedUserCollectionAsync();
+        var data = new TestDataFactory(db.Context);
+        var collection = await db.Context.Collections.SingleAsync();
+        var first = data.Media.Movie("First Visible");
+        var second = data.Media.Movie("Second Visible");
+        var deleted = data.Media.Movie("Deleted Hidden", isDeleted: true);
+        data.Collections.Item(collection, first, 1);
+        data.Collections.Item(collection, deleted, 2);
+        data.Collections.Item(collection, second, 3);
+        await data.SaveAsync();
+        var service = CreateService(db);
+
+        var reordered = await service.ReorderItemsAsync(
+            collection.OwnerId!.Value,
+            collection.Id,
+            new ReorderCollectionItemsDto { MediaIds = [second.Id, first.Id] });
+
+        Assert.Equal([second.Id, first.Id], reordered.Items.Select(i => i.MediaId).ToList());
     }
 
     [Fact]
@@ -329,6 +397,18 @@ public class CollectionServiceTests
         var service = CreateService(db);
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() => service.GetContainingMediaAsync(Guid.NewGuid()));
+    }
+
+    [Fact]
+    public async Task GetContainingMediaAsync_DeletedMediaThrows()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var deleted = data.Media.Movie("Deleted Contained Movie", isDeleted: true);
+        await data.SaveAsync();
+        var service = CreateService(db);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => service.GetContainingMediaAsync(deleted.Id));
     }
 
     private static CollectionService CreateService(SqliteTestDb db) => new(db.Context);

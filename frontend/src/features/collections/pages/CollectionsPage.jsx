@@ -30,13 +30,19 @@ const OWNER_LABELS = {
 };
 
 const getItemCount = (collection) => (
-  Array.isArray(collection?.items) ? collection.items.length : 0
+  Array.isArray(collection?.items)
+    ? collection.items.filter((item) => item?.mediaId && item?.mediaTitle).length
+    : 0
 );
 
 const getHeroArtwork = (collections) => {
   const urls = collections.flatMap((collection) => [
     collection.coverImageUrl,
-    ...(Array.isArray(collection.items) ? collection.items.map((item) => item.coverUrl) : []),
+    ...(Array.isArray(collection.items)
+      ? collection.items
+        .filter((item) => item?.mediaId && item?.mediaTitle)
+        .map((item) => item.coverUrl)
+      : []),
   ]);
 
   return [...new Set(urls.filter(Boolean))].slice(0, 5);

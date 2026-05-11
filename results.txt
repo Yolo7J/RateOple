@@ -1,3 +1,70 @@
+RateOple Staff/Admin follow-up fixes results
+
+Summary of Staff/Admin follow-up fixes:
+- Fixed shared entity picker dismissal so moderator assignment search suggestions no longer stay stuck open after focus.
+- Filtered soft-deleted media out of collection DTO item lists and collection preview artwork derived from items, with frontend fallbacks for malformed legacy collection items.
+- Added an admin workspace mini-header with RateOple home/public navigation and a Back to site link while preserving existing role guards and the left admin sidebar.
+- Updated admin media removal copy to describe the existing soft-delete/archive behavior.
+
+Files changed:
+- backend/RateOple.Core/Collections/Services/CollectionService.cs
+- backend/RateOple.Core.Tests/Collections/CollectionServiceTests.cs
+- backend/RateOple.Api.Tests/Collections/CollectionContainingContractTests.cs
+- frontend/src/layouts/AdminLayout.jsx
+- frontend/src/layouts/SidebarLayout.jsx
+- frontend/src/features/admin/admin.css
+- frontend/src/shared/ui/EntityPicker/EntityPicker.jsx
+- frontend/src/features/collections/collections.css
+- frontend/src/features/collections/components/CollectionCard.jsx
+- frontend/src/features/collections/pages/CollectionDetailPage.jsx
+- frontend/src/features/collections/pages/CollectionsPage.jsx
+- frontend/src/features/media/pages/AdminMediaPage.jsx
+- frontend/src/features/media/pages/EditMediaPage.jsx
+- results.txt
+
+Moderator assignment picker behavior:
+- Shared `EntityPicker` now closes suggestions on outside pointer click and Escape.
+- Selecting an option still fills the selected entity and closes the list.
+- The Change control focuses the input and opens suggestions predictably.
+- Existing picker payloads and assignment mutation payloads are unchanged.
+
+Soft-deleted media / collections behavior:
+- Collection mapping now excludes `CollectionItem` rows whose `Media.IsDeleted` is true from public/user-facing collection DTO items.
+- Collection item counts derived from DTO items now reflect visible non-deleted media.
+- Collection preview artwork sourced from items ignores deleted media; an auto cover matching only a deleted item is suppressed.
+- Reordering collection items now operates on visible media and skips order indexes reserved by archived collection items.
+- The media-containing-collections endpoint continues to return NotFound for deleted media.
+- Frontend collection cards and collection detail artwork defensively ignore invalid item entries, and collection detail renders a disabled "Removed media" placeholder if an invalid item ever arrives.
+
+Admin navigation behavior:
+- `/admin`, `/admin/media`, `/admin/moderation`, and `/admin/moderation/audit-logs` now inherit an admin mini-header from `AdminLayout`.
+- The mini-header includes RateOple home branding, public links to Home, Media, Collections, Groups, and a Back to site link.
+- Existing `RequireAuth` and `RequireRole` route guards were preserved.
+
+Delete UX behavior:
+- Admin media list and edit page now use Archive/Remove from public catalog copy instead of hard-delete language.
+- Confirmations explain that archived media leaves public catalog and collection media cards while retaining records for staff/audit history.
+- List delete still refetches the media list, and edit delete still navigates back to `/admin/media`.
+
+Responsive behavior:
+- Backend-hosted smoke checks covered `/admin`, `/admin/media`, `/admin/moderation`, `/admin/moderation/audit-logs`, and `/collections` at 1280px and 320px with no document-level horizontal overflow.
+- Protected admin route checks redirected to login because no admin browser session was available.
+
+Checks run:
+- `cd frontend && npm run lint`: passed.
+- `cd frontend && npm run build`: passed. Build emitted existing Rollup annotation warnings from @microsoft/signalr comments.
+- `cd frontend && npm run test:e2e`: passed, 2 tests.
+- `cd frontend && npm run build:backend`: passed.
+- `cd backend && dotnet test RateOple.sln`: passed, 327 total tests.
+
+build:backend status:
+- `npm run build:backend` passed and copied the Vite output to `backend/RateOple/wwwroot`.
+
+Known limitations:
+- Full authenticated backend-hosted visual inspection of `/admin` pages and the live moderator picker was not completed because no admin browser session/credentials were available in the repo, and no fake admin data was created.
+- The current checkout's HTTPS profile is serving on `https://localhost:7167`; `https://localhost:7168` was not listening.
+- Light-theme authenticated staff inspection was not completed for the same session limitation; updated styles use existing theme variables.
+
 RateOple Staff/Admin/Media-management UX refactor results
 
 Summary of Staff/Admin/Media-management UX refactor:

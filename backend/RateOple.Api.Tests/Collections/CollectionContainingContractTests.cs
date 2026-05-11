@@ -82,7 +82,22 @@ public class CollectionContainingContractTests
         Assert.Equal(404, json.RootElement.GetProperty("status").GetInt32());
     }
 
-    private static async Task<Guid> SeedMediaAsync(ApiTestFactory factory, string title)
+    [Fact]
+    public async Task MediaCollections_DeletedMediaReturnsNotFound()
+    {
+        using var factory = new ApiTestFactory(useTestAuth: true);
+        var client = factory.CreateClient();
+        var mediaId = await SeedMediaAsync(factory, "Deleted API Collection Movie", isDeleted: true);
+
+        var response = await client.GetAsync($"/api/media/{mediaId}/collections");
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(404, json.RootElement.GetProperty("status").GetInt32());
+    }
+
+    private static async Task<Guid> SeedMediaAsync(ApiTestFactory factory, string title, bool isDeleted = false)
     {
         var mediaId = Guid.NewGuid();
         await factory.WithDbAsync(db =>
@@ -94,7 +109,8 @@ public class CollectionContainingContractTests
                 Title = title,
                 CoverUrl = $"https://example.test/{Uri.EscapeDataString(title)}.jpg",
                 ReleaseDate = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                IsDeleted = isDeleted
             });
             return Task.CompletedTask;
         });

@@ -152,7 +152,7 @@ const EditMediaPage = () => {
       await mediaService.deleteMedia(id);
       navigate('/admin/media');
     } catch (err) {
-      setDeleteError(err?.response?.data?.message || 'Failed to delete media.');
+      setDeleteError(err?.response?.data?.message || 'Failed to archive media.');
     } finally {
       setDeleting(false);
     }
@@ -377,12 +377,12 @@ const EditMediaPage = () => {
                   <div>
                     <h2 className="staff-form-section__title" id="delete-media-title">Danger zone</h2>
                     <p className="staff-form-section__copy">
-                      Delete removes this item from staff lists and public catalog surfaces.
+                      Archive removes this item from public catalog and collection media cards while retaining the record.
                     </p>
                   </div>
                   <Button variant="danger" onClick={() => setDeleteOpen(true)}>
                     <Trash2 size={16} aria-hidden="true" />
-                    Delete media
+                    Archive media
                   </Button>
                 </div>
               </section>
@@ -393,8 +393,8 @@ const EditMediaPage = () => {
 
       <Dialog
         open={deleteOpen}
-        title="Delete media?"
-        description={`Delete ${media?.title || 'this media item'}? This action cannot be undone from this screen.`}
+        title="Archive media?"
+        description={`Remove ${media?.title || 'this media item'} from the public catalog and collection media cards? Existing records are retained for staff and audit history.`}
         onClose={() => {
           if (!deleting) {
             setDeleteOpen(false);
@@ -407,7 +407,7 @@ const EditMediaPage = () => {
               Cancel
             </Button>
             <Button variant="danger" onClick={handleDelete} disabled={deleting}>
-              {deleting ? 'Deleting...' : 'Delete media'}
+              {deleting ? 'Archiving...' : 'Archive media'}
             </Button>
           </>
         )}

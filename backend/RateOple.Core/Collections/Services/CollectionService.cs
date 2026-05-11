@@ -237,8 +237,14 @@ public class CollectionService : ICollectionService
             throw new ArgumentException("Duplicate media ids are not allowed.");
 
         var items = await _context.CollectionItems
-            .Where(i => i.CollectionId == collectionId)
+            .Include(i => i.Media)
+            .Where(i => i.CollectionId == collectionId && !i.Media.IsDeleted)
             .ToListAsync();
+        var reservedOrderIndexes = await _context.CollectionItems
+            .Include(i => i.Media)
+            .Where(i => i.CollectionId == collectionId && i.Media.IsDeleted)
+            .Select(i => i.OrderIndex)
+            .ToHashSetAsync();
 
         if (items.Count != dto.MediaIds.Count)
             throw new ArgumentException("All collection items must be provided for reordering.");
@@ -261,9 +267,14 @@ public class CollectionService : ICollectionService
 
         await _context.SaveChangesAsync();
 
+        var nextOrderIndex = 1;
         for (var i = 0; i < dto.MediaIds.Count; i++)
         {
-            itemsByMedia[dto.MediaIds[i]].OrderIndex = i + 1;
+            while (reservedOrderIndexes.Contains(nextOrderIndex))
+                nextOrderIndex++;
+
+            itemsByMedia[dto.MediaIds[i]].OrderIndex = nextOrderIndex;
+            nextOrderIndex++;
         }
 
         collection.SortMode = CollectionSortMode.Manual;
@@ -440,14 +451,32 @@ public class CollectionService : ICollectionService
             itemsByCollection.TryGetValue(c.Id, out var currentItems);
             currentItems ??= [];
 
+            var visibleItems = currentItems
+                .Where(i => !i.Media.IsDeleted)
+                .ToList();
+
             IEnumerable<CollectionItem> ordered = c.SortMode switch
             {
-                CollectionSortMode.Rating => currentItems.OrderByDescending(i => i.Media.AverageRating).ThenBy(i => i.OrderIndex),
-                CollectionSortMode.ReleaseYear => currentItems.OrderBy(i => i.Media.ReleaseDate).ThenBy(i => i.OrderIndex),
-                CollectionSortMode.Duration => currentItems.OrderBy(i => i.Media.Movie != null ? i.Media.Movie.Duration : null).ThenBy(i => i.OrderIndex),
-                CollectionSortMode.Alphabetical => currentItems.OrderBy(i => i.Media.Title).ThenBy(i => i.OrderIndex),
-                _ => currentItems.OrderBy(i => i.OrderIndex)
+                CollectionSortMode.Rating => visibleItems.OrderByDescending(i => i.Media.AverageRating).ThenBy(i => i.OrderIndex),
+                CollectionSortMode.ReleaseYear => visibleItems.OrderBy(i => i.Media.ReleaseDate).ThenBy(i => i.OrderIndex),
+                CollectionSortMode.Duration => visibleItems.OrderBy(i => i.Media.Movie != null ? i.Media.Movie.Duration : null).ThenBy(i => i.OrderIndex),
+                CollectionSortMode.Alphabetical => visibleItems.OrderBy(i => i.Media.Title).ThenBy(i => i.OrderIndex),
+                _ => visibleItems.OrderBy(i => i.OrderIndex)
             };
+
+            var deletedCoverUrls = currentItems
+                .Where(i => i.Media.IsDeleted && !string.IsNullOrWhiteSpace(i.Media.CoverUrl))
+                .Select(i => i.Media.CoverUrl)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var visibleCoverUrls = visibleItems
+                .Where(i => !string.IsNullOrWhiteSpace(i.Media.CoverUrl))
+                .Select(i => i.Media.CoverUrl)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var coverImageUrl = !string.IsNullOrWhiteSpace(c.CoverImageUrl)
+                && deletedCoverUrls.Contains(c.CoverImageUrl)
+                && !visibleCoverUrls.Contains(c.CoverImageUrl)
+                    ? null
+                    : c.CoverImageUrl;
 
             return new CollectionDto
             {
@@ -458,7 +487,7 @@ public class CollectionService : ICollectionService
                 OwnerType = c.OwnerType,
                 OwnerId = c.OwnerId,
                 SortMode = c.SortMode,
-                CoverImageUrl = c.CoverImageUrl,
+                CoverImageUrl = coverImageUrl,
                 CreatedAt = c.CreatedAt,
                 FollowersCount = followersByCollection.TryGetValue(c.Id, out var count) ? count : 0,
                 Items = ordered.Select(i => new CollectionItemDto
