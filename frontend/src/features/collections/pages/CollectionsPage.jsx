@@ -94,6 +94,7 @@ function CollectionsPage() {
     () => items.reduce((sum, collection) => sum + (collection.followersCount ?? 0), 0),
     [items],
   );
+  const canCreateCollection = Boolean(user && !user.isReadOnly);
 
   const filteredItems = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -147,8 +148,13 @@ function CollectionsPage() {
                 </p>
               </div>
               <div className="collections-hero__actions">
-                {user ? (
+                {canCreateCollection ? (
                   <Button as={Link} to={createHref} variant="primary" size="lg">
+                    Create collection
+                  </Button>
+                ) : null}
+                {user?.isReadOnly ? (
+                  <Button type="button" variant="primary" size="lg" disabled title="Confirm your email or resolve the suspension before creating collections.">
                     Create collection
                   </Button>
                 ) : null}
@@ -156,7 +162,7 @@ function CollectionsPage() {
                   Browse media
                 </Button>
               </div>
-              {mediaId && user ? (
+              {mediaId && canCreateCollection ? (
                 <InlineMessage tone="info">
                   Create a collection and the selected media will be added automatically.
                 </InlineMessage>
@@ -257,7 +263,7 @@ function CollectionsPage() {
                 <CollectionCard
                   key={collection.id}
                   collection={collection}
-                  canFollow={Boolean(user)}
+                  canFollow={Boolean(user && !user.isReadOnly)}
                   followState={followStates[collection.id] ?? null}
                   onFollow={handleFollow}
                   onUnfollow={handleUnfollow}
@@ -277,7 +283,7 @@ function CollectionsPage() {
               }
               action={(
                 <div className="collections-empty-actions">
-                  {user ? (
+                  {canCreateCollection ? (
                     <Button as={Link} to={createHref} variant="primary">
                       Create collection
                     </Button>

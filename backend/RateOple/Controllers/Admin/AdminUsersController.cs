@@ -65,6 +65,7 @@ public class AdminUsersController : ControllerBase
                 user.Id,
                 user.UserName,
                 user.EmailConfirmed,
+                user.IsSuspended,
                 user.LockoutEnd,
                 user.PasswordHash,
                 DisplayName = user.Profile != null ? user.Profile.DisplayName : user.UserName,
@@ -80,6 +81,7 @@ public class AdminUsersController : ControllerBase
             DisplayName = user.DisplayName ?? user.UserName ?? "Unknown user",
             AvatarUrl = user.AvatarUrl,
             EmailConfirmed = user.EmailConfirmed,
+            IsSuspended = user.IsSuspended,
             IsLockedOut = IsLockedOut(user.LockoutEnd),
             IsDeleted = IsDeletedUser(user.UserName, user.PasswordHash, user.LockoutEnd),
             Roles = roles.GetValueOrDefault(user.Id, [])
@@ -120,6 +122,72 @@ public class AdminUsersController : ControllerBase
     {
         await ChangeRoleAsync(userId, RoleConstants.Moderator, grant: false);
         return NoContent();
+    }
+
+    [HttpPost("{userId:guid}/suspension")]
+    public async Task<IActionResult> SuspendUser(Guid userId, SuspendUserDto dto)
+    {
+        var actorId = User.GetRequiredUserId();
+        if (actorId == userId)
+            throw new UnauthorizedAccessException("Users cannot suspend themselves.");
+
+        var target = await _userManager.FindByIdAsync(userId.ToString())
+            ?? throw new KeyNotFoundException("User not found.");
+        await EnsureActorCanManageSuspensionAsync(target);
+        if (IsDeletedUser(target.UserName, target.PasswordHash, target.LockoutEnd))
+            throw new UnauthorizedAccessException("Deleted users cannot be suspended.");
+
+        target.IsSuspended = true;
+        target.SuspendedAt = DateTime.UtcNow;
+        target.SuspensionReason = string.IsNullOrWhiteSpace(dto.Reason) ? null : dto.Reason.Trim();
+        await _userManager.UpdateAsync(target);
+
+        await _context.RefreshTokens
+            .Where(token => token.UserId == target.Id && !token.Revoked)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(token => token.Revoked, true));
+
+        await _auditService.LogAsync(
+            ModerationAuditAction.UserSuspended,
+            actorId,
+            target.Id,
+            notes: target.SuspensionReason);
+
+        return NoContent();
+    }
+
+    [HttpDelete("{userId:guid}/suspension")]
+    public async Task<IActionResult> LiftSuspension(Guid userId)
+    {
+        var actorId = User.GetRequiredUserId();
+        var target = await _userManager.FindByIdAsync(userId.ToString())
+            ?? throw new KeyNotFoundException("User not found.");
+        await EnsureActorCanManageSuspensionAsync(target);
+
+        if (!target.IsSuspended)
+            return NoContent();
+
+        target.IsSuspended = false;
+        target.SuspendedAt = null;
+        target.SuspensionReason = null;
+        await _userManager.UpdateAsync(target);
+
+        await _auditService.LogAsync(
+            ModerationAuditAction.UserSuspensionLifted,
+            actorId,
+            target.Id,
+            notes: "Suspension lifted by Admin/SuperAdmin.");
+
+        return NoContent();
+    }
+
+    private async Task EnsureActorCanManageSuspensionAsync(User target)
+    {
+        if (User.IsInRole(RoleConstants.SuperAdmin))
+            return;
+
+        var targetRoles = (await _userManager.GetRolesAsync(target)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (targetRoles.Contains(RoleConstants.SuperAdmin) || targetRoles.Contains(RoleConstants.Admin))
+            throw new UnauthorizedAccessException("Admins cannot manage suspension state for Admins or SuperAdmins.");
     }
 
     private async Task ChangeRoleAsync(Guid targetUserId, string role, bool grant)
@@ -266,9 +334,15 @@ public class AdminUserDto
     public string? DisplayName { get; set; }
     public string? AvatarUrl { get; set; }
     public bool EmailConfirmed { get; set; }
+    public bool IsSuspended { get; set; }
     public bool IsLockedOut { get; set; }
     public bool IsDeleted { get; set; }
     public List<string> Roles { get; set; } = [];
+}
+
+public class SuspendUserDto
+{
+    public string? Reason { get; set; }
 }
 
 public class PagedAdminUsersDto

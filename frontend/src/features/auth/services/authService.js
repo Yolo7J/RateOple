@@ -15,6 +15,26 @@ export const authService = {
     await api.post("/auth/register", { email, username, password });
   },
 
+  async confirmEmail({ email, token }) {
+    const response = await api.post("/auth/confirm-email", { email, token });
+    return response.data;
+  },
+
+  async resendConfirmation(email) {
+    const response = await api.post("/auth/resend-confirmation", { email });
+    return response.data;
+  },
+
+  async forgotPassword(email) {
+    const response = await api.post("/auth/forgot-password", { email });
+    return response.data;
+  },
+
+  async resetPassword({ email, token, newPassword }) {
+    const response = await api.post("/auth/reset-password", { email, token, newPassword });
+    return response.data;
+  },
+
   async logout() {
     await api.post("/auth/logout");
   },

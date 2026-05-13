@@ -25,6 +25,11 @@ namespace RateOple.Infrastructure.Data.Entities
         [Required]
         public LanguageType PreferredLanguage { get; set; } = UserConstants.DefaultLanguage;
 
+        public bool IsSuspended { get; set; }
+        public DateTime? SuspendedAt { get; set; }
+        [MaxLength(1000)]
+        public string? SuspensionReason { get; set; }
+
         // Navigation Properties
         public ICollection<Rating> Ratings { get; set; } = new List<Rating>();
         public ICollection<Review> Reviews { get; set; } = new List<Review>();
@@ -45,6 +50,7 @@ namespace RateOple.Infrastructure.Data.Entities
         public ICollection<ModeratorAssignment> AssignmentsCreated { get; set; } = new List<ModeratorAssignment>();
         public ICollection<ModerationAuditLog> ModerationAuditLogs { get; set; } = new List<ModerationAuditLog>();
         public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+        public ICollection<SuspensionAppeal> SuspensionAppeals { get; set; } = new List<SuspensionAppeal>();
         public UserProfile? Profile { get; set; }
     }
 }

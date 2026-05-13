@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.FileProviders;
 using RateOple.Hubs;
 using RateOple.Infrastructure.Middleware;
+using RateOple.Middleware;
 
 namespace RateOple.Extensions;
 
@@ -58,6 +59,7 @@ public static class MiddlewareExtensions
     await next();
 });
 
+        app.UseMiddleware<AccountStateMiddleware>();
         app.UseAuthorization();
         app.MapControllers();
         // SignalR negotiate/connect requests are not normal form/API mutations and

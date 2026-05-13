@@ -8,6 +8,7 @@ RateOple is a full-stack media catalog and social platform for tracking, rating,
 - Backend: ASP.NET Core Web API on .NET 9
 - Data: PostgreSQL via EF Core
 - Auth: ASP.NET Identity + JWT in HttpOnly cookies + refresh token rotation
+- Account lifecycle: email confirmation, resend confirmation, forgot/reset password, stale unconfirmed cleanup, and read-only unconfirmed/suspended states
 - Realtime: SignalR notifications
 - External media sources: TMDB and Open Library
 
@@ -36,6 +37,20 @@ The frontend now uses a lightweight shared UI layer rather than page-local styli
 - Shared layout shells for normal, auth, group, admin, and sidebar pages
 
 The latest polish pass applied these patterns across high-traffic user pages, admin/media workflows, moderation workflows, group pages, collection detail, account, and watchlist surfaces. The goal is a cohesive, calm, production-ready interface without changing backend contracts or major product flows.
+
+## Account Lifecycle Configuration
+
+Production email delivery targets Resend through the backend email abstraction. Do not store API keys in source. Required production settings:
+
+- `Email:Provider=Resend`
+- `Email:From`
+- `Email:FrontendBaseUrl`
+- `Resend:ApiKey`
+- `UnconfirmedAccountCleanup:Enabled`
+- `UnconfirmedAccountCleanup:MaxAgeHours`
+- `UnconfirmedAccountCleanup:IntervalMinutes`
+
+Development/test can use `Email:Provider=Fake`. Unconfirmed and suspended users may log in read-only, but backend account-state middleware blocks user-generated-content mutations until confirmation or suspension resolution.
 
 ## Repository Layout
 

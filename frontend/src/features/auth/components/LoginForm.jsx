@@ -89,6 +89,9 @@ const LoginForm = () => {
                     </div>
                 )}
             </FormField>
+            <p className="auth-switch text-right">
+                <Link to="/forgot-password">Forgot password?</Link>
+            </p>
             {error && <InlineMessage tone="error">{error}</InlineMessage>}
             <div className="auth-actions">
                 <Button type="submit" variant="primary" disabled={isBusy}>

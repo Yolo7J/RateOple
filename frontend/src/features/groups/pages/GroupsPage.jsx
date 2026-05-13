@@ -25,6 +25,7 @@ function GroupsPage() {
   const items = Array.isArray(data?.items) ? data.items : [];
   const totalCount = Number.isFinite(Number(data?.totalCount)) ? Number(data.totalCount) : items.length;
   const activeFilterCount = (search.trim() ? 1 : 0) + (visibility ? 1 : 0);
+  const canCreateGroup = Boolean(user && !user.isReadOnly);
 
   const clearFilters = () => {
     setSearch('');
@@ -44,8 +45,14 @@ function GroupsPage() {
               <h1 id="groups-title">Groups</h1>
               <p>Join conversations around movies, TV series, and books.</p>
               <div className="groups-hero__actions">
-                {user ? (
+                {canCreateGroup ? (
                   <Button as={Link} to="/groups/new" variant="primary" size="lg">
+                    <Plus aria-hidden="true" />
+                    Create group
+                  </Button>
+                ) : null}
+                {user?.isReadOnly ? (
+                  <Button type="button" variant="primary" size="lg" disabled title="Confirm your email or resolve the suspension before creating groups.">
                     <Plus aria-hidden="true" />
                     Create group
                   </Button>
@@ -159,7 +166,7 @@ function GroupsPage() {
                     description="Try a different search, browse media for inspiration, or create the first space for this conversation."
                     action={(
                       <div className="groups-empty-actions">
-                        {user ? (
+                        {canCreateGroup ? (
                           <Button as={Link} to="/groups/new" variant="primary">
                             <Plus aria-hidden="true" />
                             Create group

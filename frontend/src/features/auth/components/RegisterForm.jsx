@@ -148,6 +148,9 @@ const RegisterForm = () => {
                     </div>
                 )}
             </FormField>
+            <InlineMessage tone="info">
+                After registration, confirm your email before creating ratings, reviews, groups, or collections.
+            </InlineMessage>
             {error && <InlineMessage tone="error">{error}</InlineMessage>}
             <div className="auth-actions">
                 <Button type="submit" variant="primary" disabled={isBusy}>

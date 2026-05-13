@@ -42,6 +42,10 @@ function TargetReviewComposer({
     return <InlineMessage tone="info">{signedOutMessage || `Sign in and rate this ${targetName} to write a review.`}</InlineMessage>;
   }
 
+  if (disabled) {
+    return <InlineMessage tone="info">{lockedMessage || `Reviewing this ${targetName} is currently unavailable.`}</InlineMessage>;
+  }
+
   if (!ratingId) {
     return <InlineMessage tone="info">{lockedMessage || `Rate this ${targetName} first to write a review.`}</InlineMessage>;
   }

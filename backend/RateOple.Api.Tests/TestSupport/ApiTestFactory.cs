@@ -20,6 +20,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using RateOple.Constants.Constants;
 using RateOple.Core.Contracts;
+using RateOple.Core.Email;
 using RateOple.Infrastructure.Data;
 using RateOple.Infrastructure.Data.Entities;
 
@@ -52,7 +53,11 @@ public sealed class ApiTestFactory : WebApplicationFactory<Program>
                 ["Jwt:Key"] = JwtKey,
                 ["Jwt:Issuer"] = "RateOple.Tests",
                 ["Jwt:Audience"] = "RateOple.Tests",
-                ["Seed:Mode"] = "None"
+                ["Seed:Mode"] = "None",
+                ["Email:Provider"] = "Fake",
+                ["Email:From"] = "RateOple Tests <no-reply@example.test>",
+                ["Email:FrontendBaseUrl"] = "https://frontend.example.test",
+                ["UnconfirmedAccountCleanup:Enabled"] = "false"
             });
         });
 
@@ -97,6 +102,15 @@ public sealed class ApiTestFactory : WebApplicationFactory<Program>
 
     public async Task<User> AddUserAsync(string userName, params string[] roles)
     {
+        return await AddUserAsync(userName, emailConfirmed: true, isSuspended: false, roles);
+    }
+
+    public async Task<User> AddUserAsync(
+        string userName,
+        bool emailConfirmed = true,
+        bool isSuspended = false,
+        params string[] roles)
+    {
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
@@ -112,7 +126,9 @@ public sealed class ApiTestFactory : WebApplicationFactory<Program>
         {
             UserName = userName,
             Email = $"{userName}@example.test",
-            EmailConfirmed = true
+            EmailConfirmed = emailConfirmed,
+            IsSuspended = isSuspended,
+            SuspendedAt = isSuspended ? DateTime.UtcNow : null
         };
 
         var result = await userManager.CreateAsync(user, "Password1");
@@ -124,6 +140,12 @@ public sealed class ApiTestFactory : WebApplicationFactory<Program>
 
         await db.SaveChangesAsync();
         return user;
+    }
+
+    public FakeEmailSender GetFakeEmailSender()
+    {
+        using var scope = Services.CreateScope();
+        return scope.ServiceProvider.GetRequiredService<FakeEmailSender>();
     }
 
     public async Task WithDbAsync(Func<ApplicationDbContext, Task> action)

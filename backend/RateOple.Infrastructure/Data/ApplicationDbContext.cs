@@ -54,6 +54,7 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, 
     public DbSet<UserMediaStatus> UserMediaStatuses { get; set; }
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<MediaInteraction> MediaInteractions { get; set; }
+    public DbSet<SuspensionAppeal> SuspensionAppeals { get; set; }
 
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
 

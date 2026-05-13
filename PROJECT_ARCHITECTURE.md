@@ -168,12 +168,18 @@ This builds Vite and copies `frontend/dist` into `backend/RateOple/wwwroot`. Rea
 Auth endpoints:
 
 - `POST /api/auth/register`
+- `POST /api/auth/confirm-email`
+- `POST /api/auth/resend-confirmation`
+- `POST /api/auth/forgot-password`
+- `POST /api/auth/reset-password`
 - `POST /api/auth/login`
 - `POST /api/auth/refresh`
 - `POST /api/auth/logout`
 - `GET /api/auth/me`
 - `GET /api/auth/google/login`
 - `GET /api/auth/google/complete`
+
+Register/password lifecycle emails are sent through `IAppEmailSender`; production targets Resend and development/test use the fake sender unless configured otherwise. Unconfirmed and suspended users can authenticate read-only. `/api/auth/me`, login, and refresh responses include account-state flags so the frontend can show confirmation/suspension UX while backend middleware remains the source of truth for blocking content mutations.
 
 Google OAuth is backend-mediated only. It registers only when `Authentication:Google:ClientId` and `Authentication:Google:ClientSecret` are configured. The frontend starts the flow by navigating to `/api/auth/google/login`; the backend handles the Google completion endpoint, creates or links an ASP.NET Identity user, issues the normal HttpOnly app cookies, and redirects back to a local frontend route.
 The current frontend callback route is `/auth/callback`, which refreshes `/api/auth/me`, handles success/failure redirect state, and then navigates to the intended local route.
@@ -767,7 +773,7 @@ Remaining risks:
 - Season manager is visually aligned but still dense; a dedicated compact episode table/editor could improve admin ergonomics.
 - Frontend bundle and CSS ownership should continue to be monitored; `index.css` is still large and should remain limited to global tokens, base rules, and shared `ui-*` primitives.
 - Demo seed data remains thin for media, tags, collections, groups, posts, reports, assignments, notifications, and ratings.
-- Pre-deployment security work is still not implemented: CAPTCHA, app-level rate limits, server-side content quotas, email confirmation gating, resend confirmation, password reset, analytics consent, and CI/CD deployment automation are tracked in `SECURITY_AND_DEPLOYMENT_PLAN.md`.
+- Pre-deployment security work still pending: CAPTCHA, app-level rate limits, server-side content quotas, analytics consent, and CI/CD deployment automation. Email confirmation gating, resend confirmation, password reset, stale unconfirmed cleanup, and suspension appeals are implemented for v1 and documented in `SECURITY_AND_DEPLOYMENT_PLAN.md`.
 - `frontend/README.md`, code-structure docs, and architecture docs should stay aligned as UI/testing/security workflows evolve.
 
 Documentation note: the full prioritized critique and remediation backlog lives in `PROJECT_CRITIQUE_AND_RECOMMENDATIONS.txt`.

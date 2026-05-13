@@ -7,6 +7,7 @@ import AdminLayout from '../layouts/AdminLayout';
 import RequireAuth from '../features/auth/components/RequireAuth';
 import RequireGuest from '../features/auth/components/RequireGuest';
 import RequireRole from '../features/auth/components/RequireRole';
+import RequireWritableAccount from '../features/auth/components/RequireWritableAccount';
 import RouteFallback from '../shared/ui/RouteFallback';
 
 const DiscoveryPage = lazy(() => import('../features/discovery/pages/DiscoveryPage'));
@@ -16,6 +17,10 @@ const CreateGroupPage = lazy(() => import('../features/groups/pages/CreateGroupP
 const GroupPostDetailPage = lazy(() => import('../features/groups/pages/GroupPostDetailPage'));
 const LoginPage = lazy(() => import('../features/auth/pages/LoginPage'));
 const RegisterPage = lazy(() => import('../features/auth/pages/RegisterPage'));
+const ForgotPasswordPage = lazy(() => import('../features/auth/pages/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('../features/auth/pages/ResetPasswordPage'));
+const ConfirmEmailPage = lazy(() => import('../features/auth/pages/ConfirmEmailPage'));
+const SuspensionAppealPage = lazy(() => import('../features/auth/pages/SuspensionAppealPage'));
 const ExternalLoginCallbackPage = lazy(() => import('../features/auth/pages/ExternalLoginCallbackPage'));
 const MediaListPage = lazy(() => import('../features/media/pages/MediaListPage'));
 const MediaDetailPage = lazy(() => import('../features/media/pages/MediaDetailPage'));
@@ -56,8 +61,10 @@ const Router = () => {
         <Route path="/collections" element={renderLazyRoute(CollectionsPage)} />
         <Route path="/collections/:id" element={renderLazyRoute(CollectionDetailPage)} />
         <Route element={<RequireAuth />}>
-          <Route path="/collections/new" element={renderLazyRoute(CreateCollectionPage)} />
-          <Route path="/collections/:id/edit" element={renderLazyRoute(EditCollectionPage)} />
+          <Route element={<RequireWritableAccount />}>
+            <Route path="/collections/new" element={renderLazyRoute(CreateCollectionPage)} />
+            <Route path="/collections/:id/edit" element={renderLazyRoute(EditCollectionPage)} />
+          </Route>
           <Route element={<RequireRole allow={['Admin', 'SuperAdmin']} />}>
             <Route path="/media/add" element={renderLazyRoute(AddMediaPage)} />
           </Route>
@@ -65,6 +72,7 @@ const Router = () => {
           <Route path="/cart" element={renderLazyRoute(CartPage)} />
           <Route path="/account" element={renderLazyRoute(AccountPage)} />
           <Route path="/account/watchlist" element={renderLazyRoute(WatchlistPage)} />
+          <Route path="/suspension-appeal" element={renderLazyRoute(SuspensionAppealPage)} />
           <Route path="/notifications" element={renderLazyRoute(NotificationsPage)} />
         </Route>
       </Route>
@@ -78,6 +86,9 @@ const Router = () => {
 
       <Route element={<AuthLayout />}>
         <Route path="/auth/callback" element={renderLazyRoute(ExternalLoginCallbackPage)} />
+        <Route path="/forgot-password" element={renderLazyRoute(ForgotPasswordPage)} />
+        <Route path="/reset-password" element={renderLazyRoute(ResetPasswordPage)} />
+        <Route path="/confirm-email" element={renderLazyRoute(ConfirmEmailPage)} />
       </Route>
 
       <Route element={<GroupLayout />}>
@@ -85,7 +96,9 @@ const Router = () => {
         <Route path="/groups/:id" element={renderLazyRoute(GroupDetailPage)} />
         <Route path="/groups/:groupId/posts/:postId" element={renderLazyRoute(GroupPostDetailPage)} />
         <Route element={<RequireAuth />}>
-          <Route path="/groups/new" element={renderLazyRoute(CreateGroupPage)} />
+          <Route element={<RequireWritableAccount />}>
+            <Route path="/groups/new" element={renderLazyRoute(CreateGroupPage)} />
+          </Route>
         </Route>
       </Route>
 

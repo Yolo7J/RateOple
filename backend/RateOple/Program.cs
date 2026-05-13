@@ -12,7 +12,7 @@ builder.Services
     .AddJwtAuthentication(builder.Configuration, builder.Environment)
     .AddGoogleAuthenticationIfConfigured(builder.Configuration)
     .AddCsrfProtection()
-    .AddApplicationServices()
+    .AddApplicationServices(builder.Configuration, builder.Environment)
     .AddCorsConfiguration()
     .AddApi();
 

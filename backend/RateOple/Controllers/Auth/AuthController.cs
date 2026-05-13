@@ -2,7 +2,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
+using RateOple.Constants.Constants;
 using RateOple.Core.Contracts;
 using RateOple.Core.Auth.DTOs;
 using RateOple.Constants.Enums;
@@ -14,6 +16,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using RateOple.Auth;
 using RateOple.Extensions;
+using System.Text;
 
 namespace RateOple.Controllers
 {
@@ -22,23 +25,32 @@ namespace RateOple.Controllers
     public class AuthController : ControllerBase
     {
         private readonly UserManager<User> _userManager;
+        private readonly RoleManager<IdentityRole<Guid>> _roleManager;
         private readonly IJwtService _jwtService;
+        private readonly IAccountEmailService _accountEmailService;
         private readonly ApplicationDbContext _db;
         private readonly IWebHostEnvironment _environment;
         private readonly IConfiguration _configuration;
+        private readonly ILogger<AuthController> _logger;
 
         public AuthController(
             UserManager<User> userManager,
+            RoleManager<IdentityRole<Guid>> roleManager,
             IJwtService jwtService,
+            IAccountEmailService accountEmailService,
             ApplicationDbContext db,
             IWebHostEnvironment environment,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            ILogger<AuthController> logger)
         {
             _userManager = userManager;
+            _roleManager = roleManager;
             _jwtService = jwtService;
+            _accountEmailService = accountEmailService;
             _db = db;
             _environment = environment;
             _configuration = configuration;
+            _logger = logger;
         }
 
         [HttpPost("register")]
@@ -46,8 +58,9 @@ namespace RateOple.Controllers
         {
             var user = new User
             {
-                UserName = dto.Username,
-                Email = dto.Email
+                UserName = dto.Username.Trim(),
+                Email = dto.Email.Trim(),
+                EmailConfirmed = false
             };
         
             var result = await _userManager.CreateAsync(user, dto.Password);
@@ -55,7 +68,8 @@ namespace RateOple.Controllers
             if (!result.Succeeded)
                 return BadRequest(result.Errors);
         
-            await _userManager.AddToRoleAsync(user, "User");
+            await EnsureUserRoleExistsAsync();
+            await _userManager.AddToRoleAsync(user, RoleConstants.User);
 
             _db.UserProfiles.Add(new UserProfile
             {
@@ -68,8 +82,86 @@ namespace RateOple.Controllers
                     : PrivacySetting.Public
             });
             await _db.SaveChangesAsync();
+            await _accountEmailService.SendConfirmationAsync(user);
         
             return Ok();
+        }
+
+        [HttpPost("confirm-email")]
+        public async Task<IActionResult> ConfirmEmail(ConfirmEmailDto dto)
+        {
+            var user = await _userManager.FindByEmailAsync(dto.Email.Trim());
+            if (user == null)
+                return BadRequestProblem("Invalid confirmation token.");
+
+            var token = DecodeToken(dto.Token);
+            if (token == null)
+                return BadRequestProblem("Invalid confirmation token.");
+
+            var result = await _userManager.ConfirmEmailAsync(user, token);
+            if (!result.Succeeded)
+                return BadRequestProblem("Invalid confirmation token.");
+
+            return Ok(new { message = "Email confirmed." });
+        }
+
+        [HttpPost("resend-confirmation")]
+        public async Task<IActionResult> ResendConfirmation(ResendConfirmationDto dto)
+        {
+            var user = await _userManager.FindByEmailAsync(dto.Email.Trim());
+            if (user != null && !user.EmailConfirmed && !IsDeletedUser(user))
+            {
+                try
+                {
+                    await _accountEmailService.SendConfirmationAsync(user);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to resend confirmation email.");
+                }
+            }
+
+            return Ok(new { message = "If the account exists and needs confirmation, a confirmation email has been sent." });
+        }
+
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword(ForgotPasswordDto dto)
+        {
+            var user = await _userManager.FindByEmailAsync(dto.Email.Trim());
+            if (user != null && !IsDeletedUser(user))
+            {
+                try
+                {
+                    await _accountEmailService.SendPasswordResetAsync(user);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send password reset email.");
+                }
+            }
+
+            return Ok(new { message = "If an account exists, a reset email has been sent." });
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword(ResetPasswordDto dto)
+        {
+            var user = await _userManager.FindByEmailAsync(dto.Email.Trim());
+            var token = DecodeToken(dto.Token);
+            if (user == null || token == null || IsDeletedUser(user))
+                return BadRequestProblem("Invalid password reset token.");
+
+            var result = await _userManager.ResetPasswordAsync(user, token, dto.NewPassword);
+            if (!result.Succeeded)
+                return BadRequestProblem("Invalid password reset token.");
+
+            await _db.RefreshTokens
+                .Where(refreshToken => refreshToken.UserId == user.Id && !refreshToken.Revoked)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(refreshToken => refreshToken.Revoked, true));
+
+            Response.Cookies.Delete("accessToken", BuildAccessCookieOptions());
+            Response.Cookies.Delete("refreshToken", BuildRefreshCookieOptions());
+            return Ok(new { message = "Password reset." });
         }
 
         [HttpGet("me")]
@@ -86,15 +178,14 @@ namespace RateOple.Controllers
             if (user == null)
                 return Unauthorized();
         
-            var roles = await _userManager.GetRolesAsync(user);
-            return Ok(new { user.Id, user.UserName, roles });
+            return Ok(await BuildSessionResponseAsync(user));
         }
 
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginDto dto)
         {
             var user = await _userManager.FindByEmailAsync(dto.Email);
-            if (user == null || !await _userManager.CheckPasswordAsync(user, dto.Password))
+            if (user == null || IsDeletedUser(user) || !await _userManager.CheckPasswordAsync(user, dto.Password))
             {
                 return Unauthorized("Incorrect Email or Password");
             }
@@ -158,7 +249,8 @@ namespace RateOple.Controllers
                         return Redirect(BuildExternalLoginRedirect(returnUrl, success: false));
                     }
 
-                    await _userManager.AddToRoleAsync(user, "User");
+                    await EnsureUserRoleExistsAsync();
+                    await _userManager.AddToRoleAsync(user, RoleConstants.User);
                     _db.UserProfiles.Add(new UserProfile
                     {
                         UserId = user.Id,
@@ -209,7 +301,7 @@ namespace RateOple.Controllers
             await _db.SaveChangesAsync();
             SetAuthCookies(accessToken, refreshToken);
 
-            return new { user.Id, user.UserName, roles };
+            return BuildSessionResponse(user, roles);
         }
 
         private CookieOptions BuildAccessCookieOptions()
@@ -239,6 +331,9 @@ namespace RateOple.Controllers
                     x.ExpiresAt > DateTime.UtcNow);
         
             if (stored == null)
+                return Unauthorized();
+
+            if (IsDeletedUser(stored.User))
                 return Unauthorized();
         
             stored.Revoked = true;
@@ -273,6 +368,66 @@ namespace RateOple.Controllers
         {
             return !string.IsNullOrWhiteSpace(_configuration["Authentication:Google:ClientId"])
                 && !string.IsNullOrWhiteSpace(_configuration["Authentication:Google:ClientSecret"]);
+        }
+
+        private async Task EnsureUserRoleExistsAsync()
+        {
+            if (!await _roleManager.RoleExistsAsync(RoleConstants.User))
+                await _roleManager.CreateAsync(new IdentityRole<Guid>(RoleConstants.User));
+        }
+
+        private async Task<object> BuildSessionResponseAsync(User user)
+        {
+            var roles = await _userManager.GetRolesAsync(user);
+            return BuildSessionResponse(user, roles);
+        }
+
+        private static object BuildSessionResponse(User user, IList<string> roles)
+        {
+            var isReadOnly = !user.EmailConfirmed || user.IsSuspended;
+            var accountState = user.IsSuspended
+                ? "suspended"
+                : user.EmailConfirmed
+                    ? "confirmed"
+                    : "unconfirmed";
+
+            return new
+            {
+                user.Id,
+                user.UserName,
+                user.Email,
+                user.EmailConfirmed,
+                user.IsSuspended,
+                isReadOnly,
+                accountState,
+                roles
+            };
+        }
+
+        private IActionResult BadRequestProblem(string detail)
+        {
+            return Problem(
+                detail: detail,
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Bad Request");
+        }
+
+        private static string? DecodeToken(string token)
+        {
+            try
+            {
+                return Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(token));
+            }
+            catch (FormatException)
+            {
+                return null;
+            }
+        }
+
+        private static bool IsDeletedUser(User user)
+        {
+            return user.UserName?.StartsWith("deleted_", StringComparison.OrdinalIgnoreCase) == true
+                || (user.PasswordHash == null && user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTimeOffset.UtcNow);
         }
 
         private string BuildExternalLoginRedirect(string? returnUrl, bool success, string? error = null)

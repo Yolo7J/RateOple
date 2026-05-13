@@ -19,7 +19,7 @@ src/app/providers.jsx - Query/auth/theme/language provider composition.
 src/app/router.jsx - Active route map for the application.
 
 src/context/ - Global context state.
-src/context/AuthContext.jsx - Session bootstrap and auth state.
+src/context/AuthContext.jsx - Session bootstrap, auth state, and backend account-state flags.
 src/context/LanguageContext.jsx - UI language state.
 src/context/MediaCartContext.jsx - Admin/media-cart state.
 src/context/ThemeContext.jsx - Theme state.
@@ -36,8 +36,8 @@ src/features/admin/ - Admin dashboard feature.
 src/features/admin/pages/AdminDashboardPage.jsx - Admin dashboard landing page.
 
 src/features/auth/ - Authentication feature.
-src/features/auth/components/ - Auth forms and route guards.
-src/features/auth/pages/ - Login, register, and external callback pages.
+src/features/auth/components/ - Auth forms, account-state banner, and route guards.
+src/features/auth/pages/ - Login, register, external callback, email confirmation, forgot/reset password, and suspension appeal pages.
 src/features/auth/queries/ - Session query helpers.
 src/features/auth/services/ - Auth API and Google OAuth helpers.
 
@@ -153,8 +153,9 @@ src/assets/ - Bundled imported assets.
 src/styles/ - Reserved shared styles folder, currently scaffold-only.
 tests/e2e/ - Playwright browser tests.
 tests/e2e/shared-ui.spec.js - Shared UI rendering and desktop/mobile horizontal-overflow smoke coverage.
+tests/e2e/account-lifecycle.spec.js - Mocked account lifecycle smoke coverage for forgot-password, confirmation messaging, resend affordance, and read-only route guards.
 
-Current frontend architecture summary - 2026-05-11
+Current frontend architecture summary - 2026-05-13
 --------------------------------------------------
 
 The frontend uses a feature-first React structure:
@@ -164,6 +165,7 @@ The frontend uses a feature-first React structure:
 - Shared API behavior is centralized in `src/shared/api`.
 - Shared visual language is centralized in `src/index.css`, `src/shared/ui`, `src/shared/components`, and `src/layouts`.
 - Realtime subscriptions are isolated in feature-specific `realtime/` folders plus the shared SignalR client.
+- Auth context carries backend account-state flags so UI can show read-only confirmation/suspension affordances while the backend remains authoritative.
 - Production deployment is handled by `npm run build:backend`, which copies the compiled app into the backend host.
 
 Current UI implementation summary - 2026-05-11

@@ -84,9 +84,10 @@ function GroupDetailPage() {
   const viewerRoleValue = getRoleValue(viewerRole);
   const isMember = Boolean(viewerRoleValue);
   const canManageRoles = canManageGroupRoles(viewerRole);
-  const canModerate = canModerateGroup(viewerRole);
-  const canCreatePost = Boolean(user && isMember);
-  const canJoin = Boolean(user && group && !isMember && isPublicGroup(group));
+  const hasWritableAccount = Boolean(user && !user.isReadOnly);
+  const canModerate = hasWritableAccount && canModerateGroup(viewerRole);
+  const canCreatePost = Boolean(hasWritableAccount && isMember);
+  const canJoin = Boolean(hasWritableAccount && group && !isMember && isPublicGroup(group));
 
   const { data: membersData, isLoading: membersLoading, error: membersError } = useGroupMembersQuery(id, canManageRoles);
   const { data: staffData, isLoading: staffLoading, error: staffError } = useGroupStaffMessagesQuery(id, canModerate);

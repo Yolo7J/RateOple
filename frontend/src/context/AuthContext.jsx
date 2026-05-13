@@ -14,9 +14,15 @@ export const AuthProvider = ({ children }) => {
 
     const user = useMemo(() => {
         if (!sessionData) return null;
+        const emailConfirmed = sessionData.emailConfirmed !== false;
         return {
             id: sessionData.id,
             username: sessionData.userName,
+            email: sessionData.email,
+            emailConfirmed,
+            isSuspended: Boolean(sessionData.isSuspended),
+            isReadOnly: Boolean(sessionData.isReadOnly) || !emailConfirmed || Boolean(sessionData.isSuspended),
+            accountState: sessionData.accountState ?? (emailConfirmed ? "confirmed" : "unconfirmed"),
             roles: Array.isArray(sessionData.roles) ? sessionData.roles : [],
         };
     }, [sessionData]);

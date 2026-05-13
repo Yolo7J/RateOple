@@ -19,7 +19,7 @@ public class InteractionService : IInteractionService
     }
 
     public Task TrackMediaOpenedAsync(Guid userId, Guid mediaId) =>
-        TrackAsync(userId, mediaId, null, null, InteractionType.MediaOpened, points: 1);
+        TrackAsync(userId, mediaId, null, null, InteractionType.MediaOpened, points: 1, skipReadOnlyUsers: true);
 
     public Task TrackRatingCreatedAsync(Guid userId, Guid? mediaId, Guid? seasonId, Guid? episodeId) =>
         TrackAsync(userId, mediaId, seasonId, episodeId, InteractionType.RatingCreated, points: 5);
@@ -36,13 +36,17 @@ public class InteractionService : IInteractionService
         Guid? seasonId,
         Guid? episodeId,
         InteractionType interactionType,
-        int points)
+        int points,
+        bool skipReadOnlyUsers = false)
     {
         var targetCount = (mediaId.HasValue ? 1 : 0) + (seasonId.HasValue ? 1 : 0) + (episodeId.HasValue ? 1 : 0);
         if (targetCount != 1)
             throw new ArgumentException("Exactly one target must be set for an interaction.");
 
-        await EnsureUserExistsAsync(userId);
+        var canTrack = await EnsureUserCanBeTrackedAsync(userId, skipReadOnlyUsers);
+        if (!canTrack)
+            return;
+
         await EnsureTargetExistsAsync(mediaId, seasonId, episodeId);
 
         await using var transaction = await BeginTransactionIfNeededAsync();
@@ -77,11 +81,16 @@ public class InteractionService : IInteractionService
             : null;
     }
 
-    private async Task EnsureUserExistsAsync(Guid userId)
+    private async Task<bool> EnsureUserCanBeTrackedAsync(Guid userId, bool skipReadOnlyUsers)
     {
-        var userExists = await _context.Users.AnyAsync(u => u.Id == userId);
-        if (!userExists)
+        var user = await _context.Users
+            .Where(u => u.Id == userId)
+            .Select(u => new { u.EmailConfirmed, u.IsSuspended })
+            .FirstOrDefaultAsync();
+        if (user == null)
             throw new KeyNotFoundException($"User {userId} not found.");
+
+        return !skipReadOnlyUsers || (user.EmailConfirmed && !user.IsSuspended);
     }
 
     private async Task EnsureTargetExistsAsync(Guid? mediaId, Guid? seasonId, Guid? episodeId)

@@ -1119,6 +1119,9 @@ namespace RateOple.Infrastructure.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsSuspended")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("boolean");
 
@@ -1150,6 +1153,13 @@ namespace RateOple.Infrastructure.Migrations
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");
+
+                    b.Property<string>("SuspensionReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime?>("SuspendedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("boolean");
@@ -1260,6 +1270,47 @@ namespace RateOple.Infrastructure.Migrations
                     b.HasKey("UserId");
 
                     b.ToTable("UserProfiles");
+                });
+
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.SuspensionAppeal", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ResolvedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ResolutionNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("ResolvedByUserId");
+
+                    b.HasIndex("UserId", "Status");
+
+                    b.ToTable("SuspensionAppeals");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
@@ -1822,6 +1873,24 @@ namespace RateOple.Infrastructure.Migrations
                     b.Navigation("TvSeries");
                 });
 
+            modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.SuspensionAppeal", b =>
+                {
+                    b.HasOne("RateOple.Infrastructure.Data.Entities.User", "ResolvedBy")
+                        .WithMany()
+                        .HasForeignKey("ResolvedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("RateOple.Infrastructure.Data.Entities.User", "User")
+                        .WithMany("SuspensionAppeals")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ResolvedBy");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("RateOple.Infrastructure.Data.Entities.TvSeries", b =>
                 {
                     b.HasOne("RateOple.Infrastructure.Data.Entities.Media", "Media")
@@ -2031,6 +2100,8 @@ namespace RateOple.Infrastructure.Migrations
                     b.Navigation("ReportsReviewed");
 
                     b.Navigation("Reviews");
+
+                    b.Navigation("SuspensionAppeals");
                 });
 #pragma warning restore 612, 618
         }

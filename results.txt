@@ -1213,6 +1213,111 @@ Known limitations / manual things to inspect:
 - Empty/limited-data behavior was implemented in code but not manually forced against a mocked empty API response.
 - The backend HTTPS host was already running during final inspection; an attempted sandboxed startup failed due restricted DB socket access, and an elevated startup confirmed the port was already in use.
 
+RateOple account lifecycle hardening results - 2026-05-13
+
+Summary:
+- Implemented v1 account lifecycle hardening: email confirmation, resend confirmation, forgot/reset password, read-only unconfirmed/suspended states, stale unconfirmed cleanup, and suspension appeals.
+- Added Resend-targeted email abstraction with fake sender for development/tests; no secrets were added.
+- Added backend account-state middleware so server-side authorization remains authoritative for UGC mutation blocks.
+- Added frontend lifecycle pages, banners, and route guards for read-only account states.
+
+Files changed:
+- README.md
+- PROJECT_ARCHITECTURE.md
+- SECURITY_AND_DEPLOYMENT_PLAN.md
+- backend/BACKEND_CODE_STRUCTURE.txt
+- backend/RateOple/Controllers/Auth/AuthController.cs
+- backend/RateOple/Controllers/Admin/AdminUsersController.cs
+- backend/RateOple/Controllers/Users/SuspensionAppealsController.cs
+- backend/RateOple/Middleware/AccountStateMiddleware.cs
+- backend/RateOple/Services/UnconfirmedAccountCleanupHostedService.cs
+- backend/RateOple/Extensions/ApplicationServicesExtensions.cs
+- backend/RateOple/Extensions/MiddlewareExtensions.cs
+- backend/RateOple/Program.cs
+- backend/RateOple/appsettings.json
+- backend/RateOple/appsettings.Development.json
+- backend/RateOple.Core/Auth/DTOs/AccountLifecycleDtos.cs
+- backend/RateOple.Core/Auth/Interfaces/IAccountEmailService.cs
+- backend/RateOple.Core/Auth/Services/AccountEmailService.cs
+- backend/RateOple.Core/Email/*
+- backend/RateOple.Core/Users/DTOs/SuspensionAppealDtos.cs
+- backend/RateOple.Core/Users/Interfaces/ISuspensionAppealService.cs
+- backend/RateOple.Core/Users/Interfaces/IUnconfirmedAccountCleanupService.cs
+- backend/RateOple.Core/Users/Options/UnconfirmedAccountCleanupOptions.cs
+- backend/RateOple.Core/Users/Services/SuspensionAppealService.cs
+- backend/RateOple.Core/Users/Services/UnconfirmedAccountCleanupService.cs
+- backend/RateOple.Core/Social/Services/InteractionService.cs
+- backend/RateOple.Infrastructure/Data/ApplicationDbContext.cs
+- backend/RateOple.Infrastructure/Data/Entities/Users/User.cs
+- backend/RateOple.Infrastructure/Data/Entities/Users/SuspensionAppeal.cs
+- backend/RateOple.Infrastructure/Data/Configurations/Users/SuspensionAppealConfiguration.cs
+- backend/RateOple.Infrastructure/Migrations/20260513120000_AddAccountLifecycleHardening.cs
+- backend/RateOple.Infrastructure/Migrations/ApplicationDbContextModelSnapshot.cs
+- backend/RateOple.Constants/Enums/ModerationAuditAction.cs
+- backend/RateOple.Constants/Enums/SuspensionAppealStatus.cs
+- backend/RateOple.Api.Tests/Auth/AccountLifecycleContractTests.cs
+- backend/RateOple.Api.Tests/TestSupport/ApiTestFactory.cs
+- frontend/FRONTEND_CODE_STRUCTURE.txt
+- frontend/src/app/router.jsx
+- frontend/src/context/AuthContext.jsx
+- frontend/src/features/auth/components/AccountStateBanner.jsx
+- frontend/src/features/auth/components/RequireWritableAccount.jsx
+- frontend/src/features/auth/components/LoginForm.jsx
+- frontend/src/features/auth/components/RegisterForm.jsx
+- frontend/src/features/auth/pages/ConfirmEmailPage.jsx
+- frontend/src/features/auth/pages/ForgotPasswordPage.jsx
+- frontend/src/features/auth/pages/ResetPasswordPage.jsx
+- frontend/src/features/auth/pages/SuspensionAppealPage.jsx
+- frontend/src/features/auth/services/authService.js
+- frontend/src/features/collections/pages/CollectionsPage.jsx
+- frontend/src/features/groups/pages/GroupDetailPage.jsx
+- frontend/src/features/groups/pages/GroupsPage.jsx
+- frontend/src/features/media/pages/MediaDetailPage.jsx
+- frontend/src/features/reviews/components/TargetReviewComposer.jsx
+- frontend/src/layouts/MainLayout.jsx
+- frontend/src/layouts/GroupLayout.jsx
+- frontend/tests/e2e/account-lifecycle.spec.js
+
+New config keys:
+- `Email:Provider`
+- `Email:From`
+- `Email:FrontendBaseUrl`
+- `Resend:ApiKey`
+- `UnconfirmedAccountCleanup:Enabled`
+- `UnconfirmedAccountCleanup:MaxAgeHours`
+- `UnconfirmedAccountCleanup:IntervalMinutes`
+
+New endpoints:
+- `POST /api/auth/confirm-email`
+- `POST /api/auth/resend-confirmation`
+- `POST /api/auth/forgot-password`
+- `POST /api/auth/reset-password`
+- `POST /api/suspension-appeals`
+- `POST /api/suspension-appeals/{appealId}/resolve`
+- `POST /api/admin/users/{userId}/suspension`
+- `DELETE /api/admin/users/{userId}/suspension`
+
+Account-state behavior:
+- Confirmed users can log in and create content as before.
+- Unconfirmed users can log in read-only, browse public content, manage account basics, and resend confirmation. UGC mutations return 403 ProblemDetails with code `email_not_confirmed`.
+- Suspended users can log in read-only and submit suspension appeals only. Normal content/report mutations return 403 ProblemDetails with code `account_suspended`.
+- Deleted/anonymized users remain unable to log in through the existing deletion/lockout semantics.
+- Unconfirmed accounts older than the configured max age are deleted only when safe: not privileged, not assigned moderation scope, not suspended, and no UGC rows.
+
+Tests run/results:
+- `dotnet test backend/RateOple.sln`: passed, 356 tests.
+- `npm run lint`: passed.
+- `npm run build`: passed. Build emitted existing Rollup annotation warnings from `@microsoft/signalr` comments.
+- `npx playwright test tests/e2e/account-lifecycle.spec.js`: passed, 12 tests.
+- `npx playwright test`: passed, 18 tests.
+
+Known limitations/open questions:
+- Broad app-level rate limiting for resend confirmation, forgot password, and UGC writes is still deferred to the rate-limit/quotas phase.
+- CAPTCHA is still deferred.
+- Resend delivery is implemented, but production requires secrets/config via environment or user secrets.
+- Suspension appeal spam uses local duplicate, seven-day rejected-appeal, and three-per-24h safeguards; centralized rate-limit backstops remain Phase 5 work.
+- Account deletion/anonymization and public content handling beyond existing behavior remain a later deletion phase.
+
 RateOple media card cinematic refactor results
 
 Summary:

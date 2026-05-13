@@ -243,7 +243,7 @@ function MediaRatingPanel({
         userRating={summary?.userRating ?? null}
       />
 
-      {user ? (
+      {user && !user.isReadOnly ? (
         <form className="media-detail-rating-form" onSubmit={handleSubmit}>
           <label className="media-detail-field-label" htmlFor="media-rating-picker">Your rating</label>
           <RatingPicker
@@ -268,7 +268,9 @@ function MediaRatingPanel({
           </div>
         </form>
       ) : (
-        <InlineMessage tone="info">Sign in to save a rating or write a review.</InlineMessage>
+        <InlineMessage tone="info">
+          {user ? 'Confirm your email or resolve the suspension before rating or reviewing.' : 'Sign in to save a rating or write a review.'}
+        </InlineMessage>
       )}
     </section>
   );
@@ -295,7 +297,7 @@ function StatusTracker({ mediaType, currentStatus, user, saving, onSave }) {
         </div>
       </div>
 
-      {user ? (
+      {user && !user.isReadOnly ? (
         <form className="media-detail-status-form" onSubmit={handleSubmit}>
           <label className="media-detail-field-label" htmlFor="media-status">Status</label>
           <Select
@@ -313,7 +315,9 @@ function StatusTracker({ mediaType, currentStatus, user, saving, onSave }) {
           </Button>
         </form>
       ) : (
-        <InlineMessage tone="info">Your watch or reading status stays private until you sign in.</InlineMessage>
+        <InlineMessage tone="info">
+          {user ? 'Confirm your email or resolve the suspension before updating status.' : 'Your watch or reading status stays private until you sign in.'}
+        </InlineMessage>
       )}
     </section>
   );
@@ -764,9 +768,10 @@ function MediaDetailPage() {
                   userRating={ratingDto?.value ?? summary?.userRating ?? null}
                   user={user}
                   submitting={submittingReview}
+                  disabled={Boolean(user?.isReadOnly)}
                   onSubmit={handleCreateReview}
                   onSuccess={refetchReviews}
-                  lockedMessage={getMediaActionLabels(media.type).reviewFirst}
+                  lockedMessage={user?.isReadOnly ? 'Confirm your email or resolve the suspension before writing reviews.' : getMediaActionLabels(media.type).reviewFirst}
                   signedOutMessage={getMediaActionLabels(media.type).signedOutReview}
                 />
               </div>
@@ -818,7 +823,7 @@ function MediaDetailPage() {
                       <Button as={Link} to="/collections" variant="primary">
                         Browse collections
                       </Button>
-                      {user ? (
+                      {user && !user.isReadOnly ? (
                         <Button as={Link} to={`/collections/new?mediaId=${id}`} variant="ghost">
                           Create collection
                         </Button>

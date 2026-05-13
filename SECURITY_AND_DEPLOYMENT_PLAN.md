@@ -6,8 +6,8 @@ This is an implementation plan, not a completed-feature report. It is based on t
 
 - Backend: ASP.NET Core Web API on .NET 9, Identity users/roles, JWT access and refresh tokens in cookies, CSRF protection, EF Core/PostgreSQL, SignalR notifications.
 - Frontend: React/Vite served either by Vite in development or from `backend/RateOple/wwwroot` after `npm run build:backend`.
-- Existing protections verified in code: HttpOnly auth cookies, refresh token rotation, CSRF header flow, development-only CORS, security headers middleware, role guards, production static hosting, soft-deleted media filtering in core media/collection paths.
-- Not found as completed features: CAPTCHA, app-level rate limiting, server-side user content quotas, email confirmation gating before content creation, resend confirmation, forgot/reset password, analytics consent.
+- Existing protections verified in code: HttpOnly auth cookies, refresh token rotation, CSRF header flow, development-only CORS, security headers middleware, role guards, production static hosting, soft-deleted media filtering in core media/collection paths, email confirmation/resend, forgot/reset password, read-only unconfirmed/suspended account gating, stale-unconfirmed-account cleanup, and suspension appeals.
+- Not found as completed features: CAPTCHA, app-level rate limiting, server-side user content quotas, analytics consent.
 
 ## Deployment Readiness Priorities
 
@@ -16,9 +16,8 @@ Phase 1 should happen before public deployment:
 1. Add backend rate limits for auth, email, and user-generated-content mutations.
 2. Add server-side quotas for user-created resources.
 3. Add CAPTCHA provider abstraction and wire CAPTCHA to registration plus suspicious login attempts.
-4. Require confirmed email before content creation.
-5. Add email confirmation, resend confirmation, and password reset flows with rate limits.
-6. Add tests for the new enforcement paths.
+4. Add app-level rate limits to confirmation resend, forgot-password, and suspension appeal endpoints. The current implementation has enumeration-safe responses and a local appeal duplicate/attempt guard, but not the Phase 5 rate-limit/quota infrastructure.
+5. Add tests for future CAPTCHA, quota, and rate-limit enforcement paths.
 
 Phase 2 should happen before broader usage:
 
@@ -172,15 +171,15 @@ Rendering rules:
 
 ### Email Confirmation
 
-Current registration creates a user without confirmed email, but login and content creation do not appear to require confirmation. Change this before public deployment.
+Implemented for v1. Registration creates an unconfirmed user, sends a confirmation email through the app email abstraction, allows read-only login before confirmation, and blocks user-generated-content mutations server-side until the email is confirmed.
 
-Required flow:
+Current flow:
 
 1. `POST /api/auth/register` creates user and sends confirmation email.
-2. New endpoint: `GET/POST /api/auth/confirm-email` verifies the Identity token.
-3. New endpoint: `POST /api/auth/resend-confirmation` sends a new confirmation link.
-4. Login can be allowed for unconfirmed users only if content creation remains blocked and the UI clearly prompts confirmation.
-5. All content-creation services reject unconfirmed users.
+2. `POST /api/auth/confirm-email` verifies the ASP.NET Identity token.
+3. `POST /api/auth/resend-confirmation` sends a new confirmation link with an enumeration-safe response.
+4. Login is allowed for unconfirmed users, but `/api/auth/me` and login responses expose `emailConfirmed`, `isReadOnly`, `isSuspended`, and `accountState`.
+5. The account-state middleware blocks covered user-generated-content mutations with 403 ProblemDetails and code `email_not_confirmed`.
 
 Content creation that should require confirmed email:
 
@@ -199,7 +198,7 @@ Read-only behavior for unconfirmed accounts:
 
 ### Password Reset
 
-Add:
+Implemented endpoints:
 
 - `POST /api/auth/forgot-password`
 - `POST /api/auth/reset-password`
@@ -207,9 +206,21 @@ Add:
 Rules:
 
 - Always return a generic success response for forgot-password to avoid email enumeration.
-- Rate-limit by email and IP.
+- Rate-limit by email and IP. Not implemented yet; track under Phase 5 rate-limit infrastructure.
 - Log mail send failures server-side without exposing provider details.
 - Invalidate/rotate refresh tokens after successful reset.
+
+Email provider:
+
+- `IAppEmailSender` abstracts provider delivery.
+- `ResendEmailSender` is the production target.
+- `FakeEmailSender` is used for development/test when `Email:Provider` is not `Resend`.
+- Production requires `Email:Provider=Resend`, `Email:From`, `Email:FrontendBaseUrl`, and `Resend:ApiKey`.
+
+Unconfirmed-account cleanup:
+
+- Hosted cleanup runs on `UnconfirmedAccountCleanup` settings.
+- Deletes unconfirmed accounts older than the configured max age only when safe: no privileged roles, no moderator assignments, no UGC rows, no suspension conflict, and related refresh/profile/auth artifacts are removable.
 
 ### Account States
 
@@ -217,9 +228,9 @@ Define and enforce:
 
 | State | Login | Content creation | Public visibility |
 | --- | --- | --- | --- |
-| Unconfirmed | Optional allowed | Blocked | Existing public profile can be minimal or hidden until confirmed |
+| Unconfirmed | Allowed read-only | Blocked | Username reserved while pending; stale safe accounts are cleaned up |
 | Confirmed | Allowed | Allowed subject to quotas/rate limits | Normal |
-| Suspended/banned | Blocked or read-only, policy-defined | Blocked | Existing content remains unless moderated |
+| Suspended/banned | Allowed read-only | Blocked except suspension appeals | Existing content remains unless moderated |
 | Deleted | Blocked | Blocked | Profile anonymized/hidden; content behavior follows existing account deletion policy |
 
 Current account deletion anonymizes/locks the user in `UserProfileService`; keep that semantics documented and test it when lifecycle work changes.
@@ -298,7 +309,7 @@ Current router and API policies use role guards for admin/moderation areas. Glob
 - Moderation queue target removal is intentionally narrow for v1: only leaf group-post comments can be removed from the queue, with audit logging and the existing `CommentRemoved` notification to the affected author. User, review, group post, media catalog, collection, and group target removal remain unavailable unless safe domain endpoints are added.
 - Group membership roles remain separate from global Identity roles.
 
-Suspension is still not a separate completed account-state feature. Current account deletion/anonymization uses permanent lockout; broader suspend/unsuspend administration remains a later account-lifecycle task.
+Suspension is now represented by user account state plus `SuspensionAppeal`. Suspended users can log in read-only, cannot create content or normal reports, can submit one pending appeal, are blocked for 7 days after a rejected appeal, and have a local max-three-attempts-per-24-hours safeguard. Only Admin/SuperAdmin can suspend/lift suspension through admin endpoints. Broader rate limiting for appeal spam remains a Phase 5 infrastructure task.
 
 Before deployment:
 
