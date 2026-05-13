@@ -1,3 +1,112 @@
+RateOple architecture documentation reality-check results
+
+Summary:
+- Re-checked the root README, frontend README, project architecture document, backend/frontend code-structure files, and feature README files against the current repository tree and route/controller structure.
+- Updated stale or placeholder documentation only; no application code was changed.
+
+Files changed:
+- README.md
+- PROJECT_ARCHITECTURE.md
+- backend/BACKEND_CODE_STRUCTURE.txt
+- frontend/FRONTEND_CODE_STRUCTURE.txt
+- frontend/src/features/collections/README.md
+- frontend/src/features/groups/README.md
+- frontend/src/features/moderation/README.md
+- frontend/src/features/notifications/README.md
+- results.txt
+
+Corrections made:
+- Replaced stale placeholder feature READMEs for collections, groups, moderation, and notifications with descriptions matching the implemented pages, services, queries, realtime hooks, and CSS ownership.
+- Corrected the documented Google backend completion route from `/api/auth/google/callback` to the real `/api/auth/google/complete` route.
+- Corrected backend startup documentation to include `AddGoogleAuthenticationIfConfigured` and to note that SignalR/user-id provider registration is inside `AddApi`.
+- Added currently implemented API routes that were missing from the architecture doc: containing-media collections, season/episode reviews, user ratings/reviews/favorite genres, and lookup endpoints.
+- Corrected the `useQueryResource` path to `frontend/src/hooks/useQueryResource.js`.
+- Updated recorded verification counts from the old 303 backend tests to the latest recorded 327 backend tests.
+- Corrected the root README `dotnet-ef` tool note because `backend/.config/dotnet-tools.json` exists in the current repo.
+- Documented currently scaffold-only shared frontend folders so the code-structure file matches the tree.
+
+Checks run:
+- Documentation-only pass. No lint, build, tests, or app runtime checks were run.
+
+Known assumptions/open questions:
+- Verification numbers are taken from the latest recorded `results.txt` checks, not from a new test run in this turn.
+- Existing uncommitted documentation from the security/deployment plan remains part of the current working tree.
+
+RateOple deployment-readiness security/performance plan results
+
+Summary:
+- Created a documentation-only deployment-readiness plan for RateOple security, abuse protection, account lifecycle, performance, testing, CI/CD, and deployment operations.
+- Updated the architecture document with a short pre-deployment hardening roadmap linking to the new plan.
+- No application code, backend contracts, frontend components, styles, migrations, tests, or build artifacts were changed.
+
+Files changed:
+- SECURITY_AND_DEPLOYMENT_PLAN.md
+- PROJECT_ARCHITECTURE.md
+- results.txt
+
+Key recommendations:
+- Implement Phase 1 before public deployment: backend rate limits, server-side content quotas, CAPTCHA provider abstraction, email confirmation gating for content creation, confirmation resend, password reset, and focused tests.
+- Enforce bot/spam controls on the server in domain services and middleware; frontend checks should be UX-only.
+- Add `ICaptchaVerifier` so Turnstile, hCaptcha, or reCAPTCHA can be configured without hard-coding provider logic into controllers.
+- Treat all user text as plain text, continue avoiding unsafe raw HTML, and audit validation gaps for every user-generated payload.
+- Keep existing cookie/CSRF/CORS/security-header protections, but review CSP, HSTS, production error shaping, Swagger policy, and provider allowlists against the final deployment host.
+- Do not add analytics before consent and security work; separate necessary auth/CSRF cookies from non-essential tracking.
+- Continue performance work by keeping `index.css` for global tokens/base/shared utilities, preserving route lazy-loading, and standardizing lazy images/poster placeholders.
+- Add lean CI/CD covering frontend lint/build/e2e, backend build/test, `build:backend`, publish/deploy, and post-deploy smoke checks.
+
+No code/build run:
+- Documentation-only task. No lint, build, tests, or backend run were needed.
+
+Known assumptions/open questions:
+- Current scan found no completed CAPTCHA, app-level rate limits, server-side resource quotas, email confirmation gating before content creation, resend confirmation, forgot/reset password, or analytics consent implementation.
+- Current scan found existing HttpOnly JWT cookies, refresh token rotation, CSRF middleware, development-only CORS, security headers middleware, role guards, route lazy-loading, and soft-deleted media filtering.
+- Open decisions remain for CAPTCHA provider, email provider, production domain/origins, single-instance versus multi-instance rate-limit storage, unconfirmed-user login policy, and suspended-account behavior.
+
+RateOple focused final UX/QA pass results
+
+Summary:
+- Completed a focused backend-hosted QA pass across the recently changed staff/admin, collections, auth, groups, media list, media detail, TV season/episode, and protected account/watchlist entry points.
+- No additional source fixes were needed during this pass; the only file updated in this turn is this results log.
+- Confirmed the app build served through the backend host at `https://localhost:7167` after `npm run build:backend`.
+
+Files changed:
+- results.txt
+
+Exact fixes:
+- No new code fixes were applied in this final pass.
+- Static verification confirmed admin routes are grouped under `AdminLayout` behind `RequireAuth` plus the existing role guards, and the admin shell includes RateOple home branding, public links to Home/Media/Collections/Groups, and a Back to site link.
+- Static verification confirmed the shared `EntityPicker` closes on outside pointerdown and Escape, closes after selection, clears search state on selection/clear, and keeps the existing `onChange(option)` assignment payload.
+- Static verification confirmed collection service filtering excludes `Media.IsDeleted` items from visible collection DTO items and item-derived preview art, while collection detail keeps a disabled "Removed media" fallback for malformed legacy items.
+
+Responsive checks:
+- Backend-hosted Playwright checks at 1280px, 375px, and 320px covered `/admin`, `/admin/media`, `/admin/moderation`, `/admin/moderation/audit-logs`, `/account`, `/account/watchlist`, `/login`, `/register`, `/groups`, `/collections`, and `/media`.
+- Backend-hosted Playwright checks at 1280px and 320px covered representative movie, book, TV series, season, episode, and collection detail routes:
+  - `/media/d1eb416f-c10c-48e5-96b5-453d7e4e842b`
+  - `/media/46e3dce1-95e0-4863-bc13-87eb5258b66f`
+  - `/media/177c7bcd-9982-47aa-aadd-78690245a42f`
+  - `/media/177c7bcd-9982-47aa-aadd-78690245a42f/seasons/1`
+  - `/media/177c7bcd-9982-47aa-aadd-78690245a42f/seasons/1/episodes/1`
+  - `/collections/a5187dc1-6142-42b7-b8d7-32807a83b856`
+  - `/collections/d8144bd2-edf0-4e73-9886-012e74ee918e`
+- No document-level horizontal overflow was detected on the backend-hosted routes and viewport widths inspected.
+- Light theme was briefly smoke-checked on `/collections` at 320px with no document-level horizontal overflow.
+
+Commands run and pass/fail status:
+- `cd frontend && npm run lint`: passed.
+- `cd frontend && npm run build`: passed. Build emitted existing Rollup annotation warnings from @microsoft/signalr comments.
+- `cd frontend && npm run test:e2e`: passed, 2 tests.
+- `cd frontend && npm run build:backend`: passed.
+- Backend tests were skipped because no backend contracts/source were changed in this final QA pass.
+
+build:backend status:
+- `npm run build:backend` passed and copied the Vite output to `backend/RateOple/wwwroot`.
+
+Known limitations / manual checks not completed:
+- Authenticated visual inspection of `/admin`, `/admin/media`, `/admin/moderation`, `/admin/moderation/audit-logs`, `/account`, and `/account/watchlist` was blocked by the lack of an authenticated browser session/credentials. Protected routes correctly redirected to `/login` with returnUrl values, and no fake data or bypass routes were created.
+- The live moderator assignment dropdown could not be exercised without an authenticated moderator/admin session, so picker behavior was verified from the shared component implementation.
+- I did not archive a live media item during this pass because that requires authenticated staff access and would mutate real catalog data; soft-delete collection handling was verified from the existing backend/frontend implementation and public collection detail smoke checks.
+- The current checkout's HTTPS profile is serving on `https://localhost:7167`; `https://localhost:7168` was not listening.
+
 RateOple Staff/Admin follow-up fixes results
 
 Summary of Staff/Admin follow-up fixes:

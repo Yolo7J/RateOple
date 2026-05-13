@@ -1,6 +1,6 @@
 # RateOple Architecture (Current State)
 
-Last updated: **May 4, 2026**
+Last updated: **May 11, 2026**
 
 This document reflects the code currently present in the repository.
 
@@ -111,11 +111,11 @@ frontend/
 2. `AddIdentityConfiguration`
 3. `AddAuthorizationPolicies`
 4. `AddJwtAuthentication`
-5. `AddCsrfProtection`
-6. `AddApplicationServices`
-7. `AddCorsConfiguration`
-8. `AddApi`
-9. `AddSignalR` + `IUserIdProvider` for `NameIdentifier` mapping
+5. `AddGoogleAuthenticationIfConfigured`
+6. `AddCsrfProtection`
+7. `AddApplicationServices`
+8. `AddCorsConfiguration`
+9. `AddApi` (`AddApi` registers controllers, ProblemDetails, OpenAPI, SignalR, and the SignalR user-id provider)
 
 Then:
 
@@ -173,9 +173,9 @@ Auth endpoints:
 - `POST /api/auth/logout`
 - `GET /api/auth/me`
 - `GET /api/auth/google/login`
-- `GET /api/auth/google/callback`
+- `GET /api/auth/google/complete`
 
-Google OAuth is backend-mediated only. It registers only when `Authentication:Google:ClientId` and `Authentication:Google:ClientSecret` are configured. The frontend starts the flow by navigating to `/api/auth/google/login`; the backend handles the Google callback, creates or links an ASP.NET Identity user, issues the normal HttpOnly app cookies, and redirects back to a local frontend route.
+Google OAuth is backend-mediated only. It registers only when `Authentication:Google:ClientId` and `Authentication:Google:ClientSecret` are configured. The frontend starts the flow by navigating to `/api/auth/google/login`; the backend handles the Google completion endpoint, creates or links an ASP.NET Identity user, issues the normal HttpOnly app cookies, and redirects back to a local frontend route.
 The current frontend callback route is `/auth/callback`, which refreshes `/api/auth/me`, handles success/failure redirect state, and then navigates to the intended local route.
 
 ### 4.3 CSRF and CORS
@@ -290,14 +290,30 @@ Backend test coverage is split across two projects:
 
 Frontend browser coverage lives under `frontend/tests/e2e` and currently focuses on smoke coverage with Playwright.
 
-Current verification snapshot as of May 4, 2026:
+Current recorded verification snapshot as of May 11, 2026:
 
-- `dotnet test backend/RateOple.sln` passes with 303 backend tests.
+- `dotnet test backend/RateOple.sln` passed with 327 backend tests in the latest recorded full backend run in `results.txt`.
 - `cd frontend && npm run lint` passes.
 - `cd frontend && npm run build` passes.
 - `cd frontend && npm run test:e2e` passes with 2 Playwright smoke tests.
 
 Note: Entities are physically domain-grouped in folders but currently share namespace `RateOple.Infrastructure.Data.Entities`.
+
+## Pre-deployment Hardening Roadmap
+
+Before public deployment, RateOple should prioritize server-side abuse controls and account lifecycle hardening over additional UI polish.
+
+The detailed implementation plan is maintained in [SECURITY_AND_DEPLOYMENT_PLAN.md](SECURITY_AND_DEPLOYMENT_PLAN.md). The near-term roadmap is:
+
+- Add backend rate limits for auth, email, lookup, and user-generated-content writes.
+- Add server-side quotas for collections, nested collections, collection items, groups, posts, comments, reviews, reports, and ratings.
+- Add a CAPTCHA provider abstraction and wire CAPTCHA to registration plus suspicious login attempts.
+- Require confirmed email before content creation, and add confirmation resend plus password reset flows.
+- Tighten production security headers/CORS/CSP policies against the final deployment host and providers.
+- Keep analytics disabled until cookie consent and security work are complete.
+- Continue performance cleanup by keeping `index.css` global-only, preserving route-level lazy loading, and standardizing lazy images/poster placeholders.
+- Add focused backend tests for quotas, validation, CAPTCHA, email confirmation permissions, rate limits, role guards, and soft-deleted media filtering.
+- Add lean Playwright smoke coverage for public routes, auth validation, protected redirects, and responsive overflow without turning E2E into the primary test layer.
 
 ## 7. Controllers by Domain
 
@@ -402,6 +418,7 @@ Read/query:
 
 - `GET /api/media`
 - `GET /api/media/{id}`
+- `GET /api/media/{mediaId}/collections`
 - `GET /api/media/genres`
 - `GET /api/media/tags`
 
@@ -472,6 +489,8 @@ Reviews:
 - `PUT /api/reviews/{reviewId}`
 - `DELETE /api/reviews/{reviewId}`
 - `GET /api/media/{mediaId}/reviews`
+- `GET /api/seasons/{seasonId}/reviews`
+- `GET /api/episodes/{episodeId}/reviews`
 
 ### 10.6 Users
 
@@ -488,12 +507,16 @@ Under `/api/users/me`:
 - `POST /change-password`
 - `DELETE /`
 - `GET /status`
+- `GET /ratings`
+- `GET /reviews`
+- `GET /favorite-genres`
 
 Notifications:
 
 - `GET /api/notifications`
 - `POST /api/notifications/{id}/read`
 - `POST /api/notifications/read-all`
+
 SignalR hubs:
 
 - `GET/POST /hubs/notifications` (SignalR)
@@ -502,6 +525,7 @@ SignalR hubs:
 
 - `GET /api/collections`
 - `GET /api/collections/{id}`
+- `GET /api/media/{mediaId}/collections`
 - `POST /api/collections`
 - `PUT /api/collections/{id}`
 - `DELETE /api/collections/{id}`
@@ -544,6 +568,17 @@ SignalR hubs:
 - `DELETE /api/moderation/assignments`
 - `GET /api/moderation/audit-logs`
 
+### 10.10 Lookup
+
+Lookup endpoints back picker workflows and keep raw IDs out of user-facing forms:
+
+- `GET /api/media/lookup`
+- `GET /api/users/lookup`
+- `GET /api/admin/users/lookup`
+- `GET /api/groups/lookup`
+- `GET /api/collections/lookup`
+- `GET /api/moderation/scopes/lookup`
+
 ## 11. Frontend Contract Snapshot
 
 - Primary routing is in `frontend/src/app/router.jsx` (rendered by `AppRouter.jsx`).
@@ -553,7 +588,7 @@ SignalR hubs:
   - auth/csrf interceptors (`authInterceptor.js`)
   - credentials-enabled cookie auth
 - Server state is fetched through feature query hooks (React Query), commonly wrapped by
-  `frontend/src/shared/utils/useQueryResource.js`.
+  `frontend/src/hooks/useQueryResource.js`.
 
 Current frontend/backend user contract is aligned for:
 
@@ -700,7 +735,7 @@ Guardrail coverage:
 - Playwright smoke tests currently cover shared UI rendering and horizontal overflow behavior on desktop and mobile Chromium.
 - Earlier picker/search flows are represented in the UI architecture and should be restored or extended with targeted Playwright coverage as the smoke suite grows.
 
-## 17. Architecture Quality Audit (May 4, 2026)
+## 17. Architecture Quality Audit (May 11, 2026)
 
 The current structure is feature-rich but still carries product and architecture debt that should be treated as roadmap input, not cosmetic cleanup.
 
@@ -717,13 +752,13 @@ Resolved guardrails:
 
 Remaining risks:
 
-- Google OAuth works through the backend, but the frontend flow still needs polish.
-- Admin/moderation operational UI is more cohesive, but targeted smoke coverage for the new dialogs and mutation flows is still thin.
-- Some feature pages still keep local class maps and could be decomposed into smaller shared form/card/list components.
+- Auth, admin, moderation, account, groups, collections, and media-detail surfaces are visually aligned, but authenticated mutation-flow Playwright coverage is still thin.
+- Some feature pages still keep local class maps and could be decomposed into smaller shared form/card/list components when the same pattern repeats.
 - Season manager is visually aligned but still dense; a dedicated compact episode table/editor could improve admin ergonomics.
-- The main frontend bundle remains larger than Vite's 500 kB warning threshold and should be split later.
+- Frontend bundle and CSS ownership should continue to be monitored; `index.css` is still large and should remain limited to global tokens, base rules, and shared `ui-*` primitives.
 - Demo seed data remains thin for media, tags, collections, groups, posts, reports, assignments, notifications, and ratings.
-- `frontend/README.md`, code-structure docs, and architecture docs should stay aligned as UI/testing workflows evolve.
+- Pre-deployment security work is still not implemented: CAPTCHA, app-level rate limits, server-side content quotas, email confirmation gating, resend confirmation, password reset, analytics consent, and CI/CD deployment automation are tracked in `SECURITY_AND_DEPLOYMENT_PLAN.md`.
+- `frontend/README.md`, code-structure docs, and architecture docs should stay aligned as UI/testing/security workflows evolve.
 
 Documentation note: the full prioritized critique and remediation backlog lives in `PROJECT_CRITIQUE_AND_RECOMMENDATIONS.txt`.
 

@@ -107,6 +107,8 @@ src/shared/components/Footer/Footer.jsx - Shared footer.
 src/shared/components/Header/Header.jsx - Shared header, global nav, auth/account affordances, notification entry, and search presentation.
 src/shared/components/Header/NavigationDropdown.jsx - Header dropdown navigation.
 src/shared/components/MediaCard/MediaCard.jsx - Shared media card variant used across catalog/discovery contexts.
+src/shared/components/media/ - Reserved shared media component folder, currently scaffold-only.
+src/shared/components/reviews/ - Reserved shared review component folder, currently scaffold-only.
 
 src/shared/ui/ - Shared UI primitives and reusable controls.
 src/shared/ui/index.js - Barrel exports for shared UI primitives.
@@ -140,16 +142,19 @@ src/shared/ui/SearchBar/ - Search input UI.
 src/shared/ui/ThemeToggle/ - Theme toggle UI.
 
 src/shared/constants/ - Shared constant values such as breakpoints, media types, and status types.
+src/shared/queries/ - Reserved shared query folder, currently scaffold-only.
+src/shared/services/ - Reserved shared service folder, currently scaffold-only.
 src/shared/signalr/signalrClient.js - Shared SignalR client creation/wiring.
 src/shared/utils/ - Shared formatting and image helpers.
 
 src/hooks/ - Cross-feature reusable hooks.
 src/locales/ - Translation dictionaries.
 src/assets/ - Bundled imported assets.
+src/styles/ - Reserved shared styles folder, currently scaffold-only.
 tests/e2e/ - Playwright browser tests.
 tests/e2e/shared-ui.spec.js - Shared UI rendering and desktop/mobile horizontal-overflow smoke coverage.
 
-Current frontend architecture summary - 2026-05-02
+Current frontend architecture summary - 2026-05-11
 --------------------------------------------------
 
 The frontend uses a feature-first React structure:
@@ -161,7 +166,7 @@ The frontend uses a feature-first React structure:
 - Realtime subscriptions are isolated in feature-specific `realtime/` folders plus the shared SignalR client.
 - Production deployment is handled by `npm run build:backend`, which copies the compiled app into the backend host.
 
-Current UI implementation summary - 2026-05-02
+Current UI implementation summary - 2026-05-11
 ----------------------------------------------
 
 - Normal user surfaces now use shared page headers, controls, messages, loading states, empty states, cards, tabs, and dialogs across media, account, watchlist, groups, and collection detail.

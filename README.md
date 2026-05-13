@@ -119,9 +119,8 @@ dotnet ef database update --project RateOple.Infrastructure --startup-project Ra
 Important note about `dotnet-ef`:
 
 - `backend/.config/dotnet-tools.json` contains the local `dotnet-ef` tool manifest.
-- `backend/.config` is not included in the submitted ZIP.
-- Because of that, `dotnet tool restore` will not work from this repository on another machine.
-- To use the migration commands above, `dotnet-ef` must be installed globally on the examiner's machine.
+- In the current repository, `backend/.config` is present, so `dotnet tool restore` can restore the local `dotnet-ef` tool.
+- If a submitted archive excludes `backend/.config`, install `dotnet-ef` globally or restore the tool manifest before running migration commands.
 
 Run one of the backend launch profiles:
 
@@ -263,15 +262,17 @@ This writes the deployment-ready frontend bundle into `backend/RateOple/wwwroot`
 ## Additional Documentation
 
 - [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md)
+- [SECURITY_AND_DEPLOYMENT_PLAN.md](SECURITY_AND_DEPLOYMENT_PLAN.md)
 - [backend/BACKEND_CODE_STRUCTURE.txt](backend/BACKEND_CODE_STRUCTURE.txt)
 - [frontend/FRONTEND_CODE_STRUCTURE.txt](frontend/FRONTEND_CODE_STRUCTURE.txt)
 - [frontend/README.md](frontend/README.md)
 
 ## Latest Verification Snapshot
 
-As of May 4, 2026:
+As of the latest recorded full checks in `results.txt`:
 
-- `dotnet test backend/RateOple.sln` passes with 303 backend tests.
-- `cd frontend && npm run lint` passes.
-- `cd frontend && npm run build` passes.
-- `cd frontend && npm run test:e2e` passes with 2 Playwright smoke tests.
+- `dotnet test backend/RateOple.sln` passed with 327 backend tests.
+- `cd frontend && npm run lint` passed.
+- `cd frontend && npm run build` passed.
+- `cd frontend && npm run test:e2e` passed with 2 Playwright smoke tests.
+- `cd frontend && npm run build:backend` passed and copied the Vite output to `backend/RateOple/wwwroot`.
