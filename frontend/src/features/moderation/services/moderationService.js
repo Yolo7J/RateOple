@@ -11,8 +11,18 @@ const moderationService = {
     return response.data;
   },
 
-  updateReportStatus: async (reportId, status) => {
-    const response = await api.put(`/moderation/reports/${reportId}/status`, { status });
+  updateReportStatus: async (reportId, status, note = '') => {
+    const response = await api.put(`/moderation/reports/${reportId}/status`, {
+      status,
+      ...(note?.trim() ? { note: note.trim() } : {}),
+    });
+    return response.data;
+  },
+
+  removeReportTarget: async (reportId, reason = '') => {
+    const response = await api.delete(`/moderation/reports/${reportId}/target`, {
+      data: reason?.trim() ? { reason: reason.trim() } : {},
+    });
     return response.data;
   },
 

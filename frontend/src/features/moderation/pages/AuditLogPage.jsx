@@ -19,6 +19,10 @@ const ACTION_LABELS = {
   6: 'Moderator unassigned',
   7: 'Group user banned',
   8: 'Group user unbanned',
+  9: 'Global role granted',
+  10: 'Global role revoked',
+  11: 'Report escalated to admin',
+  12: 'Report target removed',
 };
 
 const ACTION_OPTIONS = [
@@ -31,6 +35,10 @@ const ACTION_OPTIONS = [
   { value: '6', label: 'Moderator unassigned' },
   { value: '7', label: 'Group user banned' },
   { value: '8', label: 'Group user unbanned' },
+  { value: '9', label: 'Global role granted' },
+  { value: '10', label: 'Global role revoked' },
+  { value: '11', label: 'Report escalated to admin' },
+  { value: '12', label: 'Report target removed' },
 ];
 
 const SCOPE_LABELS = {

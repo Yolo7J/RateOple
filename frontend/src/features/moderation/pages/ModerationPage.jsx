@@ -4,12 +4,13 @@ import { useAuth } from '../../../context/AuthContext';
 import { useModerationReportsQuery } from '../queries/useModerationReportsQuery';
 import { useModeratorAssignmentsQuery } from '../queries/useModeratorAssignmentsQuery';
 import { useModerationMutations } from '../queries/useModerationMutations';
-import { useGroupMutations } from '../../groups/queries/useGroupMutations';
 import { useModerationRealtime } from '../realtime/useModerationRealtime';
-import ModerationReportRow from '../components/ModerationReportRow';
+import ModerationReportRow, { ReportStatusBadge } from '../components/ModerationReportRow';
+import { TARGET_LABELS } from '../moderationLabels';
 import ModeratorAssignmentList from '../components/ModeratorAssignmentList';
 import PageLayout from '../../../layouts/PageLayout';
 import Container from '../../../shared/ui/Container';
+import DataTable from '../../../shared/ui/DataTable';
 import EmptyState from '../../../shared/ui/EmptyState';
 import InlineMessage from '../../../shared/ui/InlineMessage';
 import LoadingState from '../../../shared/ui/LoadingState';
@@ -17,6 +18,7 @@ import Button from '../../../shared/ui/Button';
 import Select from '../../../shared/ui/Select';
 import Badge from '../../../shared/ui/Badge';
 import { EntityPicker } from '../../../shared/ui/EntityPicker';
+import { formatDate } from '../../../shared/utils/formatDate';
 import { searchModeratorCandidates } from '../../users/services/userLookupService';
 import { searchModerationScopes } from '../services/scopeLookupService';
 import '../moderation.css';
@@ -27,6 +29,7 @@ const REPORT_STATUS_OPTIONS = [
   { value: '2', label: 'In review' },
   { value: '3', label: 'Resolved' },
   { value: '4', label: 'Rejected' },
+  { value: '5', label: 'Escalated' },
 ];
 
 const SCOPE_OPTIONS = [
@@ -60,15 +63,21 @@ function ModerationPage() {
     error: assignmentsError,
   } = useModeratorAssignmentsQuery({}, isAdmin);
 
-  const { updateReportStatus, createAssignment, removeAssignment, loading: moderationMutating } = useModerationMutations();
-  const { banUser, unbanUser, loading: groupMutating } = useGroupMutations();
-  const isMutating = moderationMutating || groupMutating;
+  const {
+    updateReportStatus,
+    removeReportTarget,
+    createAssignment,
+    removeAssignment,
+    loading: moderationMutating,
+  } = useModerationMutations();
+  const isMutating = moderationMutating;
 
   useModerationRealtime(hasModerationAccess);
 
   const reports = Array.isArray(reportsData?.items) ? reportsData.items : [];
   const assignments = Array.isArray(assignmentsData) ? assignmentsData : [];
   const currentStatusLabel = REPORT_STATUS_OPTIONS.find((option) => option.value === statusFilter)?.label ?? 'Reports';
+  const hasNoAssignments = !isAdmin && reportsData?.hasActiveModerationAssignments === false;
 
   const searchAssignmentScope = useCallback((params) => (
     searchModerationScopes({ ...params, scopeType: Number(assignmentForm.scopeType) })
@@ -82,14 +91,25 @@ function ModerationPage() {
     })
   ), [assignmentForm.scopeType, assignmentScope?.id]);
 
-  const handleUpdateStatus = async (reportId, nextStatus) => {
+  const handleUpdateStatus = useCallback(async (reportId, nextStatus, note = '') => {
     setActionError('');
     try {
-      await updateReportStatus(reportId, Number(nextStatus));
+      await updateReportStatus(reportId, Number(nextStatus), note);
     } catch (err) {
       setActionError(err?.response?.data?.message || 'Could not update report status.');
+      throw err;
     }
-  };
+  }, [updateReportStatus]);
+
+  const handleRemoveTarget = useCallback(async (reportId, reason = '') => {
+    setActionError('');
+    try {
+      await removeReportTarget(reportId, reason);
+    } catch (err) {
+      setActionError(err?.response?.data?.message || 'Could not remove target.');
+      throw err;
+    }
+  }, [removeReportTarget]);
 
   const handleCreateAssignment = async (e) => {
     e.preventDefault();
@@ -125,25 +145,77 @@ function ModerationPage() {
     }
   };
 
-  const handleBanUser = async ({ groupId, userId, reason }) => {
-    setActionError('');
-    try {
-      await banUser(groupId, { userId, ...(reason ? { reason } : {}) });
-    } catch (err) {
-      setActionError(err?.response?.data?.message || 'Could not ban user from group.');
-      throw err;
-    }
-  };
-
-  const handleUnbanUser = async ({ groupId, userId }) => {
-    setActionError('');
-    try {
-      await unbanUser(groupId, userId);
-    } catch (err) {
-      setActionError(err?.response?.data?.message || 'Could not unban user from group.');
-      throw err;
-    }
-  };
+  const reportColumns = useMemo(() => [
+    {
+      key: 'status',
+      header: 'Report status',
+      render: (report) => <ReportStatusBadge status={report.status} />,
+    },
+    {
+      key: 'reason',
+      header: 'Reason',
+      render: (report) => <span className="moderation-table-text">{report.reason || 'No reason supplied.'}</span>,
+    },
+    {
+      key: 'target',
+      header: 'Target',
+      render: (report) => (
+        <div className="moderation-table-stack">
+          <Badge>{TARGET_LABELS[report.targetType] || `Type ${report.targetType}`}</Badge>
+          <span className="moderation-table-strong">{report.targetDisplayName || 'Unknown target'}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'targetAuthor',
+      header: 'Target author',
+      render: (report) => report.targetAuthorDisplayName || 'Unknown',
+    },
+    {
+      key: 'reporter',
+      header: 'Reporter',
+      render: (report) => report.reporterDisplayName || 'Unknown',
+    },
+    {
+      key: 'scope',
+      header: 'Scope',
+      render: (report) => (
+        <div className="moderation-table-stack">
+          <span>{report.scopeName || 'No scope'}</span>
+          <span className="moderation-table-muted">
+            {report.scopeType ? SCOPE_OPTIONS.find((option) => Number(option.value) === Number(report.scopeType))?.label : 'Unsupported'}
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: 'created',
+      header: 'Created date',
+      render: (report) => formatDate(report.createdAt),
+    },
+    {
+      key: 'handling',
+      header: 'Handling',
+      render: (report) => (
+        <div className="moderation-table-stack">
+          <span>{report.reviewedByDisplayName || 'Unassigned'}</span>
+          <span className="moderation-table-muted">{report.updatedAt ? formatDate(report.updatedAt) : 'Not reviewed'}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Available actions',
+      render: (report) => (
+        <ModerationReportRow
+          report={report}
+          onUpdateStatus={handleUpdateStatus}
+          onRemoveTarget={handleRemoveTarget}
+          disabled={isMutating}
+        />
+      ),
+    },
+  ], [handleRemoveTarget, handleUpdateStatus, isMutating]);
 
   return (
     <PageLayout>
@@ -190,21 +262,19 @@ function ModerationPage() {
             {actionError ? <InlineMessage tone="error">{actionError}</InlineMessage> : null}
 
             {!reportsLoading && !reportsError ? (
-              reports.length > 0 ? (
-                <div className="moderation-report-grid">
-                  {reports.map((report) => (
-                    <ModerationReportRow
-                      key={`${report.id}-${report.status}`}
-                      report={report}
-                      onUpdateStatus={handleUpdateStatus}
-                      onBanUser={handleBanUser}
-                      onUnbanUser={handleUnbanUser}
-                      disabled={isMutating}
-                    />
-                  ))}
-                </div>
+              hasNoAssignments ? (
+                <EmptyState
+                  title="You do not have any active moderation assignments."
+                  description="Ask an Admin or SuperAdmin to assign a global, group, or media moderation scope."
+                />
               ) : (
-                <EmptyState title="No reports found" />
+                <DataTable
+                  columns={reportColumns}
+                  rows={reports}
+                  getRowKey={(report) => `${report.id}-${report.status}-${report.updatedAt || report.createdAt}`}
+                  empty={<EmptyState title="No reports found" />}
+                  className="moderation-report-table"
+                />
               )
             ) : null}
           </section>

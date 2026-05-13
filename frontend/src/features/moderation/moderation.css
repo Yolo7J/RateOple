@@ -191,6 +191,41 @@
   overflow-wrap: anywhere;
 }
 
+.moderation-report-table .ui-table {
+  min-width: 1080px;
+}
+
+.moderation-report-table th,
+.moderation-report-table td {
+  vertical-align: top;
+}
+
+.moderation-table-stack {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.moderation-table-strong {
+  color: var(--text-primary);
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+
+.moderation-table-text {
+  display: block;
+  max-width: 22rem;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.moderation-table-muted,
+.moderation-action-note {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
 .moderation-card-actions,
 .moderation-danger-actions {
   display: flex;
@@ -202,6 +237,23 @@
 .moderation-danger-actions {
   border-top: 1px solid var(--border);
   padding-top: 0.75rem;
+}
+
+.moderation-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  min-width: 14rem;
+  align-items: center;
+}
+
+.moderation-row-actions .ui-button {
+  white-space: nowrap;
+}
+
+.moderation-action-note {
+  flex-basis: 100%;
+  max-width: 22rem;
 }
 
 .moderation-ban-panel {
@@ -251,7 +303,8 @@
 
   .moderation-tab,
   .moderation-card-actions .ui-button,
-  .moderation-danger-actions .ui-button {
+  .moderation-danger-actions .ui-button,
+  .moderation-row-actions .ui-button {
     width: 100%;
   }
 }

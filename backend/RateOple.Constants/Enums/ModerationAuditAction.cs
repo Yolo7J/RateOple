@@ -11,5 +11,7 @@ public enum ModerationAuditAction
     GroupUserBanned = 7,
     GroupUserUnbanned = 8,
     GlobalRoleGranted = 9,
-    GlobalRoleRevoked = 10
+    GlobalRoleRevoked = 10,
+    ReportEscalatedToAdmin = 11,
+    ReportTargetRemoved = 12
 }

@@ -10,7 +10,12 @@ export const useModerationMutations = () => {
   };
 
   const updateReportStatusMutation = useMutation({
-    mutationFn: ({ reportId, status }) => moderationService.updateReportStatus(reportId, status),
+    mutationFn: ({ reportId, status, note }) => moderationService.updateReportStatus(reportId, status, note),
+    onSuccess: invalidateModeration,
+  });
+
+  const removeReportTargetMutation = useMutation({
+    mutationFn: ({ reportId, reason }) => moderationService.removeReportTarget(reportId, reason),
     onSuccess: invalidateModeration,
   });
 
@@ -30,17 +35,20 @@ export const useModerationMutations = () => {
   });
 
   return {
-    updateReportStatus: (reportId, status) => updateReportStatusMutation.mutateAsync({ reportId, status }),
+    updateReportStatus: (reportId, status, note) => updateReportStatusMutation.mutateAsync({ reportId, status, note }),
+    removeReportTarget: (reportId, reason) => removeReportTargetMutation.mutateAsync({ reportId, reason }),
     createAssignment: createAssignmentMutation.mutateAsync,
     removeAssignment: removeAssignmentMutation.mutateAsync,
     createReport: createReportMutation.mutateAsync,
     loading:
       updateReportStatusMutation.isPending ||
+      removeReportTargetMutation.isPending ||
       createAssignmentMutation.isPending ||
       removeAssignmentMutation.isPending ||
       createReportMutation.isPending,
     error:
       updateReportStatusMutation.error ||
+      removeReportTargetMutation.error ||
       createAssignmentMutation.error ||
       removeAssignmentMutation.error ||
       createReportMutation.error,

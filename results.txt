@@ -1,3 +1,73 @@
+RateOple v1 practical moderator queue behavior results
+
+Summary:
+- Implemented assignment-scoped operational moderation queue behavior for v1, including explicit no-assignment queue metadata for the frontend empty state.
+- Added report escalation to Admin as a first-class report status and audit action.
+- Added optional moderation notes/reasons to report status mutations.
+- Added a narrow moderation target removal endpoint for supported UGC targets only.
+- Reworked the moderation dashboard from report cards into a dense operational table with status, reason, target, author, reporter, scope, created date, handling state, and available actions.
+
+Files changed:
+- PROJECT_ARCHITECTURE.md
+- SECURITY_AND_DEPLOYMENT_PLAN.md
+- backend/RateOple/Controllers/Moderation/ModerationController.cs
+- backend/RateOple.Core/Moderation/DTOs/ModerationDtos.cs
+- backend/RateOple.Core/Moderation/Interfaces/IModerationService.cs
+- backend/RateOple.Core/Moderation/Services/ModerationService.cs
+- backend/RateOple.Core/Moderation/Services/ModerationAuditService.cs
+- backend/RateOple.Constants/Enums/ReportStatus.cs
+- backend/RateOple.Constants/Enums/ModerationAuditAction.cs
+- backend/RateOple.Core.Tests/Moderation/ModerationServiceTests.cs
+- backend/RateOple.Api.Tests/Moderation/ModerationContractTests.cs
+- frontend/src/features/moderation/README.md
+- frontend/src/features/moderation/components/ModerationReportRow.jsx
+- frontend/src/features/moderation/moderation.css
+- frontend/src/features/moderation/moderationLabels.js
+- frontend/src/features/moderation/pages/AuditLogPage.jsx
+- frontend/src/features/moderation/pages/ModerationPage.jsx
+- frontend/src/features/moderation/queries/useModerationMutations.js
+- frontend/src/features/moderation/services/moderationService.js
+- frontend/tests/e2e/moderation.spec.js
+- results.txt
+
+Permission behavior:
+- SuperAdmin and Admin can see and action all reports.
+- Moderator with Global assignment can see and action all reports.
+- Moderator with scoped Group assignment sees/actions matching group-post and group-comment reports.
+- Moderator with scoped Media assignment sees/actions matching media review/comment/post-media reports already represented by the report model.
+- Moderator with no assignments gets an empty actionable queue, and the frontend shows: "You do not have any active moderation assignments."
+- Normal User cannot access the global moderation queue.
+- Group Owner, GroupAdmin, and GroupModerator remain group-domain roles only; they do not grant global moderation queue access.
+
+Report actions implemented:
+- Mark In Review.
+- Resolve.
+- Reject.
+- Escalate to Admin.
+- Optional moderation note/reason on status actions.
+- Status changes write moderation audit logs, create existing report-status notifications for the reporter, and publish existing moderation realtime updates after commit.
+
+Target types with hide/remove support:
+- Group post comments represented as `ReportTargetType.Comment`, only when the target is a leaf comment in a group-post thread.
+- Removal writes `ReportTargetRemoved` audit, resolves the report with a status audit entry, sends the existing `CommentRemoved` notification to the affected comment author where applicable, and publishes a report realtime update.
+
+Target types still unsupported:
+- User targets: no account removal/suspension action is exposed from the moderation queue.
+- Review targets: existing review deletion is owner-only and not a safe moderator queue action.
+- GroupPost targets: no safe moderator queue removal endpoint exists.
+- Review comments: no safe queue removal path exists.
+- Comments with replies: blocked to avoid unsafe hard-delete behavior under the current comment relationship.
+- Collection, Group, and media catalog targets: not represented as safe moderation queue removals in v1; media catalog removal remains Admin/SuperAdmin territory.
+
+Tests run/results:
+- `cd backend && dotnet build RateOple.sln`: passed, 0 warnings/errors.
+- `cd backend && dotnet test RateOple.sln --no-build --filter "FullyQualifiedName~Moderation"`: passed, 23 tests.
+- `cd backend && dotnet test RateOple.sln --no-build`: passed, 344 total tests.
+- `cd frontend && npm run lint`: passed.
+- `cd frontend && npm run build`: passed. Build emitted existing Rollup annotation warnings from `@microsoft/signalr` comments.
+- `cd frontend && npm run test:e2e`: passed, 6 tests across desktop and mobile Chromium, including mocked moderator empty-state and queue-row/action smoke tests.
+- `cd frontend && npm run build:backend`: passed. Build emitted the same existing Rollup annotation warnings and copied the Vite output to `backend/RateOple/wwwroot`.
+
 RateOple v1 global role hardening and moderator management results
 
 Summary:

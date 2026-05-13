@@ -19,6 +19,9 @@ public class UpdateReportStatusDto
 {
     [EnumDataType(typeof(ReportStatus))]
     public ReportStatus Status { get; set; }
+
+    [MaxLength(1000)]
+    public string? Note { get; set; }
 }
 
 public class ReportQueryDto
@@ -39,11 +42,30 @@ public class ReportDto
     public ReportTargetType TargetType { get; set; }
     public Guid TargetId { get; set; }
     public string? TargetDisplayName { get; set; }
+    public Guid? TargetAuthorId { get; set; }
+    public string? TargetAuthorDisplayName { get; set; }
+    public ModeratorScopeType? ScopeType { get; set; }
+    public Guid? ScopeId { get; set; }
+    public string? ScopeName { get; set; }
     public string Reason { get; set; } = string.Empty;
     public ReportStatus Status { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public Guid? ReviewedById { get; set; }
+    public string? ReviewedByDisplayName { get; set; }
+    public ReportTargetActionAvailabilityDto TargetActions { get; set; } = new();
+}
+
+public class ReportTargetActionAvailabilityDto
+{
+    public bool CanRemoveTarget { get; set; }
+    public string? RemoveUnavailableReason { get; set; }
+}
+
+public class RemoveReportTargetDto
+{
+    [MaxLength(1000)]
+    public string? Reason { get; set; }
 }
 
 public class PagedReportsDto
@@ -52,6 +74,8 @@ public class PagedReportsDto
     public int TotalCount { get; set; }
     public int Page { get; set; }
     public int PageSize { get; set; }
+    public bool HasActiveModerationAssignments { get; set; }
+    public bool CanSeeAllReports { get; set; }
 }
 
 public class CreateModeratorAssignmentDto : IValidatableObject

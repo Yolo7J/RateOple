@@ -52,6 +52,18 @@ public class ModerationController : ControllerBase
         return Ok(report);
     }
 
+    [HttpDelete("reports/{id:guid}/target")]
+    [Authorize(Policy = PolicyConstants.CanModerateContent)]
+    public async Task<ActionResult<ReportDto>> RemoveTarget(Guid id, [FromBody] RemoveReportTargetDto dto)
+    {
+        var report = await _moderationService.RemoveReportTargetAsync(
+            User.GetRequiredUserId(),
+            User.IsInRole(RoleConstants.Admin) || User.IsInRole(RoleConstants.SuperAdmin),
+            id,
+            dto);
+        return Ok(report);
+    }
+
     [HttpPost("assignments")]
     [Authorize(Policy = PolicyConstants.RequireAdmin)]
     public async Task<ActionResult<ModeratorAssignmentDto>> CreateAssignment([FromBody] CreateModeratorAssignmentDto dto)

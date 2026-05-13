@@ -92,7 +92,9 @@ public class ModerationAuditService : IModerationAuditService
             .Where(l => l.Action is ModerationAuditAction.ReportMarkedPending
                         or ModerationAuditAction.ReportMarkedInReview
                         or ModerationAuditAction.ReportResolved
-                        or ModerationAuditAction.ReportRejected)
+                        or ModerationAuditAction.ReportRejected
+                        or ModerationAuditAction.ReportEscalatedToAdmin
+                        or ModerationAuditAction.ReportTargetRemoved)
             .Select(l => l.TargetId)
             .ToList();
 
@@ -119,7 +121,9 @@ public class ModerationAuditService : IModerationAuditService
                 ModerationAuditAction.ReportMarkedPending or
                 ModerationAuditAction.ReportMarkedInReview or
                 ModerationAuditAction.ReportResolved or
-                ModerationAuditAction.ReportRejected =>
+                ModerationAuditAction.ReportRejected or
+                ModerationAuditAction.ReportEscalatedToAdmin or
+                ModerationAuditAction.ReportTargetRemoved =>
                     reportDisplayNames.GetValueOrDefault(log.TargetId) ?? "Report",
                 ModerationAuditAction.ModeratorAssigned or
                 ModerationAuditAction.ModeratorUnassigned or

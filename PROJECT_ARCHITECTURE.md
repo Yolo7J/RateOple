@@ -572,6 +572,7 @@ SignalR hubs:
 - `POST /api/moderation/reports`
 - `GET /api/moderation/reports`
 - `PUT /api/moderation/reports/{id}/status`
+- `DELETE /api/moderation/reports/{id}/target`
 - `POST /api/moderation/assignments`
 - `GET /api/moderation/assignments`
 - `DELETE /api/moderation/assignments`

@@ -93,12 +93,17 @@ public class ModerationService : IModerationService
             Items = mappedItems,
             TotalCount = total,
             Page = pagination.Page,
-            PageSize = pagination.PageSize
+            PageSize = pagination.PageSize,
+            HasActiveModerationAssignments = canSeeAllReports || await HasModerationAssignmentAsync(viewerId),
+            CanSeeAllReports = canSeeAllReports || await HasGlobalModerationAssignmentAsync(viewerId)
         };
     }
 
     public async Task<ReportDto> UpdateReportStatusAsync(Guid reviewerId, bool canSeeAllReports, Guid reportId, UpdateReportStatusDto dto)
     {
+        if (!Enum.IsDefined(dto.Status))
+            throw new ArgumentException("Report status is invalid.");
+
         await using var transaction = await BeginTransactionIfNeededAsync();
 
         var report = await _context.Reports.FirstOrDefaultAsync(r => r.Id == reportId)
@@ -119,11 +124,82 @@ public class ModerationService : IModerationService
             ReportStatus.InReview => ModerationAuditAction.ReportMarkedInReview,
             ReportStatus.Resolved => ModerationAuditAction.ReportResolved,
             ReportStatus.Rejected => ModerationAuditAction.ReportRejected,
+            ReportStatus.Escalated => ModerationAuditAction.ReportEscalatedToAdmin,
             _ => ModerationAuditAction.ReportMarkedPending
         };
 
-        await _auditService.LogAsync(action, reviewerId, report.Id);
+        await _auditService.LogAsync(action, reviewerId, report.Id, notes: dto.Note);
         await _notificationService.CreateAsync(report.ReporterId, NotificationType.ReportStatusChanged, report.Id);
+
+        if (transaction != null)
+            await transaction.CommitAsync();
+
+        var updatedReport = await MapReportAsync(report);
+        await _realtimePublisher.ReportUpdatedAsync(updatedReport);
+
+        return updatedReport;
+    }
+
+    public async Task<ReportDto> RemoveReportTargetAsync(Guid actorId, bool canSeeAllReports, Guid reportId, RemoveReportTargetDto dto)
+    {
+        await using var transaction = await BeginTransactionIfNeededAsync();
+
+        var report = await _context.Reports.FirstOrDefaultAsync(r => r.Id == reportId)
+            ?? throw new KeyNotFoundException("Report not found.");
+
+        if (!await CanAccessReportAsync(actorId, canSeeAllReports, report))
+            throw new UnauthorizedAccessException("This moderator is not assigned to this report scope.");
+
+        if (report.TargetType != ReportTargetType.Comment)
+            throw new InvalidOperationException(GetRemoveUnavailableReason(report.TargetType, false));
+
+        var commentTarget = await ResolveGroupPostCommentTargetAsync(report.TargetId);
+        if (commentTarget == null)
+            throw new InvalidOperationException(GetRemoveUnavailableReason(report.TargetType, false));
+
+        if (commentTarget.HasReplies)
+            throw new InvalidOperationException("This comment has replies and cannot be removed safely from the moderation queue yet.");
+
+        _context.Comments.Remove(commentTarget.Comment);
+
+        var statusChanged = report.Status != ReportStatus.Resolved;
+        if (statusChanged)
+        {
+            report.Status = ReportStatus.Resolved;
+            report.ReviewedById = actorId;
+            report.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await _context.SaveChangesAsync();
+
+        if (commentTarget.AuthorId.HasValue && commentTarget.AuthorId.Value != actorId)
+        {
+            await _notificationService.CreateAsync(
+                commentTarget.AuthorId.Value,
+                NotificationType.CommentRemoved,
+                report.TargetId);
+        }
+
+        var note = string.IsNullOrWhiteSpace(dto.Reason) ? "Removed reported group post comment." : dto.Reason.Trim();
+        await _auditService.LogAsync(
+            ModerationAuditAction.ReportTargetRemoved,
+            actorId,
+            report.Id,
+            ModeratorScopeType.Group,
+            commentTarget.GroupId,
+            note);
+
+        if (statusChanged)
+        {
+            await _auditService.LogAsync(
+                ModerationAuditAction.ReportResolved,
+                actorId,
+                report.Id,
+                ModeratorScopeType.Group,
+                commentTarget.GroupId,
+                "Resolved because the reported target was removed.");
+            await _notificationService.CreateAsync(report.ReporterId, NotificationType.ReportStatusChanged, report.Id);
+        }
 
         if (transaction != null)
             await transaction.CommitAsync();
@@ -344,6 +420,20 @@ public class ModerationService : IModerationService
         return await scoped.AnyAsync();
     }
 
+    private async Task<bool> HasModerationAssignmentAsync(Guid viewerId)
+    {
+        return await _context.ModeratorAssignments
+            .AsNoTracking()
+            .AnyAsync(a => a.UserId == viewerId);
+    }
+
+    private async Task<bool> HasGlobalModerationAssignmentAsync(Guid viewerId)
+    {
+        return await _context.ModeratorAssignments
+            .AsNoTracking()
+            .AnyAsync(a => a.UserId == viewerId && a.ScopeType == ModeratorScopeType.Global);
+    }
+
     private async Task<bool> UserHasRoleAsync(Guid userId, string roleName)
     {
         return await _context.UserRoles
@@ -416,7 +506,12 @@ public class ModerationService : IModerationService
             .Select(r => new { r.Id, r.Content, r.UserId })
             .ToListAsync();
 
+        var reviewedByIds = reports
+            .Where(r => r.ReviewedById.HasValue)
+            .Select(r => r.ReviewedById!.Value);
+
         var userIds = new HashSet<Guid>(reporterIds);
+        foreach (var id in reviewedByIds) userIds.Add(id);
         foreach (var id in userTargetIds) userIds.Add(id);
         foreach (var comment in commentInfos.Where(c => c.UserId.HasValue)) userIds.Add(comment.UserId!.Value);
         foreach (var post in postInfos.Where(p => p.UserId.HasValue)) userIds.Add(post.UserId!.Value);
@@ -435,10 +530,12 @@ public class ModerationService : IModerationService
         var commentMap = commentInfos.ToDictionary(c => c.Id, c => (c.Content, c.UserId));
         var postMap = postInfos.ToDictionary(p => p.Id, p => (p.Title, p.UserId));
         var reviewMap = reviewInfos.ToDictionary(r => r.Id, r => (r.Content, r.UserId));
+        var targetMetadata = await BuildReportTargetMetadataAsync(reports, userDisplayNames);
 
         return reports.Select(report =>
         {
             var reporterName = userDisplayNames.GetValueOrDefault(report.ReporterId) ?? "Unknown user";
+            var metadata = targetMetadata.GetValueOrDefault(report.Id) ?? ReportTargetMetadata.Unsupported(report.TargetType);
             var targetDisplay = report.TargetType switch
             {
                 ReportTargetType.User => userDisplayNames.GetValueOrDefault(report.TargetId) ?? "Unknown user",
@@ -456,13 +553,132 @@ public class ModerationService : IModerationService
                 TargetType = report.TargetType,
                 TargetId = report.TargetId,
                 TargetDisplayName = targetDisplay,
+                TargetAuthorId = metadata.AuthorId,
+                TargetAuthorDisplayName = metadata.AuthorDisplayName,
+                ScopeType = metadata.ScopeType,
+                ScopeId = metadata.ScopeId,
+                ScopeName = metadata.ScopeName,
                 Reason = report.Reason,
                 Status = report.Status,
                 CreatedAt = report.CreatedAt,
                 UpdatedAt = report.UpdatedAt,
-                ReviewedById = report.ReviewedById
+                ReviewedById = report.ReviewedById,
+                ReviewedByDisplayName = report.ReviewedById.HasValue
+                    ? userDisplayNames.GetValueOrDefault(report.ReviewedById.Value) ?? "Unknown user"
+                    : null,
+                TargetActions = new ReportTargetActionAvailabilityDto
+                {
+                    CanRemoveTarget = metadata.CanRemoveTarget,
+                    RemoveUnavailableReason = metadata.RemoveUnavailableReason
+                }
             };
         }).ToList();
+    }
+
+    private async Task<Dictionary<Guid, ReportTargetMetadata>> BuildReportTargetMetadataAsync(
+        List<Report> reports,
+        Dictionary<Guid, string?> userDisplayNames)
+    {
+        var result = new Dictionary<Guid, ReportTargetMetadata>();
+
+        foreach (var report in reports)
+        {
+            result[report.Id] = report.TargetType switch
+            {
+                ReportTargetType.User => await BuildUserTargetMetadataAsync(report.TargetId, userDisplayNames),
+                ReportTargetType.Comment => await BuildCommentTargetMetadataAsync(report.TargetId, userDisplayNames),
+                ReportTargetType.Post => await BuildPostTargetMetadataAsync(report.TargetId, userDisplayNames),
+                ReportTargetType.Review => await BuildReviewTargetMetadataAsync(report.TargetId, userDisplayNames),
+                _ => ReportTargetMetadata.Unsupported(report.TargetType)
+            };
+        }
+
+        return result;
+    }
+
+    private async Task<ReportTargetMetadata> BuildUserTargetMetadataAsync(
+        Guid userId,
+        Dictionary<Guid, string?> userDisplayNames)
+    {
+        var display = userDisplayNames.GetValueOrDefault(userId) ?? "Unknown user";
+        await Task.CompletedTask;
+        return new ReportTargetMetadata(
+            userId,
+            display,
+            null,
+            null,
+            null,
+            false,
+            GetRemoveUnavailableReason(ReportTargetType.User, false));
+    }
+
+    private async Task<ReportTargetMetadata> BuildPostTargetMetadataAsync(
+        Guid postId,
+        Dictionary<Guid, string?> userDisplayNames)
+    {
+        var post = await _context.GroupPosts
+            .AsNoTracking()
+            .Where(p => p.Id == postId)
+            .Select(p => new { p.UserId, p.GroupId, GroupName = p.Group.Name })
+            .FirstOrDefaultAsync();
+
+        return new ReportTargetMetadata(
+            post?.UserId,
+            post?.UserId.HasValue == true ? userDisplayNames.GetValueOrDefault(post.UserId.Value) ?? "Unknown user" : null,
+            post == null ? null : ModeratorScopeType.Group,
+            post?.GroupId,
+            post?.GroupName,
+            false,
+            GetRemoveUnavailableReason(ReportTargetType.Post, false));
+    }
+
+    private async Task<ReportTargetMetadata> BuildReviewTargetMetadataAsync(
+        Guid reviewId,
+        Dictionary<Guid, string?> userDisplayNames)
+    {
+        var review = await _context.Reviews
+            .AsNoTracking()
+            .Where(r => r.Id == reviewId)
+            .Select(r => new { r.UserId, r.MediaId, MediaTitle = r.Media.Title })
+            .FirstOrDefaultAsync();
+
+        return new ReportTargetMetadata(
+            review?.UserId,
+            review != null ? userDisplayNames.GetValueOrDefault(review.UserId) ?? "Unknown user" : null,
+            review == null ? null : ModeratorScopeType.Media,
+            review?.MediaId,
+            review?.MediaTitle,
+            false,
+            GetRemoveUnavailableReason(ReportTargetType.Review, false));
+    }
+
+    private async Task<ReportTargetMetadata> BuildCommentTargetMetadataAsync(
+        Guid commentId,
+        Dictionary<Guid, string?> userDisplayNames)
+    {
+        var context = await ResolveCommentContextAsync(commentId);
+        if (context == null)
+            return ReportTargetMetadata.Unsupported(ReportTargetType.Comment);
+
+        var hasReplies = await _context.Comments
+            .AsNoTracking()
+            .AnyAsync(c => c.ParentCommentId == commentId);
+
+        var canRemove = context.ScopeType == ModeratorScopeType.Group && !hasReplies;
+        var reason = canRemove
+            ? null
+            : context.ScopeType == ModeratorScopeType.Group
+                ? "This comment has replies and cannot be removed safely from the moderation queue yet."
+                : GetRemoveUnavailableReason(ReportTargetType.Comment, false);
+
+        return new ReportTargetMetadata(
+            context.AuthorId,
+            context.AuthorId.HasValue ? userDisplayNames.GetValueOrDefault(context.AuthorId.Value) ?? "Unknown user" : null,
+            context.ScopeType,
+            context.ScopeId,
+            context.ScopeName,
+            canRemove,
+            reason);
     }
 
     private async Task<ModeratorAssignmentDto> MapAssignmentAsync(ModeratorAssignment assignment)
@@ -686,5 +902,122 @@ public class ModerationService : IModerationService
             throw new KeyNotFoundException("User not found.");
 
         return resolvedId;
+    }
+
+    private async Task<GroupPostCommentRemovalTarget?> ResolveGroupPostCommentTargetAsync(Guid commentId)
+    {
+        var comment = await _context.Comments
+            .FirstOrDefaultAsync(c => c.Id == commentId)
+            ?? throw new KeyNotFoundException("Report target not found.");
+
+        var context = await ResolveCommentContextAsync(commentId);
+        if (context?.ScopeType != ModeratorScopeType.Group || !context.ScopeId.HasValue)
+            return null;
+
+        var hasReplies = await _context.Comments.AnyAsync(c => c.ParentCommentId == commentId);
+
+        return new GroupPostCommentRemovalTarget(
+            comment,
+            context.ScopeId.Value,
+            context.AuthorId,
+            hasReplies);
+    }
+
+    private async Task<CommentContext?> ResolveCommentContextAsync(Guid commentId)
+    {
+        Guid? currentId = commentId;
+        Guid? authorId = null;
+
+        for (var depth = 0; depth < 6 && currentId.HasValue; depth++)
+        {
+            var info = await _context.Comments
+                .AsNoTracking()
+                .Where(c => c.Id == currentId.Value)
+                .Select(c => new
+                {
+                    c.UserId,
+                    c.GroupPostId,
+                    GroupId = c.GroupPostId.HasValue ? (Guid?)c.GroupPost!.GroupId : null,
+                    GroupName = c.GroupPostId.HasValue ? c.GroupPost!.Group.Name : null,
+                    c.ReviewId,
+                    MediaId = c.ReviewId.HasValue ? (Guid?)c.Review!.MediaId : null,
+                    MediaTitle = c.ReviewId.HasValue ? c.Review!.Media.Title : null,
+                    c.ParentCommentId
+                })
+                .FirstOrDefaultAsync();
+
+            if (info == null)
+                return null;
+
+            authorId ??= info.UserId;
+
+            if (info.GroupId.HasValue)
+            {
+                return new CommentContext(
+                    authorId,
+                    ModeratorScopeType.Group,
+                    info.GroupId.Value,
+                    info.GroupName);
+            }
+
+            if (info.MediaId.HasValue)
+            {
+                return new CommentContext(
+                    authorId,
+                    ModeratorScopeType.Media,
+                    info.MediaId.Value,
+                    info.MediaTitle);
+            }
+
+            currentId = info.ParentCommentId;
+        }
+
+        return null;
+    }
+
+    private static string GetRemoveUnavailableReason(ReportTargetType targetType, bool targetMissing)
+    {
+        if (targetMissing)
+            return "The reported target no longer exists.";
+
+        return targetType switch
+        {
+            ReportTargetType.Comment => "Only leaf group post comments can be removed from the moderation queue in v1.",
+            ReportTargetType.Post => "Group post removal is not exposed as a safe moderation queue action in v1.",
+            ReportTargetType.Review => "Review removal is not exposed as a safe moderation queue action in v1.",
+            ReportTargetType.User => "User account removal is not a moderation queue target action.",
+            _ => "This target type cannot be removed from the moderation queue in v1."
+        };
+    }
+
+    private sealed record CommentContext(
+        Guid? AuthorId,
+        ModeratorScopeType ScopeType,
+        Guid? ScopeId,
+        string? ScopeName);
+
+    private sealed record GroupPostCommentRemovalTarget(
+        Comment Comment,
+        Guid GroupId,
+        Guid? AuthorId,
+        bool HasReplies);
+
+    private sealed record ReportTargetMetadata(
+        Guid? AuthorId,
+        string? AuthorDisplayName,
+        ModeratorScopeType? ScopeType,
+        Guid? ScopeId,
+        string? ScopeName,
+        bool CanRemoveTarget,
+        string? RemoveUnavailableReason)
+    {
+        public static ReportTargetMetadata Unsupported(ReportTargetType targetType) => new(
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            GetRemoveUnavailableReason(targetType, targetMissing: true));
     }
 }

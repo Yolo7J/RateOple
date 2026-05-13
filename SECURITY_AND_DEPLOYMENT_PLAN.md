@@ -294,6 +294,8 @@ Current router and API policies use role guards for admin/moderation areas. Glob
 - Moderator assignment creation requires the target already has the global Moderator role.
 - Moderator candidate lookup is backend-filtered and excludes Admins, SuperAdmins, locked/deleted users, and users already assigned to the selected scope.
 - Moderator report visibility/actionability is assignment-scoped: global assignment sees all reports, scoped assignments see matching group/media-backed report targets, and no assignment sees no actionable queue.
+- Report actions now include in-review, resolve, reject, escalate-to-admin, and optional audit notes. Status changes notify the reporter through the existing report-status notification path and publish moderation realtime updates after commit.
+- Moderation queue target removal is intentionally narrow for v1: only leaf group-post comments can be removed from the queue, with audit logging and the existing `CommentRemoved` notification to the affected author. User, review, group post, media catalog, collection, and group target removal remain unavailable unless safe domain endpoints are added.
 - Group membership roles remain separate from global Identity roles.
 
 Suspension is still not a separate completed account-state feature. Current account deletion/anonymization uses permanent lockout; broader suspend/unsuspend administration remains a later account-lifecycle task.
