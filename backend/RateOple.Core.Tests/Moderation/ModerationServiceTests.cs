@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RateOple.Constants.Constants;
 using RateOple.Constants.Enums;
 using RateOple.Core.Moderation.DTOs;
 using RateOple.Core.Moderation.Services;
@@ -81,7 +82,7 @@ public class ModerationServiceTests
         var notifications = new NoopNotificationService();
         var service = CreateService(db, notifications);
 
-        var updated = await service.UpdateReportStatusAsync(reviewer.Id, report.Id, new UpdateReportStatusDto
+        var updated = await service.UpdateReportStatusAsync(reviewer.Id, true, report.Id, new UpdateReportStatusDto
         {
             Status = ReportStatus.Resolved
         });
@@ -103,7 +104,9 @@ public class ModerationServiceTests
         var data = new TestDataFactory(db.Context);
         var admin = data.Users.Add(data.Users.Admin("admin"));
         var moderator = data.Users.Add(data.Users.Moderator("moderator"));
+        var userManager = await TestUsers.CreateUserManagerAsync(db.Context);
         await data.SaveAsync();
+        await userManager.AddToRoleAsync(moderator, RoleConstants.Moderator);
         var service = CreateService(db);
 
         var first = await service.AssignModeratorAsync(admin.Id, new CreateModeratorAssignmentDto
@@ -131,7 +134,9 @@ public class ModerationServiceTests
         var data = new TestDataFactory(db.Context);
         var admin = data.Users.Add(data.Users.Admin("admin"));
         var moderator = data.Users.Add(data.Users.Moderator("moderator"));
+        var userManager = await TestUsers.CreateUserManagerAsync(db.Context);
         await data.SaveAsync();
+        await userManager.AddToRoleAsync(moderator, RoleConstants.Moderator);
         var service = CreateService(db);
 
         await Assert.ThrowsAsync<ArgumentException>(() => service.AssignModeratorAsync(admin.Id, new CreateModeratorAssignmentDto
@@ -168,11 +173,13 @@ public class ModerationServiceTests
         var data = new TestDataFactory(db.Context);
         var admin = data.Users.Add(data.Users.Admin("admin"));
         var moderator = data.Users.Add(data.Users.Moderator("scoped-mod"));
+        var userManager = await TestUsers.CreateUserManagerAsync(db.Context);
         var owner = data.Users.Add(data.Users.Normal("owner"));
         var group = data.Groups.Group(owner, "Scoped Group");
         var collection = data.Collections.UserCollection(owner, "Scoped Collection");
         var media = data.Media.Movie("Scoped Movie");
         await data.SaveAsync();
+        await userManager.AddToRoleAsync(moderator, RoleConstants.Moderator);
         var service = CreateService(db);
 
         var groupAssignment = await service.AssignModeratorAsync(admin.Id, new CreateModeratorAssignmentDto
@@ -218,6 +225,84 @@ public class ModerationServiceTests
         Assert.Equal(ModerationAuditAction.ModeratorUnassigned, audit.Action);
         Assert.Equal(admin.Id, audit.PerformedById);
         Assert.Equal(moderator.Id, audit.TargetId);
+    }
+
+    [Fact]
+    public async Task GetReportsAsync_NoAssignmentModeratorGetsNoActionableQueueAndCannotUpdate()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var reporter = data.Users.Add(data.Users.Normal("reporter"));
+        var moderator = data.Users.Add(data.Users.Moderator("unassigned-moderator"));
+        var target = data.Users.Add(data.Users.Normal("target"));
+        var report = data.Moderation.Report(reporter, ReportTargetType.User, target.Id);
+        await data.SaveAsync();
+        var service = CreateService(db);
+
+        var result = await service.GetReportsAsync(moderator.Id, false, new ReportQueryDto());
+
+        Assert.Empty(result.Items);
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.UpdateReportStatusAsync(
+            moderator.Id,
+            false,
+            report.Id,
+            new UpdateReportStatusDto { Status = ReportStatus.Resolved }));
+    }
+
+    [Fact]
+    public async Task GetReportsAsync_GlobalAssignmentSeesAllReports()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var admin = data.Users.Add(data.Users.Admin("admin"));
+        var moderator = data.Users.Add(data.Users.Moderator("global-moderator"));
+        var reporter = data.Users.Add(data.Users.Normal("reporter"));
+        var target = data.Users.Add(data.Users.Normal("target"));
+        data.Moderation.Report(reporter, ReportTargetType.User, target.Id);
+        data.Moderation.Report(reporter, ReportTargetType.User, moderator.Id);
+        data.Moderation.Assignment(moderator, admin, ModeratorScopeType.Global);
+        await data.SaveAsync();
+        var service = CreateService(db);
+
+        var result = await service.GetReportsAsync(moderator.Id, false, new ReportQueryDto());
+
+        Assert.Equal(2, result.Items.Count);
+    }
+
+    [Fact]
+    public async Task GetReportsAsync_ScopedAssignmentsSeeOnlyMatchingReportTargets()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var admin = data.Users.Add(data.Users.Admin("admin"));
+        var moderator = data.Users.Add(data.Users.Moderator("scoped-moderator"));
+        var reporter = data.Users.Add(data.Users.Normal("reporter"));
+        var owner = data.Users.Add(data.Users.Normal("owner"));
+        var group = data.Groups.Group(owner, "Assigned Group");
+        var otherGroup = data.Groups.Group(owner, "Other Group");
+        var assignedPost = data.Groups.Post(group, owner, "Assigned Post");
+        var otherPost = data.Groups.Post(otherGroup, owner, "Other Post");
+        var assignedMedia = data.Media.Movie("Assigned Movie");
+        var otherMedia = data.Media.Movie("Other Movie");
+        var assignedRating = data.Reviews.RatingForMedia(owner, assignedMedia);
+        var otherRating = data.Reviews.RatingForMedia(owner, otherMedia);
+        var assignedReview = data.Reviews.Review(owner, assignedMedia, assignedRating, "Assigned review");
+        var otherReview = data.Reviews.Review(owner, otherMedia, otherRating, "Other review");
+        var groupReport = data.Moderation.Report(reporter, ReportTargetType.Post, assignedPost.Id);
+        data.Moderation.Report(reporter, ReportTargetType.Post, otherPost.Id);
+        var mediaReport = data.Moderation.Report(reporter, ReportTargetType.Review, assignedReview.Id);
+        data.Moderation.Report(reporter, ReportTargetType.Review, otherReview.Id);
+        data.Moderation.Assignment(moderator, admin, ModeratorScopeType.Group, group.Id);
+        data.Moderation.Assignment(moderator, admin, ModeratorScopeType.Media, assignedMedia.Id);
+        await data.SaveAsync();
+        var service = CreateService(db);
+
+        var result = await service.GetReportsAsync(moderator.Id, false, new ReportQueryDto { PageSize = 20 });
+
+        var ids = result.Items.Select(item => item.Id).ToHashSet();
+        Assert.Equal(2, ids.Count);
+        Assert.Contains(groupReport.Id, ids);
+        Assert.Contains(mediaReport.Id, ids);
     }
 
     [Fact]

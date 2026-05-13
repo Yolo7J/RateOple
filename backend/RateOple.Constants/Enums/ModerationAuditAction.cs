@@ -9,5 +9,7 @@ public enum ModerationAuditAction
     ModeratorAssigned = 5,
     ModeratorUnassigned = 6,
     GroupUserBanned = 7,
-    GroupUserUnbanned = 8
+    GroupUserUnbanned = 8,
+    GlobalRoleGranted = 9,
+    GlobalRoleRevoked = 10
 }

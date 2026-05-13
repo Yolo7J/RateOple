@@ -101,7 +101,7 @@ public class LookupController : ControllerBase
     }
 
     [HttpGet("admin/users/lookup")]
-    [Authorize(Policy = PolicyConstants.RequireModerator)]
+    [Authorize(Policy = PolicyConstants.RequireAdmin)]
     public async Task<ActionResult<PagedLookupDto<UserLookupItemDto>>> LookupUsersForModeration(
         [FromQuery] string? search,
         [FromQuery] int page = 1,
@@ -121,6 +121,98 @@ public class LookupController : ControllerBase
         }
 
         return Ok(await ProjectUsersAsync(query, pagination));
+    }
+
+    [HttpGet("admin/moderator-candidates/lookup")]
+    [Authorize(Policy = PolicyConstants.RequireAdmin)]
+    public async Task<ActionResult<PagedLookupDto<UserLookupItemDto>>> LookupModeratorCandidates(
+        [FromQuery] string? search,
+        [FromQuery] ModeratorScopeType? scopeType,
+        [FromQuery] Guid? scopeId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        var pagination = Pagination.Normalize(page, pageSize);
+        var normalizedSearch = Normalize(search);
+        var adminRoleIds = await _context.Roles
+            .AsNoTracking()
+            .Where(role => role.Name == RoleConstants.Admin || role.Name == RoleConstants.SuperAdmin)
+            .Select(role => role.Id)
+            .ToListAsync();
+        var candidateRoleIds = await _context.Roles
+            .AsNoTracking()
+            .Where(role => role.Name == RoleConstants.User || role.Name == RoleConstants.Moderator)
+            .Select(role => role.Id)
+            .ToListAsync();
+
+        var normalizedScopeId = scopeType == ModeratorScopeType.Global ? Guid.Empty : scopeId;
+
+        var query = _context.Users
+            .AsNoTracking()
+            .Where(user =>
+                user.EmailConfirmed &&
+                user.PasswordHash != null &&
+                (user.UserName == null || !user.UserName.StartsWith("deleted_")) &&
+                _context.UserRoles.Any(userRole =>
+                    userRole.UserId == user.Id &&
+                    candidateRoleIds.Contains(userRole.RoleId)) &&
+                !_context.UserRoles.Any(userRole =>
+                    userRole.UserId == user.Id &&
+                    adminRoleIds.Contains(userRole.RoleId)));
+
+        if (scopeType.HasValue)
+        {
+            query = query.Where(user => !user.ModeratorAssignments.Any(assignment =>
+                assignment.ScopeType == scopeType.Value &&
+                assignment.ScopeId == normalizedScopeId));
+        }
+
+        if (normalizedSearch.Length > 0)
+        {
+            query = query.Where(u =>
+                (u.UserName != null && u.UserName.Contains(normalizedSearch)) ||
+                (u.Email != null && u.Email.Contains(normalizedSearch)) ||
+                (u.Profile != null && u.Profile.DisplayName.Contains(normalizedSearch)));
+        }
+
+        var candidates = await query
+            .OrderBy(u => u.Profile != null ? u.Profile.DisplayName : u.UserName)
+            .ThenBy(u => u.Id)
+            .Select(u => new
+            {
+                u.Id,
+                u.UserName,
+                u.AvatarUrl,
+                u.LockoutEnd,
+                DisplayName = u.Profile != null ? u.Profile.DisplayName : (u.UserName ?? string.Empty),
+                ProfileAvatarUrl = u.Profile != null ? u.Profile.AvatarUrl : null
+            })
+            .ToListAsync();
+
+        var filtered = candidates
+            .Where(u => !IsLockedOut(u.LockoutEnd))
+            .ToList();
+
+        var items = filtered
+            .Skip((pagination.Page - 1) * pagination.PageSize)
+            .Take(pagination.PageSize)
+            .Select(u => new UserLookupItemDto
+            {
+                Id = u.Id,
+                Username = u.UserName ?? string.Empty,
+                DisplayName = u.DisplayName,
+                AvatarUrl = u.ProfileAvatarUrl ?? u.AvatarUrl,
+                Subtitle = "@" + (u.UserName ?? "unknown")
+            })
+            .ToList();
+
+        return Ok(new PagedLookupDto<UserLookupItemDto>
+        {
+            Items = items,
+            TotalCount = filtered.Count,
+            Page = pagination.Page,
+            PageSize = pagination.PageSize
+        });
     }
 
     [HttpGet("groups/lookup")]
@@ -372,4 +464,9 @@ public class LookupController : ControllerBase
     }
 
     private static string Normalize(string? value) => value?.Trim() ?? string.Empty;
+
+    private static bool IsLockedOut(DateTimeOffset? lockoutEnd)
+    {
+        return lockoutEnd.HasValue && lockoutEnd.Value > DateTimeOffset.UtcNow;
+    }
 }

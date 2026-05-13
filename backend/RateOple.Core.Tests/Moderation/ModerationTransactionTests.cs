@@ -18,7 +18,7 @@ public class ModerationTransactionTests
         var audit = new ThrowingModerationAuditService();
         var service = CreateService(db, auditService: audit);
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => service.UpdateReportStatusAsync(reviewer.Id, report.Id, new UpdateReportStatusDto
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => service.UpdateReportStatusAsync(reviewer.Id, true, report.Id, new UpdateReportStatusDto
         {
             Status = ReportStatus.Resolved
         }));
@@ -42,7 +42,7 @@ public class ModerationTransactionTests
         var notification = new ThrowingNotificationService();
         var service = CreateService(db, notificationService: notification, auditService: new ModerationAuditService(db.Context));
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => service.UpdateReportStatusAsync(reviewer.Id, report.Id, new UpdateReportStatusDto
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => service.UpdateReportStatusAsync(reviewer.Id, true, report.Id, new UpdateReportStatusDto
         {
             Status = ReportStatus.Rejected
         }));
@@ -64,7 +64,9 @@ public class ModerationTransactionTests
         var data = new TestDataFactory(db.Context);
         var admin = data.Users.Add(data.Users.Admin("assignment-admin"));
         var moderator = data.Users.Add(data.Users.Moderator("assignment-moderator"));
+        var userManager = await TestUsers.CreateUserManagerAsync(db.Context);
         await data.SaveAsync();
+        await userManager.AddToRoleAsync(moderator, RateOple.Constants.Constants.RoleConstants.Moderator);
         var notification = new ThrowingNotificationService();
         var service = CreateService(db, notificationService: notification, auditService: new ModerationAuditService(db.Context));
 

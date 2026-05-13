@@ -1,6 +1,6 @@
 # RateOple Security and Deployment Readiness Plan
 
-Last updated: May 11, 2026
+Last updated: May 13, 2026
 
 This is an implementation plan, not a completed-feature report. It is based on the current repository state:
 
@@ -285,12 +285,23 @@ Before deployment:
 
 ### Admin and Moderation Protection
 
-Current router and API policies use role guards for admin/moderation areas.
+Current router and API policies use role guards for admin/moderation areas. Global role-management hardening is now implemented for v1:
+
+- `POST/DELETE /api/admin/users/{userId}/roles/admin` is SuperAdmin-only.
+- `POST/DELETE /api/admin/users/{userId}/roles/moderator` is Admin/SuperAdmin-only.
+- Admins cannot modify SuperAdmins, Admin users, or their own global roles.
+- Removing global Moderator removes active moderator assignments and writes audit entries.
+- Moderator assignment creation requires the target already has the global Moderator role.
+- Moderator candidate lookup is backend-filtered and excludes Admins, SuperAdmins, locked/deleted users, and users already assigned to the selected scope.
+- Moderator report visibility/actionability is assignment-scoped: global assignment sees all reports, scoped assignments see matching group/media-backed report targets, and no assignment sees no actionable queue.
+- Group membership roles remain separate from global Identity roles.
+
+Suspension is still not a separate completed account-state feature. Current account deletion/anonymization uses permanent lockout; broader suspend/unsuspend administration remains a later account-lifecycle task.
 
 Before deployment:
 
 - Keep role checks server-side on every staff mutation.
-- Add tests that normal users cannot reach admin media, moderation reports, assignments, audit logs, TMDB import, or role-changing/group moderation actions.
+- Keep tests that normal users cannot reach admin media, moderation reports, assignments, audit logs, TMDB import, or role-changing/group moderation actions.
 - Do not expose staff links in public navigation for unauthorized users.
 - Define super-admin creation strategy through secure seed configuration only.
 

@@ -17,7 +17,7 @@ import Button from '../../../shared/ui/Button';
 import Select from '../../../shared/ui/Select';
 import Badge from '../../../shared/ui/Badge';
 import { EntityPicker } from '../../../shared/ui/EntityPicker';
-import { searchModerationUsers } from '../../users/services/userLookupService';
+import { searchModeratorCandidates } from '../../users/services/userLookupService';
 import { searchModerationScopes } from '../services/scopeLookupService';
 import '../moderation.css';
 
@@ -73,6 +73,14 @@ function ModerationPage() {
   const searchAssignmentScope = useCallback((params) => (
     searchModerationScopes({ ...params, scopeType: Number(assignmentForm.scopeType) })
   ), [assignmentForm.scopeType]);
+
+  const searchAssignmentUser = useCallback((params) => (
+    searchModeratorCandidates({
+      ...params,
+      scopeType: Number(assignmentForm.scopeType),
+      ...(assignmentForm.scopeType === '1' ? {} : { scopeId: assignmentScope?.id }),
+    })
+  ), [assignmentForm.scopeType, assignmentScope?.id]);
 
   const handleUpdateStatus = async (reportId, nextStatus) => {
     setActionError('');
@@ -217,8 +225,8 @@ function ModerationPage() {
                   placeholder="Search users by name, username, or email"
                   value={assignmentUser}
                   onChange={setAssignmentUser}
-                  searchFn={searchModerationUsers}
-                  disabled={isMutating}
+                  searchFn={searchAssignmentUser}
+                  disabled={isMutating || (assignmentForm.scopeType !== '1' && !assignmentScope)}
                 />
                 <label className="staff-field">
                   <span className="staff-label">Scope type</span>
@@ -227,6 +235,7 @@ function ModerationPage() {
                     onChange={(e) => {
                       setAssignmentForm((prev) => ({ ...prev, scopeType: e.target.value }));
                       setAssignmentScope(null);
+                      setAssignmentUser(null);
                     }}
                   >
                     {SCOPE_OPTIONS.map((option) => (
@@ -241,13 +250,19 @@ function ModerationPage() {
                     label={`${SCOPE_OPTIONS.find((option) => option.value === assignmentForm.scopeType)?.label ?? 'Scope'} scope`}
                     placeholder="Search scope by name"
                     value={assignmentScope}
-                    onChange={setAssignmentScope}
+                    onChange={(scope) => {
+                      setAssignmentScope(scope);
+                      setAssignmentUser(null);
+                    }}
                     searchFn={searchAssignmentScope}
                     disabled={isMutating}
                   />
                 ) : (
                   <p className="moderation-muted">Global assignments apply across all moderation scopes.</p>
                 )}
+                {assignmentForm.scopeType !== '1' && !assignmentScope ? (
+                  <InlineMessage tone="info">Select a scope before choosing a moderator candidate.</InlineMessage>
+                ) : null}
                 {assignmentUser ? (
                   <p className="moderation-muted">
                     Assign {assignmentUser.label} as moderator for{' '}

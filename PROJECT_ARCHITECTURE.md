@@ -1,6 +1,6 @@
 # RateOple Architecture (Current State)
 
-Last updated: **May 11, 2026**
+Last updated: **May 13, 2026**
 
 This document reflects the code currently present in the repository.
 
@@ -199,6 +199,15 @@ Roles:
 
 - Global (Identity): `SuperAdmin`, `Admin`, `Moderator`, `User`
 - GroupMembership: `Owner`, `GroupAdmin`, `GroupModerator`, `Member`
+
+Global staff role hierarchy:
+
+- `SuperAdmin` can manage global `Admin` and `Moderator` roles, manage all moderator assignments, and access all admin/moderation tools.
+- `Admin` can use existing admin/catalog permissions, manage reports, grant/revoke global `Moderator`, and create/remove moderator assignments. Admins cannot manage `Admin` roles, modify `SuperAdmin` users, modify other `Admin` users, or alter their own global roles.
+- `Moderator` can enter moderation tools, but actionable report access comes from `ModeratorAssignment` records. A global assignment sees all report scopes; scoped assignments see only matching group/media-backed report targets; no active assignment yields an empty actionable queue.
+- `User` has normal account access only.
+
+Group membership roles are not Identity roles and must not grant global admin/moderation permissions. `GroupAdmin` and `GroupModerator` authority stays inside the group domain.
 
 ## 5. Layer Structure and Architecture Rules
 

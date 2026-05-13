@@ -4,4 +4,6 @@ export const searchUsers = (params = {}) => lookupApi.users(params);
 
 export const searchModerationUsers = (params = {}) => lookupApi.adminUsers(params);
 
-export default { searchUsers, searchModerationUsers };
+export const searchModeratorCandidates = (params = {}) => lookupApi.moderatorCandidates(params);
+
+export default { searchUsers, searchModerationUsers, searchModeratorCandidates };

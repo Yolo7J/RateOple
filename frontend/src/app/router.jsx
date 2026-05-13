@@ -34,6 +34,7 @@ const CartPage = lazy(() => import('../features/media/pages/CartPage'));
 const ModerationPage = lazy(() => import('../features/moderation/pages/ModerationPage'));
 const AuditLogPage = lazy(() => import('../features/moderation/pages/AuditLogPage'));
 const AdminDashboardPage = lazy(() => import('../features/admin/pages/AdminDashboardPage'));
+const AdminUsersPage = lazy(() => import('../features/admin/pages/AdminUsersPage'));
 const AdminMediaPage = lazy(() => import('../features/media/pages/AdminMediaPage'));
 const EditMediaPage = lazy(() => import('../features/media/pages/EditMediaPage'));
 
@@ -92,6 +93,7 @@ const Router = () => {
         <Route element={<AdminLayout />}>
           <Route element={<RequireRole allow={['Admin', 'SuperAdmin']} />}>
             <Route path="/admin" element={renderLazyRoute(AdminDashboardPage)} />
+            <Route path="/admin/users" element={renderLazyRoute(AdminUsersPage)} />
             <Route path="/admin/media" element={renderLazyRoute(AdminMediaPage)} />
             <Route path="/admin/media/:id/edit" element={renderLazyRoute(EditMediaPage)} />
           </Route>

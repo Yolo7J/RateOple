@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using RateOple.Constants.Constants;
 using RateOple.Constants.Enums;
 using RateOple.Core.Common;
 using RateOple.Core.Contracts;
@@ -67,12 +68,14 @@ public class ModerationService : IModerationService
         return await MapReportAsync(report);
     }
 
-    public async Task<PagedReportsDto> GetReportsAsync(ReportQueryDto query)
+    public async Task<PagedReportsDto> GetReportsAsync(Guid viewerId, bool canSeeAllReports, ReportQueryDto query)
     {
         query ??= new ReportQueryDto();
         var pagination = Pagination.Normalize(query.Page, query.PageSize, defaultPageSize: 30);
 
         var q = _context.Reports.AsNoTracking().AsQueryable();
+        q = await ApplyModerationScopeAsync(q, viewerId, canSeeAllReports);
+
         if (query.Status.HasValue)
             q = q.Where(r => r.Status == query.Status.Value);
 
@@ -94,12 +97,15 @@ public class ModerationService : IModerationService
         };
     }
 
-    public async Task<ReportDto> UpdateReportStatusAsync(Guid reviewerId, Guid reportId, UpdateReportStatusDto dto)
+    public async Task<ReportDto> UpdateReportStatusAsync(Guid reviewerId, bool canSeeAllReports, Guid reportId, UpdateReportStatusDto dto)
     {
         await using var transaction = await BeginTransactionIfNeededAsync();
 
         var report = await _context.Reports.FirstOrDefaultAsync(r => r.Id == reportId)
             ?? throw new KeyNotFoundException("Report not found.");
+
+        if (!await CanAccessReportAsync(reviewerId, canSeeAllReports, report))
+            throw new UnauthorizedAccessException("This moderator is not assigned to this report scope.");
 
         report.Status = dto.Status;
         report.ReviewedById = reviewerId;
@@ -141,6 +147,8 @@ public class ModerationService : IModerationService
         var userExists = await _context.Users.AnyAsync(u => u.Id == targetUserId);
         if (!userExists)
             throw new KeyNotFoundException("User not found.");
+        if (!await UserHasRoleAsync(targetUserId, RoleConstants.Moderator))
+            throw new UnauthorizedAccessException("Assign the global Moderator role before assigning moderation scopes.");
 
         await EnsureScopeExistsAsync(dto.ScopeType, normalizedScopeId);
 
@@ -249,6 +257,101 @@ public class ModerationService : IModerationService
         return _context.Database.CurrentTransaction == null
             ? await _context.Database.BeginTransactionAsync()
             : null;
+    }
+
+    private async Task<IQueryable<Report>> ApplyModerationScopeAsync(
+        IQueryable<Report> reports,
+        Guid viewerId,
+        bool canSeeAllReports)
+    {
+        if (canSeeAllReports)
+            return reports;
+
+        var assignments = await _context.ModeratorAssignments
+            .AsNoTracking()
+            .Where(a => a.UserId == viewerId)
+            .Select(a => new { a.ScopeType, a.ScopeId })
+            .ToListAsync();
+
+        if (assignments.Any(a => a.ScopeType == ModeratorScopeType.Global))
+            return reports;
+
+        var groupScopeIds = assignments
+            .Where(a => a.ScopeType == ModeratorScopeType.Group && a.ScopeId.HasValue)
+            .Select(a => a.ScopeId!.Value)
+            .ToList();
+
+        var mediaScopeIds = assignments
+            .Where(a => a.ScopeType == ModeratorScopeType.Media && a.ScopeId.HasValue)
+            .Select(a => a.ScopeId!.Value)
+            .ToList();
+
+        if (groupScopeIds.Count == 0 && mediaScopeIds.Count == 0)
+            return reports.Where(_ => false);
+
+        return reports.Where(report =>
+            (groupScopeIds.Count > 0 && (
+                report.TargetType == ReportTargetType.Post &&
+                _context.GroupPosts.Any(post =>
+                    post.Id == report.TargetId &&
+                    groupScopeIds.Contains(post.GroupId)) ||
+                report.TargetType == ReportTargetType.Comment &&
+                _context.Comments.Any(comment =>
+                    comment.Id == report.TargetId &&
+                    (
+                        comment.GroupPost != null &&
+                        groupScopeIds.Contains(comment.GroupPost.GroupId) ||
+                        comment.ParentComment != null &&
+                        comment.ParentComment.GroupPost != null &&
+                        groupScopeIds.Contains(comment.ParentComment.GroupPost.GroupId) ||
+                        comment.ParentComment != null &&
+                        comment.ParentComment.ParentComment != null &&
+                        comment.ParentComment.ParentComment.GroupPost != null &&
+                        groupScopeIds.Contains(comment.ParentComment.ParentComment.GroupPost.GroupId)
+                    )))) ||
+            (mediaScopeIds.Count > 0 && (
+                report.TargetType == ReportTargetType.Review &&
+                _context.Reviews.Any(review =>
+                    review.Id == report.TargetId &&
+                    mediaScopeIds.Contains(review.MediaId)) ||
+                report.TargetType == ReportTargetType.Comment &&
+                _context.Comments.Any(comment =>
+                    comment.Id == report.TargetId &&
+                    (
+                        comment.Review != null &&
+                        mediaScopeIds.Contains(comment.Review.MediaId) ||
+                        comment.ParentComment != null &&
+                        comment.ParentComment.Review != null &&
+                        mediaScopeIds.Contains(comment.ParentComment.Review.MediaId) ||
+                        comment.ParentComment != null &&
+                        comment.ParentComment.ParentComment != null &&
+                        comment.ParentComment.ParentComment.Review != null &&
+                        mediaScopeIds.Contains(comment.ParentComment.ParentComment.Review.MediaId)
+                    )) ||
+                report.TargetType == ReportTargetType.Post &&
+                _context.PostMediaLinks.Any(link =>
+                    link.PostId == report.TargetId &&
+                    mediaScopeIds.Contains(link.MediaId)))));
+    }
+
+    private async Task<bool> CanAccessReportAsync(Guid viewerId, bool canSeeAllReports, Report report)
+    {
+        var scoped = await ApplyModerationScopeAsync(
+            _context.Reports.AsNoTracking().Where(r => r.Id == report.Id),
+            viewerId,
+            canSeeAllReports);
+
+        return await scoped.AnyAsync();
+    }
+
+    private async Task<bool> UserHasRoleAsync(Guid userId, string roleName)
+    {
+        return await _context.UserRoles
+            .Join(_context.Roles,
+                userRole => userRole.RoleId,
+                role => role.Id,
+                (userRole, role) => new { userRole.UserId, role.Name })
+            .AnyAsync(x => x.UserId == userId && x.Name == roleName);
     }
 
     private async Task<bool> CheckTargetExistsAsync(ReportTargetType targetType, Guid targetId)

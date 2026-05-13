@@ -41,6 +41,11 @@ export const lookupApi = {
     return toPagedResult(response.data, toEntityOption);
   },
 
+  moderatorCandidates: async (params = {}) => {
+    const response = await api.get('/admin/moderator-candidates/lookup', { params: normalizeLookupParams(params) });
+    return toPagedResult(response.data, toEntityOption);
+  },
+
   groups: async (params = {}) => {
     const response = await api.get('/groups/lookup', { params: normalizeLookupParams(params) });
     return toPagedResult(response.data, toEntityOption);

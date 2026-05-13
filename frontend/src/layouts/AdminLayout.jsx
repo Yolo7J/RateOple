@@ -22,6 +22,7 @@ const AdminLayout = () => {
     if (isAdmin) {
       return [
         { to: '/admin', label: 'Dashboard' },
+        { to: '/admin/users', label: 'User Roles' },
         { to: '/media/add?from=admin', label: 'Add Media' },
         { to: '/admin/media', label: 'Media Management' },
         { to: '/admin/moderation', label: 'Moderation' },

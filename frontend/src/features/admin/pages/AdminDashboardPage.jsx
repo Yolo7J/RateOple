@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Clapperboard, ShieldCheck } from 'lucide-react';
+import { Clapperboard, ShieldCheck, UserCog } from 'lucide-react';
 import PageLayout from '../../../layouts/PageLayout';
 import Container from '../../../shared/ui/Container';
 import '../admin.css';
@@ -10,6 +10,12 @@ const ADMIN_LINKS = [
     description: 'Create, edit, and curate movies, TV series, and books.',
     to: '/admin/media',
     icon: Clapperboard,
+  },
+  {
+    title: 'User roles',
+    description: 'Grant or revoke audited global Admin and Moderator roles.',
+    to: '/admin/users',
+    icon: UserCog,
   },
   {
     title: 'Moderation',

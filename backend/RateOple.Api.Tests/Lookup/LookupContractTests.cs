@@ -57,7 +57,7 @@ public class LookupContractTests
         var client = factory.CreateClient();
         var publicUser = await factory.AddUserAsync("public-lookup-user", RoleConstants.User);
         var privateUser = await factory.AddUserAsync("private-lookup-user", RoleConstants.User);
-        var moderator = await factory.AddUserAsync("lookup-moderator", RoleConstants.Moderator);
+        var admin = await factory.AddUserAsync("lookup-admin", RoleConstants.Admin);
         await factory.WithDbAsync(async db =>
         {
             var privateEntry = await db.Users.SingleAsync(u => u.Id == privateUser.Id);
@@ -74,7 +74,7 @@ public class LookupContractTests
         using var publicJson = JsonDocument.Parse(await publicResponse.Content.ReadAsStringAsync());
 
         using var adminRequest = new HttpRequestMessage(HttpMethod.Get, "/api/admin/users/lookup?search=private-lookup-user@example.test");
-        ApiTestFactory.AddTestAuthHeaders(adminRequest, moderator, RoleConstants.Moderator);
+        ApiTestFactory.AddTestAuthHeaders(adminRequest, admin, RoleConstants.Admin);
         var adminResponse = await client.SendAsync(adminRequest);
         using var adminJson = JsonDocument.Parse(await adminResponse.Content.ReadAsStringAsync());
         var adminItems = adminJson.RootElement.GetProperty("items").EnumerateArray().ToList();

@@ -33,7 +33,10 @@ public class ModerationController : ControllerBase
     [Authorize(Policy = PolicyConstants.CanModerateContent)]
     public async Task<ActionResult<PagedReportsDto>> GetReports([FromQuery] ReportQueryDto query)
     {
-        var reports = await _moderationService.GetReportsAsync(query);
+        var reports = await _moderationService.GetReportsAsync(
+            User.GetRequiredUserId(),
+            User.IsInRole(RoleConstants.Admin) || User.IsInRole(RoleConstants.SuperAdmin),
+            query);
         return Ok(reports);
     }
 
@@ -41,7 +44,11 @@ public class ModerationController : ControllerBase
     [Authorize(Policy = PolicyConstants.CanModerateContent)]
     public async Task<ActionResult<ReportDto>> UpdateStatus(Guid id, [FromBody] UpdateReportStatusDto dto)
     {
-        var report = await _moderationService.UpdateReportStatusAsync(User.GetRequiredUserId(), id, dto);
+        var report = await _moderationService.UpdateReportStatusAsync(
+            User.GetRequiredUserId(),
+            User.IsInRole(RoleConstants.Admin) || User.IsInRole(RoleConstants.SuperAdmin),
+            id,
+            dto);
         return Ok(report);
     }
 

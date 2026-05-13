@@ -81,6 +81,8 @@ public class ModerationAuditService : IModerationAuditService
         var targetUserIds = logs
             .Where(l => l.Action is ModerationAuditAction.ModeratorAssigned
                         or ModerationAuditAction.ModeratorUnassigned
+                        or ModerationAuditAction.GlobalRoleGranted
+                        or ModerationAuditAction.GlobalRoleRevoked
                         or ModerationAuditAction.GroupUserBanned
                         or ModerationAuditAction.GroupUserUnbanned)
             .Select(l => l.TargetId)
@@ -121,6 +123,8 @@ public class ModerationAuditService : IModerationAuditService
                     reportDisplayNames.GetValueOrDefault(log.TargetId) ?? "Report",
                 ModerationAuditAction.ModeratorAssigned or
                 ModerationAuditAction.ModeratorUnassigned or
+                ModerationAuditAction.GlobalRoleGranted or
+                ModerationAuditAction.GlobalRoleRevoked or
                 ModerationAuditAction.GroupUserBanned or
                 ModerationAuditAction.GroupUserUnbanned =>
                     userDisplayNames.GetValueOrDefault(log.TargetId) ?? "Unknown user",

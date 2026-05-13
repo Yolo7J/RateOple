@@ -1,3 +1,90 @@
+RateOple v1 global role hardening and moderator management results
+
+Summary:
+- Implemented backend-enforced global role management for Admin and Moderator roles, with audited mutations and assignment cleanup when Moderator is revoked.
+- Hardened moderator assignment semantics so the global Moderator role alone does not grant report reach; ModeratorAssignment now controls report visibility/actionability.
+- Added backend-filtered moderator candidate lookup and switched the frontend assignment picker to that lookup.
+- Added an Admin/SuperAdmin user-role management page under `/admin/users`.
+- Updated architecture/security docs for the v1 authority model and current suspension limitation.
+
+Files changed:
+- PROJECT_ARCHITECTURE.md
+- SECURITY_AND_DEPLOYMENT_PLAN.md
+- backend/RateOple/Controllers/Admin/AdminUsersController.cs
+- backend/RateOple/Controllers/LookupController.cs
+- backend/RateOple/Controllers/Moderation/ModerationController.cs
+- backend/RateOple.Core/Moderation/Interfaces/IModerationService.cs
+- backend/RateOple.Core/Moderation/Services/ModerationService.cs
+- backend/RateOple.Core/Moderation/Services/ModerationAuditService.cs
+- backend/RateOple.Constants/Enums/ModerationAuditAction.cs
+- backend/RateOple.Api.Tests/Admin/AdminUserManagementContractTests.cs
+- backend/RateOple.Api.Tests/Lookup/LookupContractTests.cs
+- backend/RateOple.Core.Tests/Moderation/ModerationServiceTests.cs
+- backend/RateOple.Core.Tests/Moderation/ModerationTransactionTests.cs
+- frontend/src/app/router.jsx
+- frontend/src/layouts/AdminLayout.jsx
+- frontend/src/features/admin/admin.css
+- frontend/src/features/admin/pages/AdminDashboardPage.jsx
+- frontend/src/features/admin/pages/AdminUsersPage.jsx
+- frontend/src/features/admin/services/adminUserService.js
+- frontend/src/features/moderation/pages/ModerationPage.jsx
+- frontend/src/features/users/services/userLookupService.js
+- frontend/src/shared/api/lookupApi.js
+- results.txt
+
+Backend changes:
+- Added `GET /api/admin/users?query=...` for admin-side privacy-safe user search with role chips/status flags.
+- Added audited role endpoints:
+  - `POST /api/admin/users/{userId}/roles/admin`
+  - `DELETE /api/admin/users/{userId}/roles/admin`
+  - `POST /api/admin/users/{userId}/roles/moderator`
+  - `DELETE /api/admin/users/{userId}/roles/moderator`
+- SuperAdmin-only Admin role management is enforced server-side.
+- Admin/SuperAdmin Moderator role management is enforced server-side.
+- Admins cannot modify SuperAdmins, Admin users, or their own global roles.
+- Removing global Moderator removes all active ModeratorAssignment rows and writes assignment-removal audit logs.
+- Added `GlobalRoleGranted` and `GlobalRoleRevoked` audit actions.
+- Assignment creation now requires the target user already has the global Moderator role.
+- Added backend moderator-candidate lookup at `GET /api/admin/moderator-candidates/lookup`, excluding Admins, SuperAdmins, locked/deleted users, unconfirmed users, and users already assigned to the selected scope.
+- Moderation report reads and status updates now pass the actor into the service and are filtered by ModeratorAssignment unless the actor is Admin/SuperAdmin.
+- Global assignment sees all reports; scoped group/media assignments see matching report targets; no assignment sees no actionable queue.
+- Tightened the existing broad `/api/admin/users/lookup` from Moderator policy to Admin policy.
+
+Frontend changes:
+- Added `/admin/users` under the existing Admin/SuperAdmin route guard.
+- Added User Roles navigation in the admin sidebar and dashboard.
+- Built a role-management page with search, role chips, status chips, disabled action reasons, and confirmation dialogs.
+- Moderator revocation confirmation explicitly says assignments are also removed.
+- Moderator assignment picker now calls backend candidate lookup instead of broad admin user lookup.
+- Scoped assignment picker disables candidate search until the scope is selected and clears stale candidate selections when scope changes.
+
+Tests added/run:
+- Added API tests for User/Moderator denial, Admin Moderator grant/revoke, Admin denial for Admin/SuperAdmin changes, SuperAdmin role changes, self-role mutation denial, candidate filtering, assignment cleanup, and role/assignment audit entries.
+- Added Core moderation tests for no-assignment, global-assignment, and scoped-assignment report visibility/actionability.
+- Updated lookup tests for the tightened admin-only user lookup policy.
+- `cd backend && dotnet build RateOple.sln`: passed.
+- `cd backend && dotnet test RateOple.sln --no-build`: passed, 337 total tests.
+- Final backend recheck after moving realtime publishes after commit: `cd backend && dotnet build RateOple.sln && dotnet test RateOple.sln --no-build`: passed; build 0 warnings/errors; 337 total tests.
+- Final backend recheck after tightening candidate lookup to User/Moderator roles: `cd backend && dotnet build RateOple.sln`: passed; `cd backend && dotnet test RateOple.sln --no-build`: passed, 337 total tests.
+- `cd frontend && npm run lint`: passed.
+- `cd frontend && npm run build`: passed. Build emitted existing Rollup annotation warnings from `@microsoft/signalr` comments.
+- `cd frontend && npm run build:backend`: passed. Build emitted the same existing Rollup annotation warnings and copied the Vite output to `backend/RateOple/wwwroot`.
+- Focused Playwright tests were not added because seeded authenticated browser identities were not available; backend tests cover the permission boundaries.
+
+Role/permission matrix:
+- SuperAdmin: manage Admin roles; manage Moderator roles; manage all moderator assignments; access admin and moderation tools; cannot alter own roles through the new role endpoints.
+- Admin: access existing admin/catalog tools; manage reports; grant/revoke Moderator for eligible non-staff users; assign/revoke moderator scopes; cannot grant/revoke Admin; cannot modify SuperAdmins/Admins; cannot alter own roles.
+- Moderator: access moderation shell; report queue/actionability comes only from assignments; Global assignment sees all reports; scoped group/media assignments see matching reports; no assignment sees no actionable queue; cannot manage roles or assignments.
+- User: no admin/moderation role-management access.
+- Group roles: Owner, GroupAdmin, GroupModerator, and Member remain group-membership roles only and do not grant global Identity permissions.
+
+Known limitations/open questions:
+- There is still no separate completed suspension/unsuspension admin feature; deleted/anonymized accounts are represented by permanent lockout and are excluded from candidates.
+- No endpoint was added for creating/removing SuperAdmin roles; secure SuperAdmin creation remains tied to seed configuration.
+- Collection-scoped moderator assignments exist, but current report targets are user/comment/post/review. This pass did not invent collection-target reports.
+- Existing UGC hide/remove capabilities were not expanded; this pass only hardened role, assignment, audit, and report-scope behavior.
+- Frontend authenticated visual/Playwright coverage was not added because no seeded staff browser session was available.
+
 RateOple architecture documentation reality-check results
 
 Summary:
