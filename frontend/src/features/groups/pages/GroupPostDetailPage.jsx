@@ -58,9 +58,10 @@ function GroupPostDetailPage() {
   const [actionError, setActionError] = useState('');
 
   const viewerRole = group?.viewerRole ?? null;
+  const isArchived = Boolean(group?.isArchived);
   const isMember = Boolean(getRoleValue(viewerRole));
-  const canModerate = canModerateGroup(viewerRole);
-  const canInteract = Boolean(user && isMember);
+  const canModerate = !isArchived && canModerateGroup(viewerRole);
+  const canInteract = Boolean(user && isMember && !isArchived);
   const comments = useMemo(() => (Array.isArray(commentsData) ? commentsData : []), [commentsData]);
   const media = Array.isArray(post?.media) ? post.media : [];
   const score = (Number(post?.upvotes) || 0) - (Number(post?.downvotes) || 0);
@@ -348,7 +349,8 @@ function GroupPostDetailPage() {
                 ) : null}
               </div>
             ) : null}
-            {actionError ? <InlineMessage tone="error">{actionError}</InlineMessage> : null}
+          {actionError ? <InlineMessage tone="error">{actionError}</InlineMessage> : null}
+          {isArchived ? <InlineMessage tone="warning">This group is archived and read-only.</InlineMessage> : null}
           </section>
 
           <Dialog

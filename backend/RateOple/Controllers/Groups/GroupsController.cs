@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RateOple.Constants.Constants;
 using RateOple.Core.Contracts;
 using RateOple.Core.Groups.DTOs;
 using RateOple.Extensions;
@@ -49,6 +50,10 @@ public class GroupsController : ControllerBase
         catch (UnauthorizedAccessException)
         {
             return Forbid();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
         }
     }
 
@@ -136,6 +141,36 @@ public class GroupsController : ControllerBase
         }
     }
 
+    [HttpPost("{id:guid}/ownership")]
+    [Authorize]
+    public async Task<IActionResult> TransferOwnership(Guid id, [FromBody] TransferGroupOwnershipDto dto)
+    {
+        var actorId = User.GetRequiredUserId();
+        var force = User.IsInRole(RoleConstants.Admin) || User.IsInRole(RoleConstants.SuperAdmin);
+
+        try
+        {
+            await _groupService.TransferOwnershipAsync(actorId, id, dto.NewOwnerId, force);
+            return NoContent();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
     [HttpPost("{id:guid}/posts")]
     [Authorize]
     public async Task<ActionResult<GroupPostDto>> CreatePost(Guid id, [FromBody] CreateGroupPostDto dto)
@@ -156,6 +191,10 @@ public class GroupsController : ControllerBase
             return Forbid();
         }
         catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (InvalidOperationException ex)
         {
             return BadRequest(ex.Message);
         }
@@ -223,6 +262,10 @@ public class GroupsController : ControllerBase
         {
             return BadRequest(ex.Message);
         }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     [HttpGet("{id:guid}/posts/{postId:guid}/comments")]
@@ -269,6 +312,10 @@ public class GroupsController : ControllerBase
         {
             return BadRequest(ex.Message);
         }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     [HttpDelete("{id:guid}/posts/{postId:guid}/comments/{commentId:guid}")]
@@ -297,10 +344,11 @@ public class GroupsController : ControllerBase
     public async Task<ActionResult<GroupBanDto>> BanUser(Guid id, [FromBody] CreateGroupBanDto dto)
     {
         var userId = User.GetRequiredUserId();
+        var force = User.IsInRole(RoleConstants.Admin) || User.IsInRole(RoleConstants.SuperAdmin);
 
         try
         {
-            var ban = await _groupService.BanUserAsync(userId, id, dto);
+            var ban = await _groupService.BanUserAsync(userId, id, dto, force);
             return Ok(ban);
         }
         catch (KeyNotFoundException)
@@ -326,10 +374,11 @@ public class GroupsController : ControllerBase
     public async Task<IActionResult> UnbanUser(Guid id, Guid userId)
     {
         var actorId = User.GetRequiredUserId();
+        var force = User.IsInRole(RoleConstants.Admin) || User.IsInRole(RoleConstants.SuperAdmin);
 
         try
         {
-            await _groupService.UnbanUserAsync(actorId, id, userId);
+            await _groupService.UnbanUserAsync(actorId, id, userId, force);
             return NoContent();
         }
         catch (KeyNotFoundException)
@@ -339,6 +388,10 @@ public class GroupsController : ControllerBase
         catch (UnauthorizedAccessException)
         {
             return Forbid();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
         }
     }
 
@@ -360,6 +413,10 @@ public class GroupsController : ControllerBase
         catch (UnauthorizedAccessException)
         {
             return Forbid();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
         }
     }
 
@@ -408,6 +465,10 @@ public class GroupsController : ControllerBase
         catch (UnauthorizedAccessException)
         {
             return Forbid();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
         }
     }
 

@@ -380,9 +380,11 @@ The detailed implementation plan is maintained in [SECURITY_AND_DEPLOYMENT_PLAN.
 - `CollectionItem` (ordered media in collection)
 - `FollowCollection`
 
+On user account deletion, user-owned collections and nested children/items are deleted as private/account-owned data. Group-owned collections remain tied to the group owner model.
+
 ### 8.4 Groups Domain
 
-- `Group`
+- `Group` (owner, visibility, archive/read-only state)
 - `GroupBan`
 - `GroupMembership`
 - `GroupPost`
@@ -390,6 +392,8 @@ The detailed implementation plan is maintained in [SECURITY_AND_DEPLOYMENT_PLAN.
 - `GroupMedia` (pinned media)
 - `GroupStaffMessage`
 - `PostMedia` (media attached to group posts)
+
+Group owner deletion transfers ownership to the oldest eligible active confirmed GroupAdmin, then GroupModerator, then Member. If no eligible successor exists, the group is archived, hidden from normal discovery, and treated as read-only. Owners can manually transfer ownership to an eligible member; Admin/SuperAdmin callers can force-transfer through the same backend rule set.
 
 ### 8.5 Users Domain
 
@@ -567,6 +571,7 @@ SignalR hubs:
 - `POST /api/groups/{id}/join`
 - `DELETE /api/groups/{id}/leave`
 - `POST /api/groups/{id}/members/{userId}/role`
+- `POST /api/groups/{id}/ownership`
 - `POST /api/groups/{id}/posts`
 - `GET /api/groups/{id}/posts`
 - `GET /api/groups/{id}/posts/{postId}`

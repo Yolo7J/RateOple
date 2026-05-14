@@ -15,5 +15,8 @@ public enum ModerationAuditAction
     ReportEscalatedToAdmin = 11,
     ReportTargetRemoved = 12,
     UserSuspended = 13,
-    UserSuspensionLifted = 14
+    UserSuspensionLifted = 14,
+    UserAccountDeleted = 15,
+    GroupOwnershipTransferred = 16,
+    GroupArchived = 17
 }

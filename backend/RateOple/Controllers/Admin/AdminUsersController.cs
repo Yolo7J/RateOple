@@ -66,6 +66,7 @@ public class AdminUsersController : ControllerBase
                 user.UserName,
                 user.EmailConfirmed,
                 user.IsSuspended,
+                user.IsDeleted,
                 user.LockoutEnd,
                 user.PasswordHash,
                 DisplayName = user.Profile != null ? user.Profile.DisplayName : user.UserName,
@@ -83,7 +84,7 @@ public class AdminUsersController : ControllerBase
             EmailConfirmed = user.EmailConfirmed,
             IsSuspended = user.IsSuspended,
             IsLockedOut = IsLockedOut(user.LockoutEnd),
-            IsDeleted = IsDeletedUser(user.UserName, user.PasswordHash, user.LockoutEnd),
+            IsDeleted = IsDeletedUser(user.IsDeleted, user.UserName, user.PasswordHash, user.LockoutEnd),
             Roles = roles.GetValueOrDefault(user.Id, [])
         }).ToList();
 
@@ -134,7 +135,7 @@ public class AdminUsersController : ControllerBase
         var target = await _userManager.FindByIdAsync(userId.ToString())
             ?? throw new KeyNotFoundException("User not found.");
         await EnsureActorCanManageSuspensionAsync(target);
-        if (IsDeletedUser(target.UserName, target.PasswordHash, target.LockoutEnd))
+        if (IsDeletedUser(target.IsDeleted, target.UserName, target.PasswordHash, target.LockoutEnd))
             throw new UnauthorizedAccessException("Deleted users cannot be suspended.");
 
         target.IsSuspended = true;
@@ -218,7 +219,7 @@ public class AdminUsersController : ControllerBase
             throw new UnauthorizedAccessException("Admins cannot be assigned the Moderator role through this flow.");
         if (grant && role == RoleConstants.Moderator && targetRoles.Contains(RoleConstants.SuperAdmin))
             throw new UnauthorizedAccessException("SuperAdmins cannot be assigned the Moderator role through this flow.");
-        if (grant && IsDeletedUser(target.UserName, target.PasswordHash, target.LockoutEnd))
+        if (grant && IsDeletedUser(target.IsDeleted, target.UserName, target.PasswordHash, target.LockoutEnd))
             throw new UnauthorizedAccessException("Deleted users cannot receive global staff roles.");
         if (grant && IsLockedOut(target.LockoutEnd))
             throw new UnauthorizedAccessException("Locked out users cannot receive global staff roles.");
@@ -320,9 +321,10 @@ public class AdminUsersController : ControllerBase
         return lockoutEnd.HasValue && lockoutEnd.Value > DateTimeOffset.UtcNow;
     }
 
-    private static bool IsDeletedUser(string? userName, string? passwordHash, DateTimeOffset? lockoutEnd)
+    private static bool IsDeletedUser(bool isDeleted, string? userName, string? passwordHash, DateTimeOffset? lockoutEnd)
     {
-        return userName?.StartsWith("deleted_", StringComparison.OrdinalIgnoreCase) == true ||
+        return isDeleted ||
+               userName?.StartsWith("deleted_", StringComparison.OrdinalIgnoreCase) == true ||
                (passwordHash == null && IsLockedOut(lockoutEnd));
     }
 }

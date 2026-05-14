@@ -352,7 +352,8 @@ function AccountPage() {
                         <h3>Delete account</h3>
                       </div>
                       <p>
-                        Enter your password before continuing. You will confirm once more before the account is removed.
+                        Enter your password before continuing. Your account cannot be restored after deletion.
+                        Public posts, comments, and reviews may remain visible as Deleted user.
                       </p>
                       <FormField label="Password">
                         {(fieldProps) => (
@@ -482,7 +483,7 @@ function AccountPage() {
           <Dialog
             open={confirmingDelete}
             title="Delete account?"
-            description="This removes your account and signs you out. This action cannot be undone."
+            description="This cannot be restored. Your private profile data will be removed or anonymized; public posts, comments, and reviews may remain as Deleted user."
             onClose={() => setConfirmingDelete(false)}
             actions={(
               <>
@@ -492,7 +493,11 @@ function AccountPage() {
                 </Button>
               </>
             )}
-          />
+          >
+            <div className="account-delete-summary">
+              <p>Group ownership will transfer to an eligible group member where possible. Groups without an eligible successor may be archived.</p>
+            </div>
+          </Dialog>
         </Stack>
       </Container>
     </PageLayout>

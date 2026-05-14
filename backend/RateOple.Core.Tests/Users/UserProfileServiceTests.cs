@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using RateOple.Constants.Constants;
 using RateOple.Constants.Enums;
+using RateOple.Core.Moderation.Services;
 using RateOple.Core.Tests.TestSupport;
 using RateOple.Core.Users.DTOs;
 using RateOple.Core.Users.Services;
@@ -112,11 +113,17 @@ public class UserProfileServiceTests
         var createResult = await manager.CreateAsync(user, "Password1");
         Assert.True(createResult.Succeeded);
 
-        data.Users.Profile(user, "Delete Me");
+        data.Users.Profile(user, "Delete Me").Location = "Sofia";
         data.Users.RefreshToken(user, "hash-1");
+        var follower = data.Users.Add(data.Users.Normal("collection-follower"));
         var media = data.Media.Movie("Deletion Movie");
         var collection = data.Collections.UserCollection(user, "Personal Collection");
+        var childCollection = data.Collections.UserCollection(user, "Nested Collection", collection);
+        data.Collections.Item(childCollection, media);
+        data.Collections.Follow(follower, childCollection);
         var group = data.Groups.Group(user, "Owned Group");
+        var newOwner = data.Users.Add(data.Users.Normal("new-owner"));
+        data.Groups.Membership(group, newOwner, GroupRole.GroupAdmin);
         var post = data.Groups.Post(group, user);
         var rating = data.Rating(user.Id, media.Id, 9);
         db.Context.Reviews.Add(new Review
@@ -131,13 +138,16 @@ public class UserProfileServiceTests
         });
         data.GroupPostComment(user.Id, post.Id, "comment");
         await data.SaveAsync();
-        var service = new UserProfileService(db.Context, manager);
+        var service = new UserProfileService(db.Context, manager, new ModerationAuditService(db.Context));
 
         await service.DeleteAccountAsync(user.Id, "Password1");
 
         var deletedUser = await db.Context.Users.SingleAsync(u => u.Id == user.Id);
         Assert.StartsWith($"deleted_{user.Id:N}", deletedUser.UserName);
         Assert.Null(deletedUser.Email);
+        Assert.True(deletedUser.IsDeleted);
+        Assert.NotNull(deletedUser.DeletedAt);
+        Assert.Equal("UserRequested", deletedUser.DeletedReason);
         Assert.Null(deletedUser.PasswordHash);
         Assert.Null(deletedUser.Bio);
         Assert.Equal(UserConstants.DefaultAvatarUrl, deletedUser.AvatarUrl);
@@ -145,14 +155,89 @@ public class UserProfileServiceTests
         Assert.True(deletedUser.LockoutEnabled);
         Assert.NotNull(deletedUser.LockoutEnd);
 
-        Assert.False(await db.Context.UserProfiles.AnyAsync(p => p.UserId == user.Id));
-        Assert.False(await db.Context.RefreshTokens.AnyAsync(t => t.UserId == user.Id));
+        var deletedProfile = await db.Context.UserProfiles.SingleAsync(p => p.UserId == user.Id);
+        Assert.Equal("Deleted user", deletedProfile.DisplayName);
+        Assert.Null(deletedProfile.Bio);
+        Assert.Null(deletedProfile.AvatarUrl);
+        Assert.Null(deletedProfile.Location);
+        Assert.Equal(PrivacySetting.Private, deletedProfile.PrivacySetting);
+        Assert.True(await db.Context.RefreshTokens.Where(t => t.UserId == user.Id).AllAsync(t => t.Revoked));
         Assert.False(await db.Context.Collections.AnyAsync(c => c.Id == collection.Id));
-        Assert.False(await db.Context.Reviews.AnyAsync(r => r.UserId == user.Id));
+        Assert.False(await db.Context.Collections.AnyAsync(c => c.Id == childCollection.Id));
+        Assert.False(await db.Context.CollectionItems.AnyAsync(i => i.CollectionId == childCollection.Id));
+        Assert.False(await db.Context.FollowCollections.AnyAsync(f => f.CollectionId == childCollection.Id));
 
-        Assert.Null(await db.Context.Ratings.Where(r => r.Id == rating.Id).Select(r => r.UserId).SingleAsync());
-        Assert.Null(await db.Context.Comments.Where(c => c.GroupPostId == post.Id).Select(c => c.UserId).SingleAsync());
-        Assert.Null(await db.Context.GroupPosts.Where(p => p.Id == post.Id).Select(p => p.UserId).SingleAsync());
+        Assert.True(await db.Context.Reviews.AnyAsync(r => r.UserId == user.Id));
+        Assert.Equal(user.Id, await db.Context.Ratings.Where(r => r.Id == rating.Id).Select(r => r.UserId).SingleAsync());
+        Assert.Equal(user.Id, await db.Context.Comments.Where(c => c.GroupPostId == post.Id).Select(c => c.UserId).SingleAsync());
+        Assert.Equal(user.Id, await db.Context.GroupPosts.Where(p => p.Id == post.Id).Select(p => p.UserId).SingleAsync());
+        Assert.False(await db.Context.GroupMemberships.AnyAsync(m => m.GroupId == group.Id && m.UserId == user.Id));
+        Assert.Equal(newOwner.Id, await db.Context.Groups.Where(g => g.Id == group.Id).Select(g => g.OwnerId).SingleAsync());
+        Assert.Equal(GroupRole.Owner, await db.Context.GroupMemberships.Where(m => m.GroupId == group.Id && m.UserId == newOwner.Id).Select(m => m.Role).SingleAsync());
+        Assert.True(await db.Context.ModerationAuditLogs.AnyAsync(l => l.Action == ModerationAuditAction.UserAccountDeleted && l.TargetId == user.Id));
+        Assert.True(await db.Context.ModerationAuditLogs.AnyAsync(l => l.Action == ModerationAuditAction.GroupOwnershipTransferred && l.ScopeId == group.Id));
+    }
+
+    [Fact]
+    public async Task DeleteAccountAsync_TransfersOwnedGroupByAdminModeratorMemberPriority()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var manager = await TestUsers.CreateUserManagerAsync(db.Context);
+        var data = new TestDataFactory(db.Context);
+        var owner = data.Users.Normal("priority-owner");
+        var createResult = await manager.CreateAsync(owner, "Password1");
+        Assert.True(createResult.Succeeded);
+        var member = data.Users.Add(data.Users.Normal("eligible-member"));
+        var moderator = data.Users.Add(data.Users.Normal("eligible-mod"));
+        var newestAdmin = data.Users.Add(data.Users.Normal("newest-admin"));
+        var oldestAdmin = data.Users.Add(data.Users.Normal("oldest-admin"));
+        var group = data.Groups.Group(owner, "Priority Group");
+        data.Groups.Membership(group, member, GroupRole.Member).JoinedAt = DateTime.UtcNow.AddDays(-10);
+        data.Groups.Membership(group, moderator, GroupRole.GroupModerator).JoinedAt = DateTime.UtcNow.AddDays(-8);
+        data.Groups.Membership(group, newestAdmin, GroupRole.GroupAdmin).JoinedAt = DateTime.UtcNow.AddDays(-1);
+        data.Groups.Membership(group, oldestAdmin, GroupRole.GroupAdmin).JoinedAt = DateTime.UtcNow.AddDays(-3);
+        await data.SaveAsync();
+        var service = new UserProfileService(db.Context, manager, new ModerationAuditService(db.Context));
+
+        await service.DeleteAccountAsync(owner.Id, "Password1");
+
+        Assert.Equal(oldestAdmin.Id, await db.Context.Groups.Where(g => g.Id == group.Id).Select(g => g.OwnerId).SingleAsync());
+        Assert.Equal(GroupRole.Owner, await db.Context.GroupMemberships.Where(m => m.GroupId == group.Id && m.UserId == oldestAdmin.Id).Select(m => m.Role).SingleAsync());
+    }
+
+    [Fact]
+    public async Task DeleteAccountAsync_FallsBackToModeratorThenMember()
+    {
+        await using var moderatorDb = await SqliteTestDb.CreateAsync();
+        await AssertDeletionTransfersToRoleAsync(moderatorDb, GroupRole.GroupModerator);
+
+        await using var memberDb = await SqliteTestDb.CreateAsync();
+        await AssertDeletionTransfersToRoleAsync(memberDb, GroupRole.Member);
+    }
+
+    [Fact]
+    public async Task DeleteAccountAsync_ArchivesOwnedGroupWhenNoEligibleSuccessor()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var manager = await TestUsers.CreateUserManagerAsync(db.Context);
+        var data = new TestDataFactory(db.Context);
+        var owner = data.Users.Normal("archive-owner");
+        var createResult = await manager.CreateAsync(owner, "Password1");
+        Assert.True(createResult.Succeeded);
+        var suspendedMember = data.Users.Add(data.Users.Normal("suspended-member"));
+        suspendedMember.IsSuspended = true;
+        var group = data.Groups.Group(owner, "Archived Group");
+        data.Groups.Membership(group, suspendedMember);
+        await data.SaveAsync();
+        var service = new UserProfileService(db.Context, manager, new ModerationAuditService(db.Context));
+
+        await service.DeleteAccountAsync(owner.Id, "Password1");
+
+        var archived = await db.Context.Groups.SingleAsync(g => g.Id == group.Id);
+        Assert.True(archived.IsArchived);
+        Assert.NotNull(archived.ArchivedAt);
+        Assert.Equal(GroupVisibility.Private, archived.Visibility);
+        Assert.True(await db.Context.ModerationAuditLogs.AnyAsync(l => l.Action == ModerationAuditAction.GroupArchived && l.TargetId == group.Id));
     }
 
     [Fact]
@@ -183,5 +268,24 @@ public class UserProfileServiceTests
     {
         var manager = await TestUsers.CreateUserManagerAsync(db.Context);
         return new UserProfileService(db.Context, manager);
+    }
+
+    private static async Task AssertDeletionTransfersToRoleAsync(SqliteTestDb db, GroupRole role)
+    {
+        var manager = await TestUsers.CreateUserManagerAsync(db.Context);
+        var data = new TestDataFactory(db.Context);
+        var owner = data.Users.Normal($"owner-{role}");
+        var createResult = await manager.CreateAsync(owner, "Password1");
+        Assert.True(createResult.Succeeded);
+        var successor = data.Users.Add(data.Users.Normal($"successor-{role}"));
+        var group = data.Groups.Group(owner, $"{role} Group");
+        data.Groups.Membership(group, successor, role);
+        await data.SaveAsync();
+        var service = new UserProfileService(db.Context, manager, new ModerationAuditService(db.Context));
+
+        await service.DeleteAccountAsync(owner.Id, "Password1");
+
+        Assert.Equal(successor.Id, await db.Context.Groups.Where(g => g.Id == group.Id).Select(g => g.OwnerId).SingleAsync());
+        Assert.Equal(GroupRole.Owner, await db.Context.GroupMemberships.Where(m => m.GroupId == group.Id && m.UserId == successor.Id).Select(m => m.Role).SingleAsync());
     }
 }

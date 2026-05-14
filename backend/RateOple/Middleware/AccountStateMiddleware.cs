@@ -40,12 +40,22 @@ public sealed class AccountStateMiddleware
         var user = await db.Users
             .AsNoTracking()
             .Where(u => u.Id == userId)
-            .Select(u => new { u.EmailConfirmed, u.IsSuspended })
+            .Select(u => new { u.EmailConfirmed, u.IsSuspended, u.IsDeleted })
             .FirstOrDefaultAsync(context.RequestAborted);
 
         if (user == null)
         {
             await _next(context);
+            return;
+        }
+
+        if (user.IsDeleted)
+        {
+            await WriteForbiddenAsync(
+                context,
+                problemDetailsService,
+                "account_deleted",
+                "This account has been deleted.");
             return;
         }
 

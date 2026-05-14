@@ -11,5 +11,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
     {
         builder.HasIndex(u => u.NormalizedUserName)
                .IsUnique(true);
+
+        builder.Property(u => u.DeletedReason)
+            .HasMaxLength(200);
+
+        builder.HasIndex(u => u.IsDeleted);
     }
 }

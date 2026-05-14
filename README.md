@@ -8,7 +8,7 @@ RateOple is a full-stack media catalog and social platform for tracking, rating,
 - Backend: ASP.NET Core Web API on .NET 9
 - Data: PostgreSQL via EF Core
 - Auth: ASP.NET Identity + JWT in HttpOnly cookies + refresh token rotation
-- Account lifecycle: email confirmation, resend confirmation, forgot/reset password, stale unconfirmed cleanup, and read-only unconfirmed/suspended states
+- Account lifecycle: email confirmation, resend confirmation, forgot/reset password, stale unconfirmed cleanup, read-only unconfirmed/suspended states, and account deletion by anonymization/deactivation
 - Realtime: SignalR notifications
 - External media sources: TMDB and Open Library
 
@@ -278,6 +278,12 @@ The current smoke suite uses Playwright route mocks for fast browser checks, inc
 - Google OAuth is backend-mediated and redirects the browser back to the frontend route at `/auth/callback`.
 - Google OAuth requires backend Google credentials and is not expected to work on another machine without those secrets.
 
+## Account Deletion Semantics
+
+User-requested account deletion is implemented as internal anonymization/deactivation, not hard deletion of the Identity row. The original user row remains for foreign-key integrity and audit history, but is marked deleted, locked permanently, has refresh tokens revoked, external logins removed, profile fields anonymized, and cannot log in again.
+
+Public reviews, group posts, and comments remain attached to the original internal user id and render as `Deleted user` without profile/avatar exposure. User-owned collections and their nested children/items are deleted. Owned groups transfer to the oldest eligible active confirmed GroupAdmin, then GroupModerator, then Member; groups with no eligible successor are archived and hidden from discovery/read-only.
+
 ## External Service Limits in Submitted ZIP
 
 - TMDB-backed movie/TV images and related enrichment require `Tmdb:ReadAccessToken`.
@@ -308,7 +314,7 @@ This writes the deployment-ready frontend bundle into `backend/RateOple/wwwroot`
 
 As of the latest recorded full checks in `results.txt`:
 
-- `dotnet test backend/RateOple.sln` passed with 327 backend tests.
+- `dotnet test backend/RateOple.sln` passed with 391 backend tests.
 - `cd frontend && npm run lint` passed.
 - `cd frontend && npm run build` passed.
 - `cd frontend && npm run test:e2e` passed with 2 Playwright smoke tests.

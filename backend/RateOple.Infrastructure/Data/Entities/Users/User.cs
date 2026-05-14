@@ -29,6 +29,10 @@ namespace RateOple.Infrastructure.Data.Entities
         public DateTime? SuspendedAt { get; set; }
         [MaxLength(1000)]
         public string? SuspensionReason { get; set; }
+        public bool IsDeleted { get; set; }
+        public DateTime? DeletedAt { get; set; }
+        [MaxLength(200)]
+        public string? DeletedReason { get; set; }
 
         // Navigation Properties
         public ICollection<Rating> Ratings { get; set; } = new List<Rating>();

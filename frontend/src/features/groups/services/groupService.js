@@ -67,6 +67,10 @@ const groupService = {
     await api.post(`/groups/${groupId}/members/${userId}/role`, { role });
   },
 
+  transferOwnership: async (groupId, newOwnerId) => {
+    await api.post(`/groups/${groupId}/ownership`, { newOwnerId });
+  },
+
   banUser: async (groupId, payload) => {
     const response = await api.post(`/groups/${groupId}/bans`, payload);
     return response.data;

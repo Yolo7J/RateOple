@@ -788,6 +788,25 @@ public class ReviewServiceTests
     }
 
     [Fact]
+    public async Task GetMediaReviewsAsync_DeletedUserRendersDeletedUserDisplay()
+    {
+        await using var db = await SqliteTestDb.CreateAsync();
+        var data = new TestDataFactory(db.Context);
+        var user = data.Users.Add(data.Users.Normal("deleted-reviewer"));
+        user.IsDeleted = true;
+        data.Users.Profile(user, "Old Display");
+        var media = data.Media.Movie("Deleted User Review Movie");
+        var rating = data.Reviews.RatingForMedia(user, media, 8);
+        data.Reviews.Review(user, media, rating, "Still public");
+        await data.SaveAsync();
+        var service = CreateService(db);
+
+        var review = Assert.Single(await service.GetMediaReviewsAsync(media.Id));
+
+        Assert.Equal("Deleted user", review.UserDisplayName);
+    }
+
+    [Fact]
     public async Task GetMediaReviewsAsync_DeletedMediaReturnsEmptyList()
     {
         await using var db = await SqliteTestDb.CreateAsync();

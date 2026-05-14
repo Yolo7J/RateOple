@@ -1,3 +1,78 @@
+RateOple v1 account deletion/anonymization and group ownership transfer results
+
+Summary:
+- Implemented account deletion as anonymization/deactivation of the original Identity user row, not hard deletion and not reassignment to a shared fake user.
+- Added explicit `User.IsDeleted`, `DeletedAt`, `DeletedReason`, `Group.IsArchived`, and `ArchivedAt` persisted fields plus EF migration `20260514143000_AddAccountDeletionAndGroupArchive`.
+- Startup seeding now applies pending migrations first in Development or when `Database:ApplyMigrationsOnStartup` is enabled, preventing Identity queries from selecting new columns before the database schema is updated.
+- Deleted users cannot log in, refresh, or use existing JWTs for mutating API calls.
+- User refresh tokens are revoked; external login bindings are removed; password hash is cleared; security/concurrency stamps are rotated; permanent lockout is set.
+- Profile data is anonymized in place: display name becomes `Deleted user`; bio, avatar, location, and favorite genres are cleared; privacy becomes private.
+- Public reviews, group posts, comments, ratings, reports, and audit rows keep their original internal user relationship for FK/audit integrity and render deleted authors as `Deleted user`.
+- User-owned collections and nested child collections/items/follows are deleted. Follow rows, followed collections, media statuses, genre scores, media interactions, and notifications owned by the deleted user are removed.
+- Owned groups transfer on deletion to the oldest eligible active confirmed GroupAdmin, then GroupModerator, then Member. The deleting user's membership is removed.
+- Groups with no eligible successor are archived, hidden from discovery, and read-only.
+- Added manual owner transfer at `POST /api/groups/{id}/ownership`; owner transfer makes the old owner GroupAdmin, and Admin/SuperAdmin callers can force-transfer to an eligible member.
+- Global Admin/SuperAdmin callers can override group ban/unban endpoints. Direct owner bans remain blocked to avoid orphaning groups.
+- Owner can ban GroupAdmins, GroupModerators, and Members, but cannot ban themselves. GroupAdmins cannot ban the Owner or group staff.
+- Frontend account deletion dialog now states the account cannot be restored, public UGC may remain as `Deleted user`, and private/profile data is anonymized/removed.
+- Frontend group pages show archived groups as read-only and expose owner transfer controls in member tools.
+
+Exact deletion semantics:
+- Kept: `AspNetUsers` row, reviews, ratings, group posts, comments, reports, moderation audit logs.
+- Anonymized: username to `deleted_{userId:N}`, email/normalized email to null, profile display to `Deleted user`, profile personal fields to null, avatar exposure removed in public DTOs.
+- Revoked/removed auth: all refresh tokens revoked, external login rows removed, password hash null, security/concurrency stamps changed, permanent lockout set.
+- Deleted private/account data: user-owned collections and descendants/items/follows, user follow relationships, group memberships, followed collections, media statuses, genre scores, media interactions, notifications.
+- Group ownership: eligible successor excludes deleted, suspended, locked-out, unconfirmed, banned, and non-member users.
+- Archived group behavior: read-only, hidden from normal group and lookup discovery, direct read visibility follows existing private-group rules.
+
+Files changed:
+- README.md
+- PROJECT_ARCHITECTURE.md
+- SECURITY_AND_DEPLOYMENT_PLAN.md
+- backend/RateOple/Controllers/Auth/AuthController.cs
+- backend/RateOple/Controllers/Admin/AdminUsersController.cs
+- backend/RateOple/Controllers/Groups/GroupsController.cs
+- backend/RateOple/Controllers/LookupController.cs
+- backend/RateOple/Extensions/SeedingExtensions.cs
+- backend/RateOple/Middleware/AccountStateMiddleware.cs
+- backend/RateOple.Constants/Enums/ModerationAuditAction.cs
+- backend/RateOple.Core/Groups/DTOs/GroupDtos.cs
+- backend/RateOple.Core/Groups/Interfaces/IGroupService.cs
+- backend/RateOple.Core/Groups/Services/GroupService.cs
+- backend/RateOple.Core/Social/Services/ReviewService.cs
+- backend/RateOple.Core/Users/Services/UserProfileService.cs
+- backend/RateOple.Infrastructure/Data/Configurations/Groups/GroupConfiguration.cs
+- backend/RateOple.Infrastructure/Data/Configurations/Users/UserConfiguration.cs
+- backend/RateOple.Infrastructure/Data/Entities/Groups/Group.cs
+- backend/RateOple.Infrastructure/Data/Entities/Users/User.cs
+- backend/RateOple.Infrastructure/Migrations/20260514143000_AddAccountDeletionAndGroupArchive.cs
+- backend/RateOple.Infrastructure/Migrations/ApplicationDbContextModelSnapshot.cs
+- backend/RateOple.Api.Tests/Auth/AccountLifecycleContractTests.cs
+- backend/RateOple.Api.Tests/Auth/AuthRefreshTests.cs
+- backend/RateOple.Core.Tests/Groups/GroupServiceTests.cs
+- backend/RateOple.Core.Tests/Social/ReviewServiceTests.cs
+- backend/RateOple.Core.Tests/Users/UserProfileServiceTests.cs
+- frontend/src/features/groups/pages/GroupDetailPage.jsx
+- frontend/src/features/groups/pages/GroupPostDetailPage.jsx
+- frontend/src/features/groups/queries/useGroupMutations.js
+- frontend/src/features/groups/services/groupService.js
+- frontend/src/features/users/pages/AccountPage.jsx
+- results.txt
+
+Tests run/results:
+- `cd backend && dotnet build RateOple.sln`: passed, 0 warnings/errors.
+- `cd backend && dotnet test RateOple.sln --no-build --filter "FullyQualifiedName~UserProfileServiceTests|FullyQualifiedName~GroupServiceTests|FullyQualifiedName~AuthRefreshTests|FullyQualifiedName~AccountLifecycleContractTests"`: passed, 49 focused backend tests.
+- `cd backend && dotnet build RateOple.sln && dotnet test RateOple.sln --no-build`: passed, 391 total backend tests.
+- `cd frontend && npm run lint`: passed.
+- `cd frontend && npm run build`: passed. Build emitted existing Rollup annotation warnings from `@microsoft/signalr` comments.
+- `cd frontend && npm run lint && npm run build`: passed. Build emitted the same existing Rollup annotation warnings.
+- `cd frontend && npm run test:e2e -- account-lifecycle.spec.js`: passed, 18 tests across desktop and mobile Chromium. Playwright emitted existing Node/module and NO_COLOR/FORCE_COLOR warnings.
+- Final backend recheck after adding global staff group-ban override: `cd backend && dotnet build RateOple.sln && dotnet test RateOple.sln --no-build`: passed, 391 total backend tests.
+- Startup regression fix: `cd backend && dotnet build RateOple.sln`: passed, 0 warnings/errors.
+- Startup regression fix: `cd backend && dotnet ef migrations list --no-build --project RateOple.Infrastructure --startup-project RateOple`: passed and listed `20260514143000_AddAccountDeletionAndGroupArchive`. The command could not read applied/pending status from the database in the sandbox, but migration assembly discovery succeeded.
+- Startup regression fix: `cd backend && dotnet ef migrations has-pending-model-changes --no-build --project RateOple.Infrastructure --startup-project RateOple`: passed with `No changes have been made to the model since the last migration.`
+- Startup regression fix: `cd backend && dotnet run --project RateOple`: passed startup, applied `20260514143000_AddAccountDeletionAndGroupArchive`, completed database seeding, and listened on `http://localhost:5113`.
+
 RateOple v1 CAPTCHA integration results
 
 Summary:

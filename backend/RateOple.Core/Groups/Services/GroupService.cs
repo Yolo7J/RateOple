@@ -67,6 +67,7 @@ public class GroupService : IGroupService
         var pagination = Pagination.Normalize(query.Page, query.PageSize);
 
         var q = _context.Groups.AsNoTracking().AsQueryable();
+        q = q.Where(g => !g.IsArchived);
 
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
@@ -109,6 +110,8 @@ public class GroupService : IGroupService
                 Description = g.Description,
                 Visibility = g.Visibility,
                 OwnerId = g.OwnerId,
+                IsArchived = g.IsArchived,
+                ArchivedAt = g.ArchivedAt,
                 ViewerRole = viewerId.HasValue
                     ? g.Members.Where(m => m.UserId == viewerId.Value).Select(m => (GroupRole?)m.Role).FirstOrDefault()
                     : null,
@@ -139,6 +142,8 @@ public class GroupService : IGroupService
                 Description = g.Description,
                 Visibility = g.Visibility,
                 OwnerId = g.OwnerId,
+                IsArchived = g.IsArchived,
+                ArchivedAt = g.ArchivedAt,
                 ViewerRole = viewerId.HasValue
                     ? g.Members.Where(m => m.UserId == viewerId.Value).Select(m => (GroupRole?)m.Role).FirstOrDefault()
                     : null,
@@ -186,7 +191,7 @@ public class GroupService : IGroupService
             .Select(m => new GroupMemberDto
             {
                 UserId = m.UserId,
-                UserName = m.User.UserName,
+                UserName = m.User.IsDeleted ? "Deleted user" : m.User.UserName,
                 Role = m.Role,
                 JoinedAt = m.JoinedAt
             })
@@ -197,6 +202,7 @@ public class GroupService : IGroupService
     {
         var group = await _context.Groups.FirstOrDefaultAsync(g => g.Id == groupId)
             ?? throw new KeyNotFoundException("Group not found.");
+        EnsureGroupWritable(group);
 
         await EnsureNotBannedAsync(groupId, userId);
 
@@ -244,6 +250,10 @@ public class GroupService : IGroupService
         if (dto.Role == GroupRole.Owner)
             throw new ArgumentException("Owner role is reserved.");
 
+        var group = await _context.Groups.FirstOrDefaultAsync(g => g.Id == groupId)
+            ?? throw new KeyNotFoundException("Group not found.");
+        EnsureGroupWritable(group);
+
         var actorRole = await GetMembershipRoleAsync(actorUserId, groupId);
         if (actorRole != GroupRole.Owner && actorRole != GroupRole.GroupAdmin)
             throw new UnauthorizedAccessException("Insufficient permission to manage roles.");
@@ -267,6 +277,60 @@ public class GroupService : IGroupService
         await _context.SaveChangesAsync();
     }
 
+    public async Task TransferOwnershipAsync(Guid actorUserId, Guid groupId, Guid newOwnerId, bool force)
+    {
+        if (newOwnerId == Guid.Empty)
+            throw new ArgumentException("New owner is required.");
+
+        var group = await _context.Groups
+            .FirstOrDefaultAsync(g => g.Id == groupId)
+            ?? throw new KeyNotFoundException("Group not found.");
+
+        if (!force)
+        {
+            var actorRole = await GetMembershipRoleAsync(actorUserId, groupId);
+            if (actorRole != GroupRole.Owner)
+                throw new UnauthorizedAccessException("Only the owner can transfer ownership.");
+
+            if (actorUserId == newOwnerId)
+                throw new InvalidOperationException("Owner cannot transfer ownership to themselves.");
+        }
+
+        var targetMembership = await GetEligibleOwnershipSuccessorAsync(groupId, newOwnerId)
+            ?? throw new InvalidOperationException("New owner must be a confirmed, active, non-banned group member.");
+
+        var oldOwnerId = group.OwnerId;
+        var oldOwnerMembership = await _context.GroupMemberships
+            .FirstOrDefaultAsync(m => m.GroupId == groupId && m.UserId == oldOwnerId);
+
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+
+        group.OwnerId = newOwnerId;
+        if (group.IsArchived)
+        {
+            group.IsArchived = false;
+            group.ArchivedAt = null;
+        }
+
+        targetMembership.Role = GroupRole.Owner;
+        if (oldOwnerMembership != null && oldOwnerMembership.UserId != newOwnerId)
+            oldOwnerMembership.Role = GroupRole.GroupAdmin;
+
+        await _context.SaveChangesAsync();
+
+        await _auditService.LogAsync(
+            ModerationAuditAction.GroupOwnershipTransferred,
+            actorUserId,
+            newOwnerId,
+            ModeratorScopeType.Group,
+            groupId,
+            force
+                ? $"Ownership force-transferred from {oldOwnerId} to {newOwnerId}."
+                : $"Ownership transferred from {oldOwnerId} to {newOwnerId}.");
+
+        await transaction.CommitAsync();
+    }
+
     public async Task<GroupPostDto> CreatePostAsync(Guid userId, Guid groupId, CreateGroupPostDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Title))
@@ -276,6 +340,7 @@ public class GroupService : IGroupService
 
         var group = await _context.Groups.FirstOrDefaultAsync(g => g.Id == groupId)
             ?? throw new KeyNotFoundException("Group not found.");
+        EnsureGroupWritable(group);
 
         await EnsureNotBannedAsync(groupId, userId);
 
@@ -357,6 +422,13 @@ public class GroupService : IGroupService
                 Id = p.Id,
                 GroupId = p.GroupId,
                 AuthorId = p.UserId,
+                AuthorName = p.User != null
+                    ? p.User.IsDeleted ? "Deleted user" : p.User.UserName
+                    : null,
+                DisplayName = p.User != null
+                    ? p.User.IsDeleted ? "Deleted user" : p.User.Profile != null ? p.User.Profile.DisplayName : p.User.UserName
+                    : null,
+                AvatarUrl = p.User != null && !p.User.IsDeleted && p.User.Profile != null ? p.User.Profile.AvatarUrl : null,
                 Title = p.Title,
                 Content = p.Content,
                 CreatedAt = p.CreatedAt,
@@ -446,6 +518,13 @@ public class GroupService : IGroupService
                 Id = p.Id,
                 GroupId = p.GroupId,
                 AuthorId = p.UserId,
+                AuthorName = p.User != null
+                    ? p.User.IsDeleted ? "Deleted user" : p.User.UserName
+                    : null,
+                DisplayName = p.User != null
+                    ? p.User.IsDeleted ? "Deleted user" : p.User.Profile != null ? p.User.Profile.DisplayName : p.User.UserName
+                    : null,
+                AvatarUrl = p.User != null && !p.User.IsDeleted && p.User.Profile != null ? p.User.Profile.AvatarUrl : null,
                 Title = p.Title,
                 Content = p.Content,
                 CreatedAt = p.CreatedAt,
@@ -505,11 +584,17 @@ public class GroupService : IGroupService
                 Id = c.Id,
                 PostId = postId,
                 AuthorId = c.UserId,
-                AuthorName = c.User != null ? c.User.UserName : null,
+                AuthorName = c.User != null
+                    ? c.User.IsDeleted ? "Deleted user" : c.User.UserName
+                    : null,
                 UserId = c.UserId,
-                Username = c.User != null ? c.User.UserName : null,
-                DisplayName = c.User != null && c.User.Profile != null ? c.User.Profile.DisplayName : null,
-                AvatarUrl = c.User != null && c.User.Profile != null ? c.User.Profile.AvatarUrl : null,
+                Username = c.User != null
+                    ? c.User.IsDeleted ? null : c.User.UserName
+                    : null,
+                DisplayName = c.User != null
+                    ? c.User.IsDeleted ? "Deleted user" : c.User.Profile != null ? c.User.Profile.DisplayName : c.User.UserName
+                    : null,
+                AvatarUrl = c.User != null && !c.User.IsDeleted && c.User.Profile != null ? c.User.Profile.AvatarUrl : null,
                 Content = c.Content,
                 ParentCommentId = c.ParentCommentId,
                 CreatedAt = c.CreatedAt
@@ -531,6 +616,7 @@ public class GroupService : IGroupService
         var group = await _context.Groups
             .FirstOrDefaultAsync(g => g.Id == groupId)
             ?? throw new KeyNotFoundException("Group not found.");
+        EnsureGroupWritable(group);
 
         if (group.Visibility == GroupVisibility.Private)
             await EnsureCanViewGroupAsync(groupId, userId);
@@ -602,6 +688,10 @@ public class GroupService : IGroupService
 
     public async Task DeletePostCommentAsync(Guid actorId, Guid groupId, Guid postId, Guid commentId)
     {
+        var group = await _context.Groups.FirstOrDefaultAsync(g => g.Id == groupId)
+            ?? throw new KeyNotFoundException("Group not found.");
+        EnsureGroupWritable(group);
+
         var comment = await _context.Comments
             .FirstOrDefaultAsync(c => c.Id == commentId && c.GroupPostId == postId)
             ?? throw new KeyNotFoundException("Comment not found.");
@@ -636,6 +726,7 @@ public class GroupService : IGroupService
             .AsNoTracking()
             .FirstOrDefaultAsync(g => g.Id == groupId)
             ?? throw new KeyNotFoundException("Group not found.");
+        EnsureGroupWritable(group);
 
         if (group.Visibility == GroupVisibility.Private)
             await EnsureCanViewGroupAsync(groupId, userId);
@@ -677,14 +768,25 @@ public class GroupService : IGroupService
         return await GetPostByIdAsync(groupId, postId, userId);
     }
 
-    public async Task<GroupBanDto> BanUserAsync(Guid actorId, Guid groupId, CreateGroupBanDto dto)
+    public async Task<GroupBanDto> BanUserAsync(Guid actorId, Guid groupId, CreateGroupBanDto dto, bool force = false)
     {
         if (dto.UserId == Guid.Empty)
             throw new ArgumentException("Target user is required.");
 
-        var actorRole = await GetMembershipRoleAsync(actorId, groupId);
-        if (actorRole != GroupRole.Owner && actorRole != GroupRole.GroupAdmin)
-            throw new UnauthorizedAccessException("Insufficient permission to ban users.");
+        GroupRole? actorRole = null;
+        if (!force)
+        {
+            actorRole = await GetMembershipRoleAsync(actorId, groupId);
+            if (actorRole != GroupRole.Owner && actorRole != GroupRole.GroupAdmin)
+                throw new UnauthorizedAccessException("Insufficient permission to ban users.");
+        }
+
+        if (actorId == dto.UserId)
+            throw new InvalidOperationException("Owner cannot ban themselves.");
+
+        var group = await _context.Groups.FirstOrDefaultAsync(g => g.Id == groupId)
+            ?? throw new KeyNotFoundException("Group not found.");
+        EnsureGroupWritable(group);
 
         var targetMembership = await _context.GroupMemberships
             .FirstOrDefaultAsync(m => m.GroupId == groupId && m.UserId == dto.UserId);
@@ -694,8 +796,10 @@ public class GroupService : IGroupService
             if (targetMembership.Role == GroupRole.Owner)
                 throw new InvalidOperationException("Owner cannot be banned.");
 
-            if (actorRole == GroupRole.GroupAdmin && targetMembership.Role == GroupRole.GroupAdmin)
-                throw new UnauthorizedAccessException("Group admins cannot ban other group admins.");
+            if (!force &&
+                actorRole == GroupRole.GroupAdmin &&
+                (targetMembership.Role == GroupRole.GroupAdmin || targetMembership.Role == GroupRole.GroupModerator))
+                throw new UnauthorizedAccessException("Group admins cannot ban group staff.");
 
             _context.GroupMemberships.Remove(targetMembership);
         }
@@ -732,11 +836,18 @@ public class GroupService : IGroupService
         return MapBan(ban);
     }
 
-    public async Task UnbanUserAsync(Guid actorId, Guid groupId, Guid userId)
+    public async Task UnbanUserAsync(Guid actorId, Guid groupId, Guid userId, bool force = false)
     {
-        var actorRole = await GetMembershipRoleAsync(actorId, groupId);
-        if (actorRole != GroupRole.Owner && actorRole != GroupRole.GroupAdmin)
-            throw new UnauthorizedAccessException("Insufficient permission to unban users.");
+        if (!force)
+        {
+            var actorRole = await GetMembershipRoleAsync(actorId, groupId);
+            if (actorRole != GroupRole.Owner && actorRole != GroupRole.GroupAdmin)
+                throw new UnauthorizedAccessException("Insufficient permission to unban users.");
+        }
+
+        var group = await _context.Groups.FirstOrDefaultAsync(g => g.Id == groupId)
+            ?? throw new KeyNotFoundException("Group not found.");
+        EnsureGroupWritable(group);
 
         var ban = await _context.GroupBans
             .FirstOrDefaultAsync(b => b.GroupId == groupId && b.UserId == userId && b.RevokedAt == null)
@@ -775,7 +886,7 @@ public class GroupService : IGroupService
                 Id = m.Id,
                 GroupId = m.GroupId,
                 AuthorId = m.AuthorId,
-                AuthorName = m.Author.UserName,
+                AuthorName = m.Author.IsDeleted ? "Deleted user" : m.Author.UserName,
                 Content = m.Content,
                 CreatedAt = m.CreatedAt
             })
@@ -791,9 +902,10 @@ public class GroupService : IGroupService
         if (role != GroupRole.Owner && role != GroupRole.GroupAdmin && role != GroupRole.GroupModerator)
             throw new UnauthorizedAccessException("Insufficient permission to send staff messages.");
 
-        var exists = await _context.Groups.AnyAsync(g => g.Id == groupId);
-        if (!exists)
+        var group = await _context.Groups.FirstOrDefaultAsync(g => g.Id == groupId);
+        if (group == null)
             throw new KeyNotFoundException("Group not found.");
+        EnsureGroupWritable(group);
 
         if (_quotaService != null)
             await _quotaService.EnsureCanCreateStaffMessageAsync(groupId);
@@ -826,6 +938,10 @@ public class GroupService : IGroupService
         var role = await GetMembershipRoleAsync(userId, groupId);
         if (role != GroupRole.Owner && role != GroupRole.GroupAdmin && role != GroupRole.GroupModerator)
             throw new UnauthorizedAccessException("Insufficient permission to pin media.");
+
+        var group = await _context.Groups.FirstOrDefaultAsync(g => g.Id == groupId)
+            ?? throw new KeyNotFoundException("Group not found.");
+        EnsureGroupWritable(group);
 
         var mediaExists = await _context.Media.AnyAsync(m => m.Id == mediaId && !m.IsDeleted);
         if (!mediaExists)
@@ -911,6 +1027,37 @@ public class GroupService : IGroupService
             throw new UnauthorizedAccessException("You are not a member of this group.");
     }
 
+    private static void EnsureGroupWritable(Group group)
+    {
+        if (group.IsArchived)
+            throw new InvalidOperationException("Archived groups are read-only.");
+    }
+
+    private async Task<GroupMembership?> GetEligibleOwnershipSuccessorAsync(Guid groupId, Guid userId)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var banned = await _context.GroupBans
+            .AsNoTracking()
+            .AnyAsync(b => b.GroupId == groupId && b.UserId == userId && b.RevokedAt == null);
+        if (banned)
+            return null;
+
+        var membership = await _context.GroupMemberships
+            .Include(m => m.User)
+            .FirstOrDefaultAsync(m =>
+                m.GroupId == groupId &&
+                m.UserId == userId);
+
+        if (membership == null ||
+            !membership.User.EmailConfirmed ||
+            membership.User.IsDeleted ||
+            membership.User.IsSuspended ||
+            membership.User.LockoutEnd > now)
+            return null;
+
+        return membership;
+    }
+
     private static GroupBanDto MapBan(GroupBan ban) => new()
     {
         UserId = ban.UserId,
@@ -932,6 +1079,8 @@ public class GroupService : IGroupService
                 Description = g.Description,
                 Visibility = g.Visibility,
                 OwnerId = g.OwnerId,
+                IsArchived = g.IsArchived,
+                ArchivedAt = g.ArchivedAt,
                 CreatedAt = g.CreatedAt,
                 MembersCount = g.Members.Count,
                 PostsCount = g.Posts.Count
@@ -949,6 +1098,13 @@ public class GroupService : IGroupService
                 Id = p.Id,
                 GroupId = p.GroupId,
                 AuthorId = p.UserId,
+                AuthorName = p.User != null
+                    ? p.User.IsDeleted ? "Deleted user" : p.User.UserName
+                    : null,
+                DisplayName = p.User != null
+                    ? p.User.IsDeleted ? "Deleted user" : p.User.Profile != null ? p.User.Profile.DisplayName : p.User.UserName
+                    : null,
+                AvatarUrl = p.User != null && !p.User.IsDeleted && p.User.Profile != null ? p.User.Profile.AvatarUrl : null,
                 Title = p.Title,
                 Content = p.Content,
                 CreatedAt = p.CreatedAt,

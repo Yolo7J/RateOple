@@ -78,16 +78,17 @@ function GroupDetailPage() {
   const { data: group, loading, error } = useGroupDetailsQuery(id);
   const { data: postsData, loading: postsLoading, error: postsError } = useGroupPostsQuery(id, { page: 1, pageSize: 30 });
   const { data: pinnedData } = useGroupPinnedMediaQuery(id);
-  const { joinGroup, leaveGroup, createPost, addPinnedMedia, setMemberRole, banUser, createStaffMessage, loading: mutating } = useGroupMutations();
+  const { joinGroup, leaveGroup, createPost, addPinnedMedia, setMemberRole, transferOwnership, banUser, createStaffMessage, loading: mutating } = useGroupMutations();
 
   const viewerRole = group?.viewerRole ?? null;
   const viewerRoleValue = getRoleValue(viewerRole);
   const isMember = Boolean(viewerRoleValue);
+  const isArchived = Boolean(group?.isArchived);
   const canManageRoles = canManageGroupRoles(viewerRole);
   const hasWritableAccount = Boolean(user && !user.isReadOnly);
-  const canModerate = hasWritableAccount && canModerateGroup(viewerRole);
-  const canCreatePost = Boolean(hasWritableAccount && isMember);
-  const canJoin = Boolean(hasWritableAccount && group && !isMember && isPublicGroup(group));
+  const canModerate = hasWritableAccount && !isArchived && canModerateGroup(viewerRole);
+  const canCreatePost = Boolean(hasWritableAccount && !isArchived && isMember);
+  const canJoin = Boolean(hasWritableAccount && !isArchived && group && !isMember && isPublicGroup(group));
 
   const { data: membersData, isLoading: membersLoading, error: membersError } = useGroupMembersQuery(id, canManageRoles);
   const { data: staffData, isLoading: staffLoading, error: staffError } = useGroupStaffMessagesQuery(id, canModerate);
@@ -102,6 +103,7 @@ function GroupDetailPage() {
   const [pinMedia, setPinMedia] = useState(null);
   const [staffMessage, setStaffMessage] = useState('');
   const [banTarget, setBanTarget] = useState(null);
+  const [transferTarget, setTransferTarget] = useState(null);
   const [actionError, setActionError] = useState('');
 
   const handleJoin = async () => {
@@ -161,6 +163,17 @@ function GroupDetailPage() {
       await setMemberRole(id, userId, role);
     } catch (err) {
       setActionError(err?.response?.data?.message || 'Could not update role.');
+    }
+  };
+
+  const handleTransferOwnership = async () => {
+    if (!id || !transferTarget?.userId) return;
+    setActionError('');
+    try {
+      await transferOwnership(id, transferTarget.userId);
+      setTransferTarget(null);
+    } catch (err) {
+      setActionError(err?.response?.data?.message || 'Could not transfer ownership.');
     }
   };
 
@@ -228,6 +241,12 @@ function GroupDetailPage() {
                     {roleLabel}
                   </Badge>
                 ) : null}
+                {isArchived ? (
+                  <Badge tone="warning">
+                    <Lock aria-hidden="true" />
+                    Archived
+                  </Badge>
+                ) : null}
               </div>
               <h1 id="group-detail-title">{group.name}</h1>
               <p>{group.description || 'This group has not added a description yet.'}</p>
@@ -274,6 +293,7 @@ function GroupDetailPage() {
           </section>
 
           {actionError ? <InlineMessage tone="error">{actionError}</InlineMessage> : null}
+          {isArchived ? <InlineMessage tone="warning">This group is archived and read-only.</InlineMessage> : null}
 
           <div className="group-detail-layout">
             <main className="group-detail-main">
@@ -333,8 +353,8 @@ function GroupDetailPage() {
                   </form>
                 ) : (
                   <EmptyState
-                    title={user ? 'Join to start a discussion' : 'Sign in to start a discussion'}
-                    description={user ? 'Members can create posts and link movies, TV series, or books.' : 'Create an account or sign in before posting to groups.'}
+                    title={isArchived ? 'Group archived' : user ? 'Join to start a discussion' : 'Sign in to start a discussion'}
+                    description={isArchived ? 'Archived groups are read-only.' : user ? 'Members can create posts and link movies, TV series, or books.' : 'Create an account or sign in before posting to groups.'}
                     action={canJoin ? (
                       <Button type="button" variant="primary" onClick={handleJoin} disabled={mutating}>
                         Join group
@@ -485,9 +505,15 @@ function GroupDetailPage() {
                       memberRole !== GROUP_ROLE.Owner &&
                       (viewerRoleValue === GROUP_ROLE.Owner || viewerRoleValue === GROUP_ROLE.GroupAdmin);
                     const canBan =
+                      !isArchived &&
                       memberRole !== GROUP_ROLE.Owner &&
                       (viewerRoleValue === GROUP_ROLE.Owner ||
-                        (viewerRoleValue === GROUP_ROLE.GroupAdmin && memberRole !== GROUP_ROLE.GroupAdmin));
+                        (viewerRoleValue === GROUP_ROLE.GroupAdmin && memberRole !== GROUP_ROLE.GroupAdmin && memberRole !== GROUP_ROLE.GroupModerator));
+                    const canTransferOwnership =
+                      !isArchived &&
+                      viewerRoleValue === GROUP_ROLE.Owner &&
+                      memberRole !== GROUP_ROLE.Owner &&
+                      member.userId;
 
                     return (
                       <article key={member.userId ?? member.userName} className="group-member-row">
@@ -509,6 +535,11 @@ function GroupDetailPage() {
                           {canDemote ? (
                             <Button size="sm" type="button" onClick={() => handleRoleChange(member.userId, GROUP_ROLE.Member)} disabled={mutating || !member.userId}>
                               Make member
+                            </Button>
+                          ) : null}
+                          {canTransferOwnership ? (
+                            <Button size="sm" type="button" onClick={() => setTransferTarget(member)} disabled={mutating}>
+                              Transfer owner
                             </Button>
                           ) : null}
                           {canBan ? (
@@ -582,6 +613,20 @@ function GroupDetailPage() {
                 <Button variant="ghost" onClick={() => setBanTarget(null)}>Cancel</Button>
                 <Button variant="danger" onClick={handleBanUser} disabled={mutating}>
                   {mutating ? 'Banning...' : 'Ban member'}
+                </Button>
+              </>
+            )}
+          />
+          <Dialog
+            open={Boolean(transferTarget)}
+            title="Transfer ownership?"
+            description={`Make ${transferTarget?.userName || 'this member'} the owner of ${group.name}? You will become a group admin.`}
+            onClose={() => setTransferTarget(null)}
+            actions={(
+              <>
+                <Button variant="ghost" onClick={() => setTransferTarget(null)}>Cancel</Button>
+                <Button variant="danger" onClick={handleTransferOwnership} disabled={mutating}>
+                  {mutating ? 'Transferring...' : 'Transfer ownership'}
                 </Button>
               </>
             )}

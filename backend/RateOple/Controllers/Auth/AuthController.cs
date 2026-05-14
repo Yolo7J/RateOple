@@ -203,7 +203,7 @@ namespace RateOple.Controllers
                 return Unauthorized();
 
             var user = await _userManager.FindByIdAsync(userIdClaim);
-            if (user == null)
+            if (user == null || IsDeletedUser(user))
                 return Unauthorized();
         
             return Ok(await BuildSessionResponseAsync(user));
@@ -322,6 +322,11 @@ namespace RateOple.Controllers
                             : PrivacySetting.Public
                     });
                 }
+                else if (IsDeletedUser(user))
+                {
+                    await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+                    return Redirect(BuildExternalLoginRedirect(returnUrl, success: false));
+                }
 
                 var loginResult = await _userManager.AddLoginAsync(
                     user,
@@ -331,6 +336,11 @@ namespace RateOple.Controllers
                     await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
                     return Redirect(BuildExternalLoginRedirect(returnUrl, success: false));
                 }
+            }
+            else if (IsDeletedUser(user))
+            {
+                await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+                return Redirect(BuildExternalLoginRedirect(returnUrl, success: false));
             }
 
             await IssueAppSignInAsync(user);
@@ -572,7 +582,8 @@ namespace RateOple.Controllers
 
         private static bool IsDeletedUser(User user)
         {
-            return user.UserName?.StartsWith("deleted_", StringComparison.OrdinalIgnoreCase) == true
+            return user.IsDeleted
+                || user.UserName?.StartsWith("deleted_", StringComparison.OrdinalIgnoreCase) == true
                 || (user.PasswordHash == null && user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTimeOffset.UtcNow);
         }
 

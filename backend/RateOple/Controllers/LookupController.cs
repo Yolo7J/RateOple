@@ -88,7 +88,7 @@ public class LookupController : ControllerBase
 
         var query = _context.Users
             .AsNoTracking()
-            .Where(u => u.Visibility == UserVisibility.Public);
+            .Where(u => u.Visibility == UserVisibility.Public && !u.IsDeleted);
 
         if (normalizedSearch.Length > 0)
         {
@@ -151,8 +151,8 @@ public class LookupController : ControllerBase
             .AsNoTracking()
             .Where(user =>
                 user.EmailConfirmed &&
+                !user.IsDeleted &&
                 user.PasswordHash != null &&
-                (user.UserName == null || !user.UserName.StartsWith("deleted_")) &&
                 _context.UserRoles.Any(userRole =>
                     userRole.UserId == user.Id &&
                     candidateRoleIds.Contains(userRole.RoleId)) &&
@@ -229,8 +229,9 @@ public class LookupController : ControllerBase
         var query = _context.Groups
             .AsNoTracking()
             .Where(g =>
+                !g.IsArchived &&
                 g.Visibility == GroupVisibility.Public ||
-                (userId.HasValue && g.Members.Any(m => m.UserId == userId.Value)));
+                (userId.HasValue && !g.IsArchived && g.Members.Any(m => m.UserId == userId.Value)));
 
         if (visibility.HasValue)
             query = query.Where(g => g.Visibility == visibility.Value);

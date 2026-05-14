@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using RateOple.Infrastructure.Data;
 using RateOple.Infrastructure.Data.Entities;
@@ -25,9 +26,16 @@ public static class SeedingExtensions
                 return;
             }
 
+            var db = services.GetRequiredService<ApplicationDbContext>();
+
+            if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Database:ApplyMigrationsOnStartup"))
+            {
+                logger.LogInformation("Applying pending database migrations before seeding.");
+                await db.Database.MigrateAsync();
+            }
+
             var roleManager = services.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
             var userManager = services.GetRequiredService<UserManager<User>>();
-            var db = services.GetRequiredService<ApplicationDbContext>();
 
             await RoleSeeder.SeedAsync(roleManager);
             await GenreSeeder.SeedAsync(db);

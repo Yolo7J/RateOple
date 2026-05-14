@@ -71,6 +71,11 @@ export const useGroupMutations = () => {
     onSuccess: (_data, vars) => invalidateGroup(vars.groupId),
   });
 
+  const transferOwnershipMutation = useMutation({
+    mutationFn: ({ groupId, newOwnerId }) => groupService.transferOwnership(groupId, newOwnerId),
+    onSuccess: (_data, vars) => invalidateGroup(vars.groupId),
+  });
+
   const banUserMutation = useMutation({
     mutationFn: ({ groupId, payload }) => groupService.banUser(groupId, payload),
     onSuccess: (_data, vars) => invalidateGroup(vars.groupId),
@@ -97,6 +102,7 @@ export const useGroupMutations = () => {
     deletePostComment: (groupId, postId, commentId) =>
       deleteCommentMutation.mutateAsync({ groupId, postId, commentId }),
     setMemberRole: (groupId, userId, role) => setMemberRoleMutation.mutateAsync({ groupId, userId, role }),
+    transferOwnership: (groupId, newOwnerId) => transferOwnershipMutation.mutateAsync({ groupId, newOwnerId }),
     banUser: (groupId, payload) => banUserMutation.mutateAsync({ groupId, payload }),
     unbanUser: (groupId, userId) => unbanUserMutation.mutateAsync({ groupId, userId }),
     createStaffMessage: (groupId, payload) => createStaffMessageMutation.mutateAsync({ groupId, payload }),
@@ -110,6 +116,7 @@ export const useGroupMutations = () => {
       createCommentMutation.isPending ||
       deleteCommentMutation.isPending ||
       setMemberRoleMutation.isPending ||
+      transferOwnershipMutation.isPending ||
       banUserMutation.isPending ||
       unbanUserMutation.isPending ||
       createStaffMessageMutation.isPending,
@@ -123,6 +130,7 @@ export const useGroupMutations = () => {
       createCommentMutation.error ||
       deleteCommentMutation.error ||
       setMemberRoleMutation.error ||
+      transferOwnershipMutation.error ||
       banUserMutation.error ||
       unbanUserMutation.error ||
       createStaffMessageMutation.error,

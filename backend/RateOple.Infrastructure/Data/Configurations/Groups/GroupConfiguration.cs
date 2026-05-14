@@ -21,6 +21,9 @@ public class GroupConfiguration : IEntityTypeConfiguration<Group>
         builder.Property(g => g.CreatedAt)
             .IsRequired();
 
+        builder.Property(g => g.IsArchived)
+            .IsRequired();
+
         // One User (Owner) -> Many Groups
         builder.HasOne(g => g.Owner)
             .WithMany(u => u.OwnedGroups)
@@ -28,5 +31,6 @@ public class GroupConfiguration : IEntityTypeConfiguration<Group>
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(g => new { g.OwnerId, g.CreatedAt });
+        builder.HasIndex(g => g.IsArchived);
     }
 }

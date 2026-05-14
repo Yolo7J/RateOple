@@ -310,7 +310,9 @@ public class ReviewService : IReviewService
             {
                 Id = r.Id,
                 UserId = r.UserId,
-                UserDisplayName = r.User.Profile != null
+                UserDisplayName = r.User.IsDeleted
+                    ? "Deleted user"
+                    : r.User.Profile != null
                     ? r.User.Profile.DisplayName
                     : r.User.UserName,
                 MediaId = r.MediaId,

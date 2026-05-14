@@ -128,6 +128,30 @@ public class AccountLifecycleContractTests
     }
 
     [Fact]
+    public async Task DeletedUser_CannotLogin()
+    {
+        using var factory = new ApiTestFactory();
+        var client = factory.CreateManualCookieClient();
+        var csrf = await factory.GetCsrfAsync(client);
+        var user = await factory.AddUserAsync("deleted-login", RoleConstants.User);
+        await factory.WithDbAsync(async db =>
+        {
+            var stored = await db.Users.SingleAsync(u => u.Id == user.Id);
+            stored.IsDeleted = true;
+            stored.DeletedAt = DateTime.UtcNow;
+        });
+
+        using var request = Request(csrf, HttpMethod.Post, "/api/auth/login", new
+        {
+            email = "deleted-login@example.test",
+            password = "Password1"
+        });
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
     public async Task ForgotPassword_ReturnsGenericSuccess_ForExistingAndMissingEmail()
     {
         using var factory = new ApiTestFactory();

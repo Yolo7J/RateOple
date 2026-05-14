@@ -95,6 +95,33 @@ public class AuthRefreshTests
     }
 
     [Fact]
+    public async Task Refresh_DeletedUserFails()
+    {
+        using var factory = new ApiTestFactory();
+        var client = factory.CreateManualCookieClient();
+        var user = await factory.AddUserAsync("deleted-refresh-user", "User");
+        var refreshToken = "deleted-refresh-token";
+        await factory.WithDbAsync(db =>
+        {
+            db.Users.Attach(user);
+            user.IsDeleted = true;
+            db.RefreshTokens.Add(new RefreshToken
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                TokenHash = TokenHasher.Hash(refreshToken),
+                ExpiresAt = DateTime.UtcNow.AddDays(7)
+            });
+            return Task.CompletedTask;
+        });
+        var csrf = await factory.GetCsrfAsync(client);
+
+        var response = await SendRefreshAsync(client, refreshToken, csrf);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Logout_RevokesActiveRefreshToken()
     {
         using var factory = new ApiTestFactory();

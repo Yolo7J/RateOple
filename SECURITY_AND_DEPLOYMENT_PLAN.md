@@ -240,9 +240,13 @@ Define and enforce:
 | Unconfirmed | Allowed read-only | Blocked | Username reserved while pending; stale safe accounts are cleaned up |
 | Confirmed | Allowed | Allowed subject to quotas/rate limits | Normal |
 | Suspended/banned | Allowed read-only | Blocked except suspension appeals | Existing content remains unless moderated |
-| Deleted | Blocked | Blocked | Profile anonymized/hidden; content behavior follows existing account deletion policy |
+| Deleted | Blocked | Blocked | Profile anonymized/hidden; public UGC renders as Deleted user |
 
-Current account deletion anonymizes/locks the user in `UserProfileService`; keep that semantics documented and test it when lifecycle work changes.
+Current account deletion anonymizes/locks the user in `UserProfileService` and keeps the Identity row for foreign-key integrity. It revokes refresh tokens, removes external login bindings, clears personal profile fields, sets the profile display name to `Deleted user`, clears email/password hash, rotates stamps, sets permanent lockout, and writes moderation audit entries.
+
+Deletion does not move content to a shared fake account. Reviews, group posts, comments, ratings, reports, and audit rows keep their original internal user relationship where needed. Normal public rendering must show `Deleted user` with no profile/avatar exposure. User-owned collections and nested items are deleted. Follow rows, media statuses, taste scores, interactions, and notifications owned by the deleted user are removed as private/social account data.
+
+Owned groups transfer on deletion to the oldest eligible active confirmed GroupAdmin, then GroupModerator, then Member. The deleting user's membership is removed. If there is no eligible successor, the group is archived, hidden from normal discovery, and read-only. Manual owner transfer is exposed through `POST /api/groups/{id}/ownership`; the old owner becomes GroupAdmin, and Admin/SuperAdmin callers can force-transfer to an eligible member. Global Admin/SuperAdmin callers can also override group ban/unban endpoints while direct owner bans remain blocked to avoid orphaning ownership.
 
 ## 5. Security Hardening
 

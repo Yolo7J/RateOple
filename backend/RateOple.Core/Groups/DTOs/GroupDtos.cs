@@ -36,6 +36,8 @@ public class GroupSummaryDto
     public Guid OwnerId { get; set; }
     public GroupRole? ViewerRole { get; set; }
     public DateTime CreatedAt { get; set; }
+    public bool IsArchived { get; set; }
+    public DateTime? ArchivedAt { get; set; }
     public int MembersCount { get; set; }
     public int PostsCount { get; set; }
 }
@@ -60,6 +62,12 @@ public class SetGroupMemberRoleDto
 {
     [EnumDataType(typeof(GroupRole))]
     public GroupRole Role { get; set; }
+}
+
+public class TransferGroupOwnershipDto
+{
+    [NotEmptyGuid]
+    public Guid NewOwnerId { get; set; }
 }
 
 public class CreateGroupPostDto : IValidatableObject
@@ -94,6 +102,9 @@ public class GroupPostDto
     public Guid Id { get; set; }
     public Guid GroupId { get; set; }
     public Guid? AuthorId { get; set; }
+    public string? AuthorName { get; set; }
+    public string? DisplayName { get; set; }
+    public string? AvatarUrl { get; set; }
     public string Title { get; set; } = string.Empty;
     public string Content { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }

@@ -20,6 +20,8 @@ public class Group
     public Guid OwnerId { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public bool IsArchived { get; set; }
+    public DateTime? ArchivedAt { get; set; }
 
     // Navigation Properties
     public User Owner { get; set; } = null!;
