@@ -483,7 +483,7 @@ const AddMediaPage = () => {
                     onClick={() => handleSelectResult(result)}
                   >
                     <span className="staff-search-result__cover" aria-hidden="true">
-                      {result.coverUrl ? <img src={result.coverUrl} alt="" /> : <ImageIcon size={18} />}
+                      {result.coverUrl ? <img src={result.coverUrl} alt="" loading="lazy" decoding="async" /> : <ImageIcon size={18} />}
                     </span>
                     <span>
                       <span className="staff-search-result__title">{result.title}</span>
@@ -605,6 +605,8 @@ const AddMediaPage = () => {
                     <img
                       src={f('coverUrl')}
                       alt="Cover preview"
+                      loading="lazy"
+                      decoding="async"
                       onError={(event) => { event.currentTarget.style.display = 'none'; }}
                     />
                   ) : (

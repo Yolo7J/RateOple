@@ -159,6 +159,8 @@ Composite shared UI lives in:
 
 Current UI conventions:
 
+- `src/index.css` is only for tokens/base/shared primitives; feature styles belong in feature CSS.
+- Prefer Tailwind utility classes in components for small/static styling; add a feature CSS file only when the style is too broad, stateful, or selector-heavy to keep readable in JSX.
 - Use `PageHeader` for primary page titles and action bars.
 - Use `SectionCard` or `Panel` for framed content instead of hand-rolled card classes.
 - Use `InlineMessage` for error, warning, success, and info feedback.

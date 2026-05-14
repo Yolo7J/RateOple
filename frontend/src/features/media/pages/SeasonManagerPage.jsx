@@ -449,7 +449,7 @@ export default function SeasonManagerPage() {
           <header className="staff-hero">
             <div className="staff-hero__content season-manager-hero">
               <div className="season-manager-hero__cover" aria-hidden={!media?.coverUrl}>
-                {media?.coverUrl ? <img src={media.coverUrl} alt="" /> : null}
+                {media?.coverUrl ? <img src={media.coverUrl} alt="" loading="eager" decoding="async" /> : null}
               </div>
               <div className="min-w-0">
                 <p className="staff-eyebrow">TV catalog operations</p>

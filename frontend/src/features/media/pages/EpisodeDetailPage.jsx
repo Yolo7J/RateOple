@@ -33,6 +33,7 @@ import {
   getTvSeasons,
   normalizeNumberParam,
 } from '../utils/tvRouteUtils';
+import '../media.css';
 
 const RATING_VALUES = Array.from({ length: 10 }, (_, index) => index + 1);
 
@@ -53,7 +54,7 @@ function SeriesCover({ media }) {
   return (
     <div className="media-detail-cover" data-media-type="TvSeries">
       {hasImage ? (
-        <img src={imageUrl} alt={media?.title ?? 'Series cover'} onError={() => setFailedImageUrl(imageUrl)} />
+        <img src={imageUrl} alt={media?.title ?? 'Series cover'} loading="eager" fetchPriority="high" decoding="async" onError={() => setFailedImageUrl(imageUrl)} />
       ) : (
         <div className="media-detail-cover__placeholder" aria-label="No cover available">
           <Tv size={42} strokeWidth={1.7} aria-hidden="true" />

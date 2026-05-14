@@ -43,6 +43,7 @@ import EmptyState from '../../../shared/ui/EmptyState';
 import InlineMessage from '../../../shared/ui/InlineMessage';
 import Select from '../../../shared/ui/Select';
 import Tabs from '../../../shared/ui/Tabs';
+import '../media.css';
 
 const MEDIA_TABS = ['Overview', 'Reviews', 'Collections', 'Similar'];
 const RATING_VALUES = Array.from({ length: 10 }, (_, index) => index + 1);
@@ -132,6 +133,9 @@ function CoverArtwork({ media, className = '' }) {
         <img
           src={imageUrl}
           alt={media?.title ?? 'Media cover'}
+          loading="eager"
+          fetchPriority="high"
+          decoding="async"
           onError={() => setFailedImageUrl(imageUrl)}
         />
       ) : (
@@ -348,7 +352,7 @@ function MediaDetailHero({ media, summary, seasons, onReviewClick }) {
   return (
     <section className="media-detail-hero">
       {heroImageUrl ? (
-        <img className="media-detail-hero__backdrop" src={heroImageUrl} alt="" aria-hidden="true" />
+        <img className="media-detail-hero__backdrop" src={heroImageUrl} alt="" aria-hidden="true" loading="eager" decoding="async" />
       ) : null}
       <div className="media-detail-hero__shade" aria-hidden="true" />
 

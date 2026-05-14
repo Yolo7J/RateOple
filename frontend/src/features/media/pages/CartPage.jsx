@@ -164,7 +164,7 @@ export default function CartPage() {
                 >
                   <div className={styles.thumb}>
                     {item.data.coverUrl ? (
-                      <img src={item.data.coverUrl} alt={item.data.title} className={styles.thumbImage} />
+                      <img src={item.data.coverUrl} alt={item.data.title} className={styles.thumbImage} loading="lazy" decoding="async" />
                     ) : (
                       <div className={styles.thumbPlaceholder}>No image</div>
                     )}

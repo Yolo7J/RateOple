@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { buildImageUrl } from '../../../shared/utils/buildImageUrl';
 
 const styles = {
   banner: [
@@ -24,8 +25,11 @@ function HeroBanner({ item }) {
         <section className={styles.banner} onClick={() => navigate(`/media/${item.id}`)}>
             <img
                 className={styles.image}
-                src={item.coverUrl || 'https://placehold.co/1200x500?text=No+Image'}
+                src={buildImageUrl(item.coverUrl, 'https://placehold.co/1200x500?text=No+Image')}
                 alt={item.title}
+                loading="eager"
+                fetchPriority="high"
+                decoding="async"
             />
             <div className={styles.overlay}>
                 <span className={styles.pill}>Trending</span>

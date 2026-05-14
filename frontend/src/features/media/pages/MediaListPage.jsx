@@ -28,6 +28,7 @@ import InlineMessage from '../../../shared/ui/InlineMessage';
 import Input from '../../../shared/ui/Input';
 import Select from '../../../shared/ui/Select';
 import { Skeleton } from '../../../shared/ui/LoadingState';
+import '../media.css';
 
 const SORT_OPTIONS = [
   { value: 'rating:desc', label: 'Top Rated' },

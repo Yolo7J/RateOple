@@ -39,7 +39,7 @@ function GroupPostCard({ post }) {
             {media.slice(0, 3).map((item) => (
               <div key={item.mediaId} className="group-post-card__media-item">
                 {item.coverUrl ? (
-                  <img src={buildImageUrl(item.coverUrl)} alt="" />
+                  <img src={buildImageUrl(item.coverUrl)} alt="" loading="lazy" decoding="async" />
                 ) : (
                   <span aria-hidden="true" />
                 )}

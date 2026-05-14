@@ -237,7 +237,7 @@ function GroupPostDetailPage() {
                   <Link key={item.mediaId} className="group-post-media-card" to={`/media/${item.mediaId}`}>
                     <div>
                       {item.coverUrl ? (
-                        <img src={buildImageUrl(item.coverUrl)} alt="" />
+                        <img src={buildImageUrl(item.coverUrl)} alt="" loading="lazy" decoding="async" />
                       ) : (
                         <BookOpen aria-hidden="true" />
                       )}

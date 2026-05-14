@@ -1,3 +1,84 @@
+RateOple v1 frontend CSS ownership and performance cleanup results
+
+Summary:
+- Cleaned frontend CSS ownership without changing product flows or backend contracts.
+- Reduced `frontend/src/index.css` from 4173 lines to 1201 lines by moving route-specific styles out and trimming unused global helper classes.
+- Preserved shared UI primitives and global tokens in `index.css`.
+- Kept admin, moderation, auth, account, collections, groups, and notifications feature CSS in their existing feature files.
+- Added lazy route/layout splitting for `AuthLayout`, `GroupLayout`, and `AdminLayout`; major route pages were already lazy-loaded.
+- Explicitly kept admin and auth layout CSS behind lazy layout chunks instead of loading them with the public home route.
+- Added/verified lazy/eager image loading behavior for posters, covers, hero media, admin previews, group linked media, and media detail hero art.
+- Updated the shared image URL helper to upgrade absolute non-local `http://` image URLs to `https://` in production to reduce mixed-content risk.
+- Removed the new `MediaCard.css` file and converted shared media-card styling to Tailwind utility classes in `MediaCard.jsx`, while keeping the existing `media-card*` hook class names for feature overrides.
+- Updated frontend docs with the ownership rule: `index.css` is only for tokens/base/shared primitives; feature styles belong in feature CSS.
+
+CSS ownership inventory:
+- Design tokens: `:root`, `[data-theme="light"]`, `[data-theme="dark"]` remain in `frontend/src/index.css`.
+- Reset/base: universal sizing reset, `html`, `body`, `#root`, base links, headings, button defaults, disabled cursor rules remain in `frontend/src/index.css`.
+- Focus/accessibility: shared focus-visible outlines remain in `frontend/src/index.css`.
+- Shared `ui-*` primitives: `ui-panel`, `ui-card`, `ui-button`, `ui-input`, `ui-badge`, `ui-message`, `ui-empty`, `ui-table`, and `ui-skeleton` remain in `frontend/src/index.css`.
+- Layout/shared component primitives: `app-shell`, `app-main`, `cinematic-surface`, header/footer/navigation/theme/language/account shell styles remain global because they are shared application chrome.
+- Feature/page-specific styles: discovery route styles moved to `frontend/src/features/discovery/discovery.css`; public media browse/detail/season/episode styles moved to `frontend/src/features/media/media.css`; shared media-card component styles are now Tailwind utilities in `MediaCard.jsx`.
+- Existing feature-local CSS retained: `auth.css`, `admin.css`, `moderation.css`, `media-management.css`, `collections.css`, `groups.css`, `users.css`, and `notifications.css`.
+- Dead/unused styles: no global CSS selectors were removed as dead in this pass. `frontend/src/features/discovery/components/HeroBanner.jsx` appears unused by route imports, but was left in place and only given safer image attributes to avoid risky cleanup.
+
+Files changed:
+- frontend/FRONTEND_CODE_STRUCTURE.txt
+- frontend/README.md
+- frontend/src/app/router.jsx
+- frontend/src/index.css
+- frontend/src/features/discovery/discovery.css
+- frontend/src/features/discovery/components/DiscoveryHero.jsx
+- frontend/src/features/discovery/components/HeroBanner.jsx
+- frontend/src/features/discovery/pages/DiscoveryPage.jsx
+- frontend/src/features/groups/components/GroupPostCard.jsx
+- frontend/src/features/groups/pages/GroupDetailPage.jsx
+- frontend/src/features/groups/pages/GroupPostDetailPage.jsx
+- frontend/src/features/media/media.css
+- frontend/src/features/media/pages/AddMediaPage.jsx
+- frontend/src/features/media/pages/CartPage.jsx
+- frontend/src/features/media/pages/EditMediaPage.jsx
+- frontend/src/features/media/pages/EpisodeDetailPage.jsx
+- frontend/src/features/media/pages/MediaDetailPage.jsx
+- frontend/src/features/media/pages/MediaListPage.jsx
+- frontend/src/features/media/pages/SeasonDetailPage.jsx
+- frontend/src/features/media/pages/SeasonManagerPage.jsx
+- frontend/src/shared/components/MediaCard/MediaCard.jsx
+- frontend/src/shared/utils/buildImageUrl.js
+- results.txt
+
+CSS moved/removed:
+- Moved discovery selectors (`discovery-*`) out of `frontend/src/index.css` into `frontend/src/features/discovery/discovery.css`.
+- Moved public media browse selectors (`media-explore-*`) out of `frontend/src/index.css` into `frontend/src/features/media/media.css`.
+- Moved media detail/season/episode selectors (`media-detail-*`) out of `frontend/src/index.css` into `frontend/src/features/media/media.css`.
+- Moved shared media-card selectors (`media-card*`) out of `frontend/src/index.css`, then replaced the temporary component CSS file with Tailwind utility classes in `MediaCard.jsx`.
+- Removed unused global helper selectors from `index.css`: `ui-surface`, `ui-card-interactive`, and `ui-muted`.
+- Removed no selectors as dead code because unused-style proof was not strong enough for a safe deployment cleanup.
+
+Route/lazy-loading results:
+- Already lazy-loaded: admin pages, moderation pages, auth pages, account/watchlist pages, media detail, season detail, episode detail, collections, and groups.
+- Added lazy-loaded layout shells: `AuthLayout`, `GroupLayout`, `AdminLayout`.
+- Admin/moderation pages remain behind existing `RequireAuth`/`RequireRole` route guards.
+
+Image performance results:
+- Shared `MediaCard` images remain lazy-loaded and now decode asynchronously.
+- Discovery hero/featured image and media detail/season/episode primary covers are explicitly eager.
+- Group linked media, pinned media, cart thumbnails, and admin preview/search result images now use lazy loading where they are not critical hero assets.
+- Existing CSS aspect-ratio poster/cover containers were preserved to reduce layout shift.
+- Production `buildImageUrl` upgrades absolute non-local `http://` image URLs to `https://`; local development hosts are left unchanged.
+
+Tests run/results:
+- `cd frontend && npm run lint`: passed.
+- `cd frontend && npm run build`: passed. Build emitted the existing Rollup `@microsoft/signalr` pure-annotation warnings. No Vite chunk-size warning was emitted.
+- `cd frontend && npm run test:e2e`: passed, 24 tests across desktop and mobile Chromium. Playwright emitted existing Node `module.register()` deprecation and `NO_COLOR`/`FORCE_COLOR` warnings.
+- `git diff --check`: passed.
+
+Known remaining large CSS or chunk warnings:
+- `dist/assets/index-*.js` is about 423.6 kB uncompressed / 134.6 kB gzip; Vite did not emit a chunk-size warning.
+- `dist/assets/index-*.css` is about 56.0 kB uncompressed / 11.7 kB gzip after converting shared media-card styling to Tailwind utilities. This keeps source CSS files fewer, but Tailwind still emits utility CSS globally.
+- Largest route CSS after splitting: `media-*.css` about 36.0 kB uncompressed / 5.8 kB gzip; `groups-*.css` about 19.2 kB uncompressed / 3.45 kB gzip; `collections-*.css` about 15.6 kB uncompressed / 2.75 kB gzip.
+- Remaining build warning is the pre-existing Rollup annotation warning from `@microsoft/signalr`.
+
 RateOple v1 account deletion/anonymization and group ownership transfer results
 
 Summary:

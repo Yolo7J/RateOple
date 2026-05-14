@@ -69,7 +69,7 @@ function DiscoveryHero({ item, user, loading }) {
           <Link className="discovery-feature" to={`/media/${item.id}`}>
             <div className="discovery-feature__poster">
               {hasImage ? (
-                <img src={imageUrl} alt={title} onError={() => setFailedImageUrl(imageUrl)} />
+                <img src={imageUrl} alt={title} loading="eager" fetchPriority="high" decoding="async" onError={() => setFailedImageUrl(imageUrl)} />
               ) : (
                 <div className="discovery-feature__placeholder">
                   <Play size={34} aria-hidden="true" />

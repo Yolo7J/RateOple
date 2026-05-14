@@ -11,7 +11,7 @@ public/ - Static assets served directly by Vite.
 src/ - Frontend application source.
 
 src/main.jsx - React application bootstrap.
-src/index.css - Global styles, design tokens, shared `ui-*` utility classes, focus states, cards, controls, tables, messages, skeletons, and layout polish.
+src/index.css - Global styles, design tokens, reset/base rules, focus states, shared `ui-*` utility classes, shared layout/header/footer polish, tables, messages, and skeletons. Feature styles belong in feature CSS.
 
 src/app/ - App-level routing and provider composition.
 src/app/AppRouter.jsx - Router wrapper.
@@ -52,6 +52,7 @@ src/features/discovery/components/ - Hero, rows, and discovery media UI.
 src/features/discovery/pages/ - Discovery landing page.
 src/features/discovery/queries/ - Discovery data queries.
 src/features/discovery/services/ - Discovery API services.
+src/features/discovery/discovery.css - Discovery route-local hero, quick-link, row, and community panel styles.
 
 src/features/groups/ - Groups/social-community feature.
 src/features/groups/components/ - Group cards and post UI.
@@ -64,6 +65,7 @@ src/features/media/components/ - Media cards and status selector UI.
 src/features/media/pages/ - Media list/detail plus add/edit/cart/season admin pages; current pages use shared UI primitives and confirmation patterns.
 src/features/media/queries/ - Media list/detail/genre/TV query hooks and commands.
 src/features/media/services/ - Media, TV series, lookup, and TMDB API helpers.
+src/features/media/media.css - Public media browse/detail/season/episode route-local styles.
 
 src/features/moderation/ - Moderation/admin feature.
 src/features/moderation/components/ - Moderation report and assignment UI with shared badges, dialogs, and feedback.

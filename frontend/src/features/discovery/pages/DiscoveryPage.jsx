@@ -9,6 +9,7 @@ import DiscoveryCommunityPanel from '../components/DiscoveryCommunityPanel';
 import PageLayout from '../../../layouts/PageLayout';
 import Container from '../../../shared/ui/Container';
 import Stack from '../../../shared/ui/Stack';
+import '../discovery.css';
 
 const styles = {
   stack: 'discovery-page',

@@ -253,6 +253,8 @@ const EditMediaPage = () => {
                         <img
                           src={form.coverUrl}
                           alt="Cover preview"
+                          loading="lazy"
+                          decoding="async"
                           onError={(event) => { event.currentTarget.style.display = 'none'; }}
                         />
                       ) : (

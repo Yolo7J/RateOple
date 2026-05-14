@@ -1,15 +1,15 @@
 import { Suspense, createElement, lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
-import AuthLayout from '../layouts/AuthLayout';
-import GroupLayout from '../layouts/GroupLayout';
-import AdminLayout from '../layouts/AdminLayout';
 import RequireAuth from '../features/auth/components/RequireAuth';
 import RequireGuest from '../features/auth/components/RequireGuest';
 import RequireRole from '../features/auth/components/RequireRole';
 import RequireWritableAccount from '../features/auth/components/RequireWritableAccount';
 import RouteFallback from '../shared/ui/RouteFallback';
 
+const AuthLayout = lazy(() => import('../layouts/AuthLayout'));
+const GroupLayout = lazy(() => import('../layouts/GroupLayout'));
+const AdminLayout = lazy(() => import('../layouts/AdminLayout'));
 const DiscoveryPage = lazy(() => import('../features/discovery/pages/DiscoveryPage'));
 const GroupsPage = lazy(() => import('../features/groups/pages/GroupsPage'));
 const GroupDetailPage = lazy(() => import('../features/groups/pages/GroupDetailPage'));
@@ -78,20 +78,20 @@ const Router = () => {
       </Route>
 
       <Route element={<RequireGuest />}>
-        <Route element={<AuthLayout />}>
+        <Route element={renderLazyRoute(AuthLayout)}>
           <Route path="/login" element={renderLazyRoute(LoginPage)} />
           <Route path="/register" element={renderLazyRoute(RegisterPage)} />
         </Route>
       </Route>
 
-      <Route element={<AuthLayout />}>
+      <Route element={renderLazyRoute(AuthLayout)}>
         <Route path="/auth/callback" element={renderLazyRoute(ExternalLoginCallbackPage)} />
         <Route path="/forgot-password" element={renderLazyRoute(ForgotPasswordPage)} />
         <Route path="/reset-password" element={renderLazyRoute(ResetPasswordPage)} />
         <Route path="/confirm-email" element={renderLazyRoute(ConfirmEmailPage)} />
       </Route>
 
-      <Route element={<GroupLayout />}>
+      <Route element={renderLazyRoute(GroupLayout)}>
         <Route path="/groups" element={renderLazyRoute(GroupsPage)} />
         <Route path="/groups/:id" element={renderLazyRoute(GroupDetailPage)} />
         <Route path="/groups/:groupId/posts/:postId" element={renderLazyRoute(GroupPostDetailPage)} />
@@ -103,7 +103,7 @@ const Router = () => {
       </Route>
 
       <Route element={<RequireAuth />}>
-        <Route element={<AdminLayout />}>
+        <Route element={renderLazyRoute(AdminLayout)}>
           <Route element={<RequireRole allow={['Admin', 'SuperAdmin']} />}>
             <Route path="/admin" element={renderLazyRoute(AdminDashboardPage)} />
             <Route path="/admin/users" element={renderLazyRoute(AdminUsersPage)} />

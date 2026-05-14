@@ -464,7 +464,7 @@ function GroupDetailPage() {
                       <Link key={item.mediaId} className="group-pinned-card" to={`/media/${item.mediaId}`}>
                         <div className="group-pinned-card__cover">
                           {item.coverUrl ? (
-                            <img src={buildImageUrl(item.coverUrl)} alt="" />
+                            <img src={buildImageUrl(item.coverUrl)} alt="" loading="lazy" decoding="async" />
                           ) : (
                             <BookOpen aria-hidden="true" />
                           )}
