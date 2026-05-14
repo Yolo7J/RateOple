@@ -26,5 +26,7 @@ public class GroupConfiguration : IEntityTypeConfiguration<Group>
             .WithMany(u => u.OwnedGroups)
             .HasForeignKey(g => g.OwnerId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(g => new { g.OwnerId, g.CreatedAt });
     }
 }

@@ -32,5 +32,6 @@ public class GroupMembershipConfiguration : IEntityTypeConfiguration<GroupMember
         // Unique constraint: one membership per user per group
         builder.HasIndex(gm => new { gm.UserId, gm.GroupId })
             .IsUnique();
+        builder.HasIndex(gm => new { gm.UserId, gm.JoinedAt });
     }
 }

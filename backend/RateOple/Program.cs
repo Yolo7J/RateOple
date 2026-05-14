@@ -13,6 +13,7 @@ builder.Services
     .AddGoogleAuthenticationIfConfigured(builder.Configuration)
     .AddCsrfProtection()
     .AddApplicationServices(builder.Configuration, builder.Environment)
+    .AddRateOpleRateLimiting(builder.Configuration)
     .AddCorsConfiguration()
     .AddApi();
 

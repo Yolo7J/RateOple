@@ -66,5 +66,7 @@ public class RatingConfiguration : IEntityTypeConfiguration<Rating>
         builder.HasIndex(r => new { r.UserId, r.EpisodeId })
             .IsUnique()
             .HasFilter(@"""EpisodeId"" IS NOT NULL");
+
+        builder.HasIndex(r => new { r.UserId, r.CreatedAt });
     }
 }

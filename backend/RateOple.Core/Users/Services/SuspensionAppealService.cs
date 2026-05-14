@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using RateOple.Constants.Enums;
 using RateOple.Core.Contracts;
+using RateOple.Core.Quotas;
 using RateOple.Core.Users.DTOs;
 using RateOple.Infrastructure.Data;
 using RateOple.Infrastructure.Data.Entities;
@@ -10,10 +11,12 @@ namespace RateOple.Core.Users.Services;
 public sealed class SuspensionAppealService : ISuspensionAppealService
 {
     private readonly ApplicationDbContext _context;
+    private readonly IUserQuotaService? _quotaService;
 
-    public SuspensionAppealService(ApplicationDbContext context)
+    public SuspensionAppealService(ApplicationDbContext context, IUserQuotaService? quotaService = null)
     {
         _context = context;
+        _quotaService = quotaService;
     }
 
     public async Task<SuspensionAppealDto> CreateAsync(Guid userId, CreateSuspensionAppealDto dto)
@@ -27,24 +30,31 @@ public sealed class SuspensionAppealService : ISuspensionAppealService
         if (string.IsNullOrWhiteSpace(dto.Text))
             throw new ArgumentException("Appeal text is required.");
 
-        var hasPending = await _context.SuspensionAppeals
-            .AnyAsync(a => a.UserId == userId && a.Status == SuspensionAppealStatus.Pending);
-        if (hasPending)
-            throw new InvalidOperationException("You already have a pending suspension appeal.");
+        if (_quotaService != null)
+        {
+            await _quotaService.EnsureCanCreateSuspensionAppealAsync(userId);
+        }
+        else
+        {
+            var hasPending = await _context.SuspensionAppeals
+                .AnyAsync(a => a.UserId == userId && a.Status == SuspensionAppealStatus.Pending);
+            if (hasPending)
+                throw new InvalidOperationException("You already have a pending suspension appeal.");
 
-        var rejectedTooRecently = await _context.SuspensionAppeals
-            .AnyAsync(a =>
-                a.UserId == userId &&
-                a.Status == SuspensionAppealStatus.Rejected &&
-                a.ResolvedAt != null &&
-                a.ResolvedAt > DateTime.UtcNow.AddDays(-7));
-        if (rejectedTooRecently)
-            throw new InvalidOperationException("You can submit another appeal 7 days after the last rejected appeal.");
+            var rejectedTooRecently = await _context.SuspensionAppeals
+                .AnyAsync(a =>
+                    a.UserId == userId &&
+                    a.Status == SuspensionAppealStatus.Rejected &&
+                    a.ResolvedAt != null &&
+                    a.ResolvedAt > DateTime.UtcNow.AddDays(-7));
+            if (rejectedTooRecently)
+                throw new InvalidOperationException("You can submit another appeal 7 days after the last rejected appeal.");
 
-        var recentAttempts = await _context.SuspensionAppeals
-            .CountAsync(a => a.UserId == userId && a.CreatedAt > DateTime.UtcNow.AddHours(-24));
-        if (recentAttempts >= 3)
-            throw new InvalidOperationException("Suspension appeal attempt limit reached.");
+            var recentAttempts = await _context.SuspensionAppeals
+                .CountAsync(a => a.UserId == userId && a.CreatedAt > DateTime.UtcNow.AddHours(-24));
+            if (recentAttempts >= 3)
+                throw new InvalidOperationException("Suspension appeal attempt limit reached.");
+        }
 
         var appeal = new SuspensionAppeal
         {

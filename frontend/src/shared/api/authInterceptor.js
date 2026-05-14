@@ -106,6 +106,17 @@ export const registerAuthInterceptor = (apiClient) => {
         console.warn('Unauthorized access');
       }
 
+      if (status === 429 || error?.response?.data?.code === 'quota_exceeded') {
+        const retryAfter = error?.response?.headers?.['retry-after'];
+        const fallback = status === 429
+          ? 'You are doing that too often. Please wait a moment and try again.'
+          : 'You have reached the limit for this action.';
+        error.userMessage = serverMessage || error?.response?.data?.detail || fallback;
+        if (retryAfter && !serverMessage) {
+          error.userMessage = `${fallback} Try again in ${retryAfter} seconds.`;
+        }
+      }
+
       return Promise.reject(error);
     }
   );

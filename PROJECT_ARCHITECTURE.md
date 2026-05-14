@@ -115,8 +115,9 @@ frontend/
 5. `AddGoogleAuthenticationIfConfigured`
 6. `AddCsrfProtection`
 7. `AddApplicationServices`
-8. `AddCorsConfiguration`
-9. `AddApi` (`AddApi` registers controllers, ProblemDetails, OpenAPI, SignalR, and the SignalR user-id provider)
+8. `AddRateOpleRateLimiting`
+9. `AddCorsConfiguration`
+10. `AddApi` (`AddApi` registers controllers, ProblemDetails, OpenAPI, SignalR, and the SignalR user-id provider)
 
 Then:
 
@@ -146,9 +147,12 @@ Configured in `Extensions/MiddlewareExtensions.cs`:
 7. authentication
 8. antiforgery validation for mutating verbs unless endpoint has `[IgnoreAntiforgeryToken]`
    (SignalR hub endpoints are excluded from antiforgery)
-9. authorization
-10. controller + SignalR hub mapping
-11. SPA fallback to `wwwroot/index.html` for non-API/non-hub frontend routes
+9. rate-limit metadata capture and ASP.NET Core rate limiter
+10. authorization
+11. controller + SignalR hub mapping
+12. SPA fallback to `wwwroot/index.html` for non-API/non-hub frontend routes
+
+Rate limiting is centralized in `Extensions/RateLimitingExtensions.cs`. v1 uses in-memory counters, which are correct only for the planned single backend instance. Multi-instance deployment requires a distributed counter implementation first.
 
 Production frontend build command:
 

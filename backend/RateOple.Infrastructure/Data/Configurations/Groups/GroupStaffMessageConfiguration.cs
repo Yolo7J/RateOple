@@ -23,5 +23,7 @@ public class GroupStaffMessageConfiguration : IEntityTypeConfiguration<GroupStaf
             .WithMany()
             .HasForeignKey(x => x.AuthorId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasIndex(x => new { x.GroupId, x.CreatedAt });
     }
 }

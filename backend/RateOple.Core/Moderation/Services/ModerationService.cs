@@ -6,6 +6,7 @@ using RateOple.Core.Common;
 using RateOple.Core.Contracts;
 using RateOple.Core.Moderation.DTOs;
 using RateOple.Core.Moderation.Interfaces;
+using RateOple.Core.Quotas;
 using RateOple.Infrastructure.Data;
 using RateOple.Infrastructure.Data.Entities;
 
@@ -17,17 +18,20 @@ public class ModerationService : IModerationService
     private readonly INotificationService _notificationService;
     private readonly IModerationAuditService _auditService;
     private readonly IModerationRealtimePublisher _realtimePublisher;
+    private readonly IUserQuotaService? _quotaService;
 
     public ModerationService(
         ApplicationDbContext context,
         INotificationService notificationService,
         IModerationAuditService auditService,
-        IModerationRealtimePublisher realtimePublisher)
+        IModerationRealtimePublisher realtimePublisher,
+        IUserQuotaService? quotaService = null)
     {
         _context = context;
         _notificationService = notificationService;
         _auditService = auditService;
         _realtimePublisher = realtimePublisher;
+        _quotaService = quotaService;
     }
 
     public async Task<ReportDto> CreateReportAsync(Guid reporterId, CreateReportDto dto)
@@ -51,6 +55,9 @@ public class ModerationService : IModerationService
 
         if (existing != null)
             return await MapReportAsync(existing);
+
+        if (_quotaService != null)
+            await _quotaService.EnsureCanCreateReportAsync(reporterId);
 
         var report = new Report
         {

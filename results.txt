@@ -1514,3 +1514,32 @@ Checks run:
 Known limitations / manual inspection:
 - Privacy and Terms are displayed in the footer bottom row as labels because no Privacy or Terms routes exist in frontend/src/app/router.jsx.
 - Discovery/Home page content and MediaCard were intentionally not redesigned in this refactor.
+
+RateOple v1 backend rate limits and quotas
+
+Implemented:
+- Added centralized ASP.NET Core rate limiting in backend/RateOple/Extensions/RateLimitingExtensions.cs.
+- Added trusted forwarded-header configuration support through ForwardedHeaders:KnownProxies.
+- Added server-side in-memory policies for register, login IP, login account failures, refresh, email send, UGC writes, lookup searches, and admin mutations.
+- Added consistent 429 ProblemDetails responses with code/message/traceId and Retry-After fallback.
+- Added IUserQuotaService/UserQuotaService with configurable UserQuotas defaults.
+- Enforced quotas in collection, group, review, rating, moderation report, and suspension appeal service write paths.
+- Added quota-specific ProblemDetails mapping through QuotaExceededException.
+- Added count-heavy EF indexes and migration 20260514130529_AddQuotaIndexes.
+- Added frontend shared API handling for 429/quota user messages.
+- Updated README.md, PROJECT_ARCHITECTURE.md, and SECURITY_AND_DEPLOYMENT_PLAN.md to document v1 single-instance in-memory limits and quota configuration.
+
+Checks run:
+- dotnet build backend/RateOple.sln: passed.
+- dotnet tool restore: passed.
+- dotnet ef migrations add AddQuotaIndexes --project RateOple.Infrastructure --startup-project RateOple: initial run failed because dotnet-ef was not on PATH before tool restore.
+- dotnet ef migrations add AddQuotaIndexes --project RateOple.Infrastructure --startup-project RateOple --no-build: passed.
+- dotnet test backend/RateOple.Api.Tests/RateOple.Api.Tests.csproj: passed, 100 tests.
+- dotnet test backend/RateOple.sln: passed, 377 total backend tests.
+- dotnet run --project backend/RateOple --no-build --urls http://127.0.0.1:5119: app started and listened on http://127.0.0.1:5119.
+- npm run lint: passed.
+- npm run build: passed. Build emitted existing Rollup annotation warnings from @microsoft/signalr comments.
+
+Notes:
+- Rate limiter counters are in memory and are single-backend-instance only for v1.
+- Move rate-limit counters to Redis or another distributed implementation before multi-instance backend deployment.

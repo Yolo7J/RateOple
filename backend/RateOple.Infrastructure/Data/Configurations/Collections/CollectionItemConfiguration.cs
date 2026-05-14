@@ -34,5 +34,7 @@ public class CollectionItemConfiguration : IEntityTypeConfiguration<CollectionIt
 
         builder.HasIndex(ci => new { ci.CollectionId, ci.OrderIndex })
             .IsUnique();
+
+        builder.HasIndex(ci => new { ci.CollectionId, ci.AddedAt });
     }
 }

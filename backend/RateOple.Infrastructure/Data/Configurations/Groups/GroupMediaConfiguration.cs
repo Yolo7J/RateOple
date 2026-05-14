@@ -28,5 +28,6 @@ public class GroupMediaConfiguration : IEntityTypeConfiguration<GroupMedia>
         // Unique constraint: one media per group
         builder.HasIndex(gm => new { gm.GroupId, gm.MediaId })
             .IsUnique();
+        builder.HasIndex(gm => new { gm.GroupId, gm.AddedAt });
     }
 }

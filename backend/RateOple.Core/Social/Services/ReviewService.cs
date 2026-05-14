@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using RateOple.Core.Contracts;
+using RateOple.Core.Quotas;
 using RateOple.Core.Social.DTOs;
 using RateOple.Infrastructure.Data;
 using RateOple.Infrastructure.Data.Entities;
@@ -16,17 +17,20 @@ public class ReviewService : IReviewService
     private readonly IRatingService _ratingService;
     private readonly IInteractionService _interactionService;
     private readonly IUserTasteService _userTasteService;
+    private readonly IUserQuotaService? _quotaService;
 
     public ReviewService(
         ApplicationDbContext context,
         IRatingService ratingService,
         IInteractionService interactionService,
-        IUserTasteService userTasteService)
+        IUserTasteService userTasteService,
+        IUserQuotaService? quotaService = null)
     {
         _context = context;
         _ratingService = ratingService;
         _interactionService = interactionService;
         _userTasteService = userTasteService;
+        _quotaService = quotaService;
     }
 
     public async Task<ReviewDto> CreateReviewAsync(Guid userId, CreateReviewDto dto)
@@ -63,6 +67,9 @@ public class ReviewService : IReviewService
             await transaction.CommitAsync();
             return await MapByIdAsync(existingReview.Id);
         }
+
+        if (_quotaService != null)
+            await _quotaService.EnsureCanCreateReviewAsync(userId);
 
         var review = new Review
         {

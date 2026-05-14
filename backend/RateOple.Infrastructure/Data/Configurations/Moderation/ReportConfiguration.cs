@@ -38,6 +38,7 @@ public class ReportConfiguration : IEntityTypeConfiguration<Report>
         builder.HasIndex(x => x.Status);
         builder.HasIndex(x => x.CreatedAt);
         builder.HasIndex(x => new { x.TargetType, x.TargetId });
+        builder.HasIndex(x => new { x.ReporterId, x.CreatedAt });
         builder.HasIndex(x => new { x.ReporterId, x.TargetType, x.TargetId })
             .IsUnique();
     }

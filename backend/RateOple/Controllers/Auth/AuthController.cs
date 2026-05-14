@@ -214,6 +214,13 @@ namespace RateOple.Controllers
         {
             var normalizedEmail = NormalizeEmailForCaptcha(dto.Email);
             var remoteIp = GetRemoteIp();
+            if (_loginFailureTracker.IsAccountRateLimited(
+                    normalizedEmail,
+                    threshold: 8,
+                    window: TimeSpan.FromMinutes(15),
+                    out var retryAfter))
+                return TooManyLoginAttemptsProblem(retryAfter);
+
             var threshold = _captchaOptions.LoginFailureThreshold;
             var requiresCaptcha = _captchaOptions.Enabled
                 && _loginFailureTracker.ShouldRequireCaptcha(normalizedEmail, remoteIp, threshold);
@@ -228,6 +235,14 @@ namespace RateOple.Controllers
             var user = await _userManager.FindByEmailAsync(dto.Email.Trim());
             if (user == null || IsDeletedUser(user) || !await _userManager.CheckPasswordAsync(user, dto.Password))
             {
+                _loginFailureTracker.RecordAccountFailure(normalizedEmail, TimeSpan.FromMinutes(15));
+                if (_loginFailureTracker.IsAccountRateLimited(
+                        normalizedEmail,
+                        threshold: 8,
+                        window: TimeSpan.FromMinutes(15),
+                        out retryAfter))
+                    return TooManyLoginAttemptsProblem(retryAfter);
+
                 if (_captchaOptions.Enabled && _loginFailureTracker.RecordFailure(normalizedEmail, remoteIp, threshold))
                     return CaptchaRequiredProblem();
 
@@ -497,6 +512,30 @@ namespace RateOple.Controllers
             return new ObjectResult(problem)
             {
                 StatusCode = StatusCodes.Status403Forbidden,
+                ContentTypes = { "application/problem+json" }
+            };
+        }
+
+        private IActionResult TooManyLoginAttemptsProblem(TimeSpan retryAfter)
+        {
+            var seconds = Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds));
+            Response.Headers.RetryAfter = seconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            var detail = $"Too many failed login attempts. Try again in {seconds} seconds.";
+            var problem = new ProblemDetails
+            {
+                Type = "https://httpstatuses.com/429",
+                Title = "Too Many Requests",
+                Detail = detail,
+                Status = StatusCodes.Status429TooManyRequests,
+                Instance = HttpContext.Request.Path
+            };
+            problem.Extensions["code"] = "login_account_rate_limit_exceeded";
+            problem.Extensions["message"] = detail;
+            problem.Extensions["traceId"] = HttpContext.TraceIdentifier;
+
+            return new ObjectResult(problem)
+            {
+                StatusCode = StatusCodes.Status429TooManyRequests,
                 ContentTypes = { "application/problem+json" }
             };
         }

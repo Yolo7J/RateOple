@@ -24,5 +24,6 @@ public class FollowCollectionConfiguration : IEntityTypeConfiguration<FollowColl
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(x => x.CollectionId);
+        builder.HasIndex(x => new { x.UserId, x.FollowedAt });
     }
 }

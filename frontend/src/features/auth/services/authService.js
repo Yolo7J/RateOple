@@ -63,6 +63,10 @@ export const loadAuthSession = async () => {
 };
 
 export const getAuthErrorMessage = (error, fallback = 'Authentication failed.') => {
+  if (typeof error?.userMessage === 'string' && error.userMessage.trim()) {
+    return error.userMessage;
+  }
+
   const responseData = error?.response?.data;
 
   if (Array.isArray(responseData)) {

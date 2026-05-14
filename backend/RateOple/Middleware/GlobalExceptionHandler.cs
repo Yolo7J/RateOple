@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using RateOple.Core.Quotas;
 
 namespace RateOple.Middleware;
 
@@ -68,6 +69,8 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
 
         problem.Extensions["traceId"] = httpContext.TraceIdentifier;
         problem.Extensions["message"] = detail;
+        if (exception is QuotaExceededException quotaException)
+            problem.Extensions["code"] = quotaException.Code;
 
         return problem;
     }
@@ -76,6 +79,7 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
     {
         return exception switch
         {
+            QuotaExceededException quotaException => quotaException.StatusCode,
             ValidationException => StatusCodes.Status400BadRequest,
             ArgumentException => StatusCodes.Status400BadRequest,
             KeyNotFoundException => StatusCodes.Status404NotFound,

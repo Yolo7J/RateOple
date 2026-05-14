@@ -3,6 +3,7 @@ using RateOple.Constants.Enums;
 using RateOple.Core.Common;
 using RateOple.Core.Contracts;
 using RateOple.Core.Groups.DTOs;
+using RateOple.Core.Quotas;
 using RateOple.Infrastructure.Data;
 using RateOple.Infrastructure.Data.Entities;
 
@@ -13,15 +14,18 @@ public class GroupService : IGroupService
     private readonly ApplicationDbContext _context;
     private readonly INotificationService _notificationService;
     private readonly IModerationAuditService _auditService;
+    private readonly IUserQuotaService? _quotaService;
 
     public GroupService(
         ApplicationDbContext context,
         INotificationService notificationService,
-        IModerationAuditService auditService)
+        IModerationAuditService auditService,
+        IUserQuotaService? quotaService = null)
     {
         _context = context;
         _notificationService = notificationService;
         _auditService = auditService;
+        _quotaService = quotaService;
     }
 
     public async Task<GroupSummaryDto> CreateGroupAsync(Guid userId, CreateGroupDto dto)
@@ -29,6 +33,9 @@ public class GroupService : IGroupService
         var name = dto.Name?.Trim();
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Group name is required.");
+
+        if (_quotaService != null)
+            await _quotaService.EnsureCanCreateGroupAsync(userId);
 
         var group = new Group
         {
@@ -202,6 +209,9 @@ public class GroupService : IGroupService
         if (group.Visibility == GroupVisibility.Private)
             throw new UnauthorizedAccessException("Private groups cannot be joined directly.");
 
+        if (_quotaService != null)
+            await _quotaService.EnsureCanJoinGroupAsync(userId);
+
         _context.GroupMemberships.Add(new GroupMembership
         {
             Id = Guid.NewGuid(),
@@ -274,6 +284,9 @@ public class GroupService : IGroupService
 
         if (!isMember)
             throw new UnauthorizedAccessException("Only group members can post.");
+
+        if (_quotaService != null)
+            await _quotaService.EnsureCanCreateGroupPostAsync(userId, groupId);
 
         var post = new GroupPost
         {
@@ -542,6 +555,9 @@ public class GroupService : IGroupService
                 throw new ArgumentException("Parent comment is invalid.");
         }
 
+        if (_quotaService != null)
+            await _quotaService.EnsureCanCreateCommentAsync(userId);
+
         var comment = new Comment
         {
             Id = Guid.NewGuid(),
@@ -779,6 +795,9 @@ public class GroupService : IGroupService
         if (!exists)
             throw new KeyNotFoundException("Group not found.");
 
+        if (_quotaService != null)
+            await _quotaService.EnsureCanCreateStaffMessageAsync(groupId);
+
         var message = new GroupStaffMessage
         {
             Id = Guid.NewGuid(),
@@ -817,6 +836,9 @@ public class GroupService : IGroupService
 
         if (linkExists)
             return;
+
+        if (_quotaService != null)
+            await _quotaService.EnsureCanPinMediaAsync(groupId);
 
         _context.GroupMediaLinks.Add(new GroupMedia
         {

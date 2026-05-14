@@ -39,5 +39,6 @@ public class ReviewConfiguration : IEntityTypeConfiguration<Review>
 
         builder.HasIndex(r => r.RatingId)
             .IsUnique();
+        builder.HasIndex(r => new { r.UserId, r.CreatedAt });
     }
 }

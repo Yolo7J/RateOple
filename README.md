@@ -65,6 +65,14 @@ Production bot protection uses Cloudflare Turnstile behind the backend `ICaptcha
 
 The secret key is server-only. The frontend reads only safe CAPTCHA config from `/api/auth/captcha-config`. Development/test may explicitly use `Captcha:Provider=Fake` or `Captcha:Provider=Noop`; production rejects disabled, fake, or noop CAPTCHA configuration.
 
+## Rate Limits and Quotas
+
+The backend enforces v1 rate limits server-side with ASP.NET Core rate limiting and in-memory counters. This is single-instance only for the planned one-backend deployment; move counters to a distributed store before adding more backend instances.
+
+Rate limits cover auth registration/login/refresh, account email sends, lookup/search endpoints, UGC writes, and admin mutations. Configure `ForwardedHeaders:KnownProxies` for the trusted reverse proxy before relying on `X-Forwarded-For`.
+
+User resource quotas are enforced in backend services near writes. Defaults are configurable under `UserQuotas` and cover collections, groups, posts, comments, reviews, reports, ratings, pinned media, staff messages, and suspension appeals.
+
 ## Repository Layout
 
 ```text

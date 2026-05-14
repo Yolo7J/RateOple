@@ -16,6 +16,7 @@ public static class MiddlewareExtensions
             app.MapOpenApi();
         }
 
+        app.UseForwardedHeaders();
         app.UseHttpsRedirection();
         app.UseExceptionHandler();
         app.UseSecurityHeaders();
@@ -59,6 +60,8 @@ public static class MiddlewareExtensions
     await next();
 });
 
+        app.UseRateOpleRateLimitingMetadata();
+        app.UseRateLimiter();
         app.UseMiddleware<AccountStateMiddleware>();
         app.UseAuthorization();
         app.MapControllers();

@@ -3,6 +3,7 @@ using RateOple.Constants.Enums;
 using RateOple.Core.Common;
 using RateOple.Core.Contracts;
 using RateOple.Core.Collections.DTOs;
+using RateOple.Core.Quotas;
 using RateOple.Infrastructure.Data;
 using RateOple.Infrastructure.Data.Entities;
 
@@ -11,11 +12,13 @@ namespace RateOple.Core.Collections.Services;
 public class CollectionService : ICollectionService
 {
     private readonly ApplicationDbContext _context;
+    private readonly IUserQuotaService? _quotaService;
     private const int MaxCollectionNameLength = 40;
 
-    public CollectionService(ApplicationDbContext context)
+    public CollectionService(ApplicationDbContext context, IUserQuotaService? quotaService = null)
     {
         _context = context;
+        _quotaService = quotaService;
     }
 
     public async Task<CollectionDto> CreateAsync(Guid userId, CreateCollectionDto dto)
@@ -26,6 +29,9 @@ public class CollectionService : ICollectionService
 
         if (dto.ParentCollectionId.HasValue)
             await EnsureParentExistsAsync(dto.ParentCollectionId.Value);
+
+        if (_quotaService != null)
+            await _quotaService.EnsureCanCreateCollectionAsync(userId, ownerType, ownerId, dto.ParentCollectionId);
 
         var collection = new Collection
         {
@@ -134,6 +140,8 @@ public class CollectionService : ICollectionService
 
             await EnsureParentExistsAsync(dto.ParentCollectionId.Value);
             await EnsureParentIsNotDescendantAsync(id, dto.ParentCollectionId.Value);
+            if (_quotaService != null)
+                await _quotaService.EnsureCanMoveCollectionAsync(userId, id, dto.ParentCollectionId.Value);
             collection.ParentCollectionId = dto.ParentCollectionId;
         }
         if (dto.SortMode.HasValue) collection.SortMode = dto.SortMode.Value;
@@ -186,6 +194,9 @@ public class CollectionService : ICollectionService
             .AnyAsync(i => i.CollectionId == collectionId && i.MediaId == dto.MediaId);
         if (exists)
             return await GetRequiredDtoAsync(collectionId);
+
+        if (_quotaService != null)
+            await _quotaService.EnsureCanAddCollectionItemAsync(collectionId);
 
         var nextOrder = dto.OrderIndex ?? (await _context.CollectionItems
             .Where(i => i.CollectionId == collectionId)
@@ -294,6 +305,9 @@ public class CollectionService : ICollectionService
             .AnyAsync(f => f.UserId == userId && f.CollectionId == collectionId);
         if (followExists)
             return;
+
+        if (_quotaService != null)
+            await _quotaService.EnsureCanFollowCollectionAsync(userId);
 
         _context.FollowCollections.Add(new FollowCollection
         {

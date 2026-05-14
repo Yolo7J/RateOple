@@ -31,5 +31,7 @@ public class GroupPostConfiguration : IEntityTypeConfiguration<GroupPost>
             .WithMany(g => g.Posts)
             .HasForeignKey(gp => gp.GroupId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasIndex(gp => new { gp.UserId, gp.GroupId, gp.CreatedAt });
     }
 }

@@ -310,7 +310,7 @@ public class AccountLifecycleContractTests
         Assert.Equal(HttpStatusCode.Forbidden, (await client.SendAsync(rating)).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.SendAsync(report)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(appeal)).StatusCode);
-        Assert.Equal(HttpStatusCode.Conflict, (await client.SendAsync(duplicate)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.SendAsync(duplicate)).StatusCode);
     }
 
     private static async Task RegisterAsync(HttpClient client, CsrfState csrf, string username, string email)

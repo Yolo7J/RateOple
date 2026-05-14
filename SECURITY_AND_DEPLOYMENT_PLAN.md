@@ -7,16 +7,16 @@ This is an implementation plan, not a completed-feature report. It is based on t
 - Backend: ASP.NET Core Web API on .NET 9, Identity users/roles, JWT access and refresh tokens in cookies, CSRF protection, EF Core/PostgreSQL, SignalR notifications.
 - Frontend: React/Vite served either by Vite in development or from `backend/RateOple/wwwroot` after `npm run build:backend`.
 - Existing protections verified in code: HttpOnly auth cookies, refresh token rotation, CSRF header flow, development-only CORS, security headers middleware, role guards, production static hosting, soft-deleted media filtering in core media/collection paths, email confirmation/resend, forgot/reset password, read-only unconfirmed/suspended account gating, stale-unconfirmed-account cleanup, and suspension appeals.
-- Not found as completed features: app-level rate limiting, server-side user content quotas, analytics consent.
+- Not found as completed features: analytics consent.
 
 ## Deployment Readiness Priorities
 
 Phase 1 should happen before public deployment:
 
-1. Add backend rate limits for auth, email, and user-generated-content mutations.
-2. Add server-side quotas for user-created resources.
-3. Add app-level rate limits to confirmation resend, forgot-password, and suspension appeal endpoints. The current implementation has enumeration-safe responses and a local appeal duplicate/attempt guard, but not the Phase 5 rate-limit/quota infrastructure.
-4. Add tests for future quota and rate-limit enforcement paths.
+1. Monitor and tune backend rate limits for auth, email, lookup, admin mutations, and user-generated-content mutations.
+2. Monitor and tune server-side quotas for user-created resources.
+3. Keep rate-limit counters single-instance for v1 only; move to distributed counters before multi-instance deployment.
+4. Add analytics consent before enabling analytics.
 
 Phase 2 should happen before broader usage:
 
@@ -29,7 +29,7 @@ Phase 2 should happen before broader usage:
 
 ### Backend Rate Limits
 
-Add ASP.NET Core rate limiting in the API host, preferably in a dedicated extension such as `RateOple/Extensions/RateLimitingExtensions.cs`.
+Implemented with ASP.NET Core rate limiting in `RateOple/Extensions/RateLimitingExtensions.cs`.
 
 Recommended policies:
 
@@ -52,10 +52,11 @@ Implementation notes:
 - Return `429` with a consistent problem response and optional `Retry-After`.
 - Do not rely on Identity lockout alone. Current login uses `UserManager.CheckPasswordAsync`, so failed attempts are not a complete rate-limit mechanism by themselves.
 - Consider a persistent/distributed counter before multi-instance deployment. In-memory rate limits are acceptable only for a single instance.
+- `ForwardedHeaders:KnownProxies` must list trusted deployment proxies; arbitrary forwarded headers are not trusted by default.
 
 ### User Resource Quotas
 
-Add a quota service in Core, for example `IUserQuotaService`, called by domain services before writes. Quotas must be checked inside backend services, close to the transaction that creates the resource.
+Implemented as `IUserQuotaService`/`UserQuotaService` in Core and called by domain services before writes. Quotas are checked inside backend services, close to the transaction that creates the resource.
 
 Suggested initial quotas:
 
@@ -82,6 +83,7 @@ Quota behavior:
 - Count only active user-visible resources unless a domain explicitly needs lifetime limits.
 - Keep admin/staff bypasses narrow and explicit. Do not let normal users bypass quotas through alternate endpoints.
 - Add indexes for count-heavy quota checks where needed.
+- Defaults are configurable under `UserQuotas`.
 
 ## 2. CAPTCHA
 

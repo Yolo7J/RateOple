@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using RateOple.Core.Contracts;
+using RateOple.Core.Quotas;
 using RateOple.Core.Social.DTOs;
 using RateOple.Infrastructure.Data;
 using RateOple.Infrastructure.Data.Entities;
@@ -12,15 +13,18 @@ public class RatingService : IRatingService
     private readonly ApplicationDbContext _context;
     private readonly IInteractionService _interactionService;
     private readonly IUserTasteService _userTasteService;
+    private readonly IUserQuotaService? _quotaService;
 
     public RatingService(
         ApplicationDbContext context,
         IInteractionService interactionService,
-        IUserTasteService userTasteService)
+        IUserTasteService userTasteService,
+        IUserQuotaService? quotaService = null)
     {
         _context = context;
         _interactionService = interactionService;
         _userTasteService = userTasteService;
+        _quotaService = quotaService;
     }
 
     public Task<RatingDto> RateMediaAsync(Guid userId, Guid mediaId, int value) =>
@@ -137,6 +141,9 @@ public class RatingService : IRatingService
         }
         else
         {
+            if (_quotaService != null)
+                await _quotaService.EnsureCanCreateRatingAsync(userId);
+
             existingRating = new Rating
             {
                 Id = Guid.NewGuid(),
