@@ -1,6 +1,6 @@
 # RateOple Architecture (Current State)
 
-Last updated: **May 13, 2026**
+Last updated: **May 14, 2026**
 
 This document reflects the code currently present in the repository.
 
@@ -17,6 +17,7 @@ Important external-service limitations in the submitted project:
 
 - TMDB-backed movie and TV metadata/images require backend configuration key `Tmdb:ReadAccessToken`.
 - Google OAuth requires backend keys `Authentication:Google:ClientId` and `Authentication:Google:ClientSecret`.
+- Cloudflare Turnstile CAPTCHA requires backend keys `Captcha:SiteKey` and `Captcha:SecretKey` when `Captcha:Enabled=true`.
 - Those secrets are not expected to exist on another machine by default, so full media-image enrichment and Google auth are not guaranteed in a fresh submission environment.
 - If a reviewer needs the project to function at 100%, they need the missing private configuration from the project author.
 
@@ -176,10 +177,13 @@ Auth endpoints:
 - `POST /api/auth/refresh`
 - `POST /api/auth/logout`
 - `GET /api/auth/me`
+- `GET /api/auth/captcha-config`
 - `GET /api/auth/google/login`
 - `GET /api/auth/google/complete`
 
 Register/password lifecycle emails are sent through `IAppEmailSender`; production targets Resend and development/test use the fake sender unless configured otherwise. Unconfirmed and suspended users can authenticate read-only. `/api/auth/me`, login, and refresh responses include account-state flags so the frontend can show confirmation/suspension UX while backend middleware remains the source of truth for blocking content mutations.
+
+Registration and suspicious login attempts are protected by `ICaptchaVerifier`. The v1 provider is Cloudflare Turnstile, with fake and noop implementations restricted to explicit development/test configuration. Registration verifies CAPTCHA before creating the Identity user. Login tracks failed attempts by normalized email plus IP and requires server-verified CAPTCHA once the configured threshold is reached.
 
 Google OAuth is backend-mediated only. It registers only when `Authentication:Google:ClientId` and `Authentication:Google:ClientSecret` are configured. The frontend starts the flow by navigating to `/api/auth/google/login`; the backend handles the Google completion endpoint, creates or links an ASP.NET Identity user, issues the normal HttpOnly app cookies, and redirects back to a local frontend route.
 The current frontend callback route is `/auth/callback`, which refreshes `/api/auth/me`, handles success/failure redirect state, and then navigates to the intended local route.

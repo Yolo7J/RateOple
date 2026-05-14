@@ -13,5 +13,8 @@ namespace RateOple.Core.Auth.DTOs
         [MinLength(8)]
         [MaxLength(128)]
         public string Password { get; set; } = null!;
+
+        [MaxLength(4096)]
+        public string? CaptchaToken { get; set; }
     }
 }

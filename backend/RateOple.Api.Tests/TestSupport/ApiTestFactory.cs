@@ -19,6 +19,9 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using RateOple.Constants.Constants;
+using RateOple.Core.Auth.Captcha;
+using RateOple.Core.Auth.Interfaces;
+using RateOple.Core.Auth.Services;
 using RateOple.Core.Contracts;
 using RateOple.Core.Email;
 using RateOple.Infrastructure.Data;
@@ -57,6 +60,12 @@ public sealed class ApiTestFactory : WebApplicationFactory<Program>
                 ["Email:Provider"] = "Fake",
                 ["Email:From"] = "RateOple Tests <no-reply@example.test>",
                 ["Email:FrontendBaseUrl"] = "https://frontend.example.test",
+                ["Captcha:Enabled"] = "true",
+                ["Captcha:Provider"] = "Fake",
+                ["Captcha:SiteKey"] = "test-site-key",
+                ["Captcha:SecretKey"] = "test-secret-key",
+                ["Captcha:VerifyUrl"] = "https://captcha.example.test/siteverify",
+                ["Captcha:LoginFailureThreshold"] = "2",
                 ["UnconfirmedAccountCleanup:Enabled"] = "false"
             });
         });
@@ -74,6 +83,22 @@ public sealed class ApiTestFactory : WebApplicationFactory<Program>
             using var scope = provider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             db.Database.EnsureCreated();
+        });
+
+        builder.ConfigureTestServices(services =>
+        {
+            services.Configure<CaptchaOptions>(options =>
+            {
+                options.Enabled = true;
+                options.Provider = "Fake";
+                options.SiteKey = "test-site-key";
+                options.SecretKey = "test-secret-key";
+                options.VerifyUrl = "https://captcha.example.test/siteverify";
+                options.LoginFailureThreshold = 2;
+            });
+            services.RemoveAll<ICaptchaVerifier>();
+            services.AddSingleton<FakeCaptchaVerifier>();
+            services.AddSingleton<ICaptchaVerifier>(sp => sp.GetRequiredService<FakeCaptchaVerifier>());
         });
 
         if (_useTestAuth)
@@ -205,7 +230,8 @@ public sealed class ApiTestFactory : WebApplicationFactory<Program>
         request.Content = JsonContent.Create(new
         {
             email = user.Email,
-            password = "Password1"
+            password = "Password1",
+            captchaToken = FakeCaptchaVerifier.ValidToken
         });
 
         using var response = await client.SendAsync(request);

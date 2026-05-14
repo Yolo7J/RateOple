@@ -297,6 +297,15 @@
     padding-left: 2.55rem;
   }
 
+  .auth-captcha {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .auth-captcha > div:first-child {
+    min-height: 65px;
+  }
+
   .auth-actions {
     display: grid;
     min-width: 0;

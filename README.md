@@ -52,6 +52,19 @@ Production email delivery targets Resend through the backend email abstraction. 
 
 Development/test can use `Email:Provider=Fake`. Unconfirmed and suspended users may log in read-only, but backend account-state middleware blocks user-generated-content mutations until confirmation or suspension resolution.
 
+## CAPTCHA Configuration
+
+Production bot protection uses Cloudflare Turnstile behind the backend `ICaptchaVerifier` abstraction. Required production settings:
+
+- `Captcha:Enabled=true`
+- `Captcha:Provider=Turnstile`
+- `Captcha:SiteKey`
+- `Captcha:SecretKey`
+- `Captcha:VerifyUrl=https://challenges.cloudflare.com/turnstile/v0/siteverify`
+- `Captcha:LoginFailureThreshold`
+
+The secret key is server-only. The frontend reads only safe CAPTCHA config from `/api/auth/captcha-config`. Development/test may explicitly use `Captcha:Provider=Fake` or `Captcha:Provider=Noop`; production rejects disabled, fake, or noop CAPTCHA configuration.
+
 ## Repository Layout
 
 ```text
@@ -209,6 +222,7 @@ Those files set:
 
 - Movie and TV series images and some external media data depend on TMDB and will not fully load without a valid backend `Tmdb:ReadAccessToken`.
 - Google authentication will not work locally on another machine without valid backend `Authentication:Google:ClientId` and `Authentication:Google:ClientSecret` values.
+- Public registration and suspicious login CAPTCHA require valid Cloudflare Turnstile `Captcha:SiteKey` and `Captcha:SecretKey` in production.
 - Those secrets are not included in the submitted repository.
 - Because of that, the project will not function at 100% on another PC out of the box.
 - If the examiners want the project to function fully, they should contact me for the missing private configuration.

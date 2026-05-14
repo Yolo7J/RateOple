@@ -6,13 +6,18 @@ export const authService = {
     return response.data;
   },
 
-  async login(email, password) {
-    const response = await api.post("/auth/login", { email, password });
+  async login(email, password, captchaToken) {
+    const response = await api.post("/auth/login", { email, password, captchaToken });
     return response.data; // { id, userName, roles }
   },
 
-  async register({ email, username, password }) {
-    await api.post("/auth/register", { email, username, password });
+  async register({ email, username, password, captchaToken }) {
+    await api.post("/auth/register", { email, username, password, captchaToken });
+  },
+
+  async captchaConfig() {
+    const response = await api.get("/auth/captcha-config");
+    return response.data;
   },
 
   async confirmEmail({ email, token }) {
@@ -87,4 +92,10 @@ export const getAuthErrorMessage = (error, fallback = 'Authentication failed.') 
   }
 
   return fallback;
+};
+
+export const isCaptchaRequiredError = (error) => {
+  const data = error?.response?.data;
+  return error?.response?.status === 403
+    && (data?.requiresCaptcha === true || data?.code === 'captcha_required');
 };

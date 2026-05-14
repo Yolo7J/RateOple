@@ -5,8 +5,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using RateOple.Constants.Constants;
+using RateOple.Core.Auth.Captcha;
 using RateOple.Core.Contracts;
 using RateOple.Core.Auth.DTOs;
+using RateOple.Core.Auth.Interfaces;
 using RateOple.Constants.Enums;
 using RateOple.Infrastructure.Data;
 using RateOple.Infrastructure.Data.Entities;
@@ -17,6 +19,7 @@ using System.Security.Claims;
 using RateOple.Auth;
 using RateOple.Extensions;
 using System.Text;
+using Microsoft.Extensions.Options;
 
 namespace RateOple.Controllers
 {
@@ -28,6 +31,9 @@ namespace RateOple.Controllers
         private readonly RoleManager<IdentityRole<Guid>> _roleManager;
         private readonly IJwtService _jwtService;
         private readonly IAccountEmailService _accountEmailService;
+        private readonly ICaptchaVerifier _captchaVerifier;
+        private readonly ILoginFailureTracker _loginFailureTracker;
+        private readonly CaptchaOptions _captchaOptions;
         private readonly ApplicationDbContext _db;
         private readonly IWebHostEnvironment _environment;
         private readonly IConfiguration _configuration;
@@ -38,6 +44,9 @@ namespace RateOple.Controllers
             RoleManager<IdentityRole<Guid>> roleManager,
             IJwtService jwtService,
             IAccountEmailService accountEmailService,
+            ICaptchaVerifier captchaVerifier,
+            ILoginFailureTracker loginFailureTracker,
+            IOptions<CaptchaOptions> captchaOptions,
             ApplicationDbContext db,
             IWebHostEnvironment environment,
             IConfiguration configuration,
@@ -47,6 +56,9 @@ namespace RateOple.Controllers
             _roleManager = roleManager;
             _jwtService = jwtService;
             _accountEmailService = accountEmailService;
+            _captchaVerifier = captchaVerifier;
+            _loginFailureTracker = loginFailureTracker;
+            _captchaOptions = captchaOptions.Value;
             _db = db;
             _environment = environment;
             _configuration = configuration;
@@ -54,8 +66,12 @@ namespace RateOple.Controllers
         }
 
         [HttpPost("register")]
-        public async Task<IActionResult> Register(RegisterDto dto)
+        public async Task<IActionResult> Register(RegisterDto dto, CancellationToken cancellationToken)
         {
+            var captchaResult = await VerifyCaptchaAsync(dto.CaptchaToken, "register", cancellationToken);
+            if (!captchaResult.Success)
+                return CaptchaValidationProblem(captchaResult);
+
             var user = new User
             {
                 UserName = dto.Username.Trim(),
@@ -85,6 +101,18 @@ namespace RateOple.Controllers
             await _accountEmailService.SendConfirmationAsync(user);
         
             return Ok();
+        }
+
+        [HttpGet("captcha-config")]
+        public IActionResult CaptchaConfig()
+        {
+            return Ok(new
+            {
+                enabled = _captchaOptions.Enabled,
+                provider = _captchaOptions.Provider,
+                siteKey = _captchaOptions.Enabled ? _captchaOptions.SiteKey : null,
+                loginFailureThreshold = _captchaOptions.LoginFailureThreshold
+            });
         }
 
         [HttpPost("confirm-email")]
@@ -182,14 +210,31 @@ namespace RateOple.Controllers
         }
 
         [HttpPost("login")]
-        public async Task<IActionResult> Login(LoginDto dto)
+        public async Task<IActionResult> Login(LoginDto dto, CancellationToken cancellationToken)
         {
-            var user = await _userManager.FindByEmailAsync(dto.Email);
+            var normalizedEmail = NormalizeEmailForCaptcha(dto.Email);
+            var remoteIp = GetRemoteIp();
+            var threshold = _captchaOptions.LoginFailureThreshold;
+            var requiresCaptcha = _captchaOptions.Enabled
+                && _loginFailureTracker.ShouldRequireCaptcha(normalizedEmail, remoteIp, threshold);
+
+            if (requiresCaptcha)
+            {
+                var captchaResult = await VerifyCaptchaAsync(dto.CaptchaToken, "login", cancellationToken);
+                if (!captchaResult.Success)
+                    return CaptchaRequiredProblem(captchaResult);
+            }
+
+            var user = await _userManager.FindByEmailAsync(dto.Email.Trim());
             if (user == null || IsDeletedUser(user) || !await _userManager.CheckPasswordAsync(user, dto.Password))
             {
+                if (_captchaOptions.Enabled && _loginFailureTracker.RecordFailure(normalizedEmail, remoteIp, threshold))
+                    return CaptchaRequiredProblem();
+
                 return Unauthorized("Incorrect Email or Password");
             }
 
+            _loginFailureTracker.Reset(normalizedEmail, remoteIp);
             return Ok(await IssueAppSignInAsync(user));
         }
 
@@ -410,6 +455,68 @@ namespace RateOple.Controllers
                 detail: detail,
                 statusCode: StatusCodes.Status400BadRequest,
                 title: "Bad Request");
+        }
+
+        private async Task<CaptchaVerificationResult> VerifyCaptchaAsync(
+            string? token,
+            string action,
+            CancellationToken cancellationToken)
+        {
+            if (!_captchaOptions.Enabled)
+                return CaptchaVerificationResult.Valid(_captchaOptions.Provider);
+
+            if (string.IsNullOrWhiteSpace(token))
+                return CaptchaVerificationResult.Invalid(_captchaOptions.Provider, "missing_token");
+
+            return await _captchaVerifier.VerifyAsync(token, action, GetRemoteIp(), cancellationToken);
+        }
+
+        private IActionResult CaptchaValidationProblem(CaptchaVerificationResult result)
+        {
+            ModelState.AddModelError("captchaToken", GetCaptchaErrorMessage(result));
+            return ValidationProblem(ModelState);
+        }
+
+        private IActionResult CaptchaRequiredProblem(CaptchaVerificationResult? result = null)
+        {
+            var problem = new ProblemDetails
+            {
+                Type = "https://httpstatuses.com/403",
+                Title = "CAPTCHA required.",
+                Detail = result is null
+                    ? "Complete CAPTCHA to continue."
+                    : GetCaptchaErrorMessage(result),
+                Status = StatusCodes.Status403Forbidden,
+                Instance = HttpContext.Request.Path
+            };
+            problem.Extensions["code"] = "captcha_required";
+            problem.Extensions["requiresCaptcha"] = true;
+            problem.Extensions["message"] = problem.Detail;
+            problem.Extensions["traceId"] = HttpContext.TraceIdentifier;
+
+            return new ObjectResult(problem)
+            {
+                StatusCode = StatusCodes.Status403Forbidden,
+                ContentTypes = { "application/problem+json" }
+            };
+        }
+
+        private static string GetCaptchaErrorMessage(CaptchaVerificationResult result)
+        {
+            return string.Equals(result.ErrorCode, "provider_unavailable", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(result.ErrorCode, "configuration_error", StringComparison.OrdinalIgnoreCase)
+                    ? "CAPTCHA verification is temporarily unavailable. Please try again."
+                    : "CAPTCHA verification failed. Please try again.";
+        }
+
+        private string? GetRemoteIp()
+        {
+            return HttpContext.Connection.RemoteIpAddress?.ToString();
+        }
+
+        private static string NormalizeEmailForCaptcha(string email)
+        {
+            return email.Trim().ToUpperInvariant();
         }
 
         private static string? DecodeToken(string token)

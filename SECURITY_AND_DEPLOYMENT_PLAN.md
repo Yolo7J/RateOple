@@ -1,13 +1,13 @@
 # RateOple Security and Deployment Readiness Plan
 
-Last updated: May 13, 2026
+Last updated: May 14, 2026
 
 This is an implementation plan, not a completed-feature report. It is based on the current repository state:
 
 - Backend: ASP.NET Core Web API on .NET 9, Identity users/roles, JWT access and refresh tokens in cookies, CSRF protection, EF Core/PostgreSQL, SignalR notifications.
 - Frontend: React/Vite served either by Vite in development or from `backend/RateOple/wwwroot` after `npm run build:backend`.
 - Existing protections verified in code: HttpOnly auth cookies, refresh token rotation, CSRF header flow, development-only CORS, security headers middleware, role guards, production static hosting, soft-deleted media filtering in core media/collection paths, email confirmation/resend, forgot/reset password, read-only unconfirmed/suspended account gating, stale-unconfirmed-account cleanup, and suspension appeals.
-- Not found as completed features: CAPTCHA, app-level rate limiting, server-side user content quotas, analytics consent.
+- Not found as completed features: app-level rate limiting, server-side user content quotas, analytics consent.
 
 ## Deployment Readiness Priorities
 
@@ -15,9 +15,8 @@ Phase 1 should happen before public deployment:
 
 1. Add backend rate limits for auth, email, and user-generated-content mutations.
 2. Add server-side quotas for user-created resources.
-3. Add CAPTCHA provider abstraction and wire CAPTCHA to registration plus suspicious login attempts.
-4. Add app-level rate limits to confirmation resend, forgot-password, and suspension appeal endpoints. The current implementation has enumeration-safe responses and a local appeal duplicate/attempt guard, but not the Phase 5 rate-limit/quota infrastructure.
-5. Add tests for future CAPTCHA, quota, and rate-limit enforcement paths.
+3. Add app-level rate limits to confirmation resend, forgot-password, and suspension appeal endpoints. The current implementation has enumeration-safe responses and a local appeal duplicate/attempt guard, but not the Phase 5 rate-limit/quota infrastructure.
+4. Add tests for future quota and rate-limit enforcement paths.
 
 Phase 2 should happen before broader usage:
 
@@ -86,7 +85,7 @@ Quota behavior:
 
 ## 2. CAPTCHA
 
-Add a provider abstraction so business logic is not tied to one vendor:
+Implemented for v1 using a provider abstraction so business logic is not tied to one vendor:
 
 ```csharp
 public interface ICaptchaVerifier
@@ -99,20 +98,22 @@ public interface ICaptchaVerifier
 }
 ```
 
-Providers can live behind configuration:
+Providers live behind configuration:
 
-- `Captcha:Provider`: `None`, `Turnstile`, `HCaptcha`, `Recaptcha`
+- `Captcha:Provider`: `Turnstile`, `Fake`, `Noop`
 - `Captcha:SiteKey`
 - `Captcha:SecretKey`
 - `Captcha:VerifyUrl`
 - `Captcha:Enabled`
 - `Captcha:LoginFailureThreshold`
 
+Production uses Cloudflare Turnstile. `Fake` and `Noop` are development/test-only and production startup rejects disabled, fake, noop, or missing Turnstile key configuration.
+
 Registration flow:
 
 1. Frontend loads the configured site key.
 2. User completes CAPTCHA on `/register`.
-3. Frontend sends `captchaToken` with the existing register payload once the backend contract is extended.
+3. Frontend sends `captchaToken` with the register payload.
 4. Backend verifies with `ICaptchaVerifier` before creating the Identity user.
 5. Backend returns a validation problem when the token is missing, expired, invalid, or action-mismatched.
 
@@ -129,6 +130,12 @@ Rules:
 - Never accept a frontend-only CAPTCHA result.
 - Do not hard-code Turnstile/hCaptcha/reCAPTCHA logic inside controllers.
 - Bypass only in test/development using explicit configuration, not by missing secrets in production.
+
+Current scope:
+
+- Registration requires `captchaToken` and verifies it before user creation.
+- Login tracks failed attempts by normalized email and IP, then returns `captcha_required` once the configured threshold is reached.
+- Forgot-password and resend-confirmation remain enumeration-safe but do not yet escalate to CAPTCHA. Add this with the planned auth/email rate-limit phase so repeated-attempt counters and challenge behavior are shared.
 
 ## 3. Input Validation and Safe Rendering
 
@@ -439,9 +446,12 @@ Required secrets/environment variables:
 - `Authentication__Google__ClientId`
 - `Authentication__Google__ClientSecret`
 - `Tmdb__ReadAccessToken`
+- `Captcha__Enabled`
 - `Captcha__Provider`
 - `Captcha__SiteKey`
 - `Captcha__SecretKey`
+- `Captcha__VerifyUrl`
+- `Captcha__LoginFailureThreshold`
 - SMTP/email provider settings
 - Production allowed frontend/API origins if separate-origin deployment is chosen
 - Seed super-admin settings, used only for the controlled initial admin strategy
@@ -473,7 +483,6 @@ Before public launch:
 
 ## Open Questions for Implementation
 
-- Which CAPTCHA provider should be used first: Cloudflare Turnstile, hCaptcha, or reCAPTCHA?
 - Which email provider should send confirmation and reset mail?
 - Should unconfirmed users be allowed to log in read-only, or should login itself be blocked until confirmation?
 - Is production a single backend instance or multiple instances? This decides whether in-memory rate limits are acceptable temporarily.

@@ -1,4 +1,6 @@
 using RateOple.Core.Contracts;
+using RateOple.Core.Auth.Captcha;
+using RateOple.Core.Auth.Interfaces;
 using RateOple.Core.Auth.Services;
 using RateOple.Core.Collections.Services;
 using RateOple.Core.Email;
@@ -24,8 +26,10 @@ public static class ApplicationServicesExtensions
         services.Configure<EmailOptions>(configuration.GetSection("Email"));
         services.Configure<ResendOptions>(configuration.GetSection("Resend"));
         services.Configure<UnconfirmedAccountCleanupOptions>(configuration.GetSection("UnconfirmedAccountCleanup"));
+        services.Configure<CaptchaOptions>(configuration.GetSection("Captcha"));
 
         RegisterEmailSender(services, configuration, environment);
+        RegisterCaptchaVerifier(services, configuration, environment);
 
         services.AddScoped<IFollowService, FollowService>();
         services.AddScoped<IInteractionService, InteractionService>();
@@ -46,6 +50,7 @@ public static class ApplicationServicesExtensions
         services.AddScoped<IRatingService, RatingService>();
         services.AddScoped<IReviewService, ReviewService>();
         services.AddScoped<IJwtService, JwtService>();
+        services.AddSingleton<ILoginFailureTracker, InMemoryLoginFailureTracker>();
         services.AddScoped<IAccountEmailService, AccountEmailService>();
         services.AddScoped<ISuspensionAppealService, SuspensionAppealService>();
         services.AddScoped<IUnconfirmedAccountCleanupService, UnconfirmedAccountCleanupService>();
@@ -86,5 +91,65 @@ public static class ApplicationServicesExtensions
             throw new InvalidOperationException("Email:FrontendBaseUrl is required in Production.");
         if (string.IsNullOrWhiteSpace(configuration["Resend:ApiKey"]))
             throw new InvalidOperationException("Resend:ApiKey is required in Production.");
+    }
+
+    private static void RegisterCaptchaVerifier(
+        IServiceCollection services,
+        IConfiguration configuration,
+        IWebHostEnvironment environment)
+    {
+        var enabled = configuration.GetValue<bool>("Captcha:Enabled");
+        var provider = configuration["Captcha:Provider"]?.Trim();
+        if (string.IsNullOrWhiteSpace(provider))
+            provider = "Turnstile";
+
+        if (!enabled)
+        {
+            if (environment.IsProduction())
+                throw new InvalidOperationException("Captcha:Enabled=true is required in Production.");
+            if (!string.Equals(provider, "Noop", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Captcha:Provider=Noop is required when CAPTCHA is disabled.");
+
+            services.AddSingleton<ICaptchaVerifier, NoopCaptchaVerifier>();
+            return;
+        }
+
+        if (string.Equals(provider, "Turnstile", StringComparison.OrdinalIgnoreCase))
+        {
+            EnsureTurnstileConfiguration(configuration);
+            services.AddHttpClient<ICaptchaVerifier, TurnstileCaptchaVerifier>();
+            return;
+        }
+
+        if (string.Equals(provider, "Fake", StringComparison.OrdinalIgnoreCase))
+        {
+            if (environment.IsProduction())
+                throw new InvalidOperationException("Captcha:Provider=Fake is not allowed in Production.");
+
+            services.AddSingleton<FakeCaptchaVerifier>();
+            services.AddSingleton<ICaptchaVerifier>(sp => sp.GetRequiredService<FakeCaptchaVerifier>());
+            return;
+        }
+
+        if (string.Equals(provider, "Noop", StringComparison.OrdinalIgnoreCase))
+        {
+            if (environment.IsProduction())
+                throw new InvalidOperationException("Captcha:Provider=Noop is not allowed in Production.");
+
+            services.AddSingleton<ICaptchaVerifier, NoopCaptchaVerifier>();
+            return;
+        }
+
+        throw new InvalidOperationException($"Unsupported Captcha:Provider '{provider}'.");
+    }
+
+    private static void EnsureTurnstileConfiguration(IConfiguration configuration)
+    {
+        if (string.IsNullOrWhiteSpace(configuration["Captcha:SiteKey"]))
+            throw new InvalidOperationException("Captcha:SiteKey is required when Turnstile CAPTCHA is enabled.");
+        if (string.IsNullOrWhiteSpace(configuration["Captcha:SecretKey"]))
+            throw new InvalidOperationException("Captcha:SecretKey is required when Turnstile CAPTCHA is enabled.");
+        if (string.IsNullOrWhiteSpace(configuration["Captcha:VerifyUrl"]))
+            throw new InvalidOperationException("Captcha:VerifyUrl is required when Turnstile CAPTCHA is enabled.");
     }
 }

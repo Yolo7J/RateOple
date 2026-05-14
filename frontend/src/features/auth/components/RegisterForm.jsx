@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { AtSign, Lock, UserRound } from 'lucide-react';
 import { useLanguage } from "../../../hooks/useLanguage";
 import { useAuth } from "../../../context/AuthContext";
-import { getAuthErrorMessage } from "../services/authService";
+import { authService, getAuthErrorMessage } from "../services/authService";
 import {
     buildAuthEntryUrl,
     normalizeLocalReturnUrl,
@@ -13,6 +13,7 @@ import Button from "../../../shared/ui/Button";
 import FormField from "../../../shared/ui/FormField";
 import Input from "../../../shared/ui/Input";
 import InlineMessage from "../../../shared/ui/InlineMessage";
+import TurnstileCaptcha from "./TurnstileCaptcha";
 
 const RegisterForm = () => {
     const { t } = useLanguage();
@@ -32,7 +33,38 @@ const RegisterForm = () => {
     const [error, setError] = useState(location.state?.authError ?? "");
     const [startingGoogle, setStartingGoogle] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [captchaConfig, setCaptchaConfig] = useState(null);
+    const [captchaToken, setCaptchaToken] = useState("");
+    const captchaRef = useRef(null);
     const isBusy = isSubmitting || startingGoogle;
+    const captchaEnabled = Boolean(captchaConfig?.enabled && captchaConfig?.siteKey);
+
+    const handleCaptchaToken = useCallback((token) => {
+        setCaptchaToken(token);
+    }, []);
+
+    const handleCaptchaError = useCallback((message) => {
+        setError(message);
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+        authService.captchaConfig()
+            .then((config) => {
+                if (!cancelled) {
+                    setCaptchaConfig(config);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    setError("CAPTCHA configuration could not load. Please refresh and try again.");
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     const validatePassword = (password) => {
         const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{6,}$/;
@@ -53,6 +85,10 @@ const RegisterForm = () => {
             return setError(t("auth.passwordRequirementError"));
         }
 
+        if (captchaEnabled && !captchaToken) {
+            return setError("Complete CAPTCHA to continue.");
+        }
+
         setIsSubmitting(true);
 
         try {
@@ -60,12 +96,14 @@ const RegisterForm = () => {
                 email: form.email,
                 username: form.username,
                 password: form.password,
+                captchaToken,
             });
 
             // Redirect to login and pre-fill email so the user can sign in immediately
             navigate(loginUrl, { state: { email: form.email } });
         } catch (err) {
             setError(getAuthErrorMessage(err, "Registration failed"));
+            captchaRef.current?.reset();
         } finally {
             setIsSubmitting(false);
         }
@@ -151,6 +189,16 @@ const RegisterForm = () => {
             <InlineMessage tone="info">
                 After registration, confirm your email before creating ratings, reviews, groups, or collections.
             </InlineMessage>
+            {captchaEnabled ? (
+                <TurnstileCaptcha
+                    ref={captchaRef}
+                    siteKey={captchaConfig.siteKey}
+                    action="register"
+                    disabled={isBusy}
+                    onTokenChange={handleCaptchaToken}
+                    onError={handleCaptchaError}
+                />
+            ) : null}
             {error && <InlineMessage tone="error">{error}</InlineMessage>}
             <div className="auth-actions">
                 <Button type="submit" variant="primary" disabled={isBusy}>

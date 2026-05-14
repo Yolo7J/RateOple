@@ -1,3 +1,67 @@
+RateOple v1 CAPTCHA integration results
+
+Summary:
+- Added provider-neutral CAPTCHA verification through `ICaptchaVerifier`, with `TurnstileCaptchaVerifier`, `FakeCaptchaVerifier`, and development/test-only `NoopCaptchaVerifier`.
+- Added explicit CAPTCHA configuration with production startup rejection for disabled CAPTCHA, fake/noop providers, unsupported providers, and missing Turnstile site/secret/verify URL keys when enabled.
+- Registration now requires a server-verified `captchaToken` before Identity user creation.
+- Login tracks failed attempts by normalized email plus IP and returns standardized `captcha_required` ProblemDetails after the configured threshold; the backend decides whether CAPTCHA is required.
+- Added a safe `/api/auth/captcha-config` endpoint for frontend site-key/config discovery without exposing the secret.
+- Added a reusable frontend Turnstile component, register-page CAPTCHA, and login CAPTCHA that appears only after the backend challenge response.
+- Resend confirmation and forgot password remain enumeration-safe; CAPTCHA escalation for those flows is documented as a future enhancement to pair with the planned auth/email rate-limit phase.
+
+Files changed:
+- README.md
+- PROJECT_ARCHITECTURE.md
+- SECURITY_AND_DEPLOYMENT_PLAN.md
+- backend/RateOple/Controllers/Auth/AuthController.cs
+- backend/RateOple/Extensions/ApplicationServicesExtensions.cs
+- backend/RateOple/appsettings.json
+- backend/RateOple/appsettings.Development.json
+- backend/RateOple.Core/Auth/Captcha/CaptchaOptions.cs
+- backend/RateOple.Core/Auth/Captcha/CaptchaVerificationResult.cs
+- backend/RateOple.Core/Auth/DTOs/LoginDto.cs
+- backend/RateOple.Core/Auth/DTOs/RegisterDto.cs
+- backend/RateOple.Core/Auth/Interfaces/ICaptchaVerifier.cs
+- backend/RateOple.Core/Auth/Interfaces/ILoginFailureTracker.cs
+- backend/RateOple.Core/Auth/Services/FakeCaptchaVerifier.cs
+- backend/RateOple.Core/Auth/Services/InMemoryLoginFailureTracker.cs
+- backend/RateOple.Core/Auth/Services/NoopCaptchaVerifier.cs
+- backend/RateOple.Core/Auth/Services/TurnstileCaptchaVerifier.cs
+- backend/RateOple.Api.Tests/Auth/AccountLifecycleContractTests.cs
+- backend/RateOple.Api.Tests/Auth/CaptchaContractTests.cs
+- backend/RateOple.Api.Tests/TestSupport/ApiTestFactory.cs
+- frontend/src/context/AuthContext.jsx
+- frontend/src/features/auth/auth.css
+- frontend/src/features/auth/components/LoginForm.jsx
+- frontend/src/features/auth/components/RegisterForm.jsx
+- frontend/src/features/auth/components/TurnstileCaptcha.jsx
+- frontend/src/features/auth/services/authService.js
+- frontend/tests/e2e/account-lifecycle.spec.js
+- results.txt
+
+Backend behavior:
+- `Captcha:Provider=Turnstile` posts to Cloudflare Turnstile `/siteverify` using only server-side `Captcha:SecretKey`.
+- The CAPTCHA verification result carries success, provider, error code, optional challenge timestamp, and metadata.
+- Provider outages and config failures return safe user-facing CAPTCHA errors without exposing secrets or provider response internals.
+- Login failure counters are deterministic in-memory state for this phase, keyed by normalized email and remote IP. They are not broad rate limits or quotas.
+- A successful login resets the matching failed-attempt counter.
+
+Frontend behavior:
+- Register loads safe CAPTCHA config and includes `captchaToken` in the register payload.
+- Login does not render CAPTCHA initially. It renders Turnstile after a `captcha_required` backend ProblemDetails response and includes `captchaToken` on retry.
+- CAPTCHA tokens are reset after failed submissions or widget expiry/error.
+
+Tests run/results:
+- `cd backend && dotnet build RateOple.sln`: passed, 0 warnings/errors.
+- `cd backend && dotnet test RateOple.Api.Tests/RateOple.Api.Tests.csproj --filter "FullyQualifiedName~Auth"`: initially failed 2 CAPTCHA tests because the test host was still using development Noop CAPTCHA; fixed by explicitly replacing the verifier/options with Fake CAPTCHA in `ApiTestFactory`.
+- `cd backend && dotnet test RateOple.Api.Tests/RateOple.Api.Tests.csproj --filter "FullyQualifiedName~Auth"`: passed, 44 tests.
+- Final recheck after tightening disabled CAPTCHA to require explicit `Captcha:Provider=Noop`: `cd backend && dotnet build RateOple.sln`: passed, 0 warnings/errors; `cd backend && dotnet test RateOple.Api.Tests/RateOple.Api.Tests.csproj --no-build --filter "FullyQualifiedName~Auth"`: passed, 44 tests.
+- `cd frontend && npm run lint`: passed.
+- `cd frontend && npm run build`: passed. Build emitted existing Rollup annotation warnings from `@microsoft/signalr` comments.
+- `cd frontend && npm run test:e2e -- account-lifecycle.spec.js`: passed, 18 tests across desktop and mobile Chromium.
+- `cd frontend && npm run test:e2e`: passed, 24 tests across desktop and mobile Chromium.
+- `cd backend && dotnet test RateOple.sln --no-build`: passed, 365 total backend tests.
+
 RateOple v1 practical moderator queue behavior results
 
 Summary:

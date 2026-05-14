@@ -40,14 +40,14 @@ export const AuthProvider = ({ children }) => {
 
     useNotificationRealtime(Boolean(user?.id));
 
-    const login = async (email, password) => {
-        const session = await authService.login(email, password);
+    const login = async (email, password, captchaToken) => {
+        const session = await authService.login(email, password, captchaToken);
         queryClient.setQueryData(["auth", "session"], session);
         return session;
     };
 
-    const register = async ({ email, username, password }) => {
-        await authService.register({ email, username, password });
+    const register = async ({ email, username, password, captchaToken }) => {
+        await authService.register({ email, username, password, captchaToken });
     };
 
     const refreshSession = async () => {

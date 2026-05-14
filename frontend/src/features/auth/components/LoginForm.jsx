@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { AtSign, Lock } from 'lucide-react';
 import { useLanguage } from "../../../hooks/useLanguage";
 import { useAuth } from "../../../context/AuthContext";
-import { getAuthErrorMessage } from "../services/authService";
+import { authService, getAuthErrorMessage, isCaptchaRequiredError } from "../services/authService";
 import {
     buildAuthEntryUrl,
     normalizeLocalReturnUrl,
@@ -13,6 +13,7 @@ import Button from "../../../shared/ui/Button";
 import FormField from "../../../shared/ui/FormField";
 import Input from "../../../shared/ui/Input";
 import InlineMessage from "../../../shared/ui/InlineMessage";
+import TurnstileCaptcha from "./TurnstileCaptcha";
 
 const LoginForm = () => {
     const { t } = useLanguage();
@@ -29,20 +30,60 @@ const LoginForm = () => {
     const [error, setError] = useState(location.state?.authError ?? "");
     const [startingGoogle, setStartingGoogle] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [captchaConfig, setCaptchaConfig] = useState(null);
+    const [captchaToken, setCaptchaToken] = useState("");
+    const [showCaptcha, setShowCaptcha] = useState(false);
+    const captchaRef = useRef(null);
     const isBusy = isSubmitting || startingGoogle;
+    const captchaEnabled = Boolean(captchaConfig?.enabled && captchaConfig?.siteKey);
+
+    const handleCaptchaToken = useCallback((token) => {
+        setCaptchaToken(token);
+    }, []);
+
+    const handleCaptchaError = useCallback((message) => {
+        setError(message);
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+        authService.captchaConfig()
+            .then((config) => {
+                if (!cancelled) {
+                    setCaptchaConfig(config);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    setCaptchaConfig({ enabled: false });
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (isSubmitting) return;
 
         setError("");
+        if (showCaptcha && captchaEnabled && !captchaToken) {
+            return setError("Complete CAPTCHA to continue.");
+        }
+
         setIsSubmitting(true);
 
         try {
-            await login(email, password);
+            await login(email, password, showCaptcha ? captchaToken : undefined);
             navigate(returnUrl, { replace: true });
         } catch (err) {
+            if (isCaptchaRequiredError(err)) {
+                setShowCaptcha(true);
+            }
             setError(getAuthErrorMessage(err, "Invalid credentials"));
+            captchaRef.current?.reset();
         } finally {
             setIsSubmitting(false);
         }
@@ -92,6 +133,16 @@ const LoginForm = () => {
             <p className="auth-switch text-right">
                 <Link to="/forgot-password">Forgot password?</Link>
             </p>
+            {showCaptcha && captchaEnabled ? (
+                <TurnstileCaptcha
+                    ref={captchaRef}
+                    siteKey={captchaConfig.siteKey}
+                    action="login"
+                    disabled={isBusy}
+                    onTokenChange={handleCaptchaToken}
+                    onError={handleCaptchaError}
+                />
+            ) : null}
             {error && <InlineMessage tone="error">{error}</InlineMessage>}
             <div className="auth-actions">
                 <Button type="submit" variant="primary" disabled={isBusy}>

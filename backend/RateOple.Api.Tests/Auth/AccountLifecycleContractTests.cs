@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using RateOple.Api.Tests.TestSupport;
 using RateOple.Constants.Constants;
 using RateOple.Constants.Enums;
+using RateOple.Core.Auth.Services;
 using RateOple.Core.Contracts;
 using RateOple.Infrastructure.Data.Entities;
 
@@ -25,7 +26,8 @@ public class AccountLifecycleContractTests
         {
             username = "pending-user",
             email = "pending-user@example.test",
-            password = "Password1"
+            password = "Password1",
+            captchaToken = FakeCaptchaVerifier.ValidToken
         });
         var response = await client.SendAsync(request);
 
@@ -317,7 +319,8 @@ public class AccountLifecycleContractTests
         {
             username,
             email,
-            password = "Password1"
+            password = "Password1",
+            captchaToken = FakeCaptchaVerifier.ValidToken
         });
 
         var response = await client.SendAsync(request);
