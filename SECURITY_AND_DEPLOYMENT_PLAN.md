@@ -441,13 +441,18 @@ Implemented GitHub Actions stages:
    - `cd frontend && npm run build:backend`
    - `cd backend && dotnet publish RateOple/RateOple.csproj --configuration Release`
    - Upload the publish output as the `rateople-publish` artifact.
-4. Optional browser smoke:
+4. Render Docker build:
+   - Configure the Render Web Service with Docker environment, Dockerfile path `./Dockerfile`, and repository-root build context.
+   - The Dockerfile runs `npm run build:backend`, publishes `backend/RateOple/RateOple.csproj`, and runs the backend from the ASP.NET runtime image.
+   - The container entrypoint sets `ASPNETCORE_URLS=http://0.0.0.0:${PORT}` so the app listens on Render's provided port.
+   - Keep production secrets in Render environment variables or secret files only; do not copy local env files or production secrets into the image.
+5. Optional browser smoke:
    - Install Chromium with Playwright.
    - `cd frontend && npm run test:e2e`
-5. Deploy:
+6. Deploy:
    - Deploy published backend with `wwwroot` included.
    - Run migrations through a controlled deployment step.
-6. Post-deploy smoke:
+7. Post-deploy smoke:
    - Fetch `/api/health`, `/`, `/api/csrf`, `/media`, `/login`.
    - Verify HTTPS, HSTS, static assets, and API same-origin behavior.
 
@@ -509,6 +514,7 @@ Before public launch:
 - Logs include trace IDs but not secrets or PII-heavy payload dumps.
 - Static frontend was built with `cd frontend && npm run build:backend`.
 - Published artifact includes `backend/RateOple/wwwroot`.
+- Render Docker deployments use the root `Dockerfile`, repository-root build context, and host-provided environment variables for all production secrets.
 - Post-deploy smoke checks pass on the backend HTTPS host.
 
 Migration/deploy rules:

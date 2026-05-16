@@ -302,6 +302,19 @@ npm run build:backend
 
 This writes the deployment-ready frontend bundle into `backend/RateOple/wwwroot`.
 
+## Render Docker Deployment
+
+Render Web Service deployment uses the root `Dockerfile`.
+
+- Environment: Docker
+- Dockerfile path: `./Dockerfile`
+- Docker build context: repository root
+- Health check path: `/api/health`
+
+The Docker build performs the production frontend build with `npm run build:backend`, copies the resulting assets into `backend/RateOple/wwwroot`, publishes `backend/RateOple/RateOple.csproj`, and runs the published ASP.NET Core app. The runtime entrypoint binds Kestrel to Render's provided `PORT` by setting `ASPNETCORE_URLS=http://0.0.0.0:${PORT}`.
+
+Set production secrets only as Render environment variables or secret files. Do not bake connection strings, JWT keys, OAuth secrets, CAPTCHA secrets, Resend keys, TMDB tokens, or seed passwords into the image.
+
 ## Production Configuration
 
 Production configuration must come from environment variables, deployment secrets, or the hosting provider secret store. Do not commit production values.
@@ -341,7 +354,7 @@ GitHub Actions is configured in `.github/workflows/ci.yml` with:
 - Playwright Chromium smoke tests with browser installation.
 - Integrated `npm run build:backend` followed by Release `dotnet publish`, uploaded as a `rateople-publish` artifact.
 
-Deployment is intentionally not tied to a specific hosting provider yet. A deployment job should consume the publish artifact, inject production secrets through the host, run the controlled migration step, and then run the post-deploy smoke checklist.
+Render Docker deployment can build directly from the root `Dockerfile`. Other deployment jobs can consume the publish artifact, inject production secrets through the host, run the controlled migration step, and then run the post-deploy smoke checklist.
 
 ## Migrations and Deployment
 

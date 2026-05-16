@@ -1699,3 +1699,30 @@ Checks run:
 Notes:
 - Rate limiter counters are in memory and are single-backend-instance only for v1.
 - Move rate-limit counters to Redis or another distributed implementation before multi-instance backend deployment.
+
+RateOple Render Docker deployment support
+
+Implemented:
+- Added a root-level multi-stage Dockerfile for Render Web Service Docker deployment.
+- Added a Node frontend build stage that runs npm ci and npm run build:backend.
+- Added a .NET 9 SDK publish stage for backend/RateOple/RateOple.csproj and copied the generated wwwroot into the backend project before publish.
+- Added an ASP.NET 9 runtime stage that runs the published backend and binds to Render's PORT with ASPNETCORE_URLS=http://0.0.0.0:${PORT}.
+- Added .dockerignore exclusions for node_modules, bin, obj, dist, .git, local env files, local development appsettings, logs, and common test artifacts.
+- Updated README.md and SECURITY_AND_DEPLOYMENT_PLAN.md with Render Docker build settings, PORT behavior, and secret-handling notes.
+
+Files changed:
+- Dockerfile
+- .dockerignore
+- README.md
+- SECURITY_AND_DEPLOYMENT_PLAN.md
+- results.txt
+
+Checks run:
+- npm run build:backend: passed. Vite emitted existing @microsoft/signalr Rollup pure-annotation warnings, then copied output to backend/RateOple/wwwroot.
+- dotnet publish RateOple/RateOple.csproj --configuration Release --output /tmp/rateople-publish-verify: failed during restore without a useful diagnostic.
+- dotnet publish RateOple/RateOple.csproj --configuration Release --no-restore --output /tmp/rateople-publish-verify: failed locally before build output, with MSBuild reporting failed project-reference target discovery but 0 warnings and 0 errors.
+- dotnet build RateOple/RateOple.csproj --configuration Release --no-restore: passed.
+- dotnet publish RateOple/RateOple.csproj --configuration Release --no-restore --output /tmp/rateople-publish-verify /p:UseAppHost=false -maxcpucount:1: passed.
+
+Verification note:
+- Dockerfile uses -maxcpucount:1 for the publish step because the local default parallel publish path failed without an actionable MSBuild error while single-node publish succeeded.
