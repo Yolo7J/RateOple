@@ -24,6 +24,11 @@ public static class ApplicationServicesExtensions
         IWebHostEnvironment environment)
     {
         services.Configure<EmailOptions>(configuration.GetSection("Email"));
+        services.PostConfigure<EmailOptions>(options =>
+        {
+            if (string.IsNullOrWhiteSpace(options.FrontendBaseUrl))
+                options.FrontendBaseUrl = configuration["App:PublicOrigin"];
+        });
         services.Configure<ResendOptions>(configuration.GetSection("Resend"));
         services.Configure<UnconfirmedAccountCleanupOptions>(configuration.GetSection("UnconfirmedAccountCleanup"));
         services.Configure<CaptchaOptions>(configuration.GetSection("Captcha"));
@@ -87,8 +92,9 @@ public static class ApplicationServicesExtensions
     {
         if (string.IsNullOrWhiteSpace(configuration["Email:From"]))
             throw new InvalidOperationException("Email:From is required in Production.");
-        if (string.IsNullOrWhiteSpace(configuration["Email:FrontendBaseUrl"]))
-            throw new InvalidOperationException("Email:FrontendBaseUrl is required in Production.");
+        if (string.IsNullOrWhiteSpace(configuration["Email:FrontendBaseUrl"])
+            && string.IsNullOrWhiteSpace(configuration["App:PublicOrigin"]))
+            throw new InvalidOperationException("Email:FrontendBaseUrl or App:PublicOrigin is required in Production.");
         if (string.IsNullOrWhiteSpace(configuration["Resend:ApiKey"]))
             throw new InvalidOperationException("Resend:ApiKey is required in Production.");
     }

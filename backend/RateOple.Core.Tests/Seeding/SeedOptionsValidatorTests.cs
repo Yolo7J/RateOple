@@ -71,6 +71,27 @@ public class SeedOptionsValidatorTests
     }
 
     [Fact]
+    public void Validate_RejectsWeakSuperAdminPasswordOutsideDevelopment()
+    {
+        var options = new SeedOptions
+        {
+            Mode = SeedMode.Required,
+            SuperAdmin = new SuperAdminSeedOptions
+            {
+                Enabled = true,
+                Email = "admin@example.com",
+                Username = "admin",
+                Password = "Password1!"
+            }
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => SeedOptionsValidator.Validate(options, isDevelopment: false));
+
+        Assert.Contains("weak", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void Validate_RequiredModeCanRunWithoutSuperAdminFallbackCredentials()
     {
         var options = new SeedOptions

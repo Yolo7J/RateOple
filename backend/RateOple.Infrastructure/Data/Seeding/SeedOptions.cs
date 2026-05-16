@@ -51,6 +51,9 @@ public static class SeedOptionsValidator
         if (!isDevelopment && HasPlaceholderPassword(options.SuperAdmin.Password))
             throw new InvalidOperationException("Super-admin seed password is a known placeholder and is not allowed outside Development.");
 
+        if (!isDevelopment && IsWeakProductionPassword(options.SuperAdmin.Password))
+            throw new InvalidOperationException("Super-admin seed password is too weak for Production.");
+
         if (options.Mode == SeedMode.Demo)
         {
             ValidateSuperAdmin(options.SuperAdmin, requireCredentials: true);
@@ -106,5 +109,17 @@ public static class SeedOptionsValidator
     {
         return !string.IsNullOrWhiteSpace(password)
             && PlaceholderPasswords.Contains(password, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static bool IsWeakProductionPassword(string? password)
+    {
+        if (string.IsNullOrWhiteSpace(password))
+            return false;
+
+        return password.Length < 14
+            || !password.Any(char.IsUpper)
+            || !password.Any(char.IsLower)
+            || !password.Any(char.IsDigit)
+            || !password.Any(ch => !char.IsLetterOrDigit(ch));
     }
 }

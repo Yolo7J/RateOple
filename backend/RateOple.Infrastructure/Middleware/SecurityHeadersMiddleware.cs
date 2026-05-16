@@ -23,15 +23,28 @@ public class SecurityHeadersMiddleware
         // NOTE: X-XSS-Protection is deprecated in modern browsers
         // Do NOT use it.
 
-        headers["Content-Security-Policy"] =
+        var csp =
             "default-src 'self'; " +
-            "script-src 'self'; " +
+            "script-src 'self' https://challenges.cloudflare.com; " +
             "style-src 'self' 'unsafe-inline'; " +
             "img-src 'self' data: https:; " +
             "font-src 'self'; " +
+            "connect-src 'self' ws: wss:; " +
+            "frame-src https://challenges.cloudflare.com; " +
             "object-src 'none'; " +
             "base-uri 'self'; " +
-            "frame-ancestors 'none';";
+            "form-action 'self'; " +
+            "frame-ancestors 'none'";
+
+        if (string.Equals(
+            Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
+            "Production",
+            StringComparison.OrdinalIgnoreCase))
+        {
+            csp += "; upgrade-insecure-requests";
+        }
+
+        headers["Content-Security-Policy"] = csp + ";";
 
         headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
         headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";

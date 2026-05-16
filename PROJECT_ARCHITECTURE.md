@@ -108,16 +108,17 @@ frontend/
 
 `backend/RateOple/Program.cs` configures services in this order:
 
-1. `AddDatabase`
-2. `AddIdentityConfiguration`
-3. `AddAuthorizationPolicies`
-4. `AddJwtAuthentication`
-5. `AddGoogleAuthenticationIfConfigured`
-6. `AddCsrfProtection`
-7. `AddApplicationServices`
-8. `AddRateOpleRateLimiting`
-9. `AddCorsConfiguration`
-10. `AddApi` (`AddApi` registers controllers, ProblemDetails, OpenAPI, SignalR, and the SignalR user-id provider)
+1. Production startup guardrail validation when `ASPNETCORE_ENVIRONMENT=Production`
+2. `AddDatabase`
+3. `AddIdentityConfiguration`
+4. `AddAuthorizationPolicies`
+5. `AddJwtAuthentication`
+6. `AddGoogleAuthenticationIfConfigured`
+7. `AddCsrfProtection`
+8. `AddApplicationServices`
+9. `AddRateOpleRateLimiting`
+10. `AddCorsConfiguration`
+11. `AddApi` (`AddApi` registers controllers, ProblemDetails, OpenAPI, SignalR, and the SignalR user-id provider)
 
 Then:
 
@@ -131,6 +132,7 @@ Seed modes:
 - `Demo`: development-only; roles, genres, configured super-admin, and configured demo users.
 
 No seeder uses fallback passwords. Production rejects `Demo` mode and known placeholder super-admin passwords.
+Production startup also rejects missing required production configuration, weak or placeholder JWT keys, non-HTTPS public origins, missing Google/TMDB/email/CAPTCHA secrets, disabled/fake/noop CAPTCHA, and weak super-admin bootstrap passwords.
 
 ## 4. Middleware, Auth, Security
 
@@ -162,6 +164,10 @@ npm run build:backend
 ```
 
 This builds Vite and copies `frontend/dist` into `backend/RateOple/wwwroot`. React source files stay in `frontend/`; `wwwroot` is only for compiled deployment artifacts.
+
+CI/CD is configured in `.github/workflows/ci.yml` for frontend lint/build, backend Release build/test, Playwright Chromium smoke tests, and integrated frontend-to-backend publish artifact creation.
+
+The public smoke health endpoint is `GET /api/health`. It returns only safe service status and does not expose database or secret details.
 
 ### 4.2 Authentication Model
 

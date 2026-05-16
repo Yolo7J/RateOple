@@ -2,12 +2,13 @@
 
 Last updated: May 14, 2026
 
-This is an implementation plan, not a completed-feature report. It is based on the current repository state:
+This is an implementation plan plus the current completed hardening state. It is based on the current repository state:
 
 - Backend: ASP.NET Core Web API on .NET 9, Identity users/roles, JWT access and refresh tokens in cookies, CSRF protection, EF Core/PostgreSQL, SignalR notifications.
 - Frontend: React/Vite served either by Vite in development or from `backend/RateOple/wwwroot` after `npm run build:backend`.
 - Existing protections verified in code: HttpOnly auth cookies, refresh token rotation, CSRF header flow, development-only CORS, security headers middleware, role guards, production static hosting, soft-deleted media filtering in core media/collection paths, email confirmation/resend, forgot/reset password, read-only unconfirmed/suspended account gating, stale-unconfirmed-account cleanup, and suspension appeals.
-- Not found as completed features: analytics consent.
+- Completed for v1 deployment hardening: GitHub Actions CI, integrated publish artifact creation, production startup guardrails, safe health endpoint, and production CSP review for Turnstile.
+- Not found as completed features: analytics consent and provider-specific deployment automation.
 
 ## Deployment Readiness Priorities
 
@@ -23,7 +24,7 @@ Phase 2 should happen before broader usage:
 1. Tighten production security headers and operational error handling.
 2. Add cookie-consent infrastructure before any analytics.
 3. Clean up CSS ownership and verify bundle/chunk budgets.
-4. Add CI/CD with deploy and post-deploy smoke checks.
+4. Add provider-specific deployment automation and post-deploy smoke execution. CI and publish artifact creation are implemented; actual host deployment remains provider-specific.
 
 ## 1. Bot and Spam Protection
 
@@ -292,9 +293,11 @@ Current middleware sets CSP, `X-Frame-Options`, `X-Content-Type-Options`, referr
 
 Before deployment:
 
-- Review CSP against actual providers: Google OAuth redirects, CAPTCHA scripts/frames, TMDB/Open Library images, optional email tracking links, and any future analytics.
+- CSP currently allows same-origin scripts plus Cloudflare Turnstile scripts/frames, same-origin connections plus WebSocket transports for SignalR, inline styles for the current frontend, and HTTPS images for catalog covers.
+- Google OAuth is backend-mediated redirect flow and does not require broad script/frame allowances.
+- TMDB/Open Library and staff-managed external covers are image-only; do not add wildcard script sources for them.
 - Prefer nonces or hashes if inline styles/scripts are introduced; current CSP permits inline styles.
-- Add `upgrade-insecure-requests` in production when all assets are HTTPS.
+- `upgrade-insecure-requests` is added in production.
 - Add reporting-only CSP first if the deployment environment is uncertain.
 
 ### Error Handling
@@ -423,7 +426,7 @@ Keep Playwright coverage focused:
 
 ## 9. CI/CD Plan
 
-Recommended GitHub Actions stages:
+Implemented GitHub Actions stages:
 
 1. Frontend quality:
    - `cd frontend && npm ci`
@@ -437,18 +440,24 @@ Recommended GitHub Actions stages:
 3. Integrated build:
    - `cd frontend && npm run build:backend`
    - `cd backend && dotnet publish RateOple/RateOple.csproj --configuration Release`
-4. Deploy:
+   - Upload the publish output as the `rateople-publish` artifact.
+4. Optional browser smoke:
+   - Install Chromium with Playwright.
+   - `cd frontend && npm run test:e2e`
+5. Deploy:
    - Deploy published backend with `wwwroot` included.
    - Run migrations through a controlled deployment step.
-5. Post-deploy smoke:
-   - Health/API status route if added.
-   - Fetch `/`, `/api/csrf`, `/media`, `/login`.
+6. Post-deploy smoke:
+   - Fetch `/api/health`, `/`, `/api/csrf`, `/media`, `/login`.
    - Verify HTTPS, HSTS, static assets, and API same-origin behavior.
 
 Required secrets/environment variables:
 
 - `ConnectionStrings__DefaultConnection`
 - `Jwt__Key`
+- `Jwt__Issuer`
+- `Jwt__Audience`
+- `App__PublicOrigin` or `Email__FrontendBaseUrl`
 - `Authentication__Google__ClientId`
 - `Authentication__Google__ClientSecret`
 - `Tmdb__ReadAccessToken`
@@ -458,10 +467,24 @@ Required secrets/environment variables:
 - `Captcha__SecretKey`
 - `Captcha__VerifyUrl`
 - `Captcha__LoginFailureThreshold`
-- SMTP/email provider settings
+- `Email__Provider=Resend`
+- `Email__From`
+- `Resend__ApiKey`
 - Production allowed frontend/API origins if separate-origin deployment is chosen
-- Seed super-admin settings, used only for the controlled initial admin strategy
+- `Seed__Mode`
+- `Seed__SuperAdmin__Enabled`, `Seed__SuperAdmin__Email`, `Seed__SuperAdmin__Username`, and `Seed__SuperAdmin__Password`, used only for the controlled initial admin strategy
 - Deployment provider credentials
+
+Production startup guardrails currently reject:
+
+- Missing required production connection, JWT, origin, Google, TMDB, email, or CAPTCHA configuration.
+- Weak or placeholder `Jwt:Key`.
+- Non-HTTPS or localhost public origin.
+- `Seed:Mode=Demo`.
+- Weak or placeholder super-admin seed passwords.
+- Disabled, fake, noop, or non-Turnstile CAPTCHA in production.
+- Missing Turnstile site key, secret key, or HTTPS verify URL.
+- Non-Resend email provider or missing sender/API key in production.
 
 ## 10. Deployment Checklist
 
@@ -485,7 +508,16 @@ Before public launch:
 - Swagger/OpenAPI is disabled in production unless explicitly protected.
 - Logs include trace IDs but not secrets or PII-heavy payload dumps.
 - Static frontend was built with `cd frontend && npm run build:backend`.
+- Published artifact includes `backend/RateOple/wwwroot`.
 - Post-deploy smoke checks pass on the backend HTTPS host.
+
+Migration/deploy rules:
+
+- Back up the production PostgreSQL database before every migration.
+- Apply migrations from the deployment process using the production connection string from the secret store.
+- The current startup migration hook is part of the seeding path and only runs when seeding is enabled; do not depend on it as the normal production migration strategy.
+- Rollback means restoring the database backup and redeploying the previous artifact unless a tested forward-fix is safer.
+- Do not rely on committed appsettings for production secrets; committed files contain placeholders only.
 
 ## Open Questions for Implementation
 

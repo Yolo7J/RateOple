@@ -302,6 +302,76 @@ npm run build:backend
 
 This writes the deployment-ready frontend bundle into `backend/RateOple/wwwroot`.
 
+## Production Configuration
+
+Production configuration must come from environment variables, deployment secrets, or the hosting provider secret store. Do not commit production values.
+
+Required production settings:
+
+- `ConnectionStrings__DefaultConnection`
+- `Jwt__Key`
+- `Jwt__Issuer`
+- `Jwt__Audience`
+- `App__PublicOrigin` or `Email__FrontendBaseUrl`
+- `Authentication__Google__ClientId`
+- `Authentication__Google__ClientSecret`
+- `Tmdb__ReadAccessToken`
+- `Captcha__Enabled=true`
+- `Captcha__Provider=Turnstile`
+- `Captcha__SiteKey`
+- `Captcha__SecretKey`
+- `Captcha__VerifyUrl`
+- `Captcha__LoginFailureThreshold`
+- `Email__Provider=Resend`
+- `Email__From`
+- `Resend__ApiKey`
+- `Seed__Mode`
+- `Seed__SuperAdmin__Enabled`, `Seed__SuperAdmin__Email`, `Seed__SuperAdmin__Username`, and `Seed__SuperAdmin__Password` only during a controlled initial bootstrap
+
+Production startup guardrails currently reject missing required production values, weak or placeholder JWT keys, non-HTTPS public origins, disabled/fake/noop CAPTCHA, non-Resend email provider configuration, `Seed:Mode=Demo`, and weak or placeholder super-admin seed passwords. Auth cookies are HttpOnly and secure outside development. Swagger/OpenAPI and CORS are development-only unless a future deployment intentionally adds protected production Swagger or exact-origin production CORS.
+
+If the frontend is ever deployed on a separate origin, keep production CORS to exact origins only and document the allowed origin values in the deployment secret store. The current production model is same-origin: backend serves the compiled frontend from `wwwroot` and APIs from `/api`.
+
+## CI/CD
+
+GitHub Actions is configured in `.github/workflows/ci.yml` with:
+
+- Frontend `npm ci`, `npm run lint`, and `npm run build`.
+- Backend `dotnet restore`, Release `dotnet build`, and Release `dotnet test`.
+- Playwright Chromium smoke tests with browser installation.
+- Integrated `npm run build:backend` followed by Release `dotnet publish`, uploaded as a `rateople-publish` artifact.
+
+Deployment is intentionally not tied to a specific hosting provider yet. A deployment job should consume the publish artifact, inject production secrets through the host, run the controlled migration step, and then run the post-deploy smoke checklist.
+
+## Migrations and Deployment
+
+Production database changes must be controlled by the deployment process:
+
+- Back up the production PostgreSQL database before applying migrations.
+- Apply migrations with the production `ConnectionStrings__DefaultConnection` from the secret store.
+- Use `cd backend && dotnet tool restore && dotnet ef database update --project RateOple.Infrastructure --startup-project RateOple` when applying directly from the repo, or run the equivalent provider migration step.
+- Rollback expectation: restore the database backup and redeploy the previous backend artifact if a migration or release fails. EF down-migrations should not be the only rollback plan.
+- Never commit production connection strings, JWT keys, OAuth secrets, CAPTCHA secrets, Resend keys, or seed passwords.
+
+The current startup migration hook is part of the seeding path and only runs when seeding is enabled. Production should prefer a controlled migration step before starting the new artifact.
+
+## Post-Deploy Smoke Checklist
+
+After deployment on the HTTPS production host:
+
+- `GET /api/health` returns a safe `ok` response.
+- `GET /` serves the backend-hosted frontend.
+- `GET /api/csrf` returns a CSRF token and sets the CSRF cookie.
+- `GET /media` and `GET /login` route through the SPA fallback and load static assets.
+- A public media/list API route returns without CORS errors from the same origin.
+- HTTPS is enforced; HSTS is verified after HTTPS is stable.
+- Auth cookies are `Secure` and `HttpOnly`; API calls remain same-origin.
+- Security headers and CSP are present, including Turnstile allowances without wildcard script sources.
+
+## Cookie Consent and Analytics
+
+Analytics are not enabled. Necessary cookies are limited to auth, refresh, CSRF, provider cookies required for login/OAuth, and strictly necessary app preferences if any are later stored in cookies. Any analytics, tracking pixels, advertising, session replay, heatmaps, or A/B testing must wait for a consent model and must not be added before the security deployment work is complete.
+
 ## Additional Documentation
 
 - [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md)
@@ -314,8 +384,9 @@ This writes the deployment-ready frontend bundle into `backend/RateOple/wwwroot`
 
 As of the latest recorded full checks in `results.txt`:
 
-- `dotnet test backend/RateOple.sln` passed with 391 backend tests.
+- `cd backend && dotnet test RateOple.sln --configuration Release --no-build` passed with 398 backend tests.
 - `cd frontend && npm run lint` passed.
 - `cd frontend && npm run build` passed.
-- `cd frontend && npm run test:e2e` passed with 2 Playwright smoke tests.
+- `cd frontend && npm run test:e2e` passed with 24 Playwright smoke tests.
 - `cd frontend && npm run build:backend` passed and copied the Vite output to `backend/RateOple/wwwroot`.
+- `cd backend && dotnet publish RateOple/RateOple.csproj --configuration Release` passed.
