@@ -30,6 +30,7 @@ public static class ApplicationServicesExtensions
                 options.FrontendBaseUrl = configuration["App:PublicOrigin"];
         });
         services.Configure<ResendOptions>(configuration.GetSection("Resend"));
+        services.Configure<SmtpOptions>(configuration.GetSection("Smtp"));
         services.Configure<UnconfirmedAccountCleanupOptions>(configuration.GetSection("UnconfirmedAccountCleanup"));
         services.Configure<CaptchaOptions>(configuration.GetSection("Captcha"));
 
@@ -72,6 +73,9 @@ public static class ApplicationServicesExtensions
         IWebHostEnvironment environment)
     {
         var provider = configuration["Email:Provider"]?.Trim();
+        if (string.IsNullOrWhiteSpace(provider))
+            provider = "Fake";
+
         if (string.Equals(provider, "Resend", StringComparison.OrdinalIgnoreCase))
         {
             if (environment.IsProduction())
@@ -81,11 +85,39 @@ public static class ApplicationServicesExtensions
             return;
         }
 
-        if (environment.IsProduction())
-            throw new InvalidOperationException("Email:Provider=Resend is required in Production.");
+        if (string.Equals(provider, "Smtp", StringComparison.OrdinalIgnoreCase))
+        {
+            if (environment.IsProduction())
+                EnsureProductionSmtpConfiguration(configuration);
 
-        services.AddSingleton<FakeEmailSender>();
-        services.AddSingleton<IAppEmailSender>(sp => sp.GetRequiredService<FakeEmailSender>());
+            services.AddScoped<IAppEmailSender, SmtpEmailSender>();
+            return;
+        }
+
+        if (string.Equals(provider, "Fake", StringComparison.OrdinalIgnoreCase))
+        {
+            if (environment.IsProduction())
+                throw new InvalidOperationException("Email:Provider=Fake is not allowed in Production.");
+
+            services.AddSingleton<FakeEmailSender>();
+            services.AddSingleton<IAppEmailSender>(sp => sp.GetRequiredService<FakeEmailSender>());
+            return;
+        }
+
+        if (string.Equals(provider, "Noop", StringComparison.OrdinalIgnoreCase))
+        {
+            if (environment.IsProduction())
+                throw new InvalidOperationException("Email:Provider=Noop is not allowed in Production.");
+
+            services.AddSingleton<FakeEmailSender>();
+            services.AddSingleton<IAppEmailSender>(sp => sp.GetRequiredService<FakeEmailSender>());
+            return;
+        }
+
+        if (environment.IsProduction())
+            throw new InvalidOperationException("Email:Provider=Resend or Email:Provider=Smtp is required in Production.");
+
+        throw new InvalidOperationException($"Unsupported Email:Provider '{provider}'.");
     }
 
     private static void EnsureProductionResendConfiguration(IConfiguration configuration)
@@ -97,6 +129,41 @@ public static class ApplicationServicesExtensions
             throw new InvalidOperationException("Email:FrontendBaseUrl or App:PublicOrigin is required in Production.");
         if (string.IsNullOrWhiteSpace(configuration["Resend:ApiKey"]))
             throw new InvalidOperationException("Resend:ApiKey is required in Production.");
+    }
+
+    private static void EnsureProductionSmtpConfiguration(IConfiguration configuration)
+    {
+        if (string.IsNullOrWhiteSpace(configuration["Email:FrontendBaseUrl"])
+            && string.IsNullOrWhiteSpace(configuration["App:PublicOrigin"]))
+            throw new InvalidOperationException("Email:FrontendBaseUrl or App:PublicOrigin is required in Production.");
+        if (string.IsNullOrWhiteSpace(configuration["Smtp:Host"]))
+            throw new InvalidOperationException("Smtp:Host is required in Production when Email:Provider=Smtp.");
+        if (!int.TryParse(configuration["Smtp:Port"], out var port) || port is < 1 or > 65535)
+            throw new InvalidOperationException("Smtp:Port must be a valid TCP port in Production when Email:Provider=Smtp.");
+        if (string.IsNullOrWhiteSpace(configuration["Smtp:Username"]))
+            throw new InvalidOperationException("Smtp:Username is required in Production when Email:Provider=Smtp.");
+        var password = configuration["Smtp:Password"];
+        if (string.IsNullOrWhiteSpace(password))
+            throw new InvalidOperationException("Smtp:Password is required in Production when Email:Provider=Smtp.");
+        if (IsPlaceholderSecret(password))
+            throw new InvalidOperationException("Smtp:Password must be a non-placeholder value in Production.");
+        if (string.IsNullOrWhiteSpace(configuration["Smtp:FromEmail"]))
+            throw new InvalidOperationException("Smtp:FromEmail is required in Production when Email:Provider=Smtp.");
+        if (string.IsNullOrWhiteSpace(configuration["Email:From"])
+            && string.IsNullOrWhiteSpace(configuration["Smtp:FromName"]))
+            throw new InvalidOperationException("Email:From or Smtp:FromName is required in Production when Email:Provider=Smtp.");
+    }
+
+    private static bool IsPlaceholderSecret(string value)
+    {
+        var trimmed = value.Trim();
+        if (trimmed.StartsWith('<') && trimmed.EndsWith('>'))
+            return true;
+
+        return trimmed.Contains("password", StringComparison.OrdinalIgnoreCase)
+            || trimmed.Contains("placeholder", StringComparison.OrdinalIgnoreCase)
+            || trimmed.Contains("replace", StringComparison.OrdinalIgnoreCase)
+            || trimmed.Contains("changethis", StringComparison.OrdinalIgnoreCase);
     }
 
     private static void RegisterCaptchaVerifier(

@@ -191,7 +191,7 @@ Auth endpoints:
 - `GET /api/auth/google/login`
 - `GET /api/auth/google/complete`
 
-Register/password lifecycle emails are sent through `IAppEmailSender`; production targets Resend and development/test use the fake sender unless configured otherwise. Unconfirmed and suspended users can authenticate read-only. `/api/auth/me`, login, and refresh responses include account-state flags so the frontend can show confirmation/suspension UX while backend middleware remains the source of truth for blocking content mutations.
+Register/password lifecycle emails are sent through `IAppEmailSender`; production supports Resend or SMTP and development/test can use the fake sender. Unconfirmed and suspended users can authenticate read-only. `/api/auth/me`, login, and refresh responses include account-state flags so the frontend can show confirmation/suspension UX while backend middleware remains the source of truth for blocking content mutations.
 
 Registration and suspicious login attempts are protected by `ICaptchaVerifier`. The v1 provider is Cloudflare Turnstile, with fake and noop implementations restricted to explicit development/test configuration. Registration verifies CAPTCHA before creating the Identity user. Login tracks failed attempts by normalized email plus IP and requires server-verified CAPTCHA once the configured threshold is reached.
 

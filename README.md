@@ -40,12 +40,11 @@ The latest polish pass applied these patterns across high-traffic user pages, ad
 
 ## Account Lifecycle Configuration
 
-Production email delivery targets Resend through the backend email abstraction. Do not store API keys in source. Required production settings:
+Production email delivery uses the backend email abstraction with either Resend or SMTP. Gmail SMTP can be used with a Google app password. Do not store API keys, SMTP passwords, or app passwords in source. Required production settings:
 
-- `Email:Provider=Resend`
+- `Email:Provider=Resend` with `Resend:ApiKey`, or `Email:Provider=Smtp` with the `Smtp:*` settings below
 - `Email:From`
 - `Email:FrontendBaseUrl`
-- `Resend:ApiKey`
 - `UnconfirmedAccountCleanup:Enabled`
 - `UnconfirmedAccountCleanup:MaxAgeHours`
 - `UnconfirmedAccountCleanup:IntervalMinutes`
@@ -313,7 +312,7 @@ Render Web Service deployment uses the root `Dockerfile`.
 
 The Docker build performs the production frontend build with `npm run build:backend`, copies the resulting assets into `backend/RateOple/wwwroot`, publishes `backend/RateOple/RateOple.csproj`, and runs the published ASP.NET Core app. The runtime entrypoint binds Kestrel to Render's provided `PORT` by setting `ASPNETCORE_URLS=http://0.0.0.0:${PORT}`.
 
-Set production secrets only as Render environment variables or secret files. Do not bake connection strings, JWT keys, OAuth secrets, CAPTCHA secrets, Resend keys, TMDB tokens, or seed passwords into the image.
+Set production secrets only as Render environment variables or secret files. Do not bake connection strings, JWT keys, OAuth secrets, CAPTCHA secrets, Resend keys, SMTP passwords, TMDB tokens, or seed passwords into the image.
 
 ## Production Configuration
 
@@ -335,13 +334,27 @@ Required production settings:
 - `Captcha__SecretKey`
 - `Captcha__VerifyUrl`
 - `Captcha__LoginFailureThreshold`
-- `Email__Provider=Resend`
+- `Email__Provider=Resend` with `Resend__ApiKey`, or `Email__Provider=Smtp` with valid SMTP settings
 - `Email__From`
-- `Resend__ApiKey`
 - `Seed__Mode`
 - `Seed__SuperAdmin__Enabled`, `Seed__SuperAdmin__Email`, `Seed__SuperAdmin__Username`, and `Seed__SuperAdmin__Password` only during a controlled initial bootstrap
 
-Production startup guardrails currently reject missing required production values, weak or placeholder JWT keys, non-HTTPS public origins, disabled/fake/noop CAPTCHA, non-Resend email provider configuration, `Seed:Mode=Demo`, and weak or placeholder super-admin seed passwords. Auth cookies are HttpOnly and secure outside development. Swagger/OpenAPI and CORS are development-only unless a future deployment intentionally adds protected production Swagger or exact-origin production CORS.
+For Render with Gmail SMTP, configure:
+
+```text
+Email__Provider=Smtp
+Email__From=RateOple <yourgmail@gmail.com>
+Email__FrontendBaseUrl=https://YOUR-RENDER-SERVICE.onrender.com
+Smtp__Host=smtp.gmail.com
+Smtp__Port=587
+Smtp__UseStartTls=true
+Smtp__Username=yourgmail@gmail.com
+Smtp__Password=<GOOGLE_APP_PASSWORD>
+Smtp__FromEmail=yourgmail@gmail.com
+Smtp__FromName=RateOple
+```
+
+Production startup guardrails currently reject missing required production values, weak or placeholder JWT keys, non-HTTPS public origins, disabled/fake/noop CAPTCHA, fake/noop or unsupported email provider configuration, missing provider-specific Resend/SMTP settings, placeholder SMTP passwords, `Seed:Mode=Demo`, and weak or placeholder super-admin seed passwords. Auth cookies are HttpOnly and secure outside development. Swagger/OpenAPI and CORS are development-only unless a future deployment intentionally adds protected production Swagger or exact-origin production CORS.
 
 If the frontend is ever deployed on a separate origin, keep production CORS to exact origins only and document the allowed origin values in the deployment secret store. The current production model is same-origin: backend serves the compiled frontend from `wwwroot` and APIs from `/api`.
 
@@ -364,7 +377,7 @@ Production database changes must be controlled by the deployment process:
 - Apply migrations with the production `ConnectionStrings__DefaultConnection` from the secret store.
 - Use `cd backend && dotnet tool restore && dotnet ef database update --project RateOple.Infrastructure --startup-project RateOple` when applying directly from the repo, or run the equivalent provider migration step.
 - Rollback expectation: restore the database backup and redeploy the previous backend artifact if a migration or release fails. EF down-migrations should not be the only rollback plan.
-- Never commit production connection strings, JWT keys, OAuth secrets, CAPTCHA secrets, Resend keys, or seed passwords.
+- Never commit production connection strings, JWT keys, OAuth secrets, CAPTCHA secrets, Resend keys, SMTP passwords, or seed passwords.
 
 The current startup migration hook is part of the seeding path and only runs when seeding is enabled. Production should prefer a controlled migration step before starting the new artifact.
 

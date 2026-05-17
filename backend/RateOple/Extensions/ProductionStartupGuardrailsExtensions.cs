@@ -1,4 +1,5 @@
 using System.Text;
+using System.Net.Mail;
 using RateOple.Infrastructure.Data.Seeding;
 
 namespace RateOple.Extensions;
@@ -13,6 +14,20 @@ public static class ProductionStartupGuardrailsExtensions
         "testingonly",
         "password",
         "secret"
+    ];
+
+    private static readonly string[] PlaceholderSecretFragments =
+    [
+        "changethis",
+        "replace",
+        "placeholder",
+        "google_app_password",
+        "google-app-password",
+        "app_password",
+        "app-password",
+        "your_password",
+        "your-password",
+        "password"
     ];
 
     public static WebApplicationBuilder ValidateProductionStartupConfiguration(this WebApplicationBuilder builder)
@@ -70,11 +85,64 @@ public static class ProductionStartupGuardrailsExtensions
     private static void ValidateEmail(IConfiguration configuration)
     {
         var provider = Require("Email:Provider", configuration["Email:Provider"]);
-        if (!string.Equals(provider, "Resend", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("Email:Provider=Resend is required in Production.");
 
+        if (string.Equals(provider, "Resend", StringComparison.OrdinalIgnoreCase))
+        {
+            ValidateResendEmail(configuration);
+            return;
+        }
+
+        if (string.Equals(provider, "Smtp", StringComparison.OrdinalIgnoreCase))
+        {
+            ValidateSmtpEmail(configuration);
+            return;
+        }
+
+        throw new InvalidOperationException("Email:Provider=Resend or Email:Provider=Smtp is required in Production.");
+    }
+
+    private static void ValidateResendEmail(IConfiguration configuration)
+    {
         Require("Email:From", configuration["Email:From"]);
         Require("Resend:ApiKey", configuration["Resend:ApiKey"]);
+    }
+
+    private static void ValidateSmtpEmail(IConfiguration configuration)
+    {
+        Require("Smtp:Host", configuration["Smtp:Host"]);
+        ValidateSmtpPort(configuration["Smtp:Port"]);
+        Require("Smtp:Username", configuration["Smtp:Username"]);
+
+        var password = Require("Smtp:Password", configuration["Smtp:Password"]);
+        if (IsPlaceholderSecret(password))
+            throw new InvalidOperationException("Smtp:Password must be a non-placeholder value in Production.");
+
+        var fromEmail = Require("Smtp:FromEmail", configuration["Smtp:FromEmail"]);
+        ValidateEmailAddress("Smtp:FromEmail", fromEmail);
+
+        if (string.IsNullOrWhiteSpace(configuration["Email:From"])
+            && string.IsNullOrWhiteSpace(configuration["Smtp:FromName"]))
+        {
+            throw new InvalidOperationException("Email:From or Smtp:FromName is required in Production when Email:Provider=Smtp.");
+        }
+    }
+
+    private static void ValidateSmtpPort(string? value)
+    {
+        if (!int.TryParse(value, out var port) || port is < 1 or > 65535)
+            throw new InvalidOperationException("Smtp:Port must be a valid TCP port in Production.");
+    }
+
+    private static void ValidateEmailAddress(string key, string value)
+    {
+        try
+        {
+            _ = new MailAddress(value);
+        }
+        catch (FormatException ex)
+        {
+            throw new InvalidOperationException($"{key} must be a valid email address in Production.", ex);
+        }
     }
 
     private static void ValidateCaptcha(IConfiguration configuration)
@@ -112,5 +180,14 @@ public static class ProductionStartupGuardrailsExtensions
     private static bool ContainsWeakFragment(string value)
     {
         return WeakJwtFragments.Any(fragment => value.Contains(fragment, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool IsPlaceholderSecret(string value)
+    {
+        var trimmed = value.Trim();
+        if (trimmed.StartsWith('<') && trimmed.EndsWith('>'))
+            return true;
+
+        return PlaceholderSecretFragments.Any(fragment => trimmed.Contains(fragment, StringComparison.OrdinalIgnoreCase));
     }
 }

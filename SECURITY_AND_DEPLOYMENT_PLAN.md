@@ -223,9 +223,10 @@ Rules:
 Email provider:
 
 - `IAppEmailSender` abstracts provider delivery.
-- `ResendEmailSender` is the production target.
-- `FakeEmailSender` is used for development/test when `Email:Provider` is not `Resend`.
-- Production requires `Email:Provider=Resend`, `Email:From`, `Email:FrontendBaseUrl`, and `Resend:ApiKey`.
+- `ResendEmailSender` and `SmtpEmailSender` are supported production providers.
+- `FakeEmailSender` is development/test-only.
+- Production requires `Email:Provider=Resend` with `Email:From`, `Email:FrontendBaseUrl` or `App:PublicOrigin`, and `Resend:ApiKey`, or `Email:Provider=Smtp` with valid SMTP host, port, username, password, sender, and frontend URL settings.
+- SMTP provider errors are logged server-side as generic delivery failures and are not exposed to users.
 
 Unconfirmed-account cleanup:
 
@@ -446,6 +447,7 @@ Implemented GitHub Actions stages:
    - The Dockerfile runs `npm run build:backend`, publishes `backend/RateOple/RateOple.csproj`, and runs the backend from the ASP.NET runtime image.
    - The container entrypoint sets `ASPNETCORE_URLS=http://0.0.0.0:${PORT}` so the app listens on Render's provided port.
    - Keep production secrets in Render environment variables or secret files only; do not copy local env files or production secrets into the image.
+   - Gmail SMTP can be used with a Google app password when Resend cannot be used because no verified custom domain is available.
 5. Optional browser smoke:
    - Install Chromium with Playwright.
    - `cd frontend && npm run test:e2e`
@@ -472,9 +474,8 @@ Required secrets/environment variables:
 - `Captcha__SecretKey`
 - `Captcha__VerifyUrl`
 - `Captcha__LoginFailureThreshold`
-- `Email__Provider=Resend`
+- `Email__Provider=Resend` with `Resend__ApiKey`, or `Email__Provider=Smtp` with valid SMTP settings
 - `Email__From`
-- `Resend__ApiKey`
 - Production allowed frontend/API origins if separate-origin deployment is chosen
 - `Seed__Mode`
 - `Seed__SuperAdmin__Enabled`, `Seed__SuperAdmin__Email`, `Seed__SuperAdmin__Username`, and `Seed__SuperAdmin__Password`, used only for the controlled initial admin strategy
@@ -489,7 +490,24 @@ Production startup guardrails currently reject:
 - Weak or placeholder super-admin seed passwords.
 - Disabled, fake, noop, or non-Turnstile CAPTCHA in production.
 - Missing Turnstile site key, secret key, or HTTPS verify URL.
-- Non-Resend email provider or missing sender/API key in production.
+- Fake/noop or unsupported email provider in production.
+- Missing provider-specific Resend or SMTP settings in production.
+- Missing or placeholder SMTP password in production.
+
+Render/Gmail SMTP environment example:
+
+```text
+Email__Provider=Smtp
+Email__From=RateOple <yourgmail@gmail.com>
+Email__FrontendBaseUrl=https://YOUR-RENDER-SERVICE.onrender.com
+Smtp__Host=smtp.gmail.com
+Smtp__Port=587
+Smtp__UseStartTls=true
+Smtp__Username=yourgmail@gmail.com
+Smtp__Password=<GOOGLE_APP_PASSWORD>
+Smtp__FromEmail=yourgmail@gmail.com
+Smtp__FromName=RateOple
+```
 
 ## 10. Deployment Checklist
 
@@ -504,7 +522,7 @@ Before public launch:
 - Super-admin account creation strategy is documented and uses a strong secret.
 - Google OAuth callback URLs match the production host.
 - CAPTCHA provider is configured and tested in production mode.
-- Email provider is configured with verified sender/domain, SPF/DKIM/DMARC where applicable.
+- Email provider is configured with verified sender/domain and SPF/DKIM/DMARC where applicable, or Gmail SMTP is configured with a Google app password and matching sender address.
 - Email confirmation and password reset links use the production public origin.
 - Rate limits and quotas are enabled server-side.
 - CSRF token flow works from the backend-hosted frontend.
@@ -527,7 +545,6 @@ Migration/deploy rules:
 
 ## Open Questions for Implementation
 
-- Which email provider should send confirmation and reset mail?
 - Should unconfirmed users be allowed to log in read-only, or should login itself be blocked until confirmation?
 - Is production a single backend instance or multiple instances? This decides whether in-memory rate limits are acceptable temporarily.
 - Should suspended users retain read-only login access, or be blocked from login entirely?

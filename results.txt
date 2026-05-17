@@ -1,3 +1,49 @@
+RateOple Render/Gmail SMTP email provider results
+
+Summary:
+- Added production SMTP email provider support alongside existing Resend support.
+- Implemented `SmtpEmailSender` behind `IAppEmailSender` using `Smtp:Host`, `Smtp:Port`, `Smtp:UseStartTls`, `Smtp:Username`, `Smtp:Password`, `Smtp:FromEmail`, and `Smtp:FromName`.
+- Wired `Email:Provider=Smtp` into backend DI while keeping `Email:Provider=Resend` unchanged and keeping fake/noop-style email providers out of Production.
+- Updated production startup guardrails so SMTP production config no longer requires Resend, but does require HTTPS public origin/front-end URL, SMTP host, valid port, username, password, sender email, and a non-placeholder SMTP password.
+- Kept account lifecycle behavior unchanged: confirmation, resend confirmation, forgot password, and reset password still use `IAccountEmailService` and expose only generic delivery failures to users.
+- Updated README, deployment plan, and architecture notes for Render/Gmail SMTP deployment.
+- Added focused tests for SMTP guardrail acceptance/rejection, Resend acceptance, Fake/Noop production rejection, and deterministic fake email sender behavior.
+
+Files changed:
+- README.md
+- PROJECT_ARCHITECTURE.md
+- SECURITY_AND_DEPLOYMENT_PLAN.md
+- backend/RateOple/appsettings.json
+- backend/RateOple/Extensions/ApplicationServicesExtensions.cs
+- backend/RateOple/Extensions/ProductionStartupGuardrailsExtensions.cs
+- backend/RateOple.Core/Email/EmailOptions.cs
+- backend/RateOple.Core/Email/SmtpEmailSender.cs
+- backend/RateOple.Api.Tests/Security/ProductionStartupGuardrailsTests.cs
+- backend/RateOple.Core.Tests/Email/FakeEmailSenderTests.cs
+- results.txt
+
+Exact Render/Gmail SMTP env vars:
+
+```text
+Email__Provider=Smtp
+Email__From=RateOple <yourgmail@gmail.com>
+Email__FrontendBaseUrl=https://YOUR-RENDER-SERVICE.onrender.com
+Smtp__Host=smtp.gmail.com
+Smtp__Port=587
+Smtp__UseStartTls=true
+Smtp__Username=yourgmail@gmail.com
+Smtp__Password=<GOOGLE_APP_PASSWORD>
+Smtp__FromEmail=yourgmail@gmail.com
+Smtp__FromName=RateOple
+```
+
+Tests run/results:
+- `cd backend && dotnet build RateOple.sln`: passed, 0 warnings/errors.
+- `cd backend && dotnet test RateOple.sln --no-build --filter "FullyQualifiedName~ProductionStartupGuardrailsTests|FullyQualifiedName~FakeEmailSenderTests|FullyQualifiedName~AccountLifecycleContractTests"`: passed, 28 focused tests.
+- `cd backend && dotnet test RateOple.sln --no-build`: passed, 409 total backend tests.
+- `cd backend && dotnet run --project RateOple --no-build --launch-profile http`: passed startup smoke; backend listened on `http://localhost:5113`.
+- `curl -fsS http://localhost:5113/api/health`: passed with `{"status":"ok","service":"RateOple"}`.
+
 RateOple v1 frontend CSS ownership and performance cleanup results
 
 Summary:
